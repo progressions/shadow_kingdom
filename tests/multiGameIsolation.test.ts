@@ -26,9 +26,9 @@ describe('Multi-Game Isolation', () => {
       const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY name', [game1Id]);
       const game2Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY name', [game2Id]);
 
-      // Both games should have the same room structure
-      expect(game1Rooms).toHaveLength(3);
-      expect(game2Rooms).toHaveLength(3);
+      // Both games should have the same room structure (3 starter + 3 leaf nodes)
+      expect(game1Rooms).toHaveLength(6);
+      expect(game2Rooms).toHaveLength(6);
 
       // But different room IDs
       const game1RoomIds = game1Rooms.map(r => r.id).sort();
@@ -41,7 +41,14 @@ describe('Multi-Game Isolation', () => {
       const game2RoomNames = game2Rooms.map(r => r.name).sort();
       
       expect(game1RoomNames).toEqual(game2RoomNames);
-      expect(game1RoomNames).toEqual(['Entrance Hall', 'Garden', 'Library']);
+      expect(game1RoomNames).toEqual([
+        'Ancient Crypt Entrance',
+        'Grand Entrance Hall', 
+        'Moonlit Courtyard Garden',
+        'Observatory Steps',
+        'Scholar\'s Library',
+        'Winding Tower Stairs'
+      ]);
     });
 
     test('should create separate connection sets for different games', async () => {
@@ -54,7 +61,7 @@ describe('Multi-Game Isolation', () => {
 
       // Both games should have the same connection structure
       expect(game1Connections.length).toEqual(game2Connections.length);
-      expect(game1Connections.length).toBe(5); // 4 bidirectional + 1 secret
+      expect(game1Connections.length).toBe(11); // 10 bidirectional + 1 secret passage
 
       // But different connection IDs and room references
       const game1ConnectionIds = game1Connections.map(c => c.id).sort();
@@ -77,7 +84,7 @@ describe('Multi-Game Isolation', () => {
       // Move player in game 1 to library
       const game1Library = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [game1Id, 'Library']
+        [game1Id, 'Scholar\'s Library']
       );
       
       await db.run(
@@ -88,7 +95,7 @@ describe('Multi-Game Isolation', () => {
       // Move player in game 2 to garden
       const game2Garden = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [game2Id, 'Garden']
+        [game2Id, 'Moonlit Courtyard Garden']
       );
       
       await db.run(
@@ -141,7 +148,7 @@ describe('Multi-Game Isolation', () => {
       // Get entrance hall for game 1
       const game1Entrance = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [game1Id, 'Entrance Hall']
+        [game1Id, 'Grand Entrance Hall']
       );
 
       // Query connections from entrance hall in game 1
@@ -173,28 +180,28 @@ describe('Multi-Game Isolation', () => {
       // Get entrance halls for both games
       const game1Entrance = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [game1Id, 'Entrance Hall']
+        [game1Id, 'Grand Entrance Hall']
       );
       
       const game2Entrance = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [game2Id, 'Entrance Hall']
+        [game2Id, 'Grand Entrance Hall']
       );
 
       // Find north connection from game 1 entrance
       const game1NorthConnection = await db.get(
-        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND LOWER(name) = LOWER(?)',
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
         [game1Id, game1Entrance.id, 'north']
       );
 
       // Verify it only connects to game 1 rooms
       const targetRoom = await db.get('SELECT * FROM rooms WHERE id = ?', [game1NorthConnection.to_room_id]);
       expect(targetRoom.game_id).toBe(game1Id);
-      expect(targetRoom.name).toBe('Library');
+      expect(targetRoom.name).toBe('Scholar\'s Library');
 
       // Verify game 2 has its own separate north connection
       const game2NorthConnection = await db.get(
-        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND LOWER(name) = LOWER(?)',
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
         [game2Id, game2Entrance.id, 'north']
       );
 
@@ -253,7 +260,7 @@ describe('Multi-Game Isolation', () => {
       const updatePromises = adventures.map(async (gameId, index) => {
         const room = await db.get(
           'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-          [gameId, index % 2 === 0 ? 'Library' : 'Garden']
+          [gameId, index % 2 === 0 ? 'Scholar\'s Library' : 'Moonlit Courtyard Garden']
         );
 
         await db.run(

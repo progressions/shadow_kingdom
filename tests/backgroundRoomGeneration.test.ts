@@ -106,7 +106,7 @@ class TestGameController {
   // Helper method to check if room was generated
   async roomExistsInDirection(fromRoomId: number, direction: string): Promise<boolean> {
     const connection = await this.db.get(
-      'SELECT * FROM connections WHERE from_room_id = ? AND name = ? AND game_id = ?',
+      'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
       [fromRoomId, direction, this.currentGameId]
     );
     return !!connection;
@@ -141,7 +141,7 @@ describe('Background Room Generation', () => {
         name: `Generated Room ${context.direction}`,
         description: `A mysterious room discovered to the ${context.direction} of ${context.currentRoom.name}`,
         connections: [
-          { direction: 'back', hint: `Return to ${context.currentRoom.name}` }
+          { direction: 'back', name: `Return to ${context.currentRoom.name}` }
         ]
       } as GeneratedRoom;
     });
@@ -154,25 +154,31 @@ describe('Background Room Generation', () => {
   });
 
   describe('Initial State', () => {
-    test('should start with 3 rooms (default game setup)', async () => {
+    test('should start with 6 rooms (3 starter + 3 leaf nodes)', async () => {
       const roomCount = await gameController.getRoomCount();
-      expect(roomCount).toBe(3);
+      expect(roomCount).toBe(6);
     });
 
     test('should have default connections between initial rooms', async () => {
       // Get entrance hall (starting room)
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       // Should have north connection to library
-      const hasNorthConnection = await gameController.roomExistsInDirection(entranceHall.id, 'north');
-      expect(hasNorthConnection).toBe(true);
+      const northConnection = await db.get(
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
+        [gameId, entranceHall.id, 'north']
+      );
+      expect(northConnection).toBeDefined();
 
       // Should have east connection to garden
-      const hasEastConnection = await gameController.roomExistsInDirection(entranceHall.id, 'east');
-      expect(hasEastConnection).toBe(true);
+      const eastConnection = await db.get(
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
+        [gameId, entranceHall.id, 'east']
+      );
+      expect(eastConnection).toBeDefined();
     });
   });
 
@@ -181,13 +187,13 @@ describe('Background Room Generation', () => {
       // Get entrance hall
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       // Get library (connected north from entrance)
       const library = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Library']
+        [gameId, 'Scholar\'s Library']
       );
 
       // Trigger background generation from entrance hall
@@ -214,13 +220,13 @@ describe('Background Room Generation', () => {
     test('should not duplicate existing connections', async () => {
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       // Get library which connects from entrance hall
       const library = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Library']
+        [gameId, 'Scholar\'s Library']
       );
 
       // Library already has some connections (e.g., 'south' back to entrance, 'bookshelf' to garden)
@@ -229,7 +235,7 @@ describe('Background Room Generation', () => {
         [library.id, gameId]
       );
 
-      const southConnectionsBefore = connectionsBefore.filter(c => c.name === 'south').length;
+      const southConnectionsBefore = connectionsBefore.filter(c => c.direction === 'south').length;
 
       // Trigger background generation from entrance hall (which will expand library)
       await gameController.preGenerateAdjacentRooms(entranceHall.id);
@@ -239,7 +245,7 @@ describe('Background Room Generation', () => {
         [library.id, gameId]
       );
 
-      const southConnectionsAfter = connectionsAfter.filter(c => c.name === 'south').length;
+      const southConnectionsAfter = connectionsAfter.filter(c => c.direction === 'south').length;
 
       // Should not have duplicated the south connection
       expect(southConnectionsAfter).toBe(southConnectionsBefore);
@@ -251,7 +257,7 @@ describe('Background Room Generation', () => {
     test('should call Grok API for each new room generation', async () => {
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       // Clear any previous mock calls
@@ -277,7 +283,7 @@ describe('Background Room Generation', () => {
     test('should generate rooms with proper naming based on context', async () => {
       const library = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Library']
+        [gameId, 'Scholar\'s Library']
       );
 
       await gameController.preGenerateAdjacentRooms(library.id);
@@ -286,7 +292,7 @@ describe('Background Room Generation', () => {
       const allRooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
       const generatedRooms = allRooms.filter(room => 
         room.name.includes('Generated Room') || 
-        !['Entrance Hall', 'Library', 'Garden'].includes(room.name)
+        !['Grand Entrance Hall', 'Scholar\'s Library', 'Moonlit Courtyard Garden'].includes(room.name)
       );
 
       expect(generatedRooms.length).toBeGreaterThan(0);
@@ -305,7 +311,7 @@ describe('Background Room Generation', () => {
 
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       // Should not throw error even if generation fails
@@ -322,7 +328,7 @@ describe('Background Room Generation', () => {
     test('should complete generation in reasonable time', async () => {
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       const startTime = Date.now();
@@ -350,7 +356,7 @@ describe('Background Room Generation', () => {
 
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       // Should complete despite some failures

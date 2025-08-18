@@ -28,7 +28,7 @@ describe('Simple Database Tests', () => {
     const gameId = await createGameWithRooms(db, `Room Test Game ${Date.now()}-${Math.random()}`);
     
     const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
-    expect(rooms).toHaveLength(3);
+    expect(rooms).toHaveLength(6);
 
     const connections = await db.all('SELECT * FROM connections WHERE game_id = ?', [gameId]);
     expect(connections.length).toBeGreaterThan(0);
@@ -48,12 +48,12 @@ describe('Simple Database Tests', () => {
     // Get entrance hall
     const entrance = await db.get(
       'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-      [gameId, 'Entrance Hall']
+      [gameId, 'Grand Entrance Hall']
     );
     
     // Find north connection
     const northConnection = await db.get(
-      'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND name = ?',
+      'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
       [gameId, entrance.id, 'north']
     );
     
@@ -61,7 +61,7 @@ describe('Simple Database Tests', () => {
     
     // Verify it goes to library
     const library = await db.get('SELECT * FROM rooms WHERE id = ?', [northConnection.to_room_id]);
-    expect(library.name).toBe('Library');
+    expect(library.name).toBe('Scholar\'s Library');
   });
 
   test('should isolate games from each other', async () => {
@@ -72,8 +72,8 @@ describe('Simple Database Tests', () => {
     const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game1Id]);
     const game2Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game2Id]);
     
-    expect(game1Rooms).toHaveLength(3);
-    expect(game2Rooms).toHaveLength(3);
+    expect(game1Rooms).toHaveLength(6);
+    expect(game2Rooms).toHaveLength(6);
     
     // Room IDs should be different
     const game1RoomIds = game1Rooms.map(r => r.id);
