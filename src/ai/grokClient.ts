@@ -122,18 +122,28 @@ export class GrokClient {
       return this.mockGenerateRoom(context);
     }
 
+    const existingRooms = context.gameHistory?.join(', ') || 'none';
+    const themeNote = context.theme || 'mysterious fantasy kingdom';
+
     const prompt = `You are creating a room for a text adventure game called Shadow Kingdom.
     
 Current room: ${context.currentRoom.name}
 Description: ${context.currentRoom.description}
 Player is trying to go: ${context.direction}
+Existing rooms in this game: ${existingRooms}
 
-Generate a new room that the player discovers when going ${context.direction}. 
-Make it thematically consistent with a mysterious fantasy kingdom setting.
+Generate a NEW and UNIQUE room that the player discovers when going ${context.direction}. 
+Make it thematically consistent with a ${themeNote} setting.
+
+IMPORTANT: 
+- Create a room name that is DIFFERENT from all existing rooms
+- Make the room unique and interesting, not generic
+- Consider the direction and current room context
+- Avoid repetitive names like "Chamber", "Room", "Hall" unless very specific
 
 Respond in JSON format:
 {
-  "name": "Room Name",
+  "name": "Unique Room Name (avoid duplicates)",
   "description": "Detailed atmospheric description of the room",
   "connections": [
     {"direction": "north", "hint": "You see a door to the north"},
@@ -414,9 +424,33 @@ Respond in JSON format:
     
     const reverseDirection = directionMap[context.direction.toLowerCase()] || 'back';
 
+    // Generate more varied fallback rooms
+    const fallbackRooms = [
+      {
+        name: `Shadowed ${context.direction.charAt(0).toUpperCase() + context.direction.slice(1)} Passage`,
+        description: `A narrow passage stretches ${context.direction}, its walls carved from ancient stone. Flickering torchlight casts dancing shadows that seem to move of their own accord.`
+      },
+      {
+        name: `Forgotten ${context.direction.charAt(0).toUpperCase() + context.direction.slice(1)} Alcove`,
+        description: `You discover a hidden alcove filled with dusty relics and cobwebs. The air here is stale and heavy with the weight of forgotten years.`
+      },
+      {
+        name: `Mystic ${context.direction.charAt(0).toUpperCase() + context.direction.slice(1)} Sanctum`,
+        description: `A small sanctum filled with mysterious symbols etched into the walls. Strange energies seem to hum through the air around you.`
+      },
+      {
+        name: `Weathered ${context.direction.charAt(0).toUpperCase() + context.direction.slice(1)} Gallery`,
+        description: `An old gallery with crumbling stone pillars and faded tapestries. Moonlight filters through cracks in the ceiling above.`
+      }
+    ];
+
+    const selectedRoom = fallbackRooms[Math.floor(Math.random() * fallbackRooms.length)];
+    // Add timestamp to ensure uniqueness
+    const uniqueName = `${selectedRoom.name} ${Date.now() % 10000}`;
+
     return {
-      name: `Mysterious ${context.direction.charAt(0).toUpperCase() + context.direction.slice(1)} Chamber`,
-      description: `You find yourself in a dimly lit chamber. The air is thick with mystery, and shadows dance on the stone walls. This place feels ancient and forgotten.`,
+      name: uniqueName,
+      description: selectedRoom.description,
       connections: [
         { direction: reverseDirection, hint: "Return the way you came" }
       ]

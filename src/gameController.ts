@@ -820,15 +820,49 @@ export class GameController {
     try {
       const fromRoom = await this.db.get('SELECT * FROM rooms WHERE id = ?', [fromRoomId]);
 
+      // Get existing room names for context
+      const existingRooms = await this.db.all(
+        'SELECT name FROM rooms WHERE game_id = ? ORDER BY id',
+        [this.currentGameId]
+      );
+      const roomNames = existingRooms.map(room => room.name);
+
       const newRoom = await this.grokClient.generateRoom({
         currentRoom: { name: fromRoom.name, description: fromRoom.description },
-        direction: direction
+        direction: direction,
+        gameHistory: roomNames,
+        theme: 'mysterious fantasy kingdom'
       });
+
+      // Check for duplicate room names and make unique if needed
+      let uniqueName = newRoom.name;
+      let counter = 1;
+      
+      while (true) {
+        const existingRoom = await this.db.get(
+          'SELECT id FROM rooms WHERE game_id = ? AND name = ?',
+          [this.currentGameId, uniqueName]
+        );
+        
+        if (!existingRoom) {
+          break; // Name is unique
+        }
+        
+        // Add counter to make name unique
+        uniqueName = `${newRoom.name} ${counter}`;
+        counter++;
+        
+        // Prevent infinite loop
+        if (counter > 100) {
+          uniqueName = `${newRoom.name} ${Date.now()}`;
+          break;
+        }
+      }
 
       // Save to database (new rooms start as unprocessed)
       const roomResult = await this.db.run(
         'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-        [this.currentGameId, newRoom.name, newRoom.description, false]
+        [this.currentGameId, uniqueName, newRoom.description, false]
       );
 
       // Create outgoing connection from origin room
@@ -848,7 +882,7 @@ export class GameController {
 
       // Only show generation messages in debug mode
       if (process.env.AI_DEBUG_LOGGING === 'true') {
-        console.log(`✨ Generated new area: ${newRoom.name} (${direction})`);
+        console.log(`✨ Generated new area: ${uniqueName} (${direction})`);
       }
       return true;
 
