@@ -43,6 +43,7 @@ const initDb_1 = require("./utils/initDb");
 class CLI {
     constructor() {
         this.commands = new Map();
+        this.currentRoomId = 1; // Start in room 1 (Entrance Hall)
         this.rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
@@ -59,6 +60,11 @@ class CLI {
             handler: () => this.showHelp()
         });
         this.addCommand({
+            name: 'look',
+            description: 'Look around the current room',
+            handler: async () => await this.lookAround()
+        });
+        this.addCommand({
             name: 'echo',
             description: 'Echo back the provided text',
             handler: (args) => console.log(args.join(' '))
@@ -68,7 +74,7 @@ class CLI {
             description: 'Clear the screen',
             handler: () => {
                 console.clear();
-                console.log('Welcome to TypeScript CLI!');
+                console.log('Welcome to Shadow Kingdom!');
             }
         });
         this.addCommand({
@@ -118,6 +124,22 @@ class CLI {
         });
         console.log('\nPress Ctrl+C or type "exit" to quit.\n');
     }
+    async lookAround() {
+        try {
+            const room = await this.db.get('SELECT id, name, description FROM rooms WHERE id = ?', [this.currentRoomId]);
+            if (room) {
+                console.log(`\n${room.name}`);
+                console.log('='.repeat(room.name.length));
+                console.log(room.description);
+            }
+            else {
+                console.log('You are in a void. Something went wrong!');
+            }
+        }
+        catch (error) {
+            console.error('Error looking around:', error);
+        }
+    }
     async exit() {
         await this.cleanup();
         console.log('Goodbye!');
@@ -136,7 +158,10 @@ class CLI {
             await this.db.connect();
             await (0, initDb_1.initializeDatabase)(this.db);
             await (0, initDb_1.seedDatabase)(this.db);
-            console.log('\nType "help" for available commands.\n');
+            console.log('\nType "help" for available commands.');
+            console.log('Type "look" to see where you are.\n');
+            // Show initial room
+            await this.lookAround();
             this.rl.prompt();
         }
         catch (error) {
