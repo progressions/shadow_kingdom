@@ -42,7 +42,7 @@ export class Database {
     });
   }
 
-  async run(sql: string, params: any[] = []): Promise<void> {
+  async run(sql: string, params: any[] = []): Promise<{ lastID: number; changes: number }> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error('Database not connected'));
@@ -53,7 +53,7 @@ export class Database {
         if (err) {
           reject(err);
         } else {
-          resolve();
+          resolve({ lastID: this.lastID, changes: this.changes });
         }
       });
     });
