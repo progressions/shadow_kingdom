@@ -24,7 +24,7 @@ describe('Game State Persistence', () => {
       const initialState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?', 
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
       
       expect(initialState.current_room_id).toBe(entranceHall.id);
@@ -32,7 +32,7 @@ describe('Game State Persistence', () => {
       // Simulate moving to the library (north from entrance)
       const library = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Library']
+        [gameId, 'Scholar\'s Library']
       );
 
       // Update game state (simulating auto-save)
@@ -62,22 +62,22 @@ describe('Game State Persistence', () => {
       // Test going north from entrance hall to library
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       const northConnection = await db.get(
-        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND LOWER(name) = LOWER(?)',
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
         [gameId, entranceHall.id, 'north']
       );
 
       expect(northConnection).toBeDefined();
       
       const library = await db.get('SELECT * FROM rooms WHERE id = ?', [northConnection.to_room_id]);
-      expect(library.name).toBe('Library');
+      expect(library.name).toBe('Scholar\'s Library');
 
       // Test going back south
       const southConnection = await db.get(
-        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND LOWER(name) = LOWER(?)',
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
         [gameId, library.id, 'south']
       );
 
@@ -90,23 +90,23 @@ describe('Game State Persistence', () => {
       
       const library = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Library']
+        [gameId, 'Scholar\'s Library']
       );
 
       // Test the secret bookshelf passage
       const secretConnection = await db.get(
-        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND LOWER(name) = LOWER(?)',
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
         [gameId, library.id, 'bookshelf']
       );
 
       expect(secretConnection).toBeDefined();
       
       const garden = await db.get('SELECT * FROM rooms WHERE id = ?', [secretConnection.to_room_id]);
-      expect(garden.name).toBe('Garden');
+      expect(garden.name).toBe('Moonlit Courtyard Garden');
 
       // Verify it's one-way (no bookshelf back from garden)
       const returnConnection = await db.get(
-        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND LOWER(name) = LOWER(?)',
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
         [gameId, garden.id, 'bookshelf']
       );
 
@@ -127,7 +127,7 @@ describe('Game State Persistence', () => {
       // Move to library
       const library = await tempDb.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Library']
+        [gameId, 'Scholar\'s Library']
       );
 
       await tempDb.run(
@@ -172,12 +172,12 @@ describe('Game State Persistence', () => {
       
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-        [gameId, 'Entrance Hall']
+        [gameId, 'Grand Entrance Hall']
       );
 
       // Try to find a connection that doesn't exist
       const invalidConnection = await db.get(
-        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND LOWER(name) = LOWER(?)',
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND direction = ?',
         [gameId, entranceHall.id, 'nonexistent']
       );
 

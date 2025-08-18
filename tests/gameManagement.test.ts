@@ -29,14 +29,17 @@ describe('Game Management', () => {
       expect(game.created_at).toBeDefined();
       expect(game.last_played_at).toBeDefined();
 
-      // Verify rooms were created
+      // Verify rooms were created (3 starter + 3 leaf nodes = 6 total)
       const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY name', [gameId]);
-      expect(rooms).toHaveLength(3);
+      expect(rooms).toHaveLength(6);
       
       const roomNames = rooms.map(r => r.name);
-      expect(roomNames).toContain('Entrance Hall');
-      expect(roomNames).toContain('Library');
-      expect(roomNames).toContain('Garden');
+      expect(roomNames).toContain('Grand Entrance Hall');
+      expect(roomNames).toContain('Scholar\'s Library');
+      expect(roomNames).toContain('Moonlit Courtyard Garden');
+      expect(roomNames).toContain('Winding Tower Stairs');
+      expect(roomNames).toContain('Ancient Crypt Entrance');
+      expect(roomNames).toContain('Observatory Steps');
 
       // Verify connections were created
       const connections = await db.all('SELECT * FROM connections WHERE game_id = ?', [gameId]);
@@ -57,8 +60,8 @@ describe('Game Management', () => {
       const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game1Id]);
       const game2Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game2Id]);
 
-      expect(game1Rooms).toHaveLength(3);
-      expect(game2Rooms).toHaveLength(3);
+      expect(game1Rooms).toHaveLength(6);
+      expect(game2Rooms).toHaveLength(6);
 
       // Room IDs should be different between games
       const game1RoomIds = game1Rooms.map(r => r.id);
@@ -108,14 +111,14 @@ describe('Game Management', () => {
 
       // Check for expected connections
       const connectionDescriptions = connections.map(c => 
-        `${c.from_room} -> ${c.to_room} (${c.name})`
+        `${c.from_room} -> ${c.to_room} (${c.direction})`
       );
 
-      expect(connectionDescriptions).toContain('Entrance Hall -> Library (north)');
-      expect(connectionDescriptions).toContain('Library -> Entrance Hall (south)');
-      expect(connectionDescriptions).toContain('Entrance Hall -> Garden (east)');
-      expect(connectionDescriptions).toContain('Garden -> Entrance Hall (west)');
-      expect(connectionDescriptions).toContain('Library -> Garden (bookshelf)');
+      expect(connectionDescriptions).toContain('Grand Entrance Hall -> Scholar\'s Library (north)');
+      expect(connectionDescriptions).toContain('Scholar\'s Library -> Grand Entrance Hall (south)');
+      expect(connectionDescriptions).toContain('Grand Entrance Hall -> Moonlit Courtyard Garden (east)');
+      expect(connectionDescriptions).toContain('Moonlit Courtyard Garden -> Grand Entrance Hall (west)');
+      expect(connectionDescriptions).toContain('Scholar\'s Library -> Moonlit Courtyard Garden (bookshelf)');
     });
 
     test('should set correct starting room in game state', async () => {
@@ -124,7 +127,7 @@ describe('Game Management', () => {
       const gameState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
       const startingRoom = await db.get('SELECT * FROM rooms WHERE id = ?', [gameState.current_room_id]);
       
-      expect(startingRoom.name).toBe('Entrance Hall');
+      expect(startingRoom.name).toBe('Grand Entrance Hall');
     });
   });
 
