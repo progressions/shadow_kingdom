@@ -866,6 +866,16 @@ export class GameController {
 
   private async generateSingleRoom(fromRoomId: number, direction: string): Promise<boolean> {
     try {
+      // Check if a connection already exists for this direction to prevent duplicates
+      const existingConnection = await this.db.get(
+        'SELECT id FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
+        [fromRoomId, direction, this.currentGameId]
+      );
+      
+      if (existingConnection) {
+        return false; // Connection already exists, don't generate
+      }
+
       const fromRoom = await this.db.get('SELECT * FROM rooms WHERE id = ?', [fromRoomId]);
 
       // Get existing room names for context
