@@ -699,15 +699,17 @@ export class GameController {
     try {
       const maxDepth = parseInt(process.env.MAX_GENERATION_DEPTH || '3');
       
-      // Get all connections FROM current room to existing rooms
+      // Get all connections FROM current room to existing rooms that haven't been processed yet
       const connections = await this.db.all(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ?',
+        'SELECT c.*, r.generation_processed FROM connections c ' +
+        'JOIN rooms r ON c.to_room_id = r.id ' +
+        'WHERE c.from_room_id = ? AND c.game_id = ? AND (r.generation_processed = FALSE OR r.generation_processed IS NULL)',
         [currentRoomId, this.currentGameId]
       );
 
       let roomsToGenerate = 0;
       
-      // For each connection that leads to an existing room
+      // For each connection that leads to an unprocessed room
       for (const connection of connections) {
         const targetRoom = await this.db.get(
           'SELECT * FROM rooms WHERE id = ?',
@@ -752,6 +754,12 @@ export class GameController {
         if (targetRoom) {
           const roomsGenerated = await this.generateMissingRoomsFor(targetRoom.id, maxDepth, roomsToGenerate - generatedCount);
           generatedCount += roomsGenerated;
+          
+          // Mark this room as processed so we don't generate for it again
+          await this.db.run(
+            'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
+            [targetRoom.id]
+          );
         }
       }
       
@@ -817,10 +825,10 @@ export class GameController {
         direction: direction
       });
 
-      // Save to database
+      // Save to database (new rooms start as unprocessed)
       const roomResult = await this.db.run(
-        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-        [this.currentGameId, newRoom.name, newRoom.description]
+        'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
+        [this.currentGameId, newRoom.name, newRoom.description, false]
       );
 
       // Create outgoing connection from origin room

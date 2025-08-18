@@ -16,7 +16,8 @@
     "test:grok": "ts-node scripts/test-grok.ts",
     "test:bg": "ts-node scripts/test-background-generation.ts",
     "test:limits": "ts-node scripts/test-generation-limits.ts",
-    "test:errors": "ts-node scripts/test-error-handling.ts"
+    "test:errors": "ts-node scripts/test-error-handling.ts",
+    "test:tracking": "ts-node scripts/test-generation-tracking.ts"
   },
   "keywords": [
     "cli",

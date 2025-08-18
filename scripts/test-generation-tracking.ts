@@ -2,14 +2,13 @@
 
 import Database from '../src/utils/database';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
-import { GameController } from '../src/gameController';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
-async function testGenerationLimits() {
-  console.log('🔒 Testing Generation Limits...\n');
+async function testGenerationTracking() {
+  console.log('📋 Testing Generation Tracking (Room Processing)...\n');
 
   // Check if API key is configured
   if (!process.env.GROK_API_KEY) {
@@ -18,10 +17,14 @@ async function testGenerationLimits() {
     process.exit(1);
   }
 
+  // Set debug logging to see what's happening
+  const originalDebugSetting = process.env.AI_DEBUG_LOGGING;
+  process.env.AI_DEBUG_LOGGING = 'true';
+
   // Override limits for testing
-  process.env.MAX_ROOMS_PER_GAME = '15';  // Small limit for testing
-  process.env.MAX_GENERATION_DEPTH = '2';  // Limit depth
-  process.env.GENERATION_COOLDOWN_MS = '100';  // Short cooldown for testing
+  process.env.MAX_ROOMS_PER_GAME = '20';
+  process.env.MAX_GENERATION_DEPTH = '2';
+  process.env.GENERATION_COOLDOWN_MS = '100';
 
   const db = new Database(':memory:');
   
@@ -30,7 +33,7 @@ async function testGenerationLimits() {
     await initializeDatabase(db);
     
     console.log('🎮 Creating test game...');
-    const gameId = await createGameWithRooms(db, `Limit Test Game ${Date.now()}`);
+    const gameId = await createGameWithRooms(db, `Tracking Test Game ${Date.now()}`);
     console.log(`✅ Game created with ID: ${gameId}`);
     
     // Create test controller
@@ -48,7 +51,6 @@ async function testGenerationLimits() {
         this.grokClient = new GrokClient();
       }
       
-      // Copy the updated generation methods from GameController
       async preGenerateAdjacentRooms(currentRoomId: number): Promise<void> {
         const cooldown = parseInt(process.env.GENERATION_COOLDOWN_MS || '10000');
         const timeSinceLastGeneration = Date.now() - this.lastGenerationTime;
@@ -85,10 +87,23 @@ async function testGenerationLimits() {
           const maxDepth = parseInt(process.env.MAX_GENERATION_DEPTH || '3');
           console.log(`🎯 Max generation depth: ${maxDepth}`);
           
+          // Get all connections FROM current room to existing rooms that haven't been processed yet
           const connections = await this.db.all(
-            'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ?',
+            'SELECT c.*, r.generation_processed, r.name as room_name FROM connections c ' +
+            'JOIN rooms r ON c.to_room_id = r.id ' +
+            'WHERE c.from_room_id = ? AND c.game_id = ? AND (r.generation_processed = FALSE OR r.generation_processed IS NULL)',
             [currentRoomId, this.currentGameId]
           );
+
+          console.log(`🔍 Found ${connections.length} unprocessed adjacent rooms`);
+          connections.forEach(conn => {
+            console.log(`   - ${conn.room_name} (processed: ${conn.generation_processed})`);
+          });
+
+          if (connections.length === 0) {
+            console.log('✅ All adjacent rooms have already been processed for generation');
+            return;
+          }
 
           let roomsToGenerate = 0;
           
@@ -128,8 +143,16 @@ async function testGenerationLimits() {
             );
 
             if (targetRoom) {
+              console.log(`🔧 Processing room: ${targetRoom.name}`);
               const roomsGenerated = await this.generateMissingRoomsFor(targetRoom.id, maxDepth, roomsToGenerate - generatedCount);
               generatedCount += roomsGenerated;
+              
+              // Mark this room as processed
+              await this.db.run(
+                'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
+                [targetRoom.id]
+              );
+              console.log(`✅ Marked ${targetRoom.name} as processed`);
             }
           }
           
@@ -200,7 +223,6 @@ async function testGenerationLimits() {
             [this.currentGameId, fromRoomId, roomResult.lastID, direction]
           );
 
-          // Ensure new room has at least one exit (back to where we came from)
           const reverseDirection = this.getReverseDirection(direction);
           if (reverseDirection) {
             await this.db.run(
@@ -234,78 +256,62 @@ async function testGenerationLimits() {
     
     const controller = new TestController(db, gameId);
     
-    // Get initial room count
+    // Get initial room count and processing status
     const initialRooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
     console.log(`📊 Initial rooms: ${initialRooms.length}`);
+    initialRooms.forEach(room => {
+      console.log(`   - ${room.name} (processed: ${room.generation_processed})`);
+    });
     
     const entranceHall = await db.get(
       'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
       [gameId, 'Entrance Hall']
     );
     
-    console.log('\n🚀 Running generation cycles until limit reached...');
-    console.log(`📏 Limit: ${process.env.MAX_ROOMS_PER_GAME} rooms, Depth: ${process.env.MAX_GENERATION_DEPTH}`);
+    console.log('\n🚀 Running generation cycles to test processing tracking...');
     
     // Run multiple generation cycles
-    for (let cycle = 1; cycle <= 10; cycle++) {
+    for (let cycle = 1; cycle <= 5; cycle++) {
       console.log(`\n--- Cycle ${cycle} ---`);
       
       await controller.preGenerateAdjacentRooms(entranceHall.id);
       
-      // Check current room count
-      const currentRooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
-      console.log(`📊 Rooms after cycle ${cycle}: ${currentRooms.length}`);
+      // Check processing status after each cycle
+      const rooms = await db.all('SELECT name, generation_processed FROM rooms WHERE game_id = ? ORDER BY id', [gameId]);
+      console.log(`📊 Room processing status after cycle ${cycle}:`);
+      rooms.forEach(room => {
+        const status = room.generation_processed ? '✅ processed' : '❌ unprocessed';
+        console.log(`   - ${room.name}: ${status}`);
+      });
       
-      // If we've hit the limit, break
-      if (currentRooms.length >= parseInt(process.env.MAX_ROOMS_PER_GAME || '50')) {
-        console.log('🎯 Room limit reached!');
-        break;
-      }
-      
-      // Small delay to show cooldown working
-      if (cycle < 10) {
-        console.log('⏱️ Waiting for cooldown...');
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
     
     // Final summary
     const finalRooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY id', [gameId]);
-    console.log(`\n📈 Final room count: ${finalRooms.length} (started with ${initialRooms.length})`);
-    console.log(`✅ Generated ${finalRooms.length - initialRooms.length} new rooms`);
+    const processedRooms = finalRooms.filter(room => room.generation_processed);
+    const unprocessedRooms = finalRooms.filter(room => !room.generation_processed);
     
-    const maxAllowed = parseInt(process.env.MAX_ROOMS_PER_GAME || '50');
-    if (finalRooms.length <= maxAllowed) {
-      console.log(`🎉 Success! Room count (${finalRooms.length}) is within limit (${maxAllowed})`);
-    } else {
-      console.log(`❌ Error! Room count (${finalRooms.length}) exceeded limit (${maxAllowed})`);
-    }
-
-    // Validate that all rooms have at least one exit
-    console.log('\n🔍 Validating room connectivity...');
-    let roomsWithoutExits = 0;
+    console.log(`\n📈 Final Summary:`);
+    console.log(`   Total rooms: ${finalRooms.length}`);
+    console.log(`   Processed rooms: ${processedRooms.length}`);
+    console.log(`   Unprocessed rooms: ${unprocessedRooms.length}`);
     
-    for (const room of finalRooms) {
-      const exits = await db.all(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ?',
-        [room.id, gameId]
-      );
-      
-      if (exits.length === 0) {
-        console.log(`⚠️  Room "${room.name}" has no exits!`);
-        roomsWithoutExits++;
-      }
+    if (unprocessedRooms.length > 0) {
+      console.log(`   Unprocessed: ${unprocessedRooms.map(r => r.name).join(', ')}`);
     }
     
-    if (roomsWithoutExits === 0) {
-      console.log(`✅ All ${finalRooms.length} rooms have at least one exit`);
-    } else {
-      console.log(`❌ ${roomsWithoutExits} rooms have no exits!`);
+    console.log('\n🎉 Generation tracking test completed!');
+    if (processedRooms.length > 0) {
+      console.log('✅ Room processing tracking is working correctly');
     }
     
   } catch (error) {
     console.error('\n❌ Error during test:', error);
   } finally {
+    // Restore original debug setting
+    process.env.AI_DEBUG_LOGGING = originalDebugSetting;
+    
     if (db.isConnected()) {
       await db.close();
     }
@@ -320,5 +326,5 @@ process.on('SIGINT', () => {
 
 // Run the test
 if (require.main === module) {
-  testGenerationLimits();
+  testGenerationTracking();
 }

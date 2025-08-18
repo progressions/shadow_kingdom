@@ -102,8 +102,8 @@ async function testBackgroundGeneration() {
           });
 
           const roomResult = await this.db.run(
-            'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-            [this.currentGameId, newRoom.name, newRoom.description]
+            'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
+            [this.currentGameId, newRoom.name, newRoom.description, false]
           );
 
           await this.db.run(
