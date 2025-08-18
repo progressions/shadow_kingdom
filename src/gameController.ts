@@ -3,6 +3,7 @@
 import * as readline from 'readline';
 import Database from './utils/database';
 import { initializeDatabase, seedDatabase, migrateExistingData, createGameWithRooms } from './utils/initDb';
+import { GrokClient } from './ai/grokClient';
 
 interface Command {
   name: string;
@@ -44,14 +45,18 @@ type Mode = 'menu' | 'game';
 export class GameController {
   private rl: readline.Interface;
   private db: Database;
+  private grokClient: GrokClient;
   private mode: Mode = 'menu';
   private currentGameId: number | null = null;
   private currentRoomId: number | null = null;
   private menuCommands: Map<string, Command> = new Map();
   private gameCommands: Map<string, Command> = new Map();
+  private lastGenerationTime: number = 0;
+  private generationInProgress: Set<number> = new Set();
 
   constructor(db: Database) {
     this.db = db;
+    this.grokClient = new GrokClient();
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -503,6 +508,9 @@ export class GameController {
         } else {
           console.log('\nThere are no obvious exits.');
         }
+
+        // Trigger background room generation (fire and forget)
+        this.preGenerateAdjacentRooms(this.currentRoomId);
       } else {
         console.log('You are in a void. Something went wrong!');
       }
@@ -647,6 +655,204 @@ export class GameController {
         console.error('Failed to save game state:', error);
       }
     }
+  }
+
+  // Background Room Generation Methods
+  private async preGenerateAdjacentRooms(currentRoomId: number): Promise<void> {
+    // Check cooldown period
+    const cooldown = parseInt(process.env.GENERATION_COOLDOWN_MS || '10000');
+    const timeSinceLastGeneration = Date.now() - this.lastGenerationTime;
+    
+    if (timeSinceLastGeneration < cooldown) {
+      return; // Still in cooldown
+    }
+
+    // Check if generation is already in progress for this room
+    if (this.generationInProgress.has(currentRoomId)) {
+      return; // Already generating
+    }
+
+    // Check total room count limit
+    if (this.currentGameId) {
+      const roomCount = await this.db.get(
+        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+        [this.currentGameId]
+      );
+      
+      const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '50');
+      if (roomCount?.count >= maxRooms) {
+        console.log(`🏰 Room limit reached (${maxRooms}). No more rooms will be generated.`);
+        return;
+      }
+    }
+
+    // Fire and forget - don't await this in production
+    this.expandFromAdjacentRooms(currentRoomId);
+    this.lastGenerationTime = Date.now();
+  }
+
+  private async expandFromAdjacentRooms(currentRoomId: number): Promise<void> {
+    this.generationInProgress.add(currentRoomId);
+    
+    try {
+      const maxDepth = parseInt(process.env.MAX_GENERATION_DEPTH || '3');
+      
+      // Get all connections FROM current room to existing rooms
+      const connections = await this.db.all(
+        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ?',
+        [currentRoomId, this.currentGameId]
+      );
+
+      let roomsToGenerate = 0;
+      
+      // For each connection that leads to an existing room
+      for (const connection of connections) {
+        const targetRoom = await this.db.get(
+          'SELECT * FROM rooms WHERE id = ?',
+          [connection.to_room_id]
+        );
+
+        if (targetRoom) {
+          // Count missing rooms for this target
+          const missingCount = await this.countMissingRoomsFor(targetRoom.id);
+          roomsToGenerate += Math.min(missingCount, maxDepth);
+        }
+      }
+
+      // Check if we can generate the requested rooms without exceeding limits
+      if (this.currentGameId) {
+        const currentRoomCount = await this.db.get(
+          'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+          [this.currentGameId]
+        );
+        
+        const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '50');
+        const roomsCanGenerate = Math.max(0, maxRooms - (currentRoomCount?.count || 0));
+        
+        if (roomsToGenerate > roomsCanGenerate) {
+          console.log(`🏰 Limited generation: ${roomsCanGenerate} rooms available (${roomsToGenerate} requested)`);
+          roomsToGenerate = roomsCanGenerate;
+        }
+      }
+
+      // Generate rooms with depth limit
+      let generatedCount = 0;
+      for (const connection of connections) {
+        if (generatedCount >= roomsToGenerate) break;
+        
+        const targetRoom = await this.db.get(
+          'SELECT * FROM rooms WHERE id = ?',
+          [connection.to_room_id]
+        );
+
+        if (targetRoom) {
+          const roomsGenerated = await this.generateMissingRoomsFor(targetRoom.id, maxDepth, roomsToGenerate - generatedCount);
+          generatedCount += roomsGenerated;
+        }
+      }
+      
+    } catch (error) {
+      console.error('Background generation failed:', error);
+      // Silent failure - game continues normally
+    } finally {
+      this.generationInProgress.delete(currentRoomId);
+    }
+  }
+
+  private async countMissingRoomsFor(roomId: number): Promise<number> {
+    const allDirections = ['north', 'south', 'east', 'west', 'up', 'down'];
+    let missingCount = 0;
+
+    for (const direction of allDirections) {
+      const existingConnection = await this.db.get(
+        'SELECT * FROM connections WHERE from_room_id = ? AND name = ? AND game_id = ?',
+        [roomId, direction, this.currentGameId]
+      );
+
+      if (!existingConnection) {
+        missingCount++;
+      }
+    }
+
+    return missingCount;
+  }
+
+  private async generateMissingRoomsFor(roomId: number, maxRooms: number = 6, remainingQuota: number = Infinity): Promise<number> {
+    const allDirections = ['north', 'south', 'east', 'west', 'up', 'down'];
+    let generatedCount = 0;
+
+    for (const direction of allDirections) {
+      if (generatedCount >= maxRooms || generatedCount >= remainingQuota) break;
+      
+      // Check if connection already exists
+      const existingConnection = await this.db.get(
+        'SELECT * FROM connections WHERE from_room_id = ? AND name = ? AND game_id = ?',
+        [roomId, direction, this.currentGameId]
+      );
+
+      if (!existingConnection) {
+        // Generate new room in this direction
+        const success = await this.generateSingleRoom(roomId, direction);
+        if (success) {
+          generatedCount++;
+        }
+      }
+    }
+
+    return generatedCount;
+  }
+
+  private async generateSingleRoom(fromRoomId: number, direction: string): Promise<boolean> {
+    try {
+      const fromRoom = await this.db.get('SELECT * FROM rooms WHERE id = ?', [fromRoomId]);
+
+      const newRoom = await this.grokClient.generateRoom({
+        currentRoom: { name: fromRoom.name, description: fromRoom.description },
+        direction: direction
+      });
+
+      // Save to database
+      const roomResult = await this.db.run(
+        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
+        [this.currentGameId, newRoom.name, newRoom.description]
+      );
+
+      // Create outgoing connection from origin room
+      await this.db.run(
+        'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
+        [this.currentGameId, fromRoomId, roomResult.lastID, direction]
+      );
+
+      // Ensure new room has at least one exit (back to where we came from)
+      const reverseDirection = this.getReverseDirection(direction);
+      if (reverseDirection) {
+        await this.db.run(
+          'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
+          [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection]
+        );
+      }
+
+      console.log(`✨ Generated new area: ${newRoom.name} (${direction})`);
+      return true;
+
+    } catch (error) {
+      // Silent failure - this is background generation
+      console.error(`Failed to generate room ${direction} from ${fromRoomId}:`, error);
+      return false;
+    }
+  }
+
+  private getReverseDirection(direction: string): string | null {
+    const directionMap: { [key: string]: string } = {
+      'north': 'south',
+      'south': 'north',
+      'east': 'west',
+      'west': 'east',
+      'up': 'down',
+      'down': 'up'
+    };
+    
+    return directionMap[direction.toLowerCase()] || null;
   }
 
   public async start() {
