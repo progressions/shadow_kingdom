@@ -69,6 +69,9 @@ export async function initializeDatabase(db: Database): Promise<void> {
     // Check if generation_processed column exists, add it if not
     await ensureGenerationProcessedColumn(db);
 
+    // Check if direction column exists in connections table, add it if not
+    await ensureConnectionDirectionColumn(db);
+
     console.log('Database tables initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -159,6 +162,39 @@ async function ensureGenerationProcessedColumn(db: Database): Promise<void> {
   }
 }
 
+async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
+  try {
+    // Check if direction column exists in connections table
+    const columnExists = await db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM pragma_table_info('connections') 
+       WHERE name = 'direction'`
+    );
+
+    if (!columnExists || columnExists.count === 0) {
+      console.log('Adding direction column to connections table...');
+      
+      // Add the direction column
+      await db.run('ALTER TABLE connections ADD COLUMN direction TEXT');
+      
+      // Migrate existing connections: copy name to direction and set name to be more descriptive
+      // For existing connections, direction and name will initially be the same
+      await db.run('UPDATE connections SET direction = name WHERE direction IS NULL');
+      
+      // Update the index to include the new direction column for better performance
+      await db.run('DROP INDEX IF EXISTS idx_connections_from_room');
+      await db.run(`
+        CREATE INDEX IF NOT EXISTS idx_connections_from_room 
+        ON connections(from_room_id, direction, name)
+      `);
+      
+      console.log('direction column added and existing connections migrated successfully');
+    }
+  } catch (error) {
+    console.error('Error ensuring direction column:', error);
+    throw error;
+  }
+}
+
 export async function createGameWithRooms(db: Database, gameName: string): Promise<number> {
   try {
     // Create the new game
@@ -190,29 +226,30 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
     const gardenId = gardenResult.lastID;
 
     // Create connections between rooms for this game
+    // Format: (game_id, from_room_id, to_room_id, direction, name)
     await db.run(
-      'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
-      [gameId, entranceId, libraryId, 'north']
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, entranceId, libraryId, 'north', 'north']
     );
 
     await db.run(
-      'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
-      [gameId, libraryId, entranceId, 'south']
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, libraryId, entranceId, 'south', 'south']
     );
 
     await db.run(
-      'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
-      [gameId, entranceId, gardenId, 'east']
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, entranceId, gardenId, 'east', 'east']
     );
 
     await db.run(
-      'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
-      [gameId, gardenId, entranceId, 'west']
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, gardenId, entranceId, 'west', 'west']
     );
 
     await db.run(
-      'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
-      [gameId, libraryId, gardenId, 'bookshelf']
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, libraryId, gardenId, 'bookshelf', 'through the hidden passage behind the bookshelf']
     );
 
     // Create initial game state (player starts in entrance hall)

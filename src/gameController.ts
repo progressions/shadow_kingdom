@@ -30,7 +30,8 @@ interface Connection {
   game_id: number;
   from_room_id: number;
   to_room_id: number;
-  name: string;
+  direction: string;  // mechanical direction: "north", "south", etc.
+  name: string;       // thematic description: "through the crystal archway"
 }
 
 interface GameState {
@@ -498,12 +499,20 @@ export class GameController {
         
         // Get available connections from this room within this game
         const connections = await this.db.all<Connection>(
-          'SELECT name FROM connections WHERE from_room_id = ? AND game_id = ? ORDER BY name',
+          'SELECT direction, name FROM connections WHERE from_room_id = ? AND game_id = ? ORDER BY direction',
           [this.currentRoomId, this.currentGameId]
         );
         
         if (connections && connections.length > 0) {
-          const exits = connections.map(c => c.name).join(', ');
+          // Display thematic names with direction in parentheses
+          const exits = connections.map(c => {
+            // If name is same as direction, just show direction
+            if (c.name === c.direction) {
+              return c.direction;
+            }
+            // Otherwise show thematic name with direction in parentheses
+            return `${c.name} (${c.direction})`;
+          }).join(', ');
           console.log(`\nExits: ${exits}`);
         } else {
           console.log('\nThere are no obvious exits.');
@@ -530,17 +539,17 @@ export class GameController {
       return;
     }
 
-    const direction = args[0].toLowerCase();
+    const userInput = args.join(' ').toLowerCase();
 
     try {
-      // Find connection from current room with the specified name (case-insensitive) within this game
+      // Find connection by either direction or thematic name (case-insensitive)
       const connection = await this.db.get<Connection>(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND LOWER(name) = LOWER(?)',
-        [this.currentRoomId, this.currentGameId, direction]
+        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
+        [this.currentRoomId, this.currentGameId, userInput, userInput]
       );
 
       if (!connection) {
-        console.log(`You can't go ${direction} from here.`);
+        console.log(`You can't go ${userInput} from here.`);
         return;
       }
 
@@ -779,7 +788,7 @@ export class GameController {
 
     for (const direction of allDirections) {
       const existingConnection = await this.db.get(
-        'SELECT * FROM connections WHERE from_room_id = ? AND name = ? AND game_id = ?',
+        'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
         [roomId, direction, this.currentGameId]
       );
 
@@ -800,7 +809,7 @@ export class GameController {
       
       // Check if connection already exists
       const existingConnection = await this.db.get(
-        'SELECT * FROM connections WHERE from_room_id = ? AND name = ? AND game_id = ?',
+        'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
         [roomId, direction, this.currentGameId]
       );
 
@@ -867,16 +876,16 @@ export class GameController {
 
       // Create outgoing connection from origin room
       await this.db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
-        [this.currentGameId, fromRoomId, roomResult.lastID, direction]
+        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+        [this.currentGameId, fromRoomId, roomResult.lastID, direction, direction]
       );
 
       // Ensure new room has at least one exit (back to where we came from)
       const reverseDirection = this.getReverseDirection(direction);
       if (reverseDirection) {
         await this.db.run(
-          'INSERT INTO connections (game_id, from_room_id, to_room_id, name) VALUES (?, ?, ?, ?)',
-          [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection]
+          'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+          [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection, reverseDirection]
         );
       }
 
