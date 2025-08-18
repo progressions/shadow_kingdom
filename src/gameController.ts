@@ -681,7 +681,9 @@ export class GameController {
       
       const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '50');
       if (roomCount?.count >= maxRooms) {
-        console.log(`🏰 Room limit reached (${maxRooms}). No more rooms will be generated.`);
+        if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log(`🏰 Room limit reached (${maxRooms}). No more rooms will be generated.`);
+        }
         return;
       }
     }
@@ -730,7 +732,9 @@ export class GameController {
         const roomsCanGenerate = Math.max(0, maxRooms - (currentRoomCount?.count || 0));
         
         if (roomsToGenerate > roomsCanGenerate) {
-          console.log(`🏰 Limited generation: ${roomsCanGenerate} rooms available (${roomsToGenerate} requested)`);
+          if (process.env.AI_DEBUG_LOGGING === 'true') {
+            console.log(`🏰 Limited generation: ${roomsCanGenerate} rooms available (${roomsToGenerate} requested)`);
+          }
           roomsToGenerate = roomsCanGenerate;
         }
       }
@@ -752,7 +756,9 @@ export class GameController {
       }
       
     } catch (error) {
-      console.error('Background generation failed:', error);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Background generation failed:', error);
+      }
       // Silent failure - game continues normally
     } finally {
       this.generationInProgress.delete(currentRoomId);
@@ -832,12 +838,17 @@ export class GameController {
         );
       }
 
-      console.log(`✨ Generated new area: ${newRoom.name} (${direction})`);
+      // Only show generation messages in debug mode
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log(`✨ Generated new area: ${newRoom.name} (${direction})`);
+      }
       return true;
 
     } catch (error) {
       // Silent failure - this is background generation
-      console.error(`Failed to generate room ${direction} from ${fromRoomId}:`, error);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error(`Failed to generate room ${direction} from ${fromRoomId}:`, error);
+      }
       return false;
     }
   }
