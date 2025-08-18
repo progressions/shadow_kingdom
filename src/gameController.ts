@@ -874,19 +874,41 @@ export class GameController {
         [this.currentGameId, uniqueName, newRoom.description, false]
       );
 
-      // Create outgoing connection from origin room
+      // Create outgoing connection from origin room (using basic direction for now)
       await this.db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
         [this.currentGameId, fromRoomId, roomResult.lastID, direction, direction]
       );
 
-      // Ensure new room has at least one exit (back to where we came from)
-      const reverseDirection = this.getReverseDirection(direction);
-      if (reverseDirection) {
-        await this.db.run(
-          'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-          [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection, reverseDirection]
-        );
+      // Create AI-generated connections from the new room
+      if (newRoom.connections && newRoom.connections.length > 0) {
+        for (const connection of newRoom.connections) {
+          // Find if this connection leads back to the origin room
+          const isReturnPath = connection.direction === this.getReverseDirection(direction);
+          
+          if (isReturnPath) {
+            // Create the return connection with thematic name
+            await this.db.run(
+              'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+              [this.currentGameId, roomResult.lastID, fromRoomId, connection.direction, connection.name]
+            );
+          } else {
+            // For other directions, we'll create stub rooms later (in Phase 4)
+            // For now, just log that we have additional connections planned
+            if (process.env.AI_DEBUG_LOGGING === 'true') {
+              console.log(`🔗 Planned connection: ${connection.name} (${connection.direction})`);
+            }
+          }
+        }
+      } else {
+        // Fallback: ensure new room has at least one exit (back to where we came from)
+        const reverseDirection = this.getReverseDirection(direction);
+        if (reverseDirection) {
+          await this.db.run(
+            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+            [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection, reverseDirection]
+          );
+        }
       }
 
       // Only show generation messages in debug mode
