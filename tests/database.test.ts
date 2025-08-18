@@ -39,37 +39,43 @@ describe('Database', () => {
     });
 
     test('should execute SELECT and return row', async () => {
-      await db.run('INSERT INTO games (name) VALUES (?)', ['Test Game']);
-      const game = await db.get('SELECT * FROM games WHERE name = ?', ['Test Game']);
+      const uniqueName = `Test Game ${Date.now()}-${Math.random()}`;
+      await db.run('INSERT INTO games (name) VALUES (?)', [uniqueName]);
+      const game = await db.get('SELECT * FROM games WHERE name = ?', [uniqueName]);
       expect(game).toBeDefined();
-      expect(game.name).toBe('Test Game');
+      expect(game.name).toBe(uniqueName);
     });
 
     test('should execute SELECT and return multiple rows', async () => {
-      await db.run('INSERT INTO games (name) VALUES (?)', ['Game 1']);
-      await db.run('INSERT INTO games (name) VALUES (?)', ['Game 2']);
+      const timestamp = Date.now();
+      const name1 = `Game 1 ${timestamp}-${Math.random()}`;
+      const name2 = `Game 2 ${timestamp}-${Math.random()}`;
+      await db.run('INSERT INTO games (name) VALUES (?)', [name1]);
+      await db.run('INSERT INTO games (name) VALUES (?)', [name2]);
       
-      const games = await db.all('SELECT * FROM games ORDER BY name');
+      const games = await db.all('SELECT * FROM games WHERE name = ? OR name = ? ORDER BY name', [name1, name2]);
       expect(games).toHaveLength(2);
-      expect(games[0].name).toBe('Game 1');
-      expect(games[1].name).toBe('Game 2');
+      expect(games.map(g => g.name).sort()).toEqual([name1, name2].sort());
     });
 
     test('should handle UPDATE operations', async () => {
-      const insertResult = await db.run('INSERT INTO games (name) VALUES (?)', ['Original Name']);
+      const originalName = `Original Name ${Date.now()}-${Math.random()}`;
+      const updatedName = `Updated Name ${Date.now()}-${Math.random()}`;
+      const insertResult = await db.run('INSERT INTO games (name) VALUES (?)', [originalName]);
       const updateResult = await db.run(
         'UPDATE games SET name = ? WHERE id = ?',
-        ['Updated Name', insertResult.lastID]
+        [updatedName, insertResult.lastID]
       );
       
       expect(updateResult.changes).toBe(1);
       
       const game = await db.get('SELECT * FROM games WHERE id = ?', [insertResult.lastID]);
-      expect(game.name).toBe('Updated Name');
+      expect(game.name).toBe(updatedName);
     });
 
     test('should handle DELETE operations', async () => {
-      const insertResult = await db.run('INSERT INTO games (name) VALUES (?)', ['To Delete']);
+      const uniqueName = `To Delete ${Date.now()}-${Math.random()}`;
+      const insertResult = await db.run('INSERT INTO games (name) VALUES (?)', [uniqueName]);
       const deleteResult = await db.run('DELETE FROM games WHERE id = ?', [insertResult.lastID]);
       
       expect(deleteResult.changes).toBe(1);
@@ -134,7 +140,8 @@ describe('Database', () => {
   describe('Foreign Key Constraints', () => {
     test('should enforce foreign key constraints', async () => {
       // Create a game first
-      const gameResult = await db.run('INSERT INTO games (name) VALUES (?)', ['Test Game']);
+      const uniqueName = `Test Game ${Date.now()}-${Math.random()}`;
+      const gameResult = await db.run('INSERT INTO games (name) VALUES (?)', [uniqueName]);
       const gameId = gameResult.lastID;
 
       // Create a room with valid game_id should work

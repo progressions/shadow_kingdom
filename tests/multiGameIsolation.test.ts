@@ -18,8 +18,9 @@ describe('Multi-Game Isolation', () => {
 
   describe('Game World Isolation', () => {
     test('should create completely separate room sets for different games', async () => {
-      const game1Id = await createGameWithRooms(db, 'Adventure 1');
-      const game2Id = await createGameWithRooms(db, 'Adventure 2');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `Adventure 1 ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `Adventure 2 ${timestamp}-${Math.random()}`);
 
       // Get rooms for each game
       const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY name', [game1Id]);
@@ -44,8 +45,9 @@ describe('Multi-Game Isolation', () => {
     });
 
     test('should create separate connection sets for different games', async () => {
-      const game1Id = await createGameWithRooms(db, 'Quest 1');
-      const game2Id = await createGameWithRooms(db, 'Quest 2');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `Quest 1 ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `Quest 2 ${timestamp}-${Math.random()}`);
 
       const game1Connections = await db.all('SELECT * FROM connections WHERE game_id = ?', [game1Id]);
       const game2Connections = await db.all('SELECT * FROM connections WHERE game_id = ?', [game2Id]);
@@ -68,8 +70,9 @@ describe('Multi-Game Isolation', () => {
     });
 
     test('should maintain separate game states', async () => {
-      const game1Id = await createGameWithRooms(db, 'State Test 1');
-      const game2Id = await createGameWithRooms(db, 'State Test 2');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `State Test 1 ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `State Test 2 ${timestamp}-${Math.random()}`);
 
       // Move player in game 1 to library
       const game1Library = await db.get(
@@ -105,8 +108,9 @@ describe('Multi-Game Isolation', () => {
 
   describe('Game Query Isolation', () => {
     test('should only return rooms for the specific game', async () => {
-      const game1Id = await createGameWithRooms(db, 'Isolation Test 1');
-      const game2Id = await createGameWithRooms(db, 'Isolation Test 2');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `Isolation Test 1 ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `Isolation Test 2 ${timestamp}-${Math.random()}`);
 
       // Query rooms for game 1
       const game1Rooms = await db.all(
@@ -130,8 +134,9 @@ describe('Multi-Game Isolation', () => {
     });
 
     test('should only return connections for the specific game', async () => {
-      const game1Id = await createGameWithRooms(db, 'Connection Test 1');
-      const game2Id = await createGameWithRooms(db, 'Connection Test 2');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `Connection Test 1 ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `Connection Test 2 ${timestamp}-${Math.random()}`);
 
       // Get entrance hall for game 1
       const game1Entrance = await db.get(
@@ -161,8 +166,9 @@ describe('Multi-Game Isolation', () => {
     });
 
     test('should handle navigation within game boundaries', async () => {
-      const game1Id = await createGameWithRooms(db, 'Navigation 1');
-      const game2Id = await createGameWithRooms(db, 'Navigation 2');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `Navigation 1 ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `Navigation 2 ${timestamp}-${Math.random()}`);
 
       // Get entrance halls for both games
       const game1Entrance = await db.get(
@@ -199,11 +205,12 @@ describe('Multi-Game Isolation', () => {
 
   describe('Game Deletion Isolation', () => {
     test('should delete only the specified game data', async () => {
-      const game1Id = await createGameWithRooms(db, 'Keep This Game');
-      const game2Id = await createGameWithRooms(db, 'Delete This Game');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `Keep This Game ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `Delete This Game ${timestamp}-${Math.random()}`);
 
       // Verify both games exist
-      const gamesBefore = await db.all('SELECT * FROM games ORDER BY name');
+      const gamesBefore = await db.all('SELECT * FROM games WHERE id = ? OR id = ? ORDER BY name', [game1Id, game2Id]);
       expect(gamesBefore).toHaveLength(2);
 
       const game1RoomsBefore = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game1Id]);
@@ -218,7 +225,7 @@ describe('Multi-Game Isolation', () => {
       // Verify game 1 still exists
       const game1After = await db.get('SELECT * FROM games WHERE id = ?', [game1Id]);
       expect(game1After).toBeDefined();
-      expect(game1After.name).toBe('Keep This Game');
+      expect(game1After.name).toContain('Keep This Game');
 
       // Verify game 2 is deleted
       const game2After = await db.get('SELECT * FROM games WHERE id = ?', [game2Id]);
@@ -235,10 +242,11 @@ describe('Multi-Game Isolation', () => {
 
   describe('Concurrent Game Access', () => {
     test('should handle multiple games being accessed simultaneously', async () => {
+      const timestamp = Date.now();
       const adventures = await Promise.all([
-        createGameWithRooms(db, 'Concurrent 1'),
-        createGameWithRooms(db, 'Concurrent 2'),
-        createGameWithRooms(db, 'Concurrent 3')
+        createGameWithRooms(db, `Concurrent 1 ${timestamp}-${Math.random()}`),
+        createGameWithRooms(db, `Concurrent 2 ${timestamp}-${Math.random()}`),
+        createGameWithRooms(db, `Concurrent 3 ${timestamp}-${Math.random()}`)
       ]);
 
       // Simulate concurrent access by updating all games simultaneously

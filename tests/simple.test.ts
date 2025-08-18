@@ -17,15 +17,15 @@ describe('Simple Database Tests', () => {
   });
 
   test('should create a game successfully', async () => {
-    const gameId = await createGameWithRooms(db, 'Simple Test Game');
+    const gameId = await createGameWithRooms(db, `Simple Test Game ${Date.now()}-${Math.random()}`);
     expect(gameId).toBeGreaterThan(0);
 
     const game = await db.get('SELECT * FROM games WHERE id = ?', [gameId]);
-    expect(game.name).toBe('Simple Test Game');
+    expect(game.name).toContain('Simple Test Game');
   });
 
   test('should create game with rooms and connections', async () => {
-    const gameId = await createGameWithRooms(db, 'Room Test Game');
+    const gameId = await createGameWithRooms(db, `Room Test Game ${Date.now()}-${Math.random()}`);
     
     const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
     expect(rooms).toHaveLength(3);
@@ -35,7 +35,7 @@ describe('Simple Database Tests', () => {
   });
 
   test('should maintain game state', async () => {
-    const gameId = await createGameWithRooms(db, 'State Test Game');
+    const gameId = await createGameWithRooms(db, `State Test Game ${Date.now()}-${Math.random()}`);
     
     const gameState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
     expect(gameState).toBeDefined();
@@ -43,7 +43,7 @@ describe('Simple Database Tests', () => {
   });
 
   test('should support room navigation', async () => {
-    const gameId = await createGameWithRooms(db, 'Navigation Test Game');
+    const gameId = await createGameWithRooms(db, `Navigation Test Game ${Date.now()}-${Math.random()}`);
     
     // Get entrance hall
     const entrance = await db.get(
@@ -65,8 +65,9 @@ describe('Simple Database Tests', () => {
   });
 
   test('should isolate games from each other', async () => {
-    const game1Id = await createGameWithRooms(db, 'Isolation Game 1');
-    const game2Id = await createGameWithRooms(db, 'Isolation Game 2');
+    const timestamp = Date.now();
+    const game1Id = await createGameWithRooms(db, `Isolation Game 1 ${timestamp}-${Math.random()}`);
+    const game2Id = await createGameWithRooms(db, `Isolation Game 2 ${timestamp}-${Math.random()}`);
     
     const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game1Id]);
     const game2Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game2Id]);

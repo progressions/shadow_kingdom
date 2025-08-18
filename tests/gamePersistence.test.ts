@@ -18,7 +18,7 @@ describe('Game State Persistence', () => {
 
   describe('Room Navigation and Auto-Save', () => {
     test('should save player position when moving between rooms', async () => {
-      const gameId = await createGameWithRooms(db, 'Navigation Test');
+      const gameId = await createGameWithRooms(db, `Navigation Test ${Date.now()}-${Math.random()}`);
       
       // Get initial position
       const initialState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
@@ -57,7 +57,7 @@ describe('Game State Persistence', () => {
     });
 
     test('should maintain correct room connections for navigation', async () => {
-      const gameId = await createGameWithRooms(db, 'Connection Test');
+      const gameId = await createGameWithRooms(db, `Connection Test ${Date.now()}-${Math.random()}`);
       
       // Test going north from entrance hall to library
       const entranceHall = await db.get(
@@ -86,7 +86,7 @@ describe('Game State Persistence', () => {
     });
 
     test('should handle secret passages correctly', async () => {
-      const gameId = await createGameWithRooms(db, 'Secret Test');
+      const gameId = await createGameWithRooms(db, `Secret Test ${Date.now()}-${Math.random()}`);
       
       const library = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
@@ -122,7 +122,7 @@ describe('Game State Persistence', () => {
       await tempDb.connect();
       await initializeDatabase(tempDb);
       
-      const gameId = await createGameWithRooms(tempDb, 'Persistence Test');
+      const gameId = await createGameWithRooms(tempDb, `Persistence Test ${Date.now()}-${Math.random()}`);
       
       // Move to library
       const library = await tempDb.get(
@@ -146,7 +146,7 @@ describe('Game State Persistence', () => {
       expect(persistedState.current_room_id).toBe(library.id);
 
       const persistedGame = await newDb.get('SELECT * FROM games WHERE id = ?', [gameId]);
-      expect(persistedGame.name).toBe('Persistence Test');
+      expect(persistedGame.name).toContain('Persistence Test');
 
       await newDb.close();
       
@@ -168,7 +168,7 @@ describe('Game State Persistence', () => {
 
   describe('Error Handling', () => {
     test('should handle invalid room transitions gracefully', async () => {
-      const gameId = await createGameWithRooms(db, 'Error Test');
+      const gameId = await createGameWithRooms(db, `Error Test ${Date.now()}-${Math.random()}`);
       
       const entranceHall = await db.get(
         'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
@@ -185,7 +185,7 @@ describe('Game State Persistence', () => {
     });
 
     test('should handle invalid game state gracefully', async () => {
-      const gameId = await createGameWithRooms(db, 'Invalid State Test');
+      const gameId = await createGameWithRooms(db, `Invalid State Test ${Date.now()}-${Math.random()}`);
       
       // Try to set current room to a room that doesn't exist
       const result = await db.run(

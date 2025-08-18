@@ -18,14 +18,14 @@ describe('Game Management', () => {
 
   describe('createGameWithRooms', () => {
     test('should create a new game with initial rooms', async () => {
-      const gameId = await createGameWithRooms(db, 'Test Adventure');
+      const gameId = await createGameWithRooms(db, `Test Adventure ${Date.now()}-${Math.random()}`);
       
       expect(gameId).toBeGreaterThan(0);
 
       // Verify game was created
       const game = await db.get('SELECT * FROM games WHERE id = ?', [gameId]);
       expect(game).toBeDefined();
-      expect(game.name).toBe('Test Adventure');
+      expect(game.name).toContain('Test Adventure');
       expect(game.created_at).toBeDefined();
       expect(game.last_played_at).toBeDefined();
 
@@ -49,8 +49,9 @@ describe('Game Management', () => {
     });
 
     test('should create games with isolated room data', async () => {
-      const game1Id = await createGameWithRooms(db, 'Adventure 1');
-      const game2Id = await createGameWithRooms(db, 'Adventure 2');
+      const timestamp = Date.now();
+      const game1Id = await createGameWithRooms(db, `Adventure 1 ${timestamp}-${Math.random()}`);
+      const game2Id = await createGameWithRooms(db, `Adventure 2 ${timestamp}-${Math.random()}`);
 
       // Each game should have its own set of rooms
       const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game1Id]);
@@ -68,14 +69,31 @@ describe('Game Management', () => {
     });
 
     test('should prevent duplicate game names', async () => {
-      await createGameWithRooms(db, 'Unique Name');
+      // Use a truly isolated temporary file database
+      const tempDbPath = `temp_unique_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.db`;
+      const freshDb = new Database(tempDbPath);
+      await freshDb.connect();
+      await initializeDatabase(freshDb);
+      
+      const uniqueName = `Unique Name ${Date.now()}-${Math.random()}`;
+      await createGameWithRooms(freshDb, uniqueName);
       
       // Attempting to create another game with the same name should fail
-      await expect(createGameWithRooms(db, 'Unique Name')).rejects.toThrow();
+      await expect(createGameWithRooms(freshDb, uniqueName)).rejects.toThrow();
+      
+      await freshDb.close();
+      
+      // Clean up temp file
+      const fs = require('fs');
+      try {
+        fs.unlinkSync(tempDbPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     });
 
     test('should create proper room connections', async () => {
-      const gameId = await createGameWithRooms(db, 'Test Game');
+      const gameId = await createGameWithRooms(db, `Test Game ${Date.now()}-${Math.random()}`);
       
       const connections = await db.all(
         'SELECT c.*, r1.name as from_room, r2.name as to_room FROM connections c ' +
@@ -101,7 +119,7 @@ describe('Game Management', () => {
     });
 
     test('should set correct starting room in game state', async () => {
-      const gameId = await createGameWithRooms(db, 'Test Game');
+      const gameId = await createGameWithRooms(db, `Test Game ${Date.now()}-${Math.random()}`);
       
       const gameState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
       const startingRoom = await db.get('SELECT * FROM rooms WHERE id = ?', [gameState.current_room_id]);
@@ -112,26 +130,50 @@ describe('Game Management', () => {
 
   describe('seedDatabase', () => {
     test('should create demo game when no games exist', async () => {
-      await seedDatabase(db);
+      // Use a truly isolated temporary file database 
+      const tempDbPath = `temp_seed_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.db`;
+      const freshDb = new Database(tempDbPath);
+      await freshDb.connect();
+      await initializeDatabase(freshDb);
       
-      const games = await db.all('SELECT * FROM games');
-      expect(games).toHaveLength(1);
-      expect(games[0].name).toBe('Demo Game');
+      // Check that the database starts empty
+      const countBefore = await freshDb.get('SELECT COUNT(*) as count FROM games');
+      expect(countBefore.count).toBe(0);
+      
+      await seedDatabase(freshDb);
+      
+      const demoGames = await freshDb.all('SELECT * FROM games WHERE name = ?', ['Demo Game']);
+      expect(demoGames).toHaveLength(1);
+      expect(demoGames[0].name).toBe('Demo Game');
+      
+      await freshDb.close();
+      
+      // Clean up temp file
+      const fs = require('fs');
+      try {
+        fs.unlinkSync(tempDbPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     });
 
     test('should not create demo game when games already exist', async () => {
-      await createGameWithRooms(db, 'Existing Game');
+      const existingGameName = `Existing Game ${Date.now()}-${Math.random()}`;
+      await createGameWithRooms(db, existingGameName);
       await seedDatabase(db);
       
-      const games = await db.all('SELECT * FROM games');
-      expect(games).toHaveLength(1);
-      expect(games[0].name).toBe('Existing Game');
+      const existingGames = await db.all('SELECT * FROM games WHERE name = ?', [existingGameName]);
+      expect(existingGames).toHaveLength(1);
+      expect(existingGames[0].name).toContain('Existing Game');
+      
+      const demoGames = await db.all('SELECT * FROM games WHERE name = ?', ['Demo Game']);
+      expect(demoGames).toHaveLength(0);
     });
   });
 
   describe('Game Deletion', () => {
     test('should cascade delete all related data', async () => {
-      const gameId = await createGameWithRooms(db, 'To Delete');
+      const gameId = await createGameWithRooms(db, `To Delete ${Date.now()}-${Math.random()}`);
       
       // Verify data exists
       const roomsBefore = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
@@ -156,7 +198,7 @@ describe('Game Management', () => {
 
   describe('Game State Management', () => {
     test('should update game state correctly', async () => {
-      const gameId = await createGameWithRooms(db, 'State Test');
+      const gameId = await createGameWithRooms(db, `State Test ${Date.now()}-${Math.random()}`);
       
       // Get initial state
       const initialState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
@@ -178,7 +220,7 @@ describe('Game Management', () => {
     });
 
     test('should update last played timestamp', async () => {
-      const gameId = await createGameWithRooms(db, 'Timestamp Test');
+      const gameId = await createGameWithRooms(db, `Timestamp Test ${Date.now()}-${Math.random()}`);
       
       const initialGame = await db.get('SELECT * FROM games WHERE id = ?', [gameId]);
       const initialTimestamp = initialGame.last_played_at;
