@@ -783,10 +783,22 @@ export class GameController {
   }
 
   private async countMissingRoomsFor(roomId: number): Promise<number> {
-    const allDirections = ['north', 'south', 'east', 'west', 'up', 'down'];
+    // Check if this room was AI-generated and processed
+    const room = await this.db.get(
+      'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
+      [roomId, this.currentGameId]
+    );
+
+    // If room was AI-processed, respect its design - don't add more connections
+    if (room && room.generation_processed) {
+      return 0;
+    }
+
+    // For unprocessed rooms (starter rooms), check for missing basic directions
+    const basicDirections = ['north', 'south', 'east', 'west'];
     let missingCount = 0;
 
-    for (const direction of allDirections) {
+    for (const direction of basicDirections) {
       const existingConnection = await this.db.get(
         'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
         [roomId, direction, this.currentGameId]
@@ -797,15 +809,29 @@ export class GameController {
       }
     }
 
-    return missingCount;
+    // Limit to 2-3 additional connections for starter rooms
+    return Math.min(missingCount, 3);
   }
 
   private async generateMissingRoomsFor(roomId: number, maxRooms: number = 6, remainingQuota: number = Infinity): Promise<number> {
-    const allDirections = ['north', 'south', 'east', 'west', 'up', 'down'];
-    let generatedCount = 0;
+    // Check if this room was AI-generated and processed
+    const room = await this.db.get(
+      'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
+      [roomId, this.currentGameId]
+    );
 
-    for (const direction of allDirections) {
-      if (generatedCount >= maxRooms || generatedCount >= remainingQuota) break;
+    // If room was AI-processed, respect its design - don't add more connections
+    if (room && room.generation_processed) {
+      return 0;
+    }
+
+    // For unprocessed rooms (starter rooms), only generate missing basic directions
+    const basicDirections = ['north', 'south', 'east', 'west'];
+    let generatedCount = 0;
+    const maxGenerations = Math.min(maxRooms, remainingQuota, 3); // Limit starter room expansion
+
+    for (const direction of basicDirections) {
+      if (generatedCount >= maxGenerations) break;
       
       // Check if connection already exists
       const existingConnection = await this.db.get(

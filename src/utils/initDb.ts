@@ -207,18 +207,18 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
 
     // Create initial rooms for this game
     const entranceResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-      [gameId, 'Entrance Hall', 'A grand entrance hall with marble floors and towering columns. Dust motes dance in the light streaming through tall windows.']
+      'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
+      [gameId, 'Entrance Hall', 'A grand entrance hall with marble floors and towering columns. Dust motes dance in the light streaming through tall windows.', true]
     );
 
     const libraryResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-      [gameId, 'Library', 'Ancient bookshelves line the walls, filled with leather-bound tomes. The air smells of old paper and mystery.']
+      'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
+      [gameId, 'Library', 'Ancient bookshelves line the walls, filled with leather-bound tomes. The air smells of old paper and mystery.', true]
     );
 
     const gardenResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-      [gameId, 'Garden', 'A serene garden with overgrown paths and a fountain that still trickles with clear water.']
+      'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
+      [gameId, 'Garden', 'A serene garden with overgrown paths and a fountain that still trickles with clear water.', true]
     );
 
     const entranceId = entranceResult.lastID;
