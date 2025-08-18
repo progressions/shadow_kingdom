@@ -794,7 +794,7 @@ export class GameController {
       return 0;
     }
 
-    // For unprocessed rooms (starter rooms), check for missing basic directions
+    // For unprocessed rooms, check for missing basic directions
     const basicDirections = ['north', 'south', 'east', 'west'];
     let missingCount = 0;
 
@@ -809,26 +809,25 @@ export class GameController {
       }
     }
 
-    // Limit to 2-3 additional connections for starter rooms
     return Math.min(missingCount, 3);
   }
 
   private async generateMissingRoomsFor(roomId: number, maxRooms: number = 6, remainingQuota: number = Infinity): Promise<number> {
-    // Check if this room was AI-generated and processed
+    // Check if this room was already processed
     const room = await this.db.get(
       'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
       [roomId, this.currentGameId]
     );
 
-    // If room was AI-processed, respect its design - don't add more connections
+    // If room was processed, don't add more connections
     if (room && room.generation_processed) {
       return 0;
     }
 
-    // For unprocessed rooms (starter rooms), only generate missing basic directions
+    // Generate missing connections for unprocessed rooms
     const basicDirections = ['north', 'south', 'east', 'west'];
     let generatedCount = 0;
-    const maxGenerations = Math.min(maxRooms, remainingQuota, 3); // Limit starter room expansion
+    const maxGenerations = Math.min(maxRooms, remainingQuota, 3);
 
     for (const direction of basicDirections) {
       if (generatedCount >= maxGenerations) break;
@@ -846,6 +845,14 @@ export class GameController {
           generatedCount++;
         }
       }
+    }
+
+    // Mark room as processed after generating connections
+    if (generatedCount > 0) {
+      await this.db.run(
+        'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
+        [roomId]
+      );
     }
 
     return generatedCount;
