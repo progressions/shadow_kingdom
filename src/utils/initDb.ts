@@ -19,6 +19,7 @@ export async function initializeDatabase(db: Database): Promise<void> {
         game_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
+        generation_processed BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
       )
     `);
@@ -64,6 +65,9 @@ export async function initializeDatabase(db: Database): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_connections_game_id 
       ON connections(game_id)
     `);
+
+    // Check if generation_processed column exists, add it if not
+    await ensureGenerationProcessedColumn(db);
 
     console.log('Database tables initialized successfully');
   } catch (error) {
@@ -126,6 +130,31 @@ export async function migrateExistingData(db: Database): Promise<void> {
     }
   } catch (error) {
     console.error('Error migrating existing data:', error);
+    throw error;
+  }
+}
+
+async function ensureGenerationProcessedColumn(db: Database): Promise<void> {
+  try {
+    // Check if generation_processed column exists
+    const columnExists = await db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM pragma_table_info('rooms') 
+       WHERE name = 'generation_processed'`
+    );
+
+    if (!columnExists || columnExists.count === 0) {
+      console.log('Adding generation_processed column to rooms table...');
+      
+      // Add the column with default value FALSE
+      await db.run('ALTER TABLE rooms ADD COLUMN generation_processed BOOLEAN DEFAULT FALSE');
+      
+      // Update all existing rooms to not be processed (so they can be processed once)
+      await db.run('UPDATE rooms SET generation_processed = FALSE');
+      
+      console.log('generation_processed column added successfully');
+    }
+  } catch (error) {
+    console.error('Error ensuring generation_processed column:', error);
     throw error;
   }
 }
