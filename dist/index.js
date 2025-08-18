@@ -33,8 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const readline = __importStar(require("readline"));
+const database_1 = __importDefault(require("./utils/database"));
+const initDb_1 = require("./utils/initDb");
 class CLI {
     constructor() {
         this.commands = new Map();
@@ -43,6 +48,7 @@ class CLI {
             output: process.stdout,
             prompt: '> '
         });
+        this.db = new database_1.default();
         this.setupCommands();
         this.setupEventHandlers();
     }
@@ -72,11 +78,12 @@ class CLI {
         });
     }
     setupEventHandlers() {
-        this.rl.on('line', (input) => {
-            this.processCommand(input.trim());
+        this.rl.on('line', async (input) => {
+            await this.processCommand(input.trim());
             this.rl.prompt();
         });
-        this.rl.on('close', () => {
+        this.rl.on('close', async () => {
+            await this.cleanup();
             console.log('\nGoodbye!');
             process.exit(0);
         });
@@ -84,7 +91,7 @@ class CLI {
     addCommand(command) {
         this.commands.set(command.name, command);
     }
-    processCommand(input) {
+    async processCommand(input) {
         if (!input)
             return;
         const parts = input.split(' ');
@@ -93,7 +100,7 @@ class CLI {
         const command = this.commands.get(commandName);
         if (command) {
             try {
-                command.handler(args);
+                await command.handler(args);
             }
             catch (error) {
                 console.error(`Error executing command "${commandName}":`, error);
@@ -111,15 +118,31 @@ class CLI {
         });
         console.log('\nPress Ctrl+C or type "exit" to quit.\n');
     }
-    exit() {
+    async exit() {
+        await this.cleanup();
         console.log('Goodbye!');
         this.rl.close();
     }
-    start() {
+    async cleanup() {
+        if (this.db.isConnected()) {
+            await this.db.close();
+        }
+    }
+    async start() {
         console.clear();
-        console.log('Welcome to TypeScript CLI!');
-        console.log('Type "help" for available commands.\n');
-        this.rl.prompt();
+        console.log('Welcome to Shadow Kingdom!');
+        console.log('Initializing game world...\n');
+        try {
+            await this.db.connect();
+            await (0, initDb_1.initializeDatabase)(this.db);
+            await (0, initDb_1.seedDatabase)(this.db);
+            console.log('\nType "help" for available commands.\n');
+            this.rl.prompt();
+        }
+        catch (error) {
+            console.error('Failed to initialize game:', error);
+            process.exit(1);
+        }
     }
 }
 const cli = new CLI();

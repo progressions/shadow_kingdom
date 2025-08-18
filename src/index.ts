@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 
 import * as readline from 'readline';
+import Database from './utils/database';
+import { initializeDatabase, seedDatabase } from './utils/initDb';
 
 interface Command {
   name: string;
   description: string;
-  handler: (args: string[]) => void;
+  handler: (args: string[]) => void | Promise<void>;
 }
 
 class CLI {
   private rl: readline.Interface;
   private commands: Map<string, Command> = new Map();
+  private db: Database;
 
   constructor() {
     this.rl = readline.createInterface({
@@ -19,6 +22,7 @@ class CLI {
       prompt: '> '
     });
 
+    this.db = new Database();
     this.setupCommands();
     this.setupEventHandlers();
   }
@@ -53,12 +57,13 @@ class CLI {
   }
 
   private setupEventHandlers() {
-    this.rl.on('line', (input: string) => {
-      this.processCommand(input.trim());
+    this.rl.on('line', async (input: string) => {
+      await this.processCommand(input.trim());
       this.rl.prompt();
     });
 
-    this.rl.on('close', () => {
+    this.rl.on('close', async () => {
+      await this.cleanup();
       console.log('\nGoodbye!');
       process.exit(0);
     });
@@ -68,7 +73,7 @@ class CLI {
     this.commands.set(command.name, command);
   }
 
-  private processCommand(input: string) {
+  private async processCommand(input: string) {
     if (!input) return;
 
     const parts = input.split(' ');
@@ -79,7 +84,7 @@ class CLI {
     
     if (command) {
       try {
-        command.handler(args);
+        await command.handler(args);
       } catch (error) {
         console.error(`Error executing command "${commandName}":`, error);
       }
@@ -99,16 +104,34 @@ class CLI {
     console.log('\nPress Ctrl+C or type "exit" to quit.\n');
   }
 
-  private exit() {
+  private async exit() {
+    await this.cleanup();
     console.log('Goodbye!');
     this.rl.close();
   }
 
-  public start() {
+  private async cleanup() {
+    if (this.db.isConnected()) {
+      await this.db.close();
+    }
+  }
+
+  public async start() {
     console.clear();
-    console.log('Welcome to TypeScript CLI!');
-    console.log('Type "help" for available commands.\n');
-    this.rl.prompt();
+    console.log('Welcome to Shadow Kingdom!');
+    console.log('Initializing game world...\n');
+    
+    try {
+      await this.db.connect();
+      await initializeDatabase(this.db);
+      await seedDatabase(this.db);
+      
+      console.log('\nType "help" for available commands.\n');
+      this.rl.prompt();
+    } catch (error) {
+      console.error('Failed to initialize game:', error);
+      process.exit(1);
+    }
   }
 }
 
