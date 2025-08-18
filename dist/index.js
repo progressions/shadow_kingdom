@@ -65,6 +65,68 @@ class CLI {
             handler: async () => await this.lookAround()
         });
         this.addCommand({
+            name: 'go',
+            description: 'Move in a direction (e.g., "go north")',
+            handler: async (args) => await this.move(args)
+        });
+        this.addCommand({
+            name: 'move',
+            description: 'Move in a direction (alias for "go")',
+            handler: async (args) => await this.move(args)
+        });
+        // Cardinal direction shortcuts
+        this.addCommand({
+            name: 'north',
+            description: 'Move north',
+            handler: async () => await this.move(['north'])
+        });
+        this.addCommand({
+            name: 'south',
+            description: 'Move south',
+            handler: async () => await this.move(['south'])
+        });
+        this.addCommand({
+            name: 'east',
+            description: 'Move east',
+            handler: async () => await this.move(['east'])
+        });
+        this.addCommand({
+            name: 'west',
+            description: 'Move west',
+            handler: async () => await this.move(['west'])
+        });
+        this.addCommand({
+            name: 'up',
+            description: 'Move up',
+            handler: async () => await this.move(['up'])
+        });
+        this.addCommand({
+            name: 'down',
+            description: 'Move down',
+            handler: async () => await this.move(['down'])
+        });
+        // Short aliases for cardinal directions
+        this.addCommand({
+            name: 'n',
+            description: 'Move north (shortcut)',
+            handler: async () => await this.move(['north'])
+        });
+        this.addCommand({
+            name: 's',
+            description: 'Move south (shortcut)',
+            handler: async () => await this.move(['south'])
+        });
+        this.addCommand({
+            name: 'e',
+            description: 'Move east (shortcut)',
+            handler: async () => await this.move(['east'])
+        });
+        this.addCommand({
+            name: 'w',
+            description: 'Move west (shortcut)',
+            handler: async () => await this.move(['west'])
+        });
+        this.addCommand({
             name: 'echo',
             description: 'Echo back the provided text',
             handler: (args) => console.log(args.join(' '))
@@ -79,7 +141,12 @@ class CLI {
         });
         this.addCommand({
             name: 'exit',
-            description: 'Exit the CLI',
+            description: 'Exit the game',
+            handler: () => this.exit()
+        });
+        this.addCommand({
+            name: 'quit',
+            description: 'Quit the game (alias for "exit")',
             handler: () => this.exit()
         });
     }
@@ -131,6 +198,15 @@ class CLI {
                 console.log(`\n${room.name}`);
                 console.log('='.repeat(room.name.length));
                 console.log(room.description);
+                // Get available connections from this room
+                const connections = await this.db.all('SELECT name FROM connections WHERE from_room_id = ? ORDER BY name', [this.currentRoomId]);
+                if (connections && connections.length > 0) {
+                    const exits = connections.map(c => c.name).join(', ');
+                    console.log(`\nExits: ${exits}`);
+                }
+                else {
+                    console.log('\nThere are no obvious exits.');
+                }
             }
             else {
                 console.log('You are in a void. Something went wrong!');
@@ -138,6 +214,28 @@ class CLI {
         }
         catch (error) {
             console.error('Error looking around:', error);
+        }
+    }
+    async move(args) {
+        if (args.length === 0) {
+            console.log('Move where? Specify a direction (e.g., "go north")');
+            return;
+        }
+        const direction = args[0].toLowerCase();
+        try {
+            // Find connection from current room with the specified name (case-insensitive)
+            const connection = await this.db.get('SELECT * FROM connections WHERE from_room_id = ? AND LOWER(name) = LOWER(?)', [this.currentRoomId, direction]);
+            if (!connection) {
+                console.log(`You can't go ${direction} from here.`);
+                return;
+            }
+            // Update current room
+            this.currentRoomId = connection.to_room_id;
+            // Show the new room
+            await this.lookAround();
+        }
+        catch (error) {
+            console.error('Error moving:', error);
         }
     }
     async exit() {
