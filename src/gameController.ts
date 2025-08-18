@@ -493,6 +493,12 @@ export class GameController {
       );
 
       if (room) {
+        // Mark room as processed when player visits it (locks in the current design)
+        await this.db.run(
+          'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
+          [this.currentRoomId]
+        );
+
         console.log(`\n${room.name}`);
         console.log('='.repeat(room.name.length));
         console.log(room.description);
