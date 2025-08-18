@@ -1,25 +1,16 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with the Shadow Kingdom TypeScript CLI project.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-Shadow Kingdom is a dynamic, AI-powered adventure game built as an interactive TypeScript CLI. The game allows players to use natural language to navigate through procedurally generated rooms, meet unique characters, and interact with items - all created dynamically by AI. 
+Shadow Kingdom is a fully functional AI-powered text adventure game built with TypeScript and Node.js. Players explore a dynamically generated fantasy kingdom where AI creates rooms, descriptions, and atmospheric connections in real-time using Grok AI.
 
-**Core Game Concept:**
-- Players explore a fantasy kingdom using conversational commands
-- Rooms, characters, items, and scenarios are generated on-the-fly by AI
-- Natural language processing interprets player actions and intentions
-- Rich narrative storytelling adapts to player choices and actions
-- Persistent game state tracks player progress, inventory, and world changes
-
-**Key Features (Planned):**
-- **Natural Language Interface**: Players type commands like "go north", "talk to the merchant", or "examine the glowing sword"
-- **AI-Generated Content**: Rooms, NPCs, items, and storylines created dynamically
-- **Persistent World**: Game state saves progress, inventory, character relationships
-- **Adaptive Storytelling**: AI responds to player actions with contextual narrative
-- **Character Interaction**: Engage in conversations with AI-generated NPCs
-- **Inventory System**: Collect, use, and manage items throughout the adventure
+**Core Architecture:**
+- **GameController**: Main game logic, command processing, and state management
+- **GrokClient**: AI integration for content generation with fallback systems
+- **Database**: SQLite-based persistence for games, rooms, connections, and player state
+- **Dual-Mode System**: Main menu for game management + in-game exploration interface
 
 ## Development Commands
 
@@ -27,123 +18,246 @@ Shadow Kingdom is a dynamic, AI-powered adventure game built as an interactive T
 # Install dependencies
 npm install
 
-# Run development server with ts-node
+# Run development server with hot reload
 npm run dev
 
 # Build TypeScript to JavaScript
 npm run build
 
-# Run compiled version
+# Run built application
 npm start
 
-# Run as executable (after build)
-./dist/index.js
+# Testing
+npm test                    # Run all tests with Jest
+npm run test:watch         # Watch mode for tests
+npm run test:coverage      # Generate coverage report
+
+# AI-specific test scripts
+npm run test:grok          # Test Grok AI integration
+npm run test:bg            # Test background room generation
+npm run test:limits        # Test generation limits
+npm run test:errors        # Test error handling
+npm run test:tracking      # Test generation tracking
 ```
 
-## Architecture
+## Architecture Overview
 
-- **Language**: TypeScript
-- **Runtime**: Node.js
-- **CLI Framework**: Built-in readline interface
-- **AI Integration**: TBD - Consider OpenAI API, Anthropic Claude API, or local models
-- **Game Engine**: Custom text-based adventure engine
-- **Data Storage**: JSON files for game state, player data, and world persistence
-- **Build Tool**: TypeScript Compiler (tsc)
-- **Development**: ts-node for hot reloading
+### Core Components
 
-## Project Structure
+**GameController** (`src/gameController.ts`):
+- Dual-mode operation: menu mode and game mode
+- Command system with separate menu and game command sets
+- Background room generation with rate limiting and cooldown
+- Game save/load system with SQLite persistence
+- Natural language movement supporting both cardinal directions and thematic names
 
-- `src/` - TypeScript source code
-- `dist/` - Compiled JavaScript output  
-- `issues/` - Issue tracking (markdown files)
-- Standard Node.js project files (package.json, tsconfig.json, etc.)
+**GrokClient** (`src/ai/grokClient.ts`):
+- Grok AI integration for generating rooms, NPCs, and dialogue
+- Comprehensive fallback system for when AI calls fail
+- Token usage tracking and cost estimation
+- Mock mode for testing without API calls
+- Structured JSON responses for all AI-generated content
 
-## Game Architecture
+**Database** (`src/utils/database.ts`):
+- SQLite wrapper with async/await support
+- Generic type support for query results
+- Proper connection management and error handling
 
-The main CLI class (`src/index.ts`) currently includes basic CLI functionality that will evolve into the game interface:
+### Database Schema
 
-**Current CLI Features:**
-- **Command System**: Extensible command registration via `addCommand()`
-- **Interactive Interface**: Readline-based prompt with `>` indicator
-- **Built-in Commands**: 
-  - `help` - Show available commands
-  - `echo <text>` - Echo back provided text
-  - `clear` - Clear the screen
-  - `exit` - Exit the CLI
-- **Error Handling**: Unknown command detection and user feedback
+Key tables and relationships:
+- **games**: Game sessions with metadata (name, created_at, last_played_at)
+- **rooms**: AI-generated rooms with names, descriptions, and processing state
+- **connections**: Bidirectional room links with both mechanical directions and thematic names
+- **game_state**: Current player position and game state per game
 
-**Planned Game Architecture:**
-- **Game Engine**: Core game loop and state management
-- **Natural Language Parser**: Interpret player commands like "go north", "talk to wizard"
-- **AI Integration**: Generate rooms, NPCs, items, and narrative responses
-- **World Management**: Track room connections, item locations, character states
-- **Player System**: Character stats, inventory, quest progress
-- **Save/Load System**: Persistent game state across sessions
-- **Event System**: Handle game events, triggers, and story progression
+### AI Integration Architecture
 
-## Development Guidelines
+**Room Generation System:**
+- 30% probability connections create realistic room layouts (average 2-4 exits per room)
+- Visit-to-lock system: rooms maintain consistent layout after first player visit
+- Background generation with configurable limits and cooldown periods
+- Thematic connection names complement mechanical directions
+- Duplicate prevention and uniqueness enforcement
+
+**Content Generation:**
+- Contextual room generation based on current location and game history
+- Atmospheric descriptions that fit the fantasy kingdom theme
+- Bidirectional connection creation with complementary thematic names
+- Fallback content when AI generation fails
+
+## Key Features Implementation
+
+### Thematic Connection System
+- Dual navigation: "go north" and "go through the crystal archway" both work
+- AI generates atmospheric connection names that enhance immersion
+- Database stores both mechanical direction and thematic name for each connection
+- Case-insensitive matching for natural language input
+
+### Visit-to-Lock Mechanism
+- Rooms marked as `generation_processed = FALSE` when first created
+- Player visit locks the room layout (`generation_processed = TRUE`)
+- Prevents "phantom connections" appearing on return visits
+- Maintains spatial consistency and player mental map
+
+### Background Generation
+- Proactive room generation triggered when player enters new areas
+- Configurable generation depth and room limits per game
+- Race condition prevention using `generationInProgress` Set
+- Silent failure mode - game continues if generation fails
+
+### Testing Infrastructure
+- Jest test suite with TypeScript support
+- Database isolation for tests (separate test databases)
+- Comprehensive test coverage for generation, persistence, and game management
+- Test scripts for specific AI integration scenarios
+
+## Environment Configuration
+
+Required environment variables:
+```bash
+GROK_API_KEY=your_grok_api_key_here
+```
+
+Optional configuration:
+```bash
+# AI Configuration
+GROK_MODEL=grok-3                    # AI model to use
+GROK_MAX_TOKENS=500                  # Max tokens per request
+GROK_TEMPERATURE=0.8                 # AI creativity level
+AI_MOCK_MODE=true                    # Use mock responses for testing
+AI_DEBUG_LOGGING=true                # Enable debug output
+
+# Generation Limits
+MAX_ROOMS_PER_GAME=100              # Maximum rooms per game
+MAX_GENERATION_DEPTH=5               # Background generation depth
+GENERATION_COOLDOWN_MS=5000         # Cooldown between generations
+```
+
+## Development Patterns
 
 ### Adding New Commands
 
-To add a new command, use the `addCommand()` method in `setupCommands()`:
-
+For menu commands:
 ```typescript
-this.addCommand({
+this.addMenuCommand({
   name: 'commandname',
-  description: 'Brief description of what the command does',
-  handler: (args) => {
-    // Implementation here
-    console.log('Command executed with args:', args);
-  }
+  description: 'Description shown in help',
+  handler: async () => await this.handleCommand()
 });
 ```
 
-### Issue Tracking
+For game commands:
+```typescript
+this.addGameCommand({
+  name: 'commandname', 
+  description: 'Description shown in help',
+  handler: async (args) => await this.handleCommand(args)
+});
+```
 
-- Use the `issues/` directory for tracking bugs, features, and enhancements
-- Follow the naming convention: `YYYY-MM-DD-issue-name.md`
-- Use the `issues/TEMPLATE.md` as a starting point for new issues
-- Include status, priority, and category in each issue
+### Database Operations
+All database operations use the async Database wrapper:
+```typescript
+// Single row
+const room = await this.db.get<Room>('SELECT * FROM rooms WHERE id = ?', [roomId]);
 
-### Code Style
+// Multiple rows  
+const connections = await this.db.all<Connection>('SELECT * FROM connections WHERE game_id = ?', [gameId]);
 
-- Use TypeScript strict mode
-- Follow existing patterns for command implementation
-- Use proper error handling in command handlers
-- Keep commands focused and single-purpose
+// Insert/Update
+const result = await this.db.run('INSERT INTO rooms (name, description) VALUES (?, ?)', [name, desc]);
+```
 
-## Testing
+### AI Integration Patterns
+All AI calls should include fallback handling:
+```typescript
+try {
+  const result = await this.grokClient.generateRoom(context);
+  return result;
+} catch (error) {
+  if (process.env.AI_DEBUG_LOGGING === 'true') {
+    console.error('AI generation failed:', error);
+  }
+  return this.getFallbackContent(context);
+}
+```
 
-Currently no formal test suite exists. When adding tests:
-- Consider using Jest or similar testing framework
-- Test command parsing and execution
-- Test error scenarios and edge cases
-- Add test scripts to package.json
+## Testing Guidelines
 
-## Deployment
+- Use Jest for all tests with TypeScript support via ts-jest
+- Test database operations use isolated test databases
+- Mock external dependencies (AI API calls) in unit tests
+- Integration tests verify end-to-end game functionality
+- Use descriptive test names that explain expected behavior
 
-The CLI can be:
-1. **Installed locally**: `npm install -g .` (after build)
-2. **Run directly**: `npm run dev` or `npm start`
-3. **Distributed**: Package and publish to npm registry
+## Common Development Tasks
 
-## Common Tasks
+**Adding new room generation features:**
+1. Update `GrokClient.generateRoom()` prompt and response interface
+2. Modify database schema if new fields needed
+3. Update fallback generation methods
+4. Add tests for new functionality
 
-**Current Development:**
-- **Add new command**: Modify `setupCommands()` in `src/index.ts`
-- **Change prompt**: Modify readline configuration in constructor
-- **Add persistent data**: Consider using files in user home directory
-- **Extend functionality**: Add new methods to CLI class
+**Extending command system:**
+1. Add command to appropriate command map (menu or game)
+2. Implement handler method in GameController
+3. Update help text and documentation
+4. Add unit tests for command functionality
 
-**Game Development (Planned):**
-- **Add game commands**: Implement natural language parsing for adventure commands
-- **Create AI integration**: Set up API connections for content generation
-- **Build game engine**: Implement core game mechanics and state management
-- **Design world system**: Create room generation and navigation systems
-- **Implement NPCs**: Add character interaction and dialogue systems
-- **Add inventory**: Create item management and usage systems
-- **Create save system**: Implement game state persistence
+**Database schema changes:**
+1. Update `initDb.ts` with migration logic
+2. Modify TypeScript interfaces for new fields
+3. Update existing queries to handle new schema
+4. Test migration with existing game data
 
-## Known Issues
+## Issue Tracking
 
-Check the `issues/` directory for current open issues and feature requests.
+The project uses a markdown-based issue tracking system in the `issues/` directory:
+
+### Issue Management
+- **File naming convention**: `YYYY-MM-DD-issue-name.md`
+- **Template**: Use `issues/TEMPLATE.md` as the starting point for new issues
+- **Categories**: Bug | Feature | Enhancement | Documentation | Performance
+- **Priorities**: Low | Medium | High | Critical
+- **Status tracking**: Open | In Progress | Resolved | Closed
+
+### Creating New Issues
+1. Copy `issues/TEMPLATE.md` to create a new issue file
+2. Use descriptive names following the date convention
+3. Include detailed description, technical notes, and acceptance criteria
+4. Update status as work progresses
+
+### Key Open Issues
+- **Natural Language Command Processing** (`2025-01-18-natural-language-command-processing.md`): High-priority enhancement for implementing AI-powered natural language processing with local pattern matching and AI fallback system
+- **Multi-Interface Architecture** (`2025-01-18-multi-interface-architecture.md`): Plans for extending beyond CLI to web and mobile interfaces
+- **Terminal UI Interface** (`2025-01-18-terminal-ui-interface.md`): Enhanced terminal UI with ncurses-style interface
+
+## Project Structure Details
+
+```
+src/
+├── ai/
+│   └── grokClient.ts          # AI integration with Grok API
+├── utils/
+│   ├── database.ts            # SQLite database wrapper
+│   └── initDb.ts             # Database initialization and migrations
+├── gameController.ts          # Main game logic and command processing
+└── index.ts                  # Application entry point
+
+tests/                        # Jest test suite
+scripts/                      # Utility scripts for testing AI features
+issues/                       # Issue tracking in markdown format
+├── TEMPLATE.md              # Template for creating new issues
+├── 2025-01-18-natural-language-command-processing.md
+├── 2025-01-18-multi-interface-architecture.md
+└── ...                      # Other tracked issues
+```
+
+## Performance Considerations
+
+- Background room generation uses fire-and-forget pattern to avoid blocking gameplay
+- Generation cooldowns prevent excessive AI API calls
+- Room limits prevent unbounded world growth
+- Database queries use appropriate indexes for game and room lookups
+- Mock mode available for testing without API costs
