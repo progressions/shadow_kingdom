@@ -26,8 +26,8 @@ export interface GeneratedRoom {
   name: string;
   description: string;
   connections?: {
-    direction: string;
-    hint?: string;
+    direction: string;        // mechanical direction: "north", "south", etc.
+    name: string;            // thematic description: "through the crystal archway"
   }[];
 }
 
@@ -124,6 +124,7 @@ export class GrokClient {
 
     const existingRooms = context.gameHistory?.join(', ') || 'none';
     const themeNote = context.theme || 'mysterious fantasy kingdom';
+    const reverseDirection = this.getReverseDirection(context.direction) || 'back';
 
     const prompt = `You are creating a room for a text adventure game called Shadow Kingdom.
     
@@ -135,19 +136,35 @@ Existing rooms in this game: ${existingRooms}
 Generate a NEW and UNIQUE room that the player discovers when going ${context.direction}. 
 Make it thematically consistent with a ${themeNote} setting.
 
-IMPORTANT: 
+ROOM REQUIREMENTS:
 - Create a room name that is DIFFERENT from all existing rooms
 - Make the room unique and interesting, not generic
 - Consider the direction and current room context
 - Avoid repetitive names like "Chamber", "Room", "Hall" unless very specific
+
+CONNECTION GENERATION RULES:
+- ALWAYS include a return connection back to where the player came from
+- For each of the other 5 directions (north, south, east, west, up, down - excluding the return path), roll a 30% chance to create an exit
+- This means most rooms will have 2-4 total connections (including the return path)
+- Create thematic names that fit the room's atmosphere and architecture
+- Make connection names immersive and descriptive, not just directions
+
+EXAMPLES OF GOOD THEMATIC CONNECTIONS:
+- "through the ornate archway" (north)
+- "down the spiral staircase" (down) 
+- "via the hidden passage" (east)
+- "through the shimmering portal" (west)
+- "up the crumbling ladder" (up)
+- "through the crystal doorway" (south)
 
 Respond in JSON format:
 {
   "name": "Unique Room Name (avoid duplicates)",
   "description": "Detailed atmospheric description of the room",
   "connections": [
-    {"direction": "north", "hint": "You see a door to the north"},
-    {"direction": "east", "hint": "A passage leads east"}
+    {"direction": "${reverseDirection}", "name": "thematic description for return path"},
+    {"direction": "north", "name": "through the ornate archway"},
+    {"direction": "down", "name": "down the spiral staircase"}
   ]
 }`;
 
@@ -314,29 +331,34 @@ Respond in JSON format:
 
   // Mock implementations for testing without API calls
   private mockGenerateRoom(context: RoomContext): GeneratedRoom {
+    const reverseDirection = this.getReverseDirection(context.direction) || 'back';
+    
     const mockRooms: GeneratedRoom[] = [
       {
         name: "Crystal Cavern",
         description: "You enter a cavern filled with glowing crystals. The walls shimmer with an ethereal light, casting dancing shadows across the rocky floor.",
         connections: [
-          { direction: "back", hint: "Return the way you came" },
-          { direction: "deeper", hint: "A narrow passage leads deeper into the cavern" }
+          { direction: reverseDirection, name: "back through the crystal entrance" },
+          { direction: "north", name: "through the shimmering archway" },
+          { direction: "east", name: "via the glowing crystal tunnel" }
         ]
       },
       {
         name: "Ancient Armory",
         description: "Rows of rusted weapons and armor line the walls. Dust motes dance in shafts of light filtering through cracks in the ceiling.",
         connections: [
-          { direction: "back", hint: "Return to the previous room" },
-          { direction: "north", hint: "A heavy door stands to the north" }
+          { direction: reverseDirection, name: "back to the previous chamber" },
+          { direction: "up", name: "up the worn stone steps" },
+          { direction: "west", name: "through the weapon vault door" }
         ]
       },
       {
         name: "Mystic Pool",
         description: "A serene pool of crystal-clear water reflects an impossible starry sky above, despite being indoors. The air hums with magical energy.",
         connections: [
-          { direction: "back", hint: "Return the way you came" },
-          { direction: "west", hint: "Stone steps lead west" }
+          { direction: reverseDirection, name: "back through the misty veil" },
+          { direction: "west", name: "via the moonlit pathway" },
+          { direction: "down", name: "down into the luminous depths" }
         ]
       }
     ];
@@ -452,7 +474,7 @@ Respond in JSON format:
       name: uniqueName,
       description: selectedRoom.description,
       connections: [
-        { direction: reverseDirection, hint: "Return the way you came" }
+        { direction: reverseDirection, name: "back the way you came" }
       ]
     };
   }
@@ -485,5 +507,18 @@ Respond in JSON format:
       tokensUsed: this.tokenUsage,
       estimatedCost: `$${this.tokenUsage.cost.toFixed(4)}`
     };
+  }
+
+  private getReverseDirection(direction: string): string | null {
+    const directionMap: { [key: string]: string } = {
+      'north': 'south',
+      'south': 'north',
+      'east': 'west',
+      'west': 'east',
+      'up': 'down',
+      'down': 'up'
+    };
+    
+    return directionMap[direction.toLowerCase()] || null;
   }
 }
