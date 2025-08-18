@@ -675,7 +675,7 @@ export class GameController {
   // Background Room Generation Methods
   private async preGenerateAdjacentRooms(currentRoomId: number): Promise<void> {
     // Check cooldown period
-    const cooldown = parseInt(process.env.GENERATION_COOLDOWN_MS || '10000');
+    const cooldown = parseInt(process.env.GENERATION_COOLDOWN_MS || '5000');
     const timeSinceLastGeneration = Date.now() - this.lastGenerationTime;
     
     if (timeSinceLastGeneration < cooldown) {
@@ -694,7 +694,7 @@ export class GameController {
         [this.currentGameId]
       );
       
-      const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '50');
+      const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '100');
       if (roomCount?.count >= maxRooms) {
         if (process.env.AI_DEBUG_LOGGING === 'true') {
           console.log(`🏰 Room limit reached (${maxRooms}). No more rooms will be generated.`);
@@ -712,7 +712,7 @@ export class GameController {
     this.generationInProgress.add(currentRoomId);
     
     try {
-      const maxDepth = parseInt(process.env.MAX_GENERATION_DEPTH || '3');
+      const maxDepth = parseInt(process.env.MAX_GENERATION_DEPTH || '5');
       
       // Get all connections FROM current room to existing rooms that haven't been processed yet
       const connections = await this.db.all(
@@ -745,7 +745,7 @@ export class GameController {
           [this.currentGameId]
         );
         
-        const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '50');
+        const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '100');
         const roomsCanGenerate = Math.max(0, maxRooms - (currentRoomCount?.count || 0));
         
         if (roomsToGenerate > roomsCanGenerate) {
@@ -815,7 +815,7 @@ export class GameController {
       }
     }
 
-    return Math.min(missingCount, 3);
+    return Math.min(missingCount, 4);
   }
 
   private async generateMissingRoomsFor(roomId: number, maxRooms: number = 6, remainingQuota: number = Infinity): Promise<number> {
@@ -833,7 +833,7 @@ export class GameController {
     // Generate missing connections for unprocessed rooms
     const basicDirections = ['north', 'south', 'east', 'west'];
     let generatedCount = 0;
-    const maxGenerations = Math.min(maxRooms, remainingQuota, 3);
+    const maxGenerations = Math.min(maxRooms, remainingQuota, 4);
 
     for (const direction of basicDirections) {
       if (generatedCount >= maxGenerations) break;

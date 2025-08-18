@@ -144,8 +144,8 @@ ROOM REQUIREMENTS:
 
 CONNECTION GENERATION RULES:
 - ALWAYS include a return connection back to where the player came from
-- For each of the other 5 directions (north, south, east, west, up, down - excluding the return path), roll a 20% chance to create an exit
-- This means most rooms will have 1-3 total connections (including the return path)
+- For each of the other 5 directions (north, south, east, west, up, down - excluding the return path), roll a 30% chance to create an exit
+- This means most rooms will have 2-4 total connections (including the return path)
 - Create thematic names that fit the room's atmosphere and architecture
 - Make connection names immersive and descriptive, not just directions
 
@@ -339,7 +339,8 @@ Respond in JSON format:
         description: "You enter a cavern filled with glowing crystals. The walls shimmer with an ethereal light, casting dancing shadows across the rocky floor.",
         connections: [
           { direction: reverseDirection, name: "back through the crystal entrance" },
-          { direction: "north", name: "through the shimmering archway" }
+          { direction: "north", name: "through the shimmering archway" },
+          { direction: "east", name: "via the glowing crystal tunnel" }
         ]
       },
       {
@@ -347,7 +348,8 @@ Respond in JSON format:
         description: "Rows of rusted weapons and armor line the walls. Dust motes dance in shafts of light filtering through cracks in the ceiling.",
         connections: [
           { direction: reverseDirection, name: "back to the previous chamber" },
-          { direction: "up", name: "up the worn stone steps" }
+          { direction: "up", name: "up the worn stone steps" },
+          { direction: "west", name: "through the weapon vault door" }
         ]
       },
       {
