@@ -205,51 +205,63 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
 
     const gameId = gameResult.lastID;
 
-    // Create initial rooms for this game
+    // Create initial rooms for this game with rich, atmospheric descriptions
     const entranceResult = await db.run(
       'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-      [gameId, 'Entrance Hall', 'A grand entrance hall with marble floors and towering columns. Dust motes dance in the light streaming through tall windows.', true]
+      [gameId, 'Grand Entrance Hall', 
+       `You stand in a magnificent entrance hall that speaks of forgotten grandeur. Towering marble columns stretch up to a vaulted ceiling painted with faded celestial murals, their gold leaf catching the light that filters through tall, arched windows. The polished marble floor beneath your feet reflects the dancing dust motes like stars in a night sky. Ancient tapestries hang between the windows, their once-vibrant colors now muted by centuries of shadow. The air carries a faint echo of footsteps from ages past, and the silence feels both reverent and expectant.`, 
+       true]
     );
 
     const libraryResult = await db.run(
       'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-      [gameId, 'Library', 'Ancient bookshelves line the walls, filled with leather-bound tomes. The air smells of old paper and mystery.', true]
+      [gameId, 'Scholar\'s Library', 
+       `You enter a vast library that seems to hold the weight of countless ages. Floor-to-ceiling bookshelves carved from dark oak stretch into the shadows above, filled with leather-bound tomes whose gilded spines catch the warm glow of brass reading lamps. The air is thick with the intoxicating scent of old parchment, leather bindings, and the faintest hint of forgotten incense. A massive oak desk sits near the center, its surface covered with open books, scrolls, and an ornate brass inkwell. Dust motes drift lazily through shafts of amber light, and somewhere in the depths of the shelves, you can hear the occasional whisper of settling books and the soft tick of an ancient clock.`, 
+       true]
     );
 
     const gardenResult = await db.run(
       'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-      [gameId, 'Garden', 'A serene garden with overgrown paths and a fountain that still trickles with clear water.', true]
+      [gameId, 'Moonlit Courtyard Garden', 
+       `You step into an enchanted courtyard garden where nature has reclaimed its ancient dominion. Weathered stone paths wind between overgrown flowerbeds where wild roses climb trellises heavy with blooms that seem to glow in the perpetual twilight. At the garden's heart stands a marble fountain whose crystal waters still flow with an otherworldly luminescence, casting dancing reflections on the moss-covered statues that watch over this secret sanctuary. Night-blooming jasmine fills the air with its heady perfume, and somewhere in the shadows, you can hear the gentle tinkle of wind chimes and the soft rustle of leaves that seem to whisper secrets of the old kingdom.`, 
+       true]
     );
 
     const entranceId = entranceResult.lastID;
     const libraryId = libraryResult.lastID;
     const gardenId = gardenResult.lastID;
 
-    // Create connections between rooms for this game
+    // Create atmospheric connections between rooms
     // Format: (game_id, from_room_id, to_room_id, direction, name)
+    
+    // From Grand Entrance Hall to Scholar's Library
     await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-      [gameId, entranceId, libraryId, 'north', 'north']
+      [gameId, entranceId, libraryId, 'north', 'through the ornate archway beneath celestial murals']
     );
 
+    // From Scholar's Library back to Grand Entrance Hall
     await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-      [gameId, libraryId, entranceId, 'south', 'south']
+      [gameId, libraryId, entranceId, 'south', 'through the shadowed archway to the grand hall']
     );
 
+    // From Grand Entrance Hall to Moonlit Courtyard Garden
     await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-      [gameId, entranceId, gardenId, 'east', 'east']
+      [gameId, entranceId, gardenId, 'east', 'through the glass doors that shimmer with moonlight']
     );
 
+    // From Moonlit Courtyard Garden back to Grand Entrance Hall
     await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-      [gameId, gardenId, entranceId, 'west', 'west']
+      [gameId, gardenId, entranceId, 'west', 'through the crystal doors back to the marble hall']
     );
 
+    // Secret passage from Scholar's Library to Moonlit Courtyard Garden
     await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-      [gameId, libraryId, gardenId, 'bookshelf', 'through the hidden passage behind the bookshelf']
+      [gameId, libraryId, gardenId, 'bookshelf', 'through the secret passage behind the ancient tome collection']
     );
 
     // Create initial game state (player starts in entrance hall)
