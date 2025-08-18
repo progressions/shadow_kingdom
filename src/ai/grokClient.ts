@@ -146,8 +146,11 @@ Respond in JSON format:
       const result = JSON.parse(response);
       return result as GeneratedRoom;
     } catch (error) {
-      console.error('Error generating room:', error);
-      throw error;
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating room:', error);
+      }
+      // Return a fallback room instead of throwing
+      return this.getFallbackRoom(context);
     }
   }
 
@@ -177,8 +180,11 @@ Respond in JSON format:
       const result = JSON.parse(response);
       return result as GeneratedNPC;
     } catch (error) {
-      console.error('Error generating NPC:', error);
-      throw error;
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating NPC:', error);
+      }
+      // Return a fallback NPC instead of throwing
+      return this.getFallbackNPC(context);
     }
   }
 
@@ -208,8 +214,11 @@ Respond in JSON format:
       const result = JSON.parse(response);
       return result as ActionResult;
     } catch (error) {
-      console.error('Error processing command:', error);
-      throw error;
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error processing command:', error);
+      }
+      // Return a fallback result instead of throwing
+      return this.getFallbackCommand(context);
     }
   }
 
@@ -242,8 +251,11 @@ Respond in JSON format:
       const result = JSON.parse(response);
       return result as DialogueResponse;
     } catch (error) {
-      console.error('Error continuing dialogue:', error);
-      throw error;
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error continuing dialogue:', error);
+      }
+      // Return a fallback dialogue instead of throwing
+      return this.getFallbackDialogue(context);
     }
   }
 
@@ -278,10 +290,14 @@ Respond in JSON format:
 
       return response.data.choices[0].message.content;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Grok API Error:', error.response?.data || error.message);
-        throw new Error(`Grok API Error: ${error.response?.status} - ${error.message}`);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        if (axios.isAxiosError(error)) {
+          console.error('Grok API Error:', error.response?.data || error.message);
+        } else {
+          console.error('Unexpected error:', error);
+        }
       }
+      // Re-throw for handling in calling methods
       throw error;
     }
   }
@@ -383,6 +399,51 @@ Respond in JSON format:
     ];
 
     return responses[Math.floor(Math.random() * responses.length)];
+  }
+
+  // Fallback methods for when API calls fail
+  private getFallbackRoom(context: RoomContext): GeneratedRoom {
+    const directionMap: { [key: string]: string } = {
+      'north': 'south',
+      'south': 'north',
+      'east': 'west',
+      'west': 'east',
+      'up': 'down',
+      'down': 'up'
+    };
+    
+    const reverseDirection = directionMap[context.direction.toLowerCase()] || 'back';
+
+    return {
+      name: `Mysterious ${context.direction.charAt(0).toUpperCase() + context.direction.slice(1)} Chamber`,
+      description: `You find yourself in a dimly lit chamber. The air is thick with mystery, and shadows dance on the stone walls. This place feels ancient and forgotten.`,
+      connections: [
+        { direction: reverseDirection, hint: "Return the way you came" }
+      ]
+    };
+  }
+
+  private getFallbackNPC(context: NPCContext): GeneratedNPC {
+    return {
+      name: "Mysterious Figure",
+      description: "A shadowy figure stands in the corner, their features obscured by darkness. They seem to be watching you intently.",
+      personality: "Enigmatic, speaks little, observant",
+      initialDialogue: "..."
+    };
+  }
+
+  private getFallbackCommand(context: CommandContext): ActionResult {
+    return {
+      success: false,
+      description: "The shadows seem to interfere with your action. Perhaps try something else."
+    };
+  }
+
+  private getFallbackDialogue(context: DialogueContext): DialogueResponse {
+    return {
+      response: "The figure remains silent, as if lost in thought.",
+      emotion: "mysterious"
+    };
   }
 
   getUsageStats() {
