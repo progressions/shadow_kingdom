@@ -923,10 +923,28 @@ export class GameController {
         [this.currentGameId, uniqueName, newRoom.description, false]
       );
 
-      // Create outgoing connection from origin room (using basic direction for now)
+      // Find the AI-generated thematic name for the outgoing connection
+      let outgoingThematicName = direction; // fallback to basic direction
+      let returnThematicName = this.getReverseDirection(direction) || 'back';
+      
+      // Look for AI-generated connection descriptions
+      if (newRoom.connections && newRoom.connections.length > 0) {
+        // Find the return path connection for thematic naming
+        const returnConnection = newRoom.connections.find(c => 
+          c.direction === this.getReverseDirection(direction)
+        );
+        
+        if (returnConnection) {
+          returnThematicName = returnConnection.name;
+          // Create a complementary thematic name for the outgoing connection
+          outgoingThematicName = this.generateComplementaryConnectionName(returnConnection.name, direction);
+        }
+      }
+
+      // Create outgoing connection from origin room with thematic name
       await this.db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [this.currentGameId, fromRoomId, roomResult.lastID, direction, direction]
+        [this.currentGameId, fromRoomId, roomResult.lastID, direction, outgoingThematicName]
       );
 
       // Create AI-generated connections from the new room
@@ -955,7 +973,7 @@ export class GameController {
         if (reverseDirection) {
           await this.db.run(
             'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-            [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection, reverseDirection]
+            [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection, returnThematicName]
           );
         }
       }
@@ -986,6 +1004,40 @@ export class GameController {
     };
     
     return directionMap[direction.toLowerCase()] || null;
+  }
+
+  private generateComplementaryConnectionName(returnName: string, direction: string): string {
+    // Create a complementary thematic name based on the return path description
+    // This ensures both directions have thematic names that make sense together
+    
+    // Extract key elements from the return name to create a complementary forward name
+    if (returnName.includes('back through')) {
+      // "back through the crystal entrance" -> "through the crystal entrance"
+      return returnName.replace('back through', 'through');
+    } else if (returnName.includes('back to')) {
+      // "back to the garden" -> "to the shadowed passage"
+      return `through the ${direction}ern passage`;
+    } else if (returnName.includes('down')) {
+      // "down the starlit steps" -> "up the starlit steps"
+      return returnName.replace('down', 'up');
+    } else if (returnName.includes('up')) {
+      // "up the ancient stairs" -> "down the ancient stairs"
+      return returnName.replace('up', 'down');
+    } else if (returnName.includes('through')) {
+      // Keep the thematic element but make it directional
+      return returnName;
+    } else {
+      // Fallback: create a generic thematic name
+      const thematicPrefixes = [
+        'through the shadowed',
+        'via the ancient',
+        'through the ornate',
+        'via the weathered',
+        'through the mysterious'
+      ];
+      const prefix = thematicPrefixes[Math.floor(Math.random() * thematicPrefixes.length)];
+      return `${prefix} ${direction}ern passage`;
+    }
   }
 
   public async start() {
