@@ -255,13 +255,13 @@ describe('RoomGenerationService', () => {
       
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, existingRoomResult.lastID, 'north', 'north']
+        [testGameId, testFromRoomId, existingRoomResult.lastID, 'south', 'south']
       );
 
       const context: RoomGenerationContext = {
         gameId: testGameId,
         fromRoomId: testFromRoomId,
-        direction: 'north'
+        direction: 'south'
       };
 
       const result = await roomGenerationService.generateSingleRoom(context);

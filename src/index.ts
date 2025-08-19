@@ -2,8 +2,23 @@
 
 import Database from './utils/database';
 import { GameController } from './gameController';
+import { shouldUseSessionMode, runSessionMode } from './sessionInterface';
 
 async function main() {
+  const args = process.argv.slice(2);
+  
+  // Check if we should use session mode
+  if (shouldUseSessionMode(args)) {
+    try {
+      await runSessionMode(args);
+      return;
+    } catch (error) {
+      console.error('Failed to run session mode:', error);
+      process.exit(1);
+    }
+  }
+  
+  // Default interactive mode
   const db = new Database();
   
   try {

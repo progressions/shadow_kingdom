@@ -187,16 +187,20 @@ describe('Game State Persistence', () => {
     test('should handle invalid game state gracefully', async () => {
       const gameId = await createGameWithRooms(db, `Invalid State Test ${Date.now()}-${Math.random()}`);
       
+      // Get a guaranteed non-existent room ID by finding max ID + 1000
+      const maxIdResult = await db.get<{ max_id: number }>('SELECT MAX(id) as max_id FROM rooms');
+      const nonExistentRoomId = (maxIdResult?.max_id || 0) + 1000;
+      
       // Try to set current room to a room that doesn't exist
       const result = await db.run(
         'UPDATE game_state SET current_room_id = ? WHERE game_id = ?',
-        [99999, gameId]  // Non-existent room ID
+        [nonExistentRoomId, gameId]  // Non-existent room ID
       );
 
       expect(result.changes).toBe(1); // Update succeeds...
       
       // But the room lookup should fail
-      const invalidRoom = await db.get('SELECT * FROM rooms WHERE id = ?', [99999]);
+      const invalidRoom = await db.get('SELECT * FROM rooms WHERE id = ?', [nonExistentRoomId]);
       expect(invalidRoom).toBeUndefined();
     });
   });
