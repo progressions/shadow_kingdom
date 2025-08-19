@@ -55,7 +55,11 @@
       "Bash(touch:*)",
       "Bash(tree:*)",
       "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go south\" --game-id 1)",
-      "Bash(AI_MOCK_MODE=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\")"
+      "Bash(AI_MOCK_MODE=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\")",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\" --start-session)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"new\" --start-session)",
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"look\" --start-session)",
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"look\")"
     ],
     "deny": [],
     "ask": []
