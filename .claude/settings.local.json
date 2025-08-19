@@ -38,7 +38,21 @@
       "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go up\" --game-id 49)",
       "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"look\" --game-id 50)",
       "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go east\" --game-id 50)",
-      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go west\" --game-id 50)"
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go west\" --game-id 50)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"look\" --game-id 51)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"new\" --start-session)",
+      "Bash(AI_MOCK_MODE=true node dist/index.js --cmd \"look\")",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\")",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go west\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"regions\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go up\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go east\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go bookshelf\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go down\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go north\" --game-id 1)",
+      "Bash(mv:*)",
+      "Bash(touch:*)"
     ],
     "deny": [],
     "ask": []

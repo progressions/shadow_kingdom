@@ -6,5 +6,10 @@ dist/
 *.db
 :memory:
 
+# Data directory (except for structure)
+data/db/*.db
+data/temp/
+data/backups/
+
 # Test coverage reports
 coverage/

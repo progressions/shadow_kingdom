@@ -73,7 +73,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { getNLPConfig, applyEnvironmentOverrides } = await import('./nlp/config');
   
   // Use persistent database file for session commands
-  const dbPath = 'shadow_kingdom_session.db';
+  const dbPath = 'data/db/shadow_kingdom_session.db';
   const db = new Database(dbPath);
   await db.connect();
   await initializeDatabase(db);
