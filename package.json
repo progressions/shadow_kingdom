@@ -17,7 +17,10 @@
     "test:bg": "ts-node scripts/test-background-generation.ts",
     "test:limits": "ts-node scripts/test-generation-limits.ts",
     "test:errors": "ts-node scripts/test-error-handling.ts",
-    "test:tracking": "ts-node scripts/test-generation-tracking.ts"
+    "test:tracking": "ts-node scripts/test-generation-tracking.ts",
+    "test:nlp": "ts-node scripts/test-nlp-manual.ts",
+    "test:nlp-phase2": "ts-node scripts/test-nlp-phase2.ts",
+    "test:nlp-phase3": "ts-node scripts/test-nlp-phase3.ts"
   },
   "keywords": [
     "cli",
