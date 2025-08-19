@@ -149,8 +149,14 @@ describe('GameController Core Functionality', () => {
       const roomId = gameState!.current_room_id;
 
       const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      
+      // Find the correct choice number for our game
+      const games = await db.all('SELECT id, name FROM games ORDER BY last_played_at DESC');
+      const gameIndex = games.findIndex(game => game.id === gameId);
+      const choiceNumber = (gameIndex + 1).toString(); // Choice is 1-based
+      
       const mockQuestion = jest.fn().mockImplementation((question, callback) => {
-        callback('1'); // Select first game (should be our newly created game)
+        callback(choiceNumber); // Select our specific game
       });
       
       (controller as any).rl.question = mockQuestion;
@@ -159,9 +165,10 @@ describe('GameController Core Functionality', () => {
         await (controller as any).loadGame();
         
         // Verify controller state - the game was loaded correctly
-        expect((controller as any).currentGameId).toEqual(gameId);
-        expect((controller as any).currentRoomId).toEqual(roomId);
-        expect((controller as any).mode).toBe('game');
+        const session = (controller as any).gameStateManager.getCurrentSession();
+        expect(session.gameId).toEqual(gameId);
+        expect(session.roomId).toEqual(roomId);
+        expect(session.mode).toBe('game');
         
       } finally {
         mockConsoleLog.mockRestore();
@@ -223,10 +230,8 @@ describe('GameController Core Functionality', () => {
         [gameId, roomId]
       );
       
-      // Set controller state
-      (controller as any).currentGameId = gameId;
-      (controller as any).currentRoomId = roomId;
-      (controller as any).mode = 'game';
+      // Set controller state using GameStateManager
+      await (controller as any).gameStateManager.startGameSession(gameId);
     });
 
     test('should handle look around command', async () => {
@@ -264,7 +269,8 @@ describe('GameController Core Functionality', () => {
         await (controller as any).move(['north']);
         
         // Verify movement successful
-        expect((controller as any).currentRoomId).toBe(northRoomId);
+        const session = (controller as any).gameStateManager.getCurrentSession();
+        expect(session.roomId).toBe(northRoomId);
         
         // Verify game state updated in database
         const gameState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
@@ -282,7 +288,8 @@ describe('GameController Core Functionality', () => {
         await (controller as any).move(['west']); // No western exit
         
         // Verify player stayed in same room
-        expect((controller as any).currentRoomId).toBe(roomId);
+        const session = (controller as any).gameStateManager.getCurrentSession();
+        expect(session.roomId).toBe(roomId);
         
         // Verify error message
         expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining("can't go"));
@@ -299,13 +306,14 @@ describe('GameController Core Functionality', () => {
       );
       
       // Debug: Check if controller state is properly set
-      expect((controller as any).currentGameId).toBe(gameId);
-      expect((controller as any).currentRoomId).toBe(roomId);
+      const session = (controller as any).gameStateManager.getCurrentSession();
+      expect(session.gameId).toBe(gameId);
+      expect(session.roomId).toBe(roomId);
       
       // Wait a moment to ensure timestamp difference
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      await (controller as any).saveGameState();
+      await (controller as any).gameStateManager.saveGameState();
       
       const updatedLastPlayedAt = await db.get(
         'SELECT last_played_at FROM games WHERE id = ?', 
@@ -365,8 +373,12 @@ describe('GameController Core Functionality', () => {
       );
       roomId = roomResult.lastID!;
       
-      (controller as any).currentGameId = gameId;
-      (controller as any).currentRoomId = roomId;
+      // Set up game state using GameStateManager 
+      await db.run(
+        'INSERT INTO game_state (game_id, current_room_id) VALUES (?, ?)',
+        [gameId, roomId]
+      );
+      await (controller as any).gameStateManager.startGameSession(gameId);
     });
 
     test('should show appropriate message when moving to unmapped direction', async () => {

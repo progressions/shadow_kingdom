@@ -8,39 +8,11 @@ import { UnifiedNLPEngine } from './nlp/unifiedNLPEngine';
 import { GameContext } from './nlp/types';
 import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
 import { CommandRouter, Command, CommandExecutionContext } from './services/commandRouter';
+import { GameStateManager, Mode } from './services/gameStateManager';
 
 
-interface Game {
-  id: number;
-  name: string;
-  created_at: string;
-  last_played_at: string;
-}
-
-interface Room {
-  id: number;
-  game_id: number;
-  name: string;
-  description: string;
-}
-
-interface Connection {
-  id: number;
-  game_id: number;
-  from_room_id: number;
-  to_room_id: number;
-  direction: string;  // mechanical direction: "north", "south", etc.
-  name: string;       // thematic description: "through the crystal archway"
-}
-
-interface GameState {
-  id: number;
-  game_id: number;
-  current_room_id: number;
-  player_name: string | null;
-}
-
-type Mode = 'menu' | 'game';
+// Interfaces imported from GameStateManager
+import { Game, Room, Connection, GameState } from './services/gameStateManager';
 
 export class GameController {
   private rl: readline.Interface;
@@ -48,12 +20,9 @@ export class GameController {
   private grokClient: GrokClient;
   private nlpEngine: UnifiedNLPEngine;
   private commandRouter: CommandRouter;
-  private mode: Mode = 'menu';
-  private currentGameId: number | null = null;
-  private currentRoomId: number | null = null;
+  private gameStateManager: GameStateManager;
   private lastGenerationTime: number = 0;
   private generationInProgress: Set<number> = new Set();
-  private recentCommands: string[] = [];
 
   constructor(db: Database) {
     this.db = db;
@@ -63,6 +32,11 @@ export class GameController {
     const baseConfig = getNLPConfig();
     const config = applyEnvironmentOverrides(baseConfig);
     this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config);
+    
+    // Initialize game state manager
+    this.gameStateManager = new GameStateManager(db, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
     
     // Initialize command router
     this.commandRouter = new CommandRouter(this.nlpEngine, {
@@ -271,17 +245,14 @@ export class GameController {
   private async processCommand(input: string) {
     if (!input) return;
 
-    // Add to recent commands history (keep last 5)
-    this.recentCommands.unshift(input);
-    if (this.recentCommands.length > 5) {
-      this.recentCommands.pop();
-    }
+    // Add command to game state manager's history
+    this.gameStateManager.addRecentCommand(input);
 
     // Create execution context
     const executionContext: CommandExecutionContext = {
-      mode: this.mode,
-      gameContext: await this.buildGameContext(),
-      recentCommands: this.recentCommands
+      mode: this.gameStateManager.getCurrentSession().mode,
+      gameContext: await this.gameStateManager.buildGameContext(),
+      recentCommands: this.gameStateManager.getRecentCommands()
     };
 
     // Delegate to command router
@@ -365,21 +336,10 @@ export class GameController {
       }
 
       // Create new game with rooms
-      this.currentGameId = await createGameWithRooms(this.db, gameName.trim());
+      const gameId = await createGameWithRooms(this.db, gameName.trim());
       
-      // Get the starting room for this game
-      const gameState = await this.db.get<GameState>(
-        'SELECT current_room_id FROM game_state WHERE game_id = ?',
-        [this.currentGameId]
-      );
-      
-      if (gameState) {
-        this.currentRoomId = gameState.current_room_id;
-      } else {
-        throw new Error('Failed to initialize game state');
-      }
-      
-      this.mode = 'game';
+      // Start game session using game state manager
+      await this.gameStateManager.startGameSession(gameId);
       this.rl.setPrompt('> ');
       
       console.clear();
@@ -502,36 +462,30 @@ export class GameController {
   private async returnToMenu() {
     console.log('Returning to main menu...');
     
-    // Save current game state before returning to menu
-    if (this.currentGameId && this.currentRoomId) {
-      await this.saveGameState();
-    }
+    // End game session (automatically saves state)
+    await this.gameStateManager.endGameSession();
     
-    this.currentGameId = null;
-    this.currentRoomId = null;
-    this.mode = 'menu';
     this.rl.setPrompt('menu> ');
     console.clear();
     this.showWelcome();
   }
 
   private async lookAround() {
-    if (!this.currentGameId || !this.currentRoomId) {
+    if (!this.gameStateManager.isInGame()) {
       console.log('No game is currently loaded.');
       return;
     }
 
+    const session = this.gameStateManager.getCurrentSession();
+
     try {
-      const room = await this.db.get<Room>(
-        'SELECT id, name, description FROM rooms WHERE id = ? AND game_id = ?',
-        [this.currentRoomId, this.currentGameId]
-      );
+      const room = await this.gameStateManager.getCurrentRoom();
 
       if (room) {
         // Mark room as processed when player visits it (locks in the current design)
         await this.db.run(
           'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
-          [this.currentRoomId]
+          [session.roomId]
         );
 
         console.log(`\n${room.name}`);
@@ -539,10 +493,7 @@ export class GameController {
         console.log(room.description);
         
         // Get available connections from this room within this game
-        const connections = await this.db.all<Connection>(
-          'SELECT direction, name FROM connections WHERE from_room_id = ? AND game_id = ? ORDER BY direction',
-          [this.currentRoomId, this.currentGameId]
-        );
+        const connections = await this.gameStateManager.getCurrentRoomConnections();
         
         if (connections && connections.length > 0) {
           // Display thematic names with direction in parentheses
@@ -560,7 +511,7 @@ export class GameController {
         }
 
         // Trigger background room generation (fire and forget)
-        this.preGenerateAdjacentRooms(this.currentRoomId);
+        this.preGenerateAdjacentRooms(session.roomId!);
       } else {
         console.log('You are in a void. Something went wrong!');
       }
@@ -570,7 +521,7 @@ export class GameController {
   }
 
   private async move(args: string[]) {
-    if (!this.currentGameId || !this.currentRoomId) {
+    if (!this.gameStateManager.isInGame()) {
       console.log('No game is currently loaded.');
       return;
     }
@@ -584,23 +535,17 @@ export class GameController {
 
     try {
       // Find connection by either direction or thematic name (case-insensitive)
-      const connection = await this.db.get<Connection>(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
-        [this.currentRoomId, this.currentGameId, userInput, userInput]
-      );
+      const connection = await this.gameStateManager.findConnection(userInput);
 
       if (!connection) {
         // Try NLP processing to interpret the movement command
-        const context = await this.buildGameContext();
+        const context = await this.gameStateManager.buildGameContext();
         const nlpResult = await this.nlpEngine.processCommand(`go ${userInput}`, context);
         
         if (nlpResult && nlpResult.action === 'go' && nlpResult.params.length > 0) {
           // Try again with the NLP-resolved direction
           const resolvedDirection = nlpResult.params[0];
-          const nlpConnection = await this.db.get<Connection>(
-            'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
-            [this.currentRoomId, this.currentGameId, resolvedDirection, resolvedDirection]
-          );
+          const nlpConnection = await this.gameStateManager.findConnection(resolvedDirection);
           
           if (nlpConnection) {
             if (process.env.AI_DEBUG_LOGGING === 'true') {
@@ -612,10 +557,8 @@ export class GameController {
             }
             
             // Update current room
-            this.currentRoomId = nlpConnection.to_room_id;
-            
-            // Auto-save the game state
-            await this.saveGameState();
+            // Move to the new room using game state manager
+            await this.gameStateManager.moveToRoom(nlpConnection.to_room_id);
             
             // Show the new room
             await this.lookAround();
@@ -627,11 +570,8 @@ export class GameController {
         return;
       }
 
-      // Update current room
-      this.currentRoomId = connection.to_room_id;
-      
-      // Auto-save the game state
-      await this.saveGameState();
+      // Move to the new room using game state manager
+      await this.gameStateManager.moveToRoom(connection.to_room_id);
       
       // Show the new room
       await this.lookAround();
@@ -681,27 +621,8 @@ export class GameController {
 
   private async loadSelectedGame(game: Game) {
     try {
-      this.currentGameId = game.id;
-      
-      // Get the current game state
-      const gameState = await this.db.get<GameState>(
-        'SELECT current_room_id FROM game_state WHERE game_id = ?',
-        [game.id]
-      );
-      
-      if (!gameState) {
-        throw new Error('Game state not found');
-      }
-      
-      this.currentRoomId = gameState.current_room_id;
-      
-      // Update last played timestamp
-      await this.db.run(
-        'UPDATE games SET last_played_at = ? WHERE id = ?',
-        [new Date().toISOString(), game.id]
-      );
-      
-      this.mode = 'game';
+      // Start game session using game state manager
+      await this.gameStateManager.startGameSession(game.id);
       this.rl.setPrompt('> ');
       
       console.clear();
@@ -719,25 +640,6 @@ export class GameController {
     }
   }
 
-  private async saveGameState() {
-    if (this.currentGameId && this.currentRoomId) {
-      try {
-        // Update current room in game state
-        await this.db.run(
-          'UPDATE game_state SET current_room_id = ? WHERE game_id = ?',
-          [this.currentRoomId, this.currentGameId]
-        );
-        
-        // Update last played timestamp
-        await this.db.run(
-          'UPDATE games SET last_played_at = ? WHERE id = ?',
-          [new Date().toISOString(), this.currentGameId]
-        );
-      } catch (error) {
-        console.error('Failed to save game state:', error);
-      }
-    }
-  }
 
   // Background Room Generation Methods
   private async preGenerateAdjacentRooms(currentRoomId: number): Promise<void> {
@@ -755,10 +657,11 @@ export class GameController {
     }
 
     // Check total room count limit
-    if (this.currentGameId) {
+    const session = this.gameStateManager.getCurrentSession();
+    if (session.gameId) {
       const roomCount = await this.db.get(
         'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
-        [this.currentGameId]
+        [session.gameId]
       );
       
       const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '100');
@@ -782,11 +685,12 @@ export class GameController {
       const maxDepth = parseInt(process.env.MAX_GENERATION_DEPTH || '5');
       
       // Get all connections FROM current room to existing rooms that haven't been processed yet
+      const session = this.gameStateManager.getCurrentSession();
       const connections = await this.db.all(
         'SELECT c.*, r.generation_processed FROM connections c ' +
         'JOIN rooms r ON c.to_room_id = r.id ' +
         'WHERE c.from_room_id = ? AND c.game_id = ? AND (r.generation_processed = FALSE OR r.generation_processed IS NULL)',
-        [currentRoomId, this.currentGameId]
+        [currentRoomId, session.gameId]
       );
 
       let roomsToGenerate = 0;
@@ -806,10 +710,10 @@ export class GameController {
       }
 
       // Check if we can generate the requested rooms without exceeding limits
-      if (this.currentGameId) {
+      if (session.gameId) {
         const currentRoomCount = await this.db.get(
           'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
-          [this.currentGameId]
+          [session.gameId]
         );
         
         const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '100');
@@ -856,10 +760,12 @@ export class GameController {
   }
 
   private async countMissingRoomsFor(roomId: number): Promise<number> {
+    const session = this.gameStateManager.getCurrentSession();
+    
     // Check if this room was AI-generated and processed
     const room = await this.db.get(
       'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
-      [roomId, this.currentGameId]
+      [roomId, session.gameId]
     );
 
     // If room was AI-processed, respect its design - don't add more connections
@@ -874,7 +780,7 @@ export class GameController {
     for (const direction of basicDirections) {
       const existingConnection = await this.db.get(
         'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [roomId, direction, this.currentGameId]
+        [roomId, direction, session.gameId]
       );
 
       if (!existingConnection) {
@@ -886,10 +792,12 @@ export class GameController {
   }
 
   private async generateMissingRoomsFor(roomId: number, maxRooms: number = 6, remainingQuota: number = Infinity): Promise<number> {
+    const session = this.gameStateManager.getCurrentSession();
+    
     // Check if this room was already processed
     const room = await this.db.get(
       'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
-      [roomId, this.currentGameId]
+      [roomId, session.gameId]
     );
 
     // If room was processed, don't add more connections
@@ -908,7 +816,7 @@ export class GameController {
       // Check if connection already exists
       const existingConnection = await this.db.get(
         'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [roomId, direction, this.currentGameId]
+        [roomId, direction, session.gameId]
       );
 
       if (!existingConnection) {
@@ -932,11 +840,13 @@ export class GameController {
   }
 
   private async generateSingleRoom(fromRoomId: number, direction: string): Promise<boolean> {
+    const session = this.gameStateManager.getCurrentSession();
+    
     try {
       // Check if a connection already exists for this direction to prevent duplicates
       const existingConnection = await this.db.get(
         'SELECT id FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [fromRoomId, direction, this.currentGameId]
+        [fromRoomId, direction, session.gameId]
       );
       
       if (existingConnection) {
@@ -948,7 +858,7 @@ export class GameController {
       // Get existing room names for context
       const existingRooms = await this.db.all(
         'SELECT name FROM rooms WHERE game_id = ? ORDER BY id',
-        [this.currentGameId]
+        [session.gameId]
       );
       const roomNames = existingRooms.map(room => room.name);
 
@@ -966,7 +876,7 @@ export class GameController {
       while (true) {
         const existingRoom = await this.db.get(
           'SELECT id FROM rooms WHERE game_id = ? AND name = ?',
-          [this.currentGameId, uniqueName]
+          [session.gameId, uniqueName]
         );
         
         if (!existingRoom) {
@@ -987,7 +897,7 @@ export class GameController {
       // Save to database (new rooms start as unprocessed)
       const roomResult = await this.db.run(
         'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-        [this.currentGameId, uniqueName, newRoom.description, false]
+        [session.gameId, uniqueName, newRoom.description, false]
       );
 
       // Find the AI-generated thematic name for the outgoing connection
@@ -1011,7 +921,7 @@ export class GameController {
       // Create outgoing connection from origin room with thematic name
       await this.db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [this.currentGameId, fromRoomId, roomResult.lastID, direction, outgoingThematicName]
+        [session.gameId, fromRoomId, roomResult.lastID, direction, outgoingThematicName]
       );
 
       // Create AI-generated connections from the new room
@@ -1024,7 +934,7 @@ export class GameController {
             // Create the return connection with thematic name
             await this.db.run(
               'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-              [this.currentGameId, roomResult.lastID, fromRoomId, connection.direction, connection.name]
+              [session.gameId, roomResult.lastID, fromRoomId, connection.direction, connection.name]
             );
           } else {
             // For other directions, we'll create stub rooms later (in Phase 4)
@@ -1040,7 +950,7 @@ export class GameController {
         if (reverseDirection) {
           await this.db.run(
             'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-            [this.currentGameId, roomResult.lastID, fromRoomId, reverseDirection, returnThematicName]
+            [session.gameId, roomResult.lastID, fromRoomId, reverseDirection, returnThematicName]
           );
         }
       }
@@ -1073,49 +983,6 @@ export class GameController {
     return directionMap[direction.toLowerCase()] || null;
   }
 
-  private async buildGameContext(): Promise<GameContext> {
-    const context: GameContext = {
-      mode: this.mode,
-      recentCommands: [...this.recentCommands]
-    };
-
-    // Add current room context if in game mode
-    if (this.mode === 'game' && this.currentGameId && this.currentRoomId) {
-      try {
-        const room = await this.db.get<Room>(
-          'SELECT id, name, description FROM rooms WHERE id = ? AND game_id = ?',
-          [this.currentRoomId, this.currentGameId]
-        );
-
-        if (room) {
-          // Get available exits
-          const connections = await this.db.all<Connection>(
-            'SELECT direction, name FROM connections WHERE from_room_id = ? AND game_id = ? ORDER BY direction',
-            [this.currentRoomId, this.currentGameId]
-          );
-
-          const availableExits = connections?.map(c => c.direction) || [];
-          const thematicExits = connections?.map(c => ({direction: c.direction, name: c.name})) || [];
-
-          context.currentRoom = {
-            id: room.id,
-            name: room.name,
-            description: room.description,
-            availableExits,
-            thematicExits
-          };
-          
-          context.gameId = this.currentGameId;
-        }
-      } catch (error) {
-        if (process.env.AI_DEBUG_LOGGING === 'true') {
-          console.error('Failed to build game context:', error);
-        }
-      }
-    }
-
-    return context;
-  }
 
   private generateComplementaryConnectionName(returnName: string, direction: string): string {
     // Create a complementary thematic name based on the return path description
