@@ -41,6 +41,16 @@ describe('Session Interface', () => {
       expect(result!.command).toBe('cmd');
       expect(result!.args).toEqual(['go', 'north']);
     });
+
+    test('should detect cmd flag with game-id', () => {
+      const args = ['--cmd', 'look', '--game-id', '123'];
+      const result = parseSessionArguments(args);
+      
+      expect(result).not.toBeNull();
+      expect(result!.command).toBe('cmd');
+      expect(result!.args).toEqual(['look']);
+      expect(result!.gameId).toBe(123);
+    });
   });
 
   describe('Session Mode Detection', () => {
@@ -82,6 +92,27 @@ describe('Session Interface', () => {
         
         // Should contain room information
         expect(output).toContain('Grand Entrance Hall');
+        expect(output.trim().length).toBeGreaterThan(0);
+      } finally {
+        console.log = originalLog;
+      }
+    });
+
+    test('should execute go north command and move to new room', async () => {
+      const args = ['--cmd', 'go', 'north'];
+      
+      // Capture console.log output
+      const originalLog = console.log;
+      let output = '';
+      console.log = (message: string) => {
+        output += message + '\n';
+      };
+
+      try {
+        await runSessionMode(args);
+        
+        // Should contain new room information (Scholar's Library)
+        expect(output).toContain("Scholar's Library");
         expect(output.trim().length).toBeGreaterThan(0);
       } finally {
         console.log = originalLog;
