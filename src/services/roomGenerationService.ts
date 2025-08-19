@@ -56,12 +56,12 @@ export class RoomGenerationService {
       [roomId, gameId]
     );
 
-    // If room was AI-processed, respect its design - don't add more connections
+    // If room was processed, respect its design - don't add more connections FROM it
     if (room && room.generation_processed) {
       return 0;
     }
 
-    // For unprocessed rooms, check for missing basic directions
+    // For unprocessed rooms (FALSE or NULL), check for missing basic directions
     const basicDirections = ['north', 'south', 'east', 'west'];
     let missingCount = 0;
 
@@ -94,7 +94,7 @@ export class RoomGenerationService {
       [roomId, gameId]
     );
 
-    // If room was processed, don't add more connections
+    // If room was processed, don't add more connections FROM it
     if (room && room.generation_processed) {
       return 0;
     }
@@ -151,6 +151,9 @@ export class RoomGenerationService {
       );
       
       if (existingConnection) {
+        if (this.isDebugEnabled()) {
+          console.log(`🚫 Skipping duplicate connection: ${context.direction} from room ${context.fromRoomId}`);
+        }
         return { 
           success: false, 
           error: new Error('Connection already exists') 
@@ -223,10 +226,25 @@ export class RoomGenerationService {
       }
 
       // Create outgoing connection from origin room with thematic name
-      const connectionResult = await this.db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [context.gameId, context.fromRoomId, roomResult.lastID, context.direction, outgoingThematicName]
-      );
+      // Handle unique constraint violation gracefully
+      let connectionResult;
+      try {
+        connectionResult = await this.db.run(
+          'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+          [context.gameId, context.fromRoomId, roomResult.lastID, context.direction, outgoingThematicName]
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+          if (this.isDebugEnabled()) {
+            console.log(`🚫 Unique constraint prevented duplicate connection: ${context.direction} from room ${context.fromRoomId}`);
+          }
+          return { 
+            success: false, 
+            error: new Error('Connection already exists (database constraint)') 
+          };
+        }
+        throw error; // Re-throw other errors
+      }
 
       // Create AI-generated connections from the new room
       if (newRoom.connections && newRoom.connections.length > 0) {
@@ -236,10 +254,21 @@ export class RoomGenerationService {
           
           if (isReturnPath) {
             // Create the return connection with thematic name
-            await this.db.run(
-              'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-              [context.gameId, roomResult.lastID, context.fromRoomId, connection.direction, connection.name]
-            );
+            try {
+              await this.db.run(
+                'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+                [context.gameId, roomResult.lastID, context.fromRoomId, connection.direction, connection.name]
+              );
+            } catch (error) {
+              if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+                if (this.isDebugEnabled()) {
+                  console.log(`🚫 Unique constraint prevented duplicate return connection: ${connection.direction} from room ${roomResult.lastID}`);
+                }
+                // Continue processing other connections even if this one fails
+              } else {
+                throw error; // Re-throw other errors
+              }
+            }
           } else {
             // For other directions, we'll create stub rooms later (in Phase 4)
             // For now, just log that we have additional connections planned
@@ -252,10 +281,21 @@ export class RoomGenerationService {
         // Fallback: ensure new room has at least one exit (back to where we came from)
         const reverseDirection = this.getReverseDirection(context.direction);
         if (reverseDirection) {
-          await this.db.run(
-            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-            [context.gameId, roomResult.lastID, context.fromRoomId, reverseDirection, returnThematicName]
-          );
+          try {
+            await this.db.run(
+              'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+              [context.gameId, roomResult.lastID, context.fromRoomId, reverseDirection, returnThematicName]
+            );
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+              if (this.isDebugEnabled()) {
+                console.log(`🚫 Unique constraint prevented duplicate fallback connection: ${reverseDirection} from room ${roomResult.lastID}`);
+              }
+              // This is just a fallback, so it's okay if it fails
+            } else {
+              throw error; // Re-throw other errors
+            }
+          }
         }
       }
 

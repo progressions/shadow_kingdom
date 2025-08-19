@@ -96,6 +96,7 @@ export class BackgroundGenerationService {
       const limits = this.getGenerationLimits();
       
       // Get all connections FROM current room to existing rooms that haven't been processed yet
+      // Generate for unprocessed rooms connected to ANY room (visited or not)
       const connections = await this.db.all(
         'SELECT c.*, r.generation_processed FROM connections c ' +
         'JOIN rooms r ON c.to_room_id = r.id ' +
@@ -145,19 +146,28 @@ export class BackgroundGenerationService {
         );
 
         if (targetRoom) {
-          const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
-            targetRoom.id, 
-            gameId, 
-            limits.maxGenerationDepth, 
-            roomsToGenerate - generatedCount
-          );
-          generatedCount += roomsGenerated;
-          
-          // Mark this room as processed so we don't generate for it again
-          await this.db.run(
-            'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
+          // Double-check room is still unprocessed before generation (race condition protection)
+          const currentStatus = await this.db.get(
+            'SELECT generation_processed FROM rooms WHERE id = ?',
             [targetRoom.id]
           );
+          
+          if (currentStatus && !currentStatus.generation_processed) {
+            const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
+              targetRoom.id, 
+              gameId, 
+              limits.maxGenerationDepth, 
+              roomsToGenerate - generatedCount
+            );
+            generatedCount += roomsGenerated;
+            
+            // Mark this room as processed so we don't generate for it again
+            // Only update if it's still FALSE (another process might have marked it)
+            await this.db.run(
+              'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
+              [targetRoom.id]
+            );
+          }
         }
       }
       

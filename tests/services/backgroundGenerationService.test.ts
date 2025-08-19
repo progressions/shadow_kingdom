@@ -147,9 +147,10 @@ describe('BackgroundGenerationService', () => {
       const targetRoomId = roomResult.lastID as number;
       
       // Create connection FROM starting room TO unprocessed room to trigger generation logic
+      // Use 'south' because Grand Entrance Hall already has 'north' and 'east' connections
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, targetRoomId, 'north', 'north']
+        [testGameId, testFromRoomId, targetRoomId, 'south', 'south']
       );
       
       // Mock room generation service methods
@@ -268,9 +269,10 @@ describe('BackgroundGenerationService', () => {
       const roomId = roomResult.lastID as number;
       
       // Create connection FROM starting room TO unprocessed room
+      // Use 'up' because Grand Entrance Hall already has 'north', 'east', and 'west' connections
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, roomId, 'north', 'north']
+        [testGameId, testFromRoomId, roomId, 'up', 'up']
       );
 
       // Mock the room generation service methods
@@ -329,7 +331,7 @@ describe('BackgroundGenerationService', () => {
       
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, targetRoomId, 'east', 'east']
+        [testGameId, testFromRoomId, targetRoomId, 'down', 'down']
       );
 
       // Mock to return more missing rooms than the depth limit
@@ -361,7 +363,7 @@ describe('BackgroundGenerationService', () => {
 
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, targetRoomId, 'west', 'west']
+        [testGameId, testFromRoomId, targetRoomId, 'northwest', 'northwest']
       );
 
       // Mock room generation service to throw error

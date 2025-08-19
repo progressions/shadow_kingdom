@@ -72,6 +72,9 @@ export async function initializeDatabase(db: Database): Promise<void> {
     // Check if direction column exists in connections table, add it if not
     await ensureConnectionDirectionColumn(db);
 
+    // Add unique constraint to prevent duplicate connections (fix for duplicate connection bug)
+    await ensureConnectionUniqueConstraint(db);
+
     // Ensure regions table exists (Phase 1.1)
     await ensureRegionsTable(db);
 
@@ -200,6 +203,44 @@ async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
     }
   } catch (error) {
     console.error('Error ensuring direction column:', error);
+    throw error;
+  }
+}
+
+async function ensureConnectionUniqueConstraint(db: Database): Promise<void> {
+  try {
+    // Check if unique constraint already exists by looking for the unique index
+    const constraintExists = await db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM sqlite_master 
+       WHERE type='index' AND name='unique_connections_per_direction'`
+    );
+
+    if (!constraintExists || constraintExists.count === 0) {
+      console.log('Adding unique constraint to prevent duplicate connections...');
+      
+      // First, remove any existing duplicate connections
+      console.log('Cleaning up existing duplicate connections...');
+      
+      // Find and remove duplicate connections, keeping only the first one
+      await db.run(`
+        DELETE FROM connections 
+        WHERE id NOT IN (
+          SELECT MIN(id) 
+          FROM connections 
+          GROUP BY game_id, from_room_id, direction
+        )
+      `);
+      
+      // Create unique index to prevent future duplicates
+      await db.run(`
+        CREATE UNIQUE INDEX unique_connections_per_direction 
+        ON connections(game_id, from_room_id, direction)
+      `);
+      
+      console.log('Unique constraint added - duplicate connections prevented');
+    }
+  } catch (error) {
+    console.error('Error ensuring connection unique constraint:', error);
     throw error;
   }
 }
