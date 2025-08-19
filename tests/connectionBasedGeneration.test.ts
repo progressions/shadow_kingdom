@@ -62,9 +62,8 @@ describe('Connection-Based Generation Schema', () => {
         [gameId]
       );
       
-      expect(unfilledConnections).toHaveLength(2);
-      expect(unfilledConnections[0].to_room_id).toBeNull();
-      expect(unfilledConnections[1].to_room_id).toBeNull();
+      expect(unfilledConnections.length).toBeGreaterThanOrEqual(2); // Starter games have expansion connections
+      expect(unfilledConnections.every(c => c.to_room_id === null)).toBe(true);
     });
 
     it('should distinguish between filled and unfilled connections', async () => {
@@ -94,9 +93,10 @@ describe('Connection-Based Generation Schema', () => {
         [gameId]
       );
       
-      expect(unfilledConnections).toHaveLength(1);
-      expect(unfilledConnections[0].name).toBe('unfilled connection');
-      expect(unfilledConnections[0].to_room_id).toBeNull();
+      expect(unfilledConnections.length).toBeGreaterThanOrEqual(1); // Includes starter expansion connections
+      const ourUnfilledConnection = unfilledConnections.find(c => c.name === 'unfilled connection');
+      expect(ourUnfilledConnection).toBeDefined();
+      expect(ourUnfilledConnection!.to_room_id).toBeNull();
       
       // Should include the filled connection we created plus existing connections from game creation
       expect(filledConnections.length).toBeGreaterThan(0);
@@ -125,8 +125,8 @@ describe('Connection-Based Generation Schema', () => {
       
       // Create a new room to connect to
       const roomResult = await db.run(
-        'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-        [gameId, 'New Room', 'A newly generated room', false]
+        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
+        [gameId, 'New Room', 'A newly generated room']
       );
       
       const newRoomId = roomResult.lastID;

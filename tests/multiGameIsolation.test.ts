@@ -61,7 +61,7 @@ describe('Multi-Game Isolation', () => {
 
       // Both games should have the same connection structure
       expect(game1Connections.length).toEqual(game2Connections.length);
-      expect(game1Connections.length).toBe(11); // 10 bidirectional + 1 secret passage
+      expect(game1Connections.length).toBe(18); // 10 bidirectional + 1 secret passage + 7 unfilled expansion connections
 
       // But different connection IDs and room references
       const game1ConnectionIds = game1Connections.map(c => c.id).sort();

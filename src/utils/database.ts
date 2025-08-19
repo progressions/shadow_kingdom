@@ -96,6 +96,10 @@ export class Database {
   isConnected(): boolean {
     return this.db !== null;
   }
+
+  getDbPath(): string {
+    return this.dbPath;
+  }
 }
 
 export default Database;
