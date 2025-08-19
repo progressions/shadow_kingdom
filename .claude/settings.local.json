@@ -30,7 +30,15 @@
       "Bash(timeout:*)",
       "Bash(git pull:*)",
       "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"look\")",
-      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go up\" --game-id 47)"
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go up\" --game-id 47)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"new\")",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"look\" --game-id 48)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go north\" --game-id 48)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"look\" --game-id 49)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go up\" --game-id 49)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"look\" --game-id 50)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go east\" --game-id 50)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go west\" --game-id 50)"
     ],
     "deny": [],
     "ask": []

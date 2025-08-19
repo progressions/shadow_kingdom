@@ -91,14 +91,17 @@ export class RoomGenerationService {
     maxRooms: number = 6, 
     remainingQuota: number = Infinity
   ): Promise<number> {
-    // Check if this room was already processed
+    // CRITICAL: Double-check if this room was already processed
     const room = await this.db.get(
       'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
       [roomId, gameId]
     );
 
-    // If room was processed, don't add more connections
+    // If room was processed, absolutely do NOT add more connections
     if (room && room.generation_processed) {
+      if (this.isDebugEnabled()) {
+        console.log(`🔒 Room ${roomId} is already processed - skipping generation`);
+      }
       return 0;
     }
 
@@ -117,6 +120,19 @@ export class RoomGenerationService {
       );
 
       if (!existingConnection) {
+        // CRITICAL: Final safety check - ensure room is still unprocessed before generating
+        const finalCheck = await this.db.get(
+          'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
+          [roomId, gameId]
+        );
+        
+        if (finalCheck && finalCheck.generation_processed) {
+          if (this.isDebugEnabled()) {
+            console.log(`🔒 Room ${roomId} was processed during generation - aborting`);
+          }
+          break; // Stop generating for this room
+        }
+
         // Generate new room in this direction
         const result = await this.generateSingleRoom({
           gameId,

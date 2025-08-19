@@ -456,7 +456,11 @@ export class GameController {
       const room = await this.gameStateManager.getCurrentRoom();
 
       if (room) {
-        // Mark room as processed when player visits it (locks in the current design)
+        // FIRST: Trigger background room generation before marking as processed
+        // This ensures generation happens while room is still unprocessed
+        this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+
+        // SECOND: Mark room as processed when player visits it (locks in the current design)
         await this.db.run(
           'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
           [session.roomId]
@@ -467,9 +471,6 @@ export class GameController {
         
         // Use room display service to format and display the room
         this.roomDisplayService.displayRoom(room, connections);
-
-        // Trigger background room generation (fire and forget)
-        this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
       } else {
         this.roomDisplayService.displayVoidState();
       }
