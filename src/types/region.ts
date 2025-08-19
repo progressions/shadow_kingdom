@@ -20,7 +20,6 @@ export interface RoomWithRegion {
   game_id: number;
   name: string;
   description: string;
-  generation_processed?: boolean;
   region_id: number | null;
   region_distance: number | null;
 }

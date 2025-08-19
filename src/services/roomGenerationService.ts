@@ -49,114 +49,7 @@ export class RoomGenerationService {
   }
 
 
-  /**
-   * Count missing basic direction connections for a room
-   */
-  async countMissingRoomsFor(roomId: number, gameId: number): Promise<number> {
-    // Check if this room was AI-generated and processed
-    const room = await this.db.get(
-      'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
-      [roomId, gameId]
-    );
 
-    // If room was AI-processed, respect its design - don't add more connections
-    if (room && room.generation_processed) {
-      return 0;
-    }
-
-    // For unprocessed rooms, check for missing basic directions
-    const basicDirections = ['north', 'south', 'east', 'west'];
-    let missingCount = 0;
-
-    for (const direction of basicDirections) {
-      const existingConnection = await this.db.get(
-        'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [roomId, direction, gameId]
-      );
-
-      if (!existingConnection) {
-        missingCount++;
-      }
-    }
-
-    return Math.min(missingCount, 4);
-  }
-
-  /**
-   * Generate missing room connections for an unprocessed room
-   */
-  async generateMissingRoomsFor(
-    roomId: number, 
-    gameId: number, 
-    maxRooms: number = 6, 
-    remainingQuota: number = Infinity
-  ): Promise<number> {
-    // CRITICAL: Double-check if this room was already processed
-    const room = await this.db.get(
-      'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
-      [roomId, gameId]
-    );
-
-    // If room was processed, absolutely do NOT add more connections
-    if (room && room.generation_processed) {
-      if (this.isDebugEnabled()) {
-        console.log(`🔒 Room ${roomId} is already processed - skipping generation`);
-      }
-      return 0;
-    }
-
-    // Generate missing connections for unprocessed rooms
-    const basicDirections = ['north', 'south', 'east', 'west'];
-    let generatedCount = 0;
-    const maxGenerations = Math.min(maxRooms, remainingQuota, 4);
-
-    for (const direction of basicDirections) {
-      if (generatedCount >= maxGenerations) break;
-      
-      // Check if connection already exists
-      const existingConnection = await this.db.get(
-        'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [roomId, direction, gameId]
-      );
-
-      if (!existingConnection) {
-        // CRITICAL: Final safety check - ensure room is still unprocessed before generating
-        const finalCheck = await this.db.get(
-          'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
-          [roomId, gameId]
-        );
-        
-        if (finalCheck && finalCheck.generation_processed) {
-          if (this.isDebugEnabled()) {
-            console.log(`🔒 Room ${roomId} was processed during generation - aborting`);
-          }
-          break; // Stop generating for this room
-        }
-
-        // Generate new room in this direction
-        const result = await this.generateSingleRoom({
-          gameId,
-          fromRoomId: roomId,
-          direction,
-          theme: 'mysterious fantasy kingdom'
-        });
-        
-        if (result.success) {
-          generatedCount++;
-        }
-      }
-    }
-
-    // Mark room as processed after generating connections
-    if (generatedCount > 0) {
-      await this.db.run(
-        'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
-        [roomId]
-      );
-    }
-
-    return generatedCount;
-  }
 
   /**
    * Generate a single room and connection in a specific direction
@@ -307,10 +200,10 @@ export class RoomGenerationService {
         }
       }
 
-      // Save to database with region assignment (new rooms start as unprocessed)
+      // Save to database with region assignment
       const roomResult = await this.db.run(
-        'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
-        [context.gameId, uniqueName, newRoom.description, false, regionId, regionDistance]
+        'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
+        [context.gameId, uniqueName, newRoom.description, regionId, regionDistance]
       );
 
       // Find the AI-generated thematic name for the outgoing connection
@@ -590,10 +483,10 @@ export class RoomGenerationService {
         }
       }
 
-      // Create the room with region assignment (new rooms start as unprocessed for additional expansion)
+      // Create the room with region assignment
       const roomResult = await this.db.run(
-        'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
-        [connection.game_id, uniqueName, newRoom.description, false, regionId, regionDistance]
+        'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
+        [connection.game_id, uniqueName, newRoom.description, regionId, regionDistance]
       );
 
       const newRoomId = roomResult.lastID as number;

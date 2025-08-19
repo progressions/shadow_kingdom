@@ -155,11 +155,8 @@ export class BackgroundGenerationService {
       const nearbyUnfilledConnections = await this.findNearbyUnfilledConnections(currentRoomId, gameId);
       
       if (nearbyUnfilledConnections.length === 0) {
-        // Fallback: Check for legacy unprocessed rooms (backward compatibility)
-        const legacyGeneratedRooms = await this.processLegacyUnprocessedRooms(currentRoomId, gameId, limits);
-        
-        if (legacyGeneratedRooms === 0 && this.isDebugEnabled()) {
-          console.log('🔍 No unfilled connections or legacy unprocessed rooms found for background generation');
+        if (this.isDebugEnabled()) {
+          console.log('🔍 No unfilled connections found for background generation');
         }
         return;
       }
@@ -230,108 +227,6 @@ export class BackgroundGenerationService {
     }
   }
 
-  /**
-   * Process legacy unprocessed rooms (backward compatibility during transition)
-   */
-  async processLegacyUnprocessedRooms(currentRoomId: number, gameId: number, limits: GenerationLimits): Promise<number> {
-    try {
-      // Get all connections FROM current room to existing rooms that haven't been processed yet
-      const connections = await this.db.all(
-        'SELECT c.*, r.generation_processed FROM connections c ' +
-        'JOIN rooms r ON c.to_room_id = r.id ' +
-        'WHERE c.from_room_id = ? AND c.game_id = ? AND (r.generation_processed = FALSE OR r.generation_processed IS NULL)',
-        [currentRoomId, gameId]
-      );
-
-      if (connections.length === 0) {
-        return 0;
-      }
-
-      if (this.isDebugEnabled()) {
-        console.log(`🔄 Processing ${connections.length} legacy unprocessed rooms`);
-      }
-
-      let roomsToGenerate = 0;
-      
-      // For each connection that leads to an unprocessed room
-      for (const connection of connections) {
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
-
-        if (targetRoom) {
-          // CRITICAL: Double-check if room is still unprocessed
-          if (!targetRoom.generation_processed) {
-            // Count missing rooms for this target
-            const missingCount = await this.roomGenerationService.countMissingRoomsFor(targetRoom.id, gameId);
-            roomsToGenerate += Math.min(missingCount, limits.maxGenerationDepth);
-          } else if (this.isDebugEnabled()) {
-            console.log(`🔒 Legacy target room ${targetRoom.id} already processed - skipping`);
-          }
-        }
-      }
-
-      // Check if we can generate the requested rooms without exceeding limits
-      const currentRoomCount = await this.db.get(
-        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
-        [gameId]
-      );
-      
-      const roomsCanGenerate = Math.max(0, limits.maxRoomsPerGame - (currentRoomCount?.count || 0));
-      
-      if (roomsToGenerate > roomsCanGenerate) {
-        if (this.isDebugEnabled()) {
-          console.log(`🏰 Limited legacy generation: ${roomsCanGenerate} rooms available (${roomsToGenerate} requested)`);
-        }
-        roomsToGenerate = roomsCanGenerate;
-      }
-
-      // Generate rooms with depth limit
-      let generatedCount = 0;
-      for (const connection of connections) {
-        if (generatedCount >= roomsToGenerate) break;
-        
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
-
-        if (targetRoom) {
-          // CRITICAL: Final check before generation
-          if (!targetRoom.generation_processed) {
-            const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
-              targetRoom.id, 
-              gameId, 
-              limits.maxGenerationDepth, 
-              roomsToGenerate - generatedCount
-            );
-            generatedCount += roomsGenerated;
-            
-            // Mark this room as processed so we don't generate for it again
-            await this.db.run(
-              'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
-              [targetRoom.id]
-            );
-          } else if (this.isDebugEnabled()) {
-            console.log(`🔒 Legacy target room ${targetRoom.id} was processed before generation - skipping`);
-          }
-        }
-      }
-
-      if (this.isDebugEnabled()) {
-        console.log(`🔄 Legacy processing completed: ${generatedCount} rooms generated`);
-      }
-
-      return generatedCount;
-
-    } catch (error) {
-      if (this.isDebugEnabled()) {
-        console.error('Legacy room processing failed:', error);
-      }
-      return 0;
-    }
-  }
 
   /**
    * Get generation limits from environment or defaults
