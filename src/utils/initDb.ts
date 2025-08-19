@@ -12,24 +12,27 @@ export async function initializeDatabase(db: Database): Promise<void> {
       )
     `);
 
-    // Create rooms table
+    // Create rooms table with all columns from the start
     await db.run(`
       CREATE TABLE IF NOT EXISTS rooms (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         game_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
+        region_id INTEGER,
+        region_distance INTEGER,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
       )
     `);
 
-    // Create connections table
+    // Create connections table with all columns from the start
     await db.run(`
       CREATE TABLE IF NOT EXISTS connections (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         game_id INTEGER NOT NULL,
         from_room_id INTEGER NOT NULL,
         to_room_id INTEGER,
+        direction TEXT,
         name TEXT NOT NULL,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
         FOREIGN KEY (from_room_id) REFERENCES rooms(id),
@@ -49,22 +52,6 @@ export async function initializeDatabase(db: Database): Promise<void> {
       )
     `);
 
-    // Create indexes for faster lookups
-    await db.run(`
-      CREATE INDEX IF NOT EXISTS idx_connections_from_room 
-      ON connections(from_room_id, name)
-    `);
-
-    await db.run(`
-      CREATE INDEX IF NOT EXISTS idx_rooms_game_id 
-      ON rooms(game_id)
-    `);
-
-    await db.run(`
-      CREATE INDEX IF NOT EXISTS idx_connections_game_id 
-      ON connections(game_id)
-    `);
-
     // Create regions table
     await db.run(`
       CREATE TABLE IF NOT EXISTS regions (
@@ -79,16 +66,46 @@ export async function initializeDatabase(db: Database): Promise<void> {
       )
     `);
 
-    // Create regions indexes
+    // Create indexes for faster lookups
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_from_room 
+      ON connections(from_room_id, direction, name)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_rooms_game_id 
+      ON rooms(game_id)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_game_id 
+      ON connections(game_id)
+    `);
+
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_regions_game ON regions(game_id)
     `);
 
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_rooms_region_id ON rooms(region_id) 
+      WHERE region_id IS NOT NULL
+    `);
 
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_unfilled 
+      ON connections(game_id, from_room_id) WHERE to_room_id IS NULL
+    `);
+    
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_filled 
+      ON connections(game_id, from_room_id, to_room_id) WHERE to_room_id IS NOT NULL
+    `);
+
+    // Run migrations for all databases, but skip the complex table recreation for in-memory
     // Check if direction column exists in connections table, add it if not
     await ensureConnectionDirectionColumn(db);
 
-    // Check if region columns exist in rooms table, add them if not
+    // Check if region columns exist in rooms table, add them if not  
     await ensureRegionColumns(db);
 
     // Migrate connections table to support nullable to_room_id
@@ -162,6 +179,12 @@ export async function migrateExistingData(db: Database): Promise<void> {
 
 async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
   try {
+    // Skip complex column additions for in-memory databases (they're already created with correct schema)
+    if (db.getDbPath() === ':memory:') {
+      console.log('Skipping direction column migration for in-memory database');
+      return;
+    }
+
     // Check if direction column exists in connections table
     const columnExists = await db.get<{ count: number }>(
       `SELECT COUNT(*) as count FROM pragma_table_info('connections') 
@@ -195,6 +218,12 @@ async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
 
 async function ensureRegionColumns(db: Database): Promise<void> {
   try {
+    // Skip complex column additions for in-memory databases (they're already created with correct schema)
+    if (db.getDbPath() === ':memory:') {
+      console.log('Skipping region column migration for in-memory database');
+      return;
+    }
+
     // Check if region_id column exists in rooms table
     const regionIdExists = await db.get<{ count: number }>(`
       SELECT COUNT(*) as count FROM pragma_table_info('rooms') 
@@ -244,6 +273,12 @@ async function ensureRegionColumns(db: Database): Promise<void> {
 
 async function ensureNullableToRoomId(db: Database): Promise<void> {
   try {
+    // Skip complex table recreation for in-memory databases (they're already created with correct schema)
+    if (db.getDbPath() === ':memory:') {
+      console.log('Skipping connection migration for in-memory database');
+      return;
+    }
+
     // Check if we need to migrate the connections table to allow NULL to_room_id
     // We'll check if there are any constraints that would prevent NULL values
     const tableInfo = await db.all(`PRAGMA table_info('connections')`);
