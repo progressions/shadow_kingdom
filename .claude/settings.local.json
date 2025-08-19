@@ -16,7 +16,8 @@
       "Bash(grep:*)",
       "Bash(awk:*)",
       "Bash(npm run test:coverage:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(git tag:*)"
     ],
     "deny": [],
     "ask": []
