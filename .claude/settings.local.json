@@ -11,7 +11,12 @@
       "Bash(npm run dev:*)",
       "Bash(node:*)",
       "Bash(rm:*)",
-      "Bash(ts-node:*)"
+      "Bash(ts-node:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(awk:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []
