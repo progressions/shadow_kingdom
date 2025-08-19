@@ -26,7 +26,8 @@
       "Bash(timeout 15s npm test -- --detectOpenHandles)",
       "Bash(timeout 15s npm test)",
       "Bash(timeout 30s npm test:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

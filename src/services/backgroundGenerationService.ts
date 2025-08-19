@@ -3,6 +3,7 @@ import { RoomGenerationService, GenerationLimits } from './roomGenerationService
 
 export interface BackgroundGenerationOptions {
   enableDebugLogging?: boolean;
+  disableBackgroundGeneration?: boolean;
 }
 
 export interface BackgroundGenerationStats {
@@ -19,6 +20,7 @@ export class BackgroundGenerationService {
   private options: BackgroundGenerationOptions;
   private lastGenerationTime: number = 0;
   private generationInProgress: Set<number> = new Set();
+  private backgroundPromises: Set<Promise<void>> = new Set();
 
   constructor(
     private db: Database,
@@ -27,6 +29,7 @@ export class BackgroundGenerationService {
   ) {
     this.options = {
       enableDebugLogging: false,
+      disableBackgroundGeneration: false,
       ...options
     };
   }
@@ -64,7 +67,16 @@ export class BackgroundGenerationService {
       }
 
       // Fire and forget - don't await this in production
-      this.expandFromAdjacentRooms(currentRoomId, gameId);
+      // In test mode, we can disable background generation to avoid dangling promises
+      if (this.options.disableBackgroundGeneration) {
+        // In test mode, await the operation to avoid hanging
+        await this.expandFromAdjacentRooms(currentRoomId, gameId);
+      } else {
+        // In production mode, fire and forget
+        const promise = this.expandFromAdjacentRooms(currentRoomId, gameId);
+        this.backgroundPromises.add(promise);
+        promise.finally(() => this.backgroundPromises.delete(promise));
+      }
       this.lastGenerationTime = Date.now();
     } catch (error) {
       if (this.isDebugEnabled()) {
@@ -230,5 +242,15 @@ export class BackgroundGenerationService {
   resetGenerationState(): void {
     this.lastGenerationTime = 0;
     this.generationInProgress.clear();
+    this.backgroundPromises.clear();
+  }
+
+  /**
+   * Wait for all background operations to complete (useful for testing)
+   */
+  async waitForBackgroundOperations(): Promise<void> {
+    if (this.backgroundPromises.size > 0) {
+      await Promise.all(Array.from(this.backgroundPromises));
+    }
   }
 }
