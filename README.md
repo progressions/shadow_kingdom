@@ -1,19 +1,21 @@
 # Shadow Kingdom
 
-A dynamic, AI-powered text adventure game built with Node.js, TypeScript, and Grok AI.
+A dynamic, AI-powered text adventure game built with Node.js, TypeScript, and Grok AI featuring region-based world generation.
 
 ## Overview
 
-Shadow Kingdom is an interactive text-based adventure game that uses AI to generate rich, atmospheric rooms and connections on-demand. Players explore a mysterious fantasy kingdom where each room is uniquely crafted with thematic descriptions and atmospheric connections.
+Shadow Kingdom is an interactive text-based adventure game that uses AI to generate rich, atmospheric rooms and connections within thematically coherent regions. Players explore a mysterious fantasy kingdom where each area tells a cohesive story through connected spaces, from grand manor estates to ancient crypts and mystical gardens.
 
 ## Features
 
-- **AI-Generated Content**: Rooms, descriptions, and connections dynamically created by Grok AI
-- **Thematic Connections**: Navigate using either cardinal directions ("north") or atmospheric descriptions ("through the crystal archway")
-- **Persistent Worlds**: Save and load multiple game sessions with SQLite database
-- **Smart Generation**: AI-controlled room density with 30% probability connections for realistic exploration
-- **Visit-to-Lock System**: Rooms maintain consistent layout after first visit
-- **Interactive CLI**: Full command-line interface with help system and shortcuts
+- **🏰 Region-Based World Generation**: Thematically coherent areas (mansions, forests, caves, towns) with distance-based transitions
+- **🤖 AI-Generated Content**: Rooms, descriptions, and connections dynamically created by Grok AI with regional context
+- **🧭 Dual Navigation System**: Navigate using cardinal directions ("north") or atmospheric descriptions ("through the crystal archway")
+- **💾 Persistent Worlds**: Save and load multiple game sessions with SQLite database
+- **📍 Region Discovery**: Explore region centers containing important content and NPCs
+- **🎯 Session Interface**: Programmatic command execution for automation and testing
+- **🔍 Debug Commands**: Inspect region statistics and world structure
+- **🏛️ Visit-to-Lock System**: Rooms maintain consistent layout after first visit
 
 ## Installation
 
@@ -71,12 +73,38 @@ npm start
 
 ### In-Game Commands
 
+#### Movement & Exploration
 - `look` - Examine your current location
 - `go <direction>` - Move in a direction (e.g., "go north")
 - `<direction>` - Direct movement shortcuts (n, s, e, w, up, down)
 - `<thematic name>` - Use atmospheric connection names
+
+#### Region Commands
+- `region` - Show current room's region information
+- `regions` - List all regions in current game
+- `region-stats` - Show detailed region statistics
+
+#### System Commands
 - `help` - Show game commands
 - `menu` - Return to main menu
+
+### Session Interface
+
+For automation and testing, use the session interface:
+
+```bash
+# Basic exploration
+node dist/sessionInterface.js --cmd "look"
+node dist/sessionInterface.js --cmd "go north" --game-id 1
+
+# Region inspection
+node dist/sessionInterface.js --cmd "region" --game-id 1
+node dist/sessionInterface.js --cmd "regions" --game-id 1
+node dist/sessionInterface.js --cmd "region-stats" --game-id 1
+
+# Get help
+node dist/sessionInterface.js --cmd "help" --game-id 1
+```
 
 ### Example Gameplay
 
@@ -93,6 +121,16 @@ Exits: through the ornate archway beneath celestial murals (north),
 through the glass doors that shimmer with moonlight (east), 
 up the stone steps to the winding tower (west)
 
+> region
+
+Current Region: Shadow Kingdom Manor
+Type: mansion
+Description: A grand manor estate shrouded in mystery, filled with elegant 
+halls, ancient libraries, and moonlit gardens where forgotten secrets await discovery.
+Distance from center: 0
+Total rooms in region: 6
+Center room: Grand Entrance Hall
+
 > go through the glass doors
 > north
 > through ornate archway
@@ -103,24 +141,51 @@ up the stone steps to the winding tower (west)
 ### Core Components
 
 - **GameController** (`src/gameController.ts`): Main game logic and command processing
+- **RegionService** (`src/services/regionService.ts`): Region-based world generation and management
 - **GrokClient** (`src/ai/grokClient.ts`): AI integration for content generation
+- **SessionInterface** (`src/sessionInterface.ts`): Programmatic command execution
 - **Database** (`src/utils/database.ts`): SQLite database wrapper
 - **CLI Interface**: Interactive command-line interface with readline
 
-### Database Schema
+### Data Model
 
-- **games**: Game sessions with metadata
-- **rooms**: Generated rooms with descriptions
-- **connections**: Bidirectional room connections with thematic names
-- **game_state**: Current player position and game state
+The game uses a comprehensive SQLite database schema:
+
+#### Core Tables
+- **`games`**: Game sessions with metadata and timestamps
+- **`rooms`**: Generated rooms with descriptions, processing state, and region assignments
+- **`connections`**: Bidirectional room links with both cardinal directions and thematic names
+- **`game_state`**: Current player position and session state
+
+#### Region System
+- **`regions`**: Thematic areas with types (mansion, forest, cave, town), descriptions, and center tracking
+- **Room Columns**: `region_id`, `region_distance` for distance-based probability transitions
+- **Database Triggers**: Automatic region center discovery when distance-0 rooms are created
+
+#### Key Relationships
+```sql
+-- Rooms belong to regions with distance from center
+rooms.region_id → regions.id
+rooms.region_distance → distance from region center (0 = center)
+
+-- Connections link rooms with dual addressing
+connections.from_room_id → rooms.id
+connections.to_room_id → rooms.id
+connections.direction → cardinal direction (north, south, etc.)
+connections.name → thematic description (through crystal archway)
+
+-- Games contain regions which contain rooms
+games.id → regions.game_id → rooms.region_id
+```
 
 ### AI Integration
 
 The game uses Grok AI to generate:
-- Room names and atmospheric descriptions
-- Thematic connection names and layouts
-- Variable room density (average 2-4 connections per room)
-- Contextually appropriate content based on game history
+- **Regional Content**: Room names and descriptions that fit thematic region types
+- **Contextual Generation**: AI receives adjacent room descriptions and regional themes
+- **Thematic Connections**: Atmospheric connection names that enhance immersion
+- **Distance-Based Transitions**: Probability-driven region changes based on distance from center
+- **Fallback Systems**: Graceful degradation when AI generation fails
 
 ## Development
 
@@ -130,38 +195,74 @@ The game uses Grok AI to generate:
 npm run dev     # Start development server with hot reload
 npm run build   # Build TypeScript to JavaScript
 npm run start   # Run the built application
+npm test        # Run Jest test suite
 npm run lint    # Run ESLint
+```
+
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test files
+npm test -- tests/regionService.test.ts
+npm test -- tests/sessionInterface.test.ts
+
+# Run tests with coverage
+npm run test:coverage
+
+# AI-specific test scripts
+npm run test:grok          # Test Grok AI integration
+npm run test:bg            # Test background room generation
+npm run test:limits        # Test generation limits
 ```
 
 ### Project Structure
 
 ```
 src/
-├── ai/             # AI integration
+├── ai/                    # AI integration
 │   └── grokClient.ts
-├── utils/          # Utilities
+├── services/              # Business logic services
+│   ├── regionService.ts   # Region management and probability
+│   ├── gameStateManager.ts
+│   ├── commandRouter.ts
+│   └── ...
+├── types/                 # TypeScript type definitions
+│   └── region.ts
+├── utils/                 # Utilities and database
 │   ├── database.ts
 │   └── initDb.ts
-├── gameController.ts
-└── index.ts
+├── gameController.ts      # Main game controller
+├── sessionInterface.ts    # Programmatic interface
+└── index.ts              # Entry point
 ```
 
 ### Key Features Implementation
 
-#### Thematic Connections
-- Dual navigation system supporting both "north" and "through the crystal archway"
-- AI generates atmospheric connection names that fit room themes
-- 30% probability per direction creates realistic room layouts
+#### Region-Based Generation
+- **Distance-Based Probability**: 15% base chance + 12% per distance unit for new region transitions
+- **Region Types**: mansion, forest, cave, town with specialized AI prompts
+- **Center Discovery**: Database triggers automatically mark region centers when distance-0 rooms created
+- **Thematic Coherence**: All rooms within region maintain consistent atmosphere
+
+#### Dual Navigation System
+- **Cardinal Directions**: Traditional north/south/east/west movement
+- **Thematic Names**: "through the crystal archway", "up the starlit steps to the garden"
+- **Case-Insensitive Matching**: Natural language input processing
+- **AI-Generated Names**: Contextual connection descriptions that enhance immersion
 
 #### Visit-to-Lock System
-- Rooms lock their layout when first visited by the player
-- Prevents "phantom connections" appearing on return visits
-- Maintains world consistency and player spatial memory
+- **Layout Consistency**: Rooms lock their connection layout when first visited
+- **Phantom Prevention**: Eliminates connections appearing/disappearing on return visits
+- **Spatial Memory**: Maintains player mental map and world believability
 
-#### Background Generation
-- Rooms generated ahead of player movement
-- Configurable generation limits and cooldown periods
-- Race condition prevention for duplicate content
+#### Session Interface
+- **Programmatic Access**: Execute commands without interactive CLI
+- **Automation Support**: Ideal for testing, scripting, and external integrations
+- **Game ID Targeting**: Command specific game sessions
+- **Full Command Set**: All game and region commands available
 
 ## API Reference
 
