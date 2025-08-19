@@ -18,3 +18,4 @@ coverage/
 reports/
 *.log
 game_exploration_log.md
+/src/generated/prisma
