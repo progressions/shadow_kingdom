@@ -4,6 +4,8 @@ import * as readline from 'readline';
 import Database from './utils/database';
 import { initializeDatabase, seedDatabase, migrateExistingData, createGameWithRooms } from './utils/initDb';
 import { GrokClient } from './ai/grokClient';
+import { LocalNLPProcessor } from './nlp/localNLPProcessor';
+import { GameContext } from './nlp/types';
 
 interface Command {
   name: string;
@@ -47,6 +49,7 @@ export class GameController {
   private rl: readline.Interface;
   private db: Database;
   private grokClient: GrokClient;
+  private nlpProcessor: LocalNLPProcessor;
   private mode: Mode = 'menu';
   private currentGameId: number | null = null;
   private currentRoomId: number | null = null;
@@ -54,10 +57,12 @@ export class GameController {
   private gameCommands: Map<string, Command> = new Map();
   private lastGenerationTime: number = 0;
   private generationInProgress: Set<number> = new Set();
+  private recentCommands: string[] = [];
 
   constructor(db: Database) {
     this.db = db;
     this.grokClient = new GrokClient();
+    this.nlpProcessor = new LocalNLPProcessor();
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -261,21 +266,58 @@ export class GameController {
   private async processCommand(input: string) {
     if (!input) return;
 
+    // Add to recent commands history (keep last 5)
+    this.recentCommands.unshift(input);
+    if (this.recentCommands.length > 5) {
+      this.recentCommands.pop();
+    }
+
+    // First try exact command matching (existing system)
     const parts = input.split(' ');
     const commandName = parts[0].toLowerCase();
     const args = parts.slice(1);
 
     const commands = this.mode === 'menu' ? this.menuCommands : this.gameCommands;
-    const command = commands.get(commandName);
+    const exactCommand = commands.get(commandName);
     
-    if (command) {
+    if (exactCommand) {
       try {
-        await command.handler(args);
+        await exactCommand.handler(args);
+        return;
       } catch (error) {
         console.error(`Error executing command "${commandName}":`, error);
+        return;
       }
-    } else {
-      console.log(`Unknown command: ${commandName}. Type "help" for available commands.`);
+    }
+
+    // If exact match fails, try NLP processing
+    const context = await this.buildGameContext();
+    const nlpResult = this.nlpProcessor.processCommand(input, context);
+
+    if (nlpResult) {
+      // Check if the NLP-resolved command exists
+      const resolvedCommand = commands.get(nlpResult.action);
+      
+      if (resolvedCommand) {
+        try {
+          if (process.env.AI_DEBUG_LOGGING === 'true') {
+            console.log(`🧠 NLP: "${input}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)})`);
+          }
+          await resolvedCommand.handler(nlpResult.params);
+          return;
+        } catch (error) {
+          console.error(`Error executing NLP-resolved command "${nlpResult.action}":`, error);
+          return;
+        }
+      }
+    }
+
+    // If neither exact nor NLP matching worked, show error
+    console.log(`Unknown command: ${commandName}. Type "help" for available commands.`);
+    
+    // In debug mode, show NLP analysis
+    if (process.env.AI_DEBUG_LOGGING === 'true' && nlpResult) {
+      console.log(`🧠 NLP attempted: "${nlpResult.action}" but command not found in ${this.mode} mode`);
     }
   }
 
@@ -1004,6 +1046,48 @@ export class GameController {
     };
     
     return directionMap[direction.toLowerCase()] || null;
+  }
+
+  private async buildGameContext(): Promise<GameContext> {
+    const context: GameContext = {
+      mode: this.mode,
+      recentCommands: [...this.recentCommands]
+    };
+
+    // Add current room context if in game mode
+    if (this.mode === 'game' && this.currentGameId && this.currentRoomId) {
+      try {
+        const room = await this.db.get<Room>(
+          'SELECT id, name, description FROM rooms WHERE id = ? AND game_id = ?',
+          [this.currentRoomId, this.currentGameId]
+        );
+
+        if (room) {
+          // Get available exits
+          const connections = await this.db.all<Connection>(
+            'SELECT direction, name FROM connections WHERE from_room_id = ? AND game_id = ? ORDER BY direction',
+            [this.currentRoomId, this.currentGameId]
+          );
+
+          const availableExits = connections?.map(c => c.direction) || [];
+
+          context.currentRoom = {
+            id: room.id,
+            name: room.name,
+            description: room.description,
+            availableExits
+          };
+          
+          context.gameId = this.currentGameId;
+        }
+      } catch (error) {
+        if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.error('Failed to build game context:', error);
+        }
+      }
+    }
+
+    return context;
   }
 
   private generateComplementaryConnectionName(returnName: string, direction: string): string {
