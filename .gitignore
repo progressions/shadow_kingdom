@@ -13,3 +13,8 @@ data/backups/
 
 # Test coverage reports
 coverage/
+
+# Generated reports and logs
+reports/
+*.log
+game_exploration_log.md

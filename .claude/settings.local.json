@@ -53,7 +53,8 @@
       "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go north\" --game-id 1)",
       "Bash(mv:*)",
       "Bash(touch:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go south\" --game-id 1)"
     ],
     "deny": [],
     "ask": []
