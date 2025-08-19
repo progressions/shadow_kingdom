@@ -25,23 +25,32 @@ describe('Movement Room Generation Integration', () => {
   let gameId: number;
 
   beforeEach(async () => {
-    // Create isolated test database
-    const dbPath = `test_movement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.db`;
-    db = new Database(dbPath);
+    // Create isolated in-memory test database
+    db = new Database(':memory:');
     await db.connect();
     await initializeDatabase(db);
 
     // Create game controller
     gameController = new GameController(db);
+    
+    // Mock background generation to prevent fire-and-forget promises
+    jest.spyOn((gameController as any).backgroundGenerationService, 'preGenerateAdjacentRooms')
+      .mockImplementation(async () => {
+        // Do nothing - prevents fire-and-forget promises while testing movement
+        return Promise.resolve();
+      });
 
     // Create test game
     gameId = await createGameWithRooms(db, `Test Game ${Date.now()}`);
   });
 
   afterEach(async () => {
-    if (db) {
+    if (db && db.isConnected()) {
       await db.close();
     }
+    
+    // Restore all mocks
+    jest.restoreAllMocks();
   });
 
   test('should NOT generate rooms when moving in non-existent direction', async () => {
