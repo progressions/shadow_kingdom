@@ -24,6 +24,7 @@ export interface GameContext {
     name: string;
     description: string;
     availableExits: string[];
+    thematicExits?: Array<{direction: string; name: string}>;
   };
   gameId?: number;
   mode: 'menu' | 'game';
@@ -34,9 +35,26 @@ export interface NLPResult {
   action: string;
   params: string[];
   confidence: number;
-  source: 'local' | 'ai' | 'exact';
+  source: 'local' | 'ai' | 'exact' | 'context';
   processingTime: number;
   reasoning?: string;
+  resolvedObjects?: ResolvedObject[];
+  isCompound?: boolean;
+  compoundCommands?: ResolvedCommand[];
+}
+
+export interface ResolvedObject {
+  originalRef: string;
+  resolvedName: string; 
+  confidence: number;
+  resolutionType: 'exact' | 'pronoun' | 'spatial' | 'contextual';
+  reasoning?: string;
+}
+
+export interface ResolvedCommand {
+  action: string;
+  params: string[];
+  resolvedObjects: ResolvedObject[];
 }
 
 export interface PatternMatchOptions {

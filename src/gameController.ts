@@ -4,8 +4,9 @@ import * as readline from 'readline';
 import Database from './utils/database';
 import { initializeDatabase, seedDatabase, migrateExistingData, createGameWithRooms } from './utils/initDb';
 import { GrokClient } from './ai/grokClient';
-import { LocalNLPProcessor } from './nlp/localNLPProcessor';
+import { UnifiedNLPEngine } from './nlp/unifiedNLPEngine';
 import { GameContext } from './nlp/types';
+import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
 
 interface Command {
   name: string;
@@ -49,7 +50,7 @@ export class GameController {
   private rl: readline.Interface;
   private db: Database;
   private grokClient: GrokClient;
-  private nlpProcessor: LocalNLPProcessor;
+  private nlpEngine: UnifiedNLPEngine;
   private mode: Mode = 'menu';
   private currentGameId: number | null = null;
   private currentRoomId: number | null = null;
@@ -62,7 +63,12 @@ export class GameController {
   constructor(db: Database) {
     this.db = db;
     this.grokClient = new GrokClient();
-    this.nlpProcessor = new LocalNLPProcessor();
+    
+    // Initialize unified NLP engine with configuration
+    const baseConfig = getNLPConfig();
+    const config = applyEnvironmentOverrides(baseConfig);
+    this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config);
+    
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -106,6 +112,12 @@ export class GameController {
         console.clear();
         this.showWelcome();
       }
+    });
+
+    this.addMenuCommand({
+      name: 'nlp-stats',
+      description: 'Show natural language processing statistics',
+      handler: () => this.showNLPStats()
     });
 
     this.addMenuCommand({
@@ -290,9 +302,9 @@ export class GameController {
       }
     }
 
-    // If exact match fails, try NLP processing
+    // If exact match fails, try unified NLP processing
     const context = await this.buildGameContext();
-    const nlpResult = this.nlpProcessor.processCommand(input, context);
+    const nlpResult = await this.nlpEngine.processCommand(input, context);
 
     if (nlpResult) {
       // Check if the NLP-resolved command exists
@@ -301,7 +313,11 @@ export class GameController {
       if (resolvedCommand) {
         try {
           if (process.env.AI_DEBUG_LOGGING === 'true') {
-            console.log(`🧠 NLP: "${input}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)})`);
+            const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
+            console.log(`${sourceIcon} NLP: "${input}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)}, source: ${nlpResult.source})`);
+            if (nlpResult.reasoning) {
+              console.log(`   Reasoning: ${nlpResult.reasoning}`);
+            }
           }
           await resolvedCommand.handler(nlpResult.params);
           return;
@@ -347,6 +363,42 @@ export class GameController {
     console.log('Welcome to Shadow Kingdom!');
     console.log('A dynamic, AI-powered text adventure.');
     console.log('\nType "help" for commands or "new" to start a new game.\n');
+  }
+
+  private showNLPStats() {
+    console.log('\n📊 Natural Language Processing Statistics');
+    console.log('=========================================');
+    
+    const stats = this.nlpEngine.getStats();
+    const config = this.nlpEngine.getConfig();
+    
+    console.log('\n🎯 Processing Statistics:');
+    console.log(`  Total commands processed: ${stats.totalCommands}`);
+    console.log(`  Local pattern matches: ${stats.localMatches} (${(stats.localSuccessRate * 100).toFixed(1)}%)`);
+    console.log(`  AI fallback matches: ${stats.aiMatches} (${(stats.aiSuccessRate * 100).toFixed(1)}%)`);
+    console.log(`  Failed to parse: ${stats.failures} (${((stats.failures / stats.totalCommands) * 100 || 0).toFixed(1)}%)`);
+    console.log(`  Overall success rate: ${(stats.successRate * 100).toFixed(1)}%`);
+    console.log(`  Average processing time: ${stats.avgProcessingTime.toFixed(2)}ms`);
+    
+    console.log('\n⚙️  Configuration:');
+    console.log(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`);
+    console.log(`  AI confidence threshold: ${(config.aiConfidenceThreshold * 100).toFixed(0)}%`);
+    console.log(`  AI fallback enabled: ${config.enableAIFallback ? 'Yes' : 'No'}`);
+    console.log(`  Max processing time: ${config.maxProcessingTime}ms`);
+    console.log(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`);
+    
+    console.log('\n🧠 Local Processor:');
+    console.log(`  Patterns loaded: ${stats.localProcessor.patternsLoaded}`);
+    console.log(`  Synonyms loaded: ${stats.localProcessor.synonymsLoaded}`);
+    console.log(`  Uptime: ${stats.localProcessor.uptimeMs}ms`);
+    
+    if (config.enableAIFallback) {
+      console.log('\n🤖 AI Usage:');
+      console.log(`  Estimated cost: ${stats.aiUsage.estimatedCost}`);
+      console.log(`  Tokens used: ${stats.aiUsage.tokensUsed.input} input, ${stats.aiUsage.tokensUsed.output} output`);
+    }
+    
+    console.log('\n💡 Tip: Use NLP_DEBUG_LOGGING=true to see real-time processing details.\n');
   }
 
   private async startNewGame() {
@@ -597,6 +649,39 @@ export class GameController {
       );
 
       if (!connection) {
+        // Try NLP processing to interpret the movement command
+        const context = await this.buildGameContext();
+        const nlpResult = await this.nlpEngine.processCommand(`go ${userInput}`, context);
+        
+        if (nlpResult && nlpResult.action === 'go' && nlpResult.params.length > 0) {
+          // Try again with the NLP-resolved direction
+          const resolvedDirection = nlpResult.params[0];
+          const nlpConnection = await this.db.get<Connection>(
+            'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
+            [this.currentRoomId, this.currentGameId, resolvedDirection, resolvedDirection]
+          );
+          
+          if (nlpConnection) {
+            if (process.env.AI_DEBUG_LOGGING === 'true') {
+              const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
+              console.log(`${sourceIcon} NLP resolved "${userInput}" → "${resolvedDirection}"`);
+              if (nlpResult.reasoning) {
+                console.log(`   Reasoning: ${nlpResult.reasoning}`);
+              }
+            }
+            
+            // Update current room
+            this.currentRoomId = nlpConnection.to_room_id;
+            
+            // Auto-save the game state
+            await this.saveGameState();
+            
+            // Show the new room
+            await this.lookAround();
+            return;
+          }
+        }
+        
         console.log(`You can't go ${userInput} from here.`);
         return;
       }
@@ -1070,12 +1155,14 @@ export class GameController {
           );
 
           const availableExits = connections?.map(c => c.direction) || [];
+          const thematicExits = connections?.map(c => ({direction: c.direction, name: c.name})) || [];
 
           context.currentRoom = {
             id: room.id,
             name: room.name,
             description: room.description,
-            availableExits
+            availableExits,
+            thematicExits
           };
           
           context.gameId = this.currentGameId;

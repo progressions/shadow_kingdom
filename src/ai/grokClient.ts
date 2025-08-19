@@ -72,6 +72,26 @@ export interface ActionResult {
   stateChange?: any;
 }
 
+export interface CommandInterpretationContext {
+  command: string;
+  currentRoom?: {
+    name: string;
+    description: string;
+    availableExits: string[];
+    thematicExits?: Array<{direction: string; name: string}>;
+  };
+  inventory?: string[];
+  recentCommands?: string[];
+  mode: 'menu' | 'game';
+}
+
+export interface InterpretedCommand {
+  action: string;
+  params: string[];
+  confidence: number;
+  reasoning: string;
+}
+
 interface GrokAPIResponse {
   choices: {
     message: {
@@ -286,6 +306,81 @@ Respond in JSON format:
     }
   }
 
+  async interpretCommand(context: CommandInterpretationContext): Promise<InterpretedCommand | null> {
+    if (this.config.mockMode) {
+      return this.mockInterpretCommand(context);
+    }
+
+    const roomInfo = context.currentRoom ? 
+      `Current room: ${context.currentRoom.name} - ${context.currentRoom.description}
+Available exits: ${context.currentRoom.availableExits.join(', ')}${context.currentRoom.thematicExits ? `
+Thematic exit descriptions: ${context.currentRoom.thematicExits.map(exit => `${exit.direction}: "${exit.name}"`).join(', ')}` : ''}` : 
+      'No room context available';
+
+    const inventoryInfo = context.inventory && context.inventory.length > 0 ? 
+      `Inventory: ${context.inventory.join(', ')}` : 
+      'Inventory: empty';
+
+    const recentInfo = context.recentCommands && context.recentCommands.length > 0 ?
+      `Recent commands: ${context.recentCommands.slice(-3).join(', ')}` : 
+      'No recent command history';
+
+    const prompt = `You are interpreting a natural language command for the text adventure game Shadow Kingdom.
+
+Player command: "${context.command}"
+Game mode: ${context.mode}
+${roomInfo}
+${inventoryInfo}
+${recentInfo}
+
+Your job is to interpret what the player wants to do and convert it to a structured command.
+
+COMMON GAME COMMANDS:
+- Movement: go, move, walk, travel, head (with direction: north, south, east, west, up, down)
+- Examination: look, examine, inspect, check, observe (optionally with object)
+- Interaction: take, grab, get, pick up, collect (with object)
+- Social: talk, speak, chat, converse (with character)
+- System: help, quit, exit, clear
+- Use: use, activate, operate (with object)
+
+INTERPRETATION RULES:
+1. If the command is unclear or ambiguous, provide your best interpretation
+2. Consider the current room context and available exits
+3. IMPORTANT: If thematic exit descriptions are provided, match movement commands to them (e.g., "go down the steps" should map to "down" if thematic exit is "down: down the worn steps to the entrance hall")
+4. Handle pronouns and references (e.g., "it", "that", "him")
+5. Support compound commands like "take sword and examine it"
+6. Be flexible with phrasing and synonyms
+7. Assign confidence based on how certain you are about the interpretation
+
+Respond in JSON format:
+{
+  "action": "primary action (go, look, take, talk, help, etc.)",
+  "params": ["list", "of", "parameters"],
+  "confidence": 0.85,
+  "reasoning": "Brief explanation of interpretation"
+}
+
+If the command cannot be interpreted as a valid game action, return null.`;
+
+    try {
+      const response = await this.callGrokAPI(prompt);
+      
+      // Handle null response
+      if (response.trim() === 'null' || response.trim() === '') {
+        return null;
+      }
+      
+      const result = JSON.parse(response);
+      return result as InterpretedCommand;
+    } catch (error) {
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error interpreting command:', error);
+      }
+      // Return null for failed AI interpretation (fallback to local processing)
+      return null;
+    }
+  }
+
   private async callGrokAPI(prompt: string): Promise<string> {
     try {
       const response = await this.client.post<GrokAPIResponse>('/chat/completions', {
@@ -431,6 +526,50 @@ Respond in JSON format:
     ];
 
     return responses[Math.floor(Math.random() * responses.length)];
+  }
+
+  private mockInterpretCommand(context: CommandInterpretationContext): InterpretedCommand | null {
+    const command = context.command.toLowerCase().trim();
+    
+    // Mock interpretations for testing
+    if (command.includes('wander') || command.includes('explore')) {
+      return {
+        action: 'look',
+        params: [],
+        confidence: 0.75,
+        reasoning: 'Interpreted wander/explore as looking around'
+      };
+    }
+    
+    if (command.includes('grab') && command.includes('everything')) {
+      return {
+        action: 'take',
+        params: ['all'],
+        confidence: 0.85,
+        reasoning: 'Interpreted as taking all available items'
+      };
+    }
+    
+    if (command.includes('find') || command.includes('search')) {
+      return {
+        action: 'examine',
+        params: [command.split(' ').slice(-1)[0]], // Last word as object
+        confidence: 0.70,
+        reasoning: 'Interpreted search/find as examining specific object'
+      };
+    }
+    
+    if (command.includes('talk') && (command.includes('someone') || command.includes('anyone'))) {
+      return {
+        action: 'talk',
+        params: ['npc'],
+        confidence: 0.65,
+        reasoning: 'Interpreted as talking to any available NPC'
+      };
+    }
+    
+    // Return null for unrecognized commands (fallback to local processing)
+    return null;
   }
 
   // Fallback methods for when API calls fail

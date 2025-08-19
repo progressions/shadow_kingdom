@@ -132,7 +132,7 @@ export class LocalNLPProcessor {
     });
 
     this.addPattern({
-      pattern: /^(?:descend|go down|climb down)\s*(?:stairs|steps|ladder)?$/i,
+      pattern: /^(?:descend|go down|climb down)\s*(?:the\s+)?(?:stairs|steps|ladder)?$/i,
       action: 'go',
       priority: 90,
       category: 'movement',

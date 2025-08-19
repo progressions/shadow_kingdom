@@ -6,7 +6,12 @@
       "Bash(npm test:*)",
       "Bash(npm run build:*)",
       "Bash(npm run test:nlp:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(sqlite3:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "Bash(ts-node:*)"
     ],
     "deny": [],
     "ask": []
