@@ -146,6 +146,143 @@ describe('Connection-Based Generation Schema', () => {
     });
   });
 
+  describe('Connection-Based Room Generation', () => {
+    it('should create unfilled connections when generating rooms with AI specifications', async () => {
+      const gameId = await createGameWithRooms(db, `Connection Room Gen ${Date.now()}-${Math.random()}`);
+      
+      // Mock AI response with multiple connections
+      const mockGrokClient = {
+        generateRoom: jest.fn().mockResolvedValue({
+          name: 'Crystal Chamber',
+          description: 'A shimmering chamber filled with crystal formations.',
+          connections: [
+            { direction: 'south', name: 'back through the archway' },
+            { direction: 'east', name: 'toward the crystal spires' },
+            { direction: 'west', name: 'through the gem passage' }
+          ]
+        }),
+        generateRegion: jest.fn()
+      };
+
+      const mockRegionService = {
+        shouldCreateNewRegion: jest.fn().mockReturnValue(false),
+        getRegionsForGame: jest.fn().mockResolvedValue([]),
+        getRegion: jest.fn().mockResolvedValue({ id: 1, type: 'mansion', description: 'A grand manor' }),
+        getAdjacentRoomDescriptions: jest.fn().mockResolvedValue([]),
+        buildRoomGenerationPrompt: jest.fn().mockResolvedValue('mansion themed prompt')
+      };
+
+      const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
+        db,
+        mockGrokClient as any,
+        mockRegionService as any,
+        { enableDebugLogging: false }
+      );
+
+      // Generate a single room (this should create unfilled connections)
+      const result = await roomGenService.generateSingleRoom({
+        gameId,
+        fromRoomId: 1,
+        direction: 'north',
+        theme: 'crystal theme'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.roomId).toBeDefined();
+
+      // Verify the return connection was created (filled)
+      const returnConnection = await db.get(
+        'SELECT * FROM connections WHERE from_room_id = ? AND to_room_id = ? AND direction = ?',
+        [result.roomId, 1, 'south']
+      );
+      expect(returnConnection).toBeDefined();
+      expect(returnConnection.to_room_id).toBe(1);
+
+      // Verify unfilled connections were created for other AI-specified directions
+      const unfilledConnections = await db.all<UnfilledConnection>(
+        'SELECT * FROM connections WHERE from_room_id = ? AND to_room_id IS NULL',
+        [result.roomId]
+      );
+      
+      expect(unfilledConnections).toHaveLength(2); // east and west
+      expect(unfilledConnections.some(c => c.direction === 'east' && c.name === 'toward the crystal spires')).toBe(true);
+      expect(unfilledConnections.some(c => c.direction === 'west' && c.name === 'through the gem passage')).toBe(true);
+    });
+
+    it('should fill unfilled connections with generateRoomForConnection', async () => {
+      const gameId = await createGameWithRooms(db, `Fill Connection ${Date.now()}-${Math.random()}`);
+      
+      // Create an unfilled connection
+      const connectionResult = await db.run(
+        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+        [gameId, 1, null, 'north', 'through the mysterious portal']
+      );
+
+      const connectionId = connectionResult.lastID;
+      const unfilledConnection = await db.get<UnfilledConnection>(
+        'SELECT * FROM connections WHERE id = ?',
+        [connectionId]
+      );
+
+      // Mock AI response for room generation
+      const mockGrokClient = {
+        generateRoom: jest.fn().mockResolvedValue({
+          name: 'Portal Chamber',
+          description: 'A chamber containing swirling portals.',
+          connections: [
+            { direction: 'south', name: 'back through the portal' },
+            { direction: 'up', name: 'ascending spiral ramp' }
+          ]
+        }),
+        generateRegion: jest.fn()
+      };
+
+      const mockRegionService = {
+        shouldCreateNewRegion: jest.fn().mockReturnValue(false),
+        getRegionsForGame: jest.fn().mockResolvedValue([]),
+        getRegion: jest.fn().mockResolvedValue({ id: 1, type: 'mansion', description: 'A grand manor' }),
+        getAdjacentRoomDescriptions: jest.fn().mockResolvedValue([]),
+        buildRoomGenerationPrompt: jest.fn().mockResolvedValue('mansion themed prompt'),
+        generateRegionDistance: jest.fn().mockReturnValue(1)
+      };
+
+      const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
+        db,
+        mockGrokClient as any,
+        mockRegionService as any,
+        { enableDebugLogging: false }
+      );
+
+      // Fill the unfilled connection
+      const result = await roomGenService.generateRoomForConnection(unfilledConnection!);
+
+      expect(result.success).toBe(true);
+      expect(result.roomId).toBeDefined();
+
+      // Verify the connection is now filled
+      const filledConnection = await db.get(
+        'SELECT * FROM connections WHERE id = ?',
+        [connectionId]
+      );
+      expect(filledConnection.to_room_id).toBe(result.roomId);
+
+      // Verify return connection was created
+      const returnConnection = await db.get(
+        'SELECT * FROM connections WHERE from_room_id = ? AND to_room_id = ? AND direction = ?',
+        [result.roomId, 1, 'south']
+      );
+      expect(returnConnection).toBeDefined();
+
+      // Verify new unfilled connection was created for 'up' direction
+      const newUnfilledConnection = await db.get<UnfilledConnection>(
+        'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND to_room_id IS NULL',
+        [result.roomId, 'up']
+      );
+      expect(newUnfilledConnection).toBeDefined();
+      expect(newUnfilledConnection!.name).toBe('ascending spiral ramp');
+    });
+  });
+
   describe('Type Safety', () => {
     it('should properly type narrow unfilled vs filled connections', async () => {
       const gameId = await createGameWithRooms(db, `Test Game ${Date.now()}-${Math.random()}`);
