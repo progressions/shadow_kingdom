@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
 import { RoomGenerationService, RoomGenerationContext } from '../../src/services/roomGenerationService';
+import { RegionService } from '../../src/services/regionService';
 import { GrokClient } from '../../src/ai/grokClient';
 import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
 import { Room, Connection } from '../../src/services/gameStateManager';
@@ -7,6 +8,7 @@ import { Room, Connection } from '../../src/services/gameStateManager';
 describe('RoomGenerationService', () => {
   let db: Database;
   let grokClient: GrokClient;
+  let regionService: RegionService;
   let roomGenerationService: RoomGenerationService;
   let testGameId: number;
   let testFromRoomId: number;
@@ -20,8 +22,11 @@ describe('RoomGenerationService', () => {
     // Create mock GrokClient for testing
     grokClient = new GrokClient();
     
+    // Create region service
+    regionService = new RegionService(db);
+    
     // Create service with debug logging disabled for clean test output
-    roomGenerationService = new RoomGenerationService(db, grokClient, {
+    roomGenerationService = new RoomGenerationService(db, grokClient, regionService, {
       enableDebugLogging: false
     });
     
@@ -65,7 +70,7 @@ describe('RoomGenerationService', () => {
     });
 
     test('should create service with custom options', () => {
-      const service = new RoomGenerationService(db, grokClient, { enableDebugLogging: true });
+      const service = new RoomGenerationService(db, grokClient, regionService, { enableDebugLogging: true });
       const options = service.getOptions();
       
       expect(options.enableDebugLogging).toBe(true);

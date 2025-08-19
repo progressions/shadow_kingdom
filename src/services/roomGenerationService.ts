@@ -1,6 +1,7 @@
 import Database from '../utils/database';
 import { GrokClient } from '../ai/grokClient';
 import { Room, Connection } from './gameStateManager';
+import { RegionService } from './regionService';
 
 export interface RoomGenerationOptions {
   enableDebugLogging?: boolean;
@@ -37,6 +38,7 @@ export class RoomGenerationService {
   constructor(
     private db: Database,
     private grokClient: GrokClient,
+    private regionService?: RegionService,
     options: RoomGenerationOptions = {}
   ) {
     this.options = {
@@ -140,9 +142,91 @@ export class RoomGenerationService {
   }
 
   /**
+   * Generate a single room with region context if available
+   */
+  async generateRoomWithRegion(
+    context: RoomGenerationContext,
+    forceNewRegion: boolean = false
+  ): Promise<RoomGenerationResult> {
+    try {
+      let regionId: number | null = null;
+      let distance: number | null = null;
+
+      // Determine region assignment
+      if (this.regionService) {
+        const fromRoom = await this.db.get<Room>('SELECT * FROM rooms WHERE id = ?', [context.fromRoomId]);
+        
+        if (fromRoom?.region_id && fromRoom.region_distance !== null && fromRoom.region_distance !== undefined && !forceNewRegion) {
+          // From room is in a region - check if we should stay or create new region
+          const shouldCreateNew = this.regionService.shouldCreateNewRegion(fromRoom.region_distance);
+          
+          if (shouldCreateNew) {
+            // Create new region
+            const newRegion = await this.createDefaultRegion(context.gameId);
+            regionId = newRegion.id;
+            distance = this.regionService.generateRegionDistance();
+          } else {
+            // Stay in current region, increase distance
+            regionId = fromRoom.region_id;
+            distance = fromRoom.region_distance + 1;
+          }
+        } else if (forceNewRegion || !fromRoom?.region_id) {
+          // Create new region (either forced or from room has no region)
+          const newRegion = await this.createDefaultRegion(context.gameId);
+          regionId = newRegion.id;
+          distance = this.regionService.generateRegionDistance();
+        }
+      }
+
+      // Generate room with region context
+      const result = await this.generateSingleRoom(context, regionId, distance);
+      
+      return result;
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error in region-aware room generation:', error);
+      }
+      return { 
+        success: false, 
+        error: error as Error 
+      };
+    }
+  }
+
+  /**
+   * Create a default region with random type and basic description
+   */
+  private async createDefaultRegion(gameId: number) {
+    if (!this.regionService) {
+      throw new Error('RegionService not available for default region creation');
+    }
+
+    const regionTypes = [
+      { type: 'forest', description: 'Ancient woodland filled with towering trees and mystical creatures' },
+      { type: 'mansion', description: 'Grand estate with ornate architecture and forgotten secrets' },
+      { type: 'cave', description: 'Dark underground network of tunnels and hidden chambers' },
+      { type: 'town', description: 'Bustling settlement with merchant shops and gathering places' },
+      { type: 'tower', description: 'Tall spire reaching toward the heavens with magical resonance' },
+      { type: 'ruins', description: 'Ancient structures reclaimed by nature, holding remnants of the past' }
+    ];
+
+    const randomType = regionTypes[Math.floor(Math.random() * regionTypes.length)];
+    
+    return this.regionService.createRegion(
+      gameId,
+      randomType.type,
+      randomType.description
+    );
+  }
+
+  /**
    * Generate a single room and connection in a specific direction
    */
-  async generateSingleRoom(context: RoomGenerationContext): Promise<RoomGenerationResult> {
+  async generateSingleRoom(
+    context: RoomGenerationContext, 
+    regionId?: number | null, 
+    regionDistance?: number | null
+  ): Promise<RoomGenerationResult> {
     try {
       // Check if a connection already exists for this direction to prevent duplicates
       const existingConnection = await this.db.get(
@@ -169,11 +253,32 @@ export class RoomGenerationService {
       );
       const roomNames = existingRooms.map(room => room.name);
 
+      // Build region context if available
+      let regionContext;
+      let adjacentRoomDescriptions: string[] = [];
+
+      if (regionId && this.regionService) {
+        const region = await this.regionService.getRegion(regionId);
+        regionContext = {
+          region: {
+            type: region.type,
+            name: region.name,
+            description: region.description
+          },
+          distanceFromCenter: regionDistance || 0
+        };
+
+        // Get adjacent room descriptions for better context
+        adjacentRoomDescriptions = await this.regionService.getAdjacentRoomDescriptions(context.fromRoomId);
+      }
+
       const newRoom = await this.grokClient.generateRoom({
         currentRoom: { name: fromRoom.name, description: fromRoom.description },
         direction: context.direction,
         gameHistory: roomNames,
-        theme: context.theme || 'mysterious fantasy kingdom'
+        theme: context.theme || 'mysterious fantasy kingdom',
+        regionContext,
+        adjacentRooms: adjacentRoomDescriptions
       });
 
       // Check for duplicate room names and make unique if needed
@@ -203,8 +308,8 @@ export class RoomGenerationService {
 
       // Save to database (new rooms start as unprocessed)
       const roomResult = await this.db.run(
-        'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-        [context.gameId, uniqueName, newRoom.description, false]
+        'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+        [context.gameId, uniqueName, newRoom.description, false, regionId, regionDistance]
       );
 
       // Find the AI-generated thematic name for the outgoing connection

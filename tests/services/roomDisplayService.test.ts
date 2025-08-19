@@ -1,12 +1,20 @@
 import { RoomDisplayService } from '../../src/services/roomDisplayService';
 import { Room, Connection } from '../../src/services/gameStateManager';
+import Database from '../../src/utils/database';
+import { initializeDatabase } from '../../src/utils/initDb';
 
 describe('RoomDisplayService', () => {
   let roomDisplayService: RoomDisplayService;
+  let db: Database;
   let consoleSpy: jest.SpyInstance;
 
-  beforeEach(() => {
-    roomDisplayService = new RoomDisplayService({
+  beforeEach(async () => {
+    // Create in-memory database for testing
+    db = new Database(':memory:');
+    await db.connect();
+    await initializeDatabase(db);
+
+    roomDisplayService = new RoomDisplayService(db, {
       enableDebugLogging: false
     });
 
@@ -15,23 +23,38 @@ describe('RoomDisplayService', () => {
     jest.spyOn(console, 'error').mockImplementation();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    if (db && db.isConnected()) {
+      await db.close();
+    }
     jest.restoreAllMocks();
   });
 
   describe('Constructor and Configuration', () => {
-    test('should create service with default options', () => {
-      const service = new RoomDisplayService();
+    test('should create service with default options', async () => {
+      const testDb = new Database(':memory:');
+      await testDb.connect();
+      await initializeDatabase(testDb);
+      
+      const service = new RoomDisplayService(testDb);
       const options = service.getOptions();
       
       expect(options.enableDebugLogging).toBe(false);
+      
+      await testDb.close();
     });
 
-    test('should create service with custom options', () => {
-      const service = new RoomDisplayService({ enableDebugLogging: true });
+    test('should create service with custom options', async () => {
+      const testDb = new Database(':memory:');
+      await testDb.connect();
+      await initializeDatabase(testDb);
+      
+      const service = new RoomDisplayService(testDb, { enableDebugLogging: true });
       const options = service.getOptions();
       
       expect(options.enableDebugLogging).toBe(true);
+      
+      await testDb.close();
     });
 
     test('should update options after creation', () => {
@@ -43,7 +66,7 @@ describe('RoomDisplayService', () => {
   });
 
   describe('Room Display', () => {
-    test('should display room with name, description and exits', () => {
+    test('should display room with name, description and exits', async () => {
       const room: Room = {
         id: 1,
         game_id: 1,
@@ -70,7 +93,7 @@ describe('RoomDisplayService', () => {
         }
       ];
 
-      const result = roomDisplayService.displayRoom(room, connections);
+      const result = await roomDisplayService.displayRoom(room, connections);
 
       // Verify console output in exact order
       expect(consoleSpy).toHaveBeenCalledTimes(4);
@@ -86,7 +109,7 @@ describe('RoomDisplayService', () => {
       expect(result.hasExits).toBe(true);
     });
 
-    test('should display room with no exits', () => {
+    test('should display room with no exits', async () => {
       const room: Room = {
         id: 1,
         game_id: 1,
@@ -96,7 +119,7 @@ describe('RoomDisplayService', () => {
 
       const connections: Connection[] = [];
 
-      const result = roomDisplayService.displayRoom(room, connections);
+      const result = await roomDisplayService.displayRoom(room, connections);
 
       expect(consoleSpy).toHaveBeenCalledTimes(4);
       expect(consoleSpy).toHaveBeenNthCalledWith(1, '\nDead End');
@@ -110,7 +133,7 @@ describe('RoomDisplayService', () => {
       expect(result.hasExits).toBe(false);
     });
 
-    test('should handle room names with special characters', () => {
+    test('should handle room names with special characters', async () => {
       const room: Room = {
         id: 1,
         game_id: 1,
@@ -118,13 +141,13 @@ describe('RoomDisplayService', () => {
         description: 'A grand throne room.'
       };
 
-      roomDisplayService.displayRoom(room, []);
+      await roomDisplayService.displayRoom(room, []);
 
       expect(consoleSpy).toHaveBeenNthCalledWith(1, "\nKing's Throne Room!");
       expect(consoleSpy).toHaveBeenNthCalledWith(2, '==================='); // 19 equals for "King's Throne Room!"
     });
 
-    test('should handle very long room names', () => {
+    test('should handle very long room names', async () => {
       const longName = 'A Very Long Room Name That Goes On And On And On';
       const room: Room = {
         id: 1,
@@ -133,7 +156,7 @@ describe('RoomDisplayService', () => {
         description: 'A room with a long name.'
       };
 
-      roomDisplayService.displayRoom(room, []);
+      await roomDisplayService.displayRoom(room, []);
 
       expect(consoleSpy).toHaveBeenNthCalledWith(2, '='.repeat(longName.length));
     });
@@ -298,7 +321,7 @@ describe('RoomDisplayService', () => {
   });
 
   describe('Edge Cases and Input Validation', () => {
-    test('should handle room with empty name', () => {
+    test('should handle room with empty name', async () => {
       const room: Room = {
         id: 1,
         game_id: 1,
@@ -306,14 +329,14 @@ describe('RoomDisplayService', () => {
         description: 'A room with no name.'
       };
 
-      const result = roomDisplayService.displayRoom(room, []);
+      const result = await roomDisplayService.displayRoom(room, []);
 
       expect(consoleSpy).toHaveBeenNthCalledWith(1, '\n');
       expect(consoleSpy).toHaveBeenNthCalledWith(2, ''); // No equals signs for empty name
       expect(result.roomName).toBe('');
     });
 
-    test('should handle room with empty description', () => {
+    test('should handle room with empty description', async () => {
       const room: Room = {
         id: 1,
         game_id: 1,
@@ -321,7 +344,7 @@ describe('RoomDisplayService', () => {
         description: ''
       };
 
-      const result = roomDisplayService.displayRoom(room, []);
+      const result = await roomDisplayService.displayRoom(room, []);
 
       expect(consoleSpy).toHaveBeenNthCalledWith(3, '');
       expect(result.roomDescription).toBe('');
@@ -361,7 +384,7 @@ describe('RoomDisplayService', () => {
   });
 
   describe('Integration Tests', () => {
-    test('should maintain consistent formatting across multiple room displays', () => {
+    test('should maintain consistent formatting across multiple room displays', async () => {
       const rooms = [
         {
           room: { id: 1, game_id: 1, name: 'Room A', description: 'First room' },
@@ -373,9 +396,9 @@ describe('RoomDisplayService', () => {
         }
       ];
 
-      const results = rooms.map(({ room, connections }) => 
+      const results = await Promise.all(rooms.map(({ room, connections }) => 
         roomDisplayService.displayRoom(room as Room, connections as Connection[])
-      );
+      ));
 
       // Verify all results have consistent structure
       results.forEach(result => {

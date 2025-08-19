@@ -51,12 +51,15 @@ export class GameController {
     });
     
     // Initialize room display service
-    this.roomDisplayService = new RoomDisplayService({
+    this.roomDisplayService = new RoomDisplayService(this.db, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
-    // Initialize room generation service
-    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, {
+    // Initialize region service first
+    this.regionService = new RegionService(db);
+    
+    // Initialize room generation service with region service
+    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, this.regionService, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -75,9 +78,6 @@ export class GameController {
     this.gameManagementService = new GameManagementService(db, this.rl, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
-    
-    // Initialize region service
-    this.regionService = new RegionService(db);
 
     this.setupMenuCommands();
     this.setupGameCommands();
@@ -445,7 +445,7 @@ export class GameController {
         const connections = await this.gameStateManager.getCurrentRoomConnections();
         
         // Use room display service to format and display the room
-        this.roomDisplayService.displayRoom(room, connections);
+        await this.roomDisplayService.displayRoom(room, connections);
 
         // Trigger background room generation (fire and forget)
         this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
