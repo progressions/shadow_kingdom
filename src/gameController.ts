@@ -12,6 +12,7 @@ import { RoomDisplayService } from './services/roomDisplayService';
 import { RoomGenerationService } from './services/roomGenerationService';
 import { BackgroundGenerationService } from './services/backgroundGenerationService';
 import { GameManagementService } from './services/gameManagementService';
+import { RegionService } from './services/regionService';
 
 
 // Interfaces imported from GameStateManager
@@ -28,6 +29,7 @@ export class GameController {
   private roomGenerationService: RoomGenerationService;
   private backgroundGenerationService: BackgroundGenerationService;
   private gameManagementService: GameManagementService;
+  private regionService: RegionService;
 
   constructor(db: Database) {
     this.db = db;
@@ -49,12 +51,15 @@ export class GameController {
     });
     
     // Initialize room display service
-    this.roomDisplayService = new RoomDisplayService({
+    this.roomDisplayService = new RoomDisplayService(this.db, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
-    // Initialize room generation service
-    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, {
+    // Initialize region service first
+    this.regionService = new RegionService(db);
+    
+    // Initialize room generation service with region service
+    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, this.regionService, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -431,19 +436,32 @@ export class GameController {
 
       if (room) {
         // Mark room as processed when player visits it (locks in the current design)
-        await this.db.run(
+        const updateResult = await this.db.run(
           'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
           [session.roomId]
         );
+        
+        if (process.env.AI_DEBUG_LOGGING === 'true' && updateResult.changes && updateResult.changes > 0) {
+          console.log(`[DEBUG] Locked room "${room.name}" (ID: ${session.roomId}) - marked as processed`);
+        }
 
         // Get available connections from this room within this game
         const connections = await this.gameStateManager.getCurrentRoomConnections();
         
         // Use room display service to format and display the room
-        this.roomDisplayService.displayRoom(room, connections);
+        await this.roomDisplayService.displayRoom(room, connections);
 
-        // Trigger background room generation (fire and forget)
-        this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+        // Only trigger background generation if room was just processed (first visit)
+        // If updateResult.changes > 0, it means this was the first visit and we should generate adjacent rooms
+        // If updateResult.changes === 0, room was already processed, so don't generate
+        if (updateResult.changes && updateResult.changes > 0) {
+          if (process.env.AI_DEBUG_LOGGING === 'true') {
+            console.log(`[DEBUG] First visit to room "${room.name}" (ID: ${session.roomId}) - triggering background generation`);
+          }
+          this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+        } else if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log(`[DEBUG] Room "${room.name}" (ID: ${session.roomId}) already processed - skipping background generation`);
+        }
       } else {
         this.roomDisplayService.displayVoidState();
       }
@@ -546,6 +564,11 @@ export class GameController {
   }
 
 
+
+  // Helper method for testing access to region service
+  public getRegionService(): RegionService {
+    return this.regionService;
+  }
 
   public async start() {
     console.clear();

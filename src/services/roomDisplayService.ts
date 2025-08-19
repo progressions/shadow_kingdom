@@ -1,4 +1,5 @@
 import { Room, Connection } from './gameStateManager';
+import Database from '../utils/database';
 
 export interface RoomDisplayOptions {
   enableDebugLogging?: boolean;
@@ -9,6 +10,7 @@ export interface RoomDisplayResult {
   roomDescription: string;
   exitsDisplay: string;
   hasExits: boolean;
+  regionInfo?: string;
 }
 
 /**
@@ -17,8 +19,10 @@ export interface RoomDisplayResult {
  */
 export class RoomDisplayService {
   private options: RoomDisplayOptions;
+  private db: Database;
 
-  constructor(options: RoomDisplayOptions = {}) {
+  constructor(db: Database, options: RoomDisplayOptions = {}) {
+    this.db = db;
     this.options = {
       enableDebugLogging: false,
       ...options
@@ -28,7 +32,7 @@ export class RoomDisplayService {
   /**
    * Display a room to the console with formatted output
    */
-  displayRoom(room: Room, connections: Connection[]): RoomDisplayResult {
+  async displayRoom(room: Room, connections: Connection[]): Promise<RoomDisplayResult> {
     const roomName = room.name;
     const roomDescription = room.description;
 
@@ -36,6 +40,12 @@ export class RoomDisplayService {
     console.log(`\n${roomName}`);
     console.log('='.repeat(roomName.length));
     console.log(roomDescription);
+
+    // Get and display region information if available
+    const regionInfo = await this.getRegionInfo(room);
+    if (regionInfo) {
+      console.log(regionInfo);
+    }
 
     // Format and display exits
     const exitsDisplay = this.formatExits(connections);
@@ -45,8 +55,63 @@ export class RoomDisplayService {
       roomName,
       roomDescription,
       exitsDisplay,
-      hasExits: connections.length > 0
+      hasExits: connections.length > 0,
+      regionInfo
     };
+  }
+
+  /**
+   * Get region information for a room if available
+   */
+  private async getRegionInfo(room: Room): Promise<string | undefined> {
+    // Return early if no region info
+    if (!room.region_id) {
+      return undefined;
+    }
+
+    try {
+      // Fetch region details from database
+      const region = await this.db.get<{
+        id: number;
+        name: string | null;
+        type: string;
+        description: string;
+      }>('SELECT id, name, type, description FROM regions WHERE id = ?', [room.region_id]);
+
+      if (!region) {
+        return undefined;
+      }
+
+      // Format region information - always show region name prominently
+      let regionDisplay = '';
+      
+      if (region.name) {
+        regionDisplay = `Region: ${region.name}`;
+      } else {
+        regionDisplay = `Region: ${region.type}`;
+      }
+      
+      if (room.region_distance !== null && room.region_distance !== undefined) {
+        if (room.region_distance === 0) {
+          regionDisplay += ' [CENTER]';
+        } else {
+          regionDisplay += ` [${room.region_distance} steps from center]`;
+        }
+      }
+
+      // Add debug information if enabled
+      if (this.isDebugEnabled()) {
+        regionDisplay += `\n[DEBUG] Region ID: ${region.id}, Type: ${region.type}, Distance: ${room.region_distance}`;
+        regionDisplay += `\n[DEBUG] Description: ${region.description}`;
+      }
+
+      return regionDisplay;
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error fetching region info:', error);
+      }
+      return undefined;
+    }
   }
 
   /**

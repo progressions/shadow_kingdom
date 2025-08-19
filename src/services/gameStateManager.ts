@@ -16,6 +16,8 @@ export interface Room {
   name: string;
   description: string;
   generation_processed?: boolean;
+  region_id?: number | null;
+  region_distance?: number | null;
 }
 
 export interface Connection {
@@ -187,7 +189,7 @@ export class GameStateManager {
 
     try {
       const room = await this.db.get<Room>(
-        'SELECT id, game_id, name, description FROM rooms WHERE id = ? AND game_id = ?',
+        'SELECT id, game_id, name, description, generation_processed, region_id, region_distance FROM rooms WHERE id = ? AND game_id = ?',
         [this.currentRoomId, this.currentGameId]
       );
 

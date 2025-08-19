@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
 import { RoomGenerationService, RoomGenerationContext } from '../../src/services/roomGenerationService';
+import { RegionService } from '../../src/services/regionService';
 import { GrokClient } from '../../src/ai/grokClient';
 import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
 import { Room, Connection } from '../../src/services/gameStateManager';
@@ -7,6 +8,7 @@ import { Room, Connection } from '../../src/services/gameStateManager';
 describe('RoomGenerationService', () => {
   let db: Database;
   let grokClient: GrokClient;
+  let regionService: RegionService;
   let roomGenerationService: RoomGenerationService;
   let testGameId: number;
   let testFromRoomId: number;
@@ -20,8 +22,11 @@ describe('RoomGenerationService', () => {
     // Create mock GrokClient for testing
     grokClient = new GrokClient();
     
+    // Create region service
+    regionService = new RegionService(db);
+    
     // Create service with debug logging disabled for clean test output
-    roomGenerationService = new RoomGenerationService(db, grokClient, {
+    roomGenerationService = new RoomGenerationService(db, grokClient, regionService, {
       enableDebugLogging: false
     });
     
@@ -65,7 +70,7 @@ describe('RoomGenerationService', () => {
     });
 
     test('should create service with custom options', () => {
-      const service = new RoomGenerationService(db, grokClient, { enableDebugLogging: true });
+      const service = new RoomGenerationService(db, grokClient, regionService, { enableDebugLogging: true });
       const options = service.getOptions();
       
       expect(options.enableDebugLogging).toBe(true);
@@ -246,28 +251,28 @@ describe('RoomGenerationService', () => {
     });
 
     test('should prevent duplicate connections', async () => {
-      // Create an existing connection
-      const existingRoomName = `Existing Room ${Date.now()}-${Math.random()}`;
-      const existingRoomResult = await db.run(
-        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-        [testGameId, existingRoomName, 'An existing room']
-      );
-      
-      await db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, existingRoomResult.lastID, 'north', 'north']
-      );
-
-      const context: RoomGenerationContext = {
+      // Create first connection using the service (this should succeed)
+      // Use 'south' because Grand Entrance Hall already has 'north' and 'east' from initialization
+      const firstContext: RoomGenerationContext = {
         gameId: testGameId,
         fromRoomId: testFromRoomId,
-        direction: 'north'
+        direction: 'south'
       };
 
-      const result = await roomGenerationService.generateSingleRoom(context);
+      const firstResult = await roomGenerationService.generateSingleRoom(firstContext);
+      expect(firstResult.success).toBe(true);
+
+      // Try to create duplicate connection in same direction (this should fail)
+      const duplicateContext: RoomGenerationContext = {
+        gameId: testGameId,
+        fromRoomId: testFromRoomId,
+        direction: 'south'  // Same direction as above
+      };
+
+      const duplicateResult = await roomGenerationService.generateSingleRoom(duplicateContext);
       
-      expect(result.success).toBe(false);
-      expect(result.error?.message).toBe('Connection already exists');
+      expect(duplicateResult.success).toBe(false);
+      expect(duplicateResult.error?.message).toBe('Connection already exists');
     });
 
     test('should handle unique room name conflicts', async () => {

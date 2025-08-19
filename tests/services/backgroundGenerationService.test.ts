@@ -1,6 +1,7 @@
 import Database from '../../src/utils/database';
 import { BackgroundGenerationService } from '../../src/services/backgroundGenerationService';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
+import { RegionService } from '../../src/services/regionService';
 import { GrokClient } from '../../src/ai/grokClient';
 import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
 import { Room, Connection } from '../../src/services/gameStateManager';
@@ -8,6 +9,7 @@ import { Room, Connection } from '../../src/services/gameStateManager';
 describe('BackgroundGenerationService', () => {
   let db: Database;
   let grokClient: GrokClient;
+  let regionService: RegionService;
   let roomGenerationService: RoomGenerationService;
   let backgroundGenerationService: BackgroundGenerationService;
   let testGameId: number;
@@ -22,8 +24,11 @@ describe('BackgroundGenerationService', () => {
     // Create mock GrokClient for testing
     grokClient = new GrokClient();
     
+    // Create region service
+    regionService = new RegionService(db);
+    
     // Create room generation service with debug logging disabled for clean test output
-    roomGenerationService = new RoomGenerationService(db, grokClient, {
+    roomGenerationService = new RoomGenerationService(db, grokClient, regionService, {
       enableDebugLogging: false
     });
     
@@ -147,9 +152,10 @@ describe('BackgroundGenerationService', () => {
       const targetRoomId = roomResult.lastID as number;
       
       // Create connection FROM starting room TO unprocessed room to trigger generation logic
+      // Use 'south' because Grand Entrance Hall already has 'north' and 'east' connections
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, targetRoomId, 'north', 'north']
+        [testGameId, testFromRoomId, targetRoomId, 'south', 'south']
       );
       
       // Mock room generation service methods
@@ -268,9 +274,10 @@ describe('BackgroundGenerationService', () => {
       const roomId = roomResult.lastID as number;
       
       // Create connection FROM starting room TO unprocessed room
+      // Use 'up' because Grand Entrance Hall already has 'north', 'east', and 'west' connections
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, roomId, 'north', 'north']
+        [testGameId, testFromRoomId, roomId, 'up', 'up']
       );
 
       // Mock the room generation service methods
@@ -329,7 +336,7 @@ describe('BackgroundGenerationService', () => {
       
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, targetRoomId, 'east', 'east']
+        [testGameId, testFromRoomId, targetRoomId, 'down', 'down']
       );
 
       // Mock to return more missing rooms than the depth limit
@@ -361,7 +368,7 @@ describe('BackgroundGenerationService', () => {
 
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [testGameId, testFromRoomId, targetRoomId, 'west', 'west']
+        [testGameId, testFromRoomId, targetRoomId, 'northwest', 'northwest']
       );
 
       // Mock room generation service to throw error

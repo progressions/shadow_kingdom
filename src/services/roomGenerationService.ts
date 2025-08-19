@@ -1,6 +1,7 @@
 import Database from '../utils/database';
 import { GrokClient } from '../ai/grokClient';
 import { Room, Connection } from './gameStateManager';
+import { RegionService } from './regionService';
 
 export interface RoomGenerationOptions {
   enableDebugLogging?: boolean;
@@ -37,6 +38,7 @@ export class RoomGenerationService {
   constructor(
     private db: Database,
     private grokClient: GrokClient,
+    private regionService?: RegionService,
     options: RoomGenerationOptions = {}
   ) {
     this.options = {
@@ -56,12 +58,12 @@ export class RoomGenerationService {
       [roomId, gameId]
     );
 
-    // If room was AI-processed, respect its design - don't add more connections
+    // If room was processed, respect its design - don't add more connections FROM it
     if (room && room.generation_processed) {
       return 0;
     }
 
-    // For unprocessed rooms, check for missing basic directions
+    // For unprocessed rooms (FALSE or NULL), check for missing basic directions
     const basicDirections = ['north', 'south', 'east', 'west'];
     let missingCount = 0;
 
@@ -94,8 +96,11 @@ export class RoomGenerationService {
       [roomId, gameId]
     );
 
-    // If room was processed, don't add more connections
+    // If room was processed, don't add more connections FROM it
     if (room && room.generation_processed) {
+      if (this.isDebugEnabled()) {
+        console.log(`[DEBUG] Skipping generation for room ID ${roomId} - already processed`);
+      }
       return 0;
     }
 
@@ -115,7 +120,11 @@ export class RoomGenerationService {
 
       if (!existingConnection) {
         // Generate new room in this direction
-        const result = await this.generateSingleRoom({
+        if (this.isDebugEnabled()) {
+          console.log(`[DEBUG] Generating room from ID ${roomId} in direction ${direction}`);
+        }
+        
+        const result = await this.generateRoomWithRegion({
           gameId,
           fromRoomId: roomId,
           direction,
@@ -124,6 +133,13 @@ export class RoomGenerationService {
         
         if (result.success) {
           generatedCount++;
+          if (this.isDebugEnabled()) {
+            console.log(`[DEBUG] Successfully generated room ID ${result.roomId} from ${roomId} via ${direction}`);
+          }
+        } else {
+          if (this.isDebugEnabled()) {
+            console.log(`[DEBUG] Failed to generate room from ${roomId} via ${direction}: ${result.error?.message}`);
+          }
         }
       }
     }
@@ -140,9 +156,91 @@ export class RoomGenerationService {
   }
 
   /**
+   * Generate a single room with region context if available
+   */
+  async generateRoomWithRegion(
+    context: RoomGenerationContext,
+    forceNewRegion: boolean = false
+  ): Promise<RoomGenerationResult> {
+    try {
+      let regionId: number | null = null;
+      let distance: number | null = null;
+
+      // Determine region assignment
+      if (this.regionService) {
+        const fromRoom = await this.db.get<Room>('SELECT * FROM rooms WHERE id = ?', [context.fromRoomId]);
+        
+        if (fromRoom?.region_id && fromRoom.region_distance !== null && fromRoom.region_distance !== undefined && !forceNewRegion) {
+          // From room is in a region - check if we should stay or create new region
+          const shouldCreateNew = this.regionService.shouldCreateNewRegion(fromRoom.region_distance);
+          
+          if (shouldCreateNew) {
+            // Create new region
+            const newRegion = await this.createDefaultRegion(context.gameId);
+            regionId = newRegion.id;
+            distance = this.regionService.generateRegionDistance();
+          } else {
+            // Stay in current region, increase distance
+            regionId = fromRoom.region_id;
+            distance = fromRoom.region_distance + 1;
+          }
+        } else if (forceNewRegion || !fromRoom?.region_id) {
+          // Create new region (either forced or from room has no region)
+          const newRegion = await this.createDefaultRegion(context.gameId);
+          regionId = newRegion.id;
+          distance = this.regionService.generateRegionDistance();
+        }
+      }
+
+      // Generate room with region context
+      const result = await this.generateSingleRoom(context, regionId, distance);
+      
+      return result;
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error in region-aware room generation:', error);
+      }
+      return { 
+        success: false, 
+        error: error as Error 
+      };
+    }
+  }
+
+  /**
+   * Create a default region with random type and basic description
+   */
+  private async createDefaultRegion(gameId: number) {
+    if (!this.regionService) {
+      throw new Error('RegionService not available for default region creation');
+    }
+
+    const regionTypes = [
+      { type: 'forest', description: 'Ancient woodland filled with towering trees and mystical creatures' },
+      { type: 'mansion', description: 'Grand estate with ornate architecture and forgotten secrets' },
+      { type: 'cave', description: 'Dark underground network of tunnels and hidden chambers' },
+      { type: 'town', description: 'Bustling settlement with merchant shops and gathering places' },
+      { type: 'tower', description: 'Tall spire reaching toward the heavens with magical resonance' },
+      { type: 'ruins', description: 'Ancient structures reclaimed by nature, holding remnants of the past' }
+    ];
+
+    const randomType = regionTypes[Math.floor(Math.random() * regionTypes.length)];
+    
+    return this.regionService.createRegion(
+      gameId,
+      randomType.type,
+      randomType.description
+    );
+  }
+
+  /**
    * Generate a single room and connection in a specific direction
    */
-  async generateSingleRoom(context: RoomGenerationContext): Promise<RoomGenerationResult> {
+  async generateSingleRoom(
+    context: RoomGenerationContext, 
+    regionId?: number | null, 
+    regionDistance?: number | null
+  ): Promise<RoomGenerationResult> {
     try {
       // Check if a connection already exists for this direction to prevent duplicates
       const existingConnection = await this.db.get(
@@ -151,6 +249,9 @@ export class RoomGenerationService {
       );
       
       if (existingConnection) {
+        if (this.isDebugEnabled()) {
+          console.log(`🚫 Skipping duplicate connection: ${context.direction} from room ${context.fromRoomId}`);
+        }
         return { 
           success: false, 
           error: new Error('Connection already exists') 
@@ -166,11 +267,32 @@ export class RoomGenerationService {
       );
       const roomNames = existingRooms.map(room => room.name);
 
+      // Build region context if available
+      let regionContext;
+      let adjacentRoomDescriptions: string[] = [];
+
+      if (regionId && this.regionService) {
+        const region = await this.regionService.getRegion(regionId);
+        regionContext = {
+          region: {
+            type: region.type,
+            name: region.name,
+            description: region.description
+          },
+          distanceFromCenter: regionDistance || 0
+        };
+
+        // Get adjacent room descriptions for better context
+        adjacentRoomDescriptions = await this.regionService.getAdjacentRoomDescriptions(context.fromRoomId);
+      }
+
       const newRoom = await this.grokClient.generateRoom({
         currentRoom: { name: fromRoom.name, description: fromRoom.description },
         direction: context.direction,
         gameHistory: roomNames,
-        theme: context.theme || 'mysterious fantasy kingdom'
+        theme: context.theme || 'mysterious fantasy kingdom',
+        regionContext,
+        adjacentRooms: adjacentRoomDescriptions
       });
 
       // Check for duplicate room names and make unique if needed
@@ -200,8 +322,8 @@ export class RoomGenerationService {
 
       // Save to database (new rooms start as unprocessed)
       const roomResult = await this.db.run(
-        'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-        [context.gameId, uniqueName, newRoom.description, false]
+        'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+        [context.gameId, uniqueName, newRoom.description, false, regionId, regionDistance]
       );
 
       // Find the AI-generated thematic name for the outgoing connection
@@ -223,23 +345,70 @@ export class RoomGenerationService {
       }
 
       // Create outgoing connection from origin room with thematic name
-      const connectionResult = await this.db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [context.gameId, context.fromRoomId, roomResult.lastID, context.direction, outgoingThematicName]
-      );
+      // Handle unique constraint violation gracefully
+      let connectionResult;
+      try {
+        connectionResult = await this.db.run(
+          'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+          [context.gameId, context.fromRoomId, roomResult.lastID, context.direction, outgoingThematicName]
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+          if (this.isDebugEnabled()) {
+            console.log(`🚫 Unique constraint prevented duplicate connection: ${context.direction} from room ${context.fromRoomId}`);
+          }
+          return { 
+            success: false, 
+            error: new Error('Connection already exists (database constraint)') 
+          };
+        }
+        throw error; // Re-throw other errors
+      }
 
-      // Create AI-generated connections from the new room
+      // ALWAYS ensure there's a return connection to the parent room
+      // This is critical for game navigation - do this BEFORE processing AI connections
+      const reverseDirection = this.getReverseDirection(context.direction);
+      let returnConnectionCreated = false;
+      
+      if (reverseDirection) {
+        try {
+          await this.db.run(
+            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+            [context.gameId, roomResult.lastID, context.fromRoomId, reverseDirection, returnThematicName]
+          );
+          returnConnectionCreated = true;
+          if (this.isDebugEnabled()) {
+            console.log(`✅ Created MANDATORY return connection from ${roomResult.lastID} to ${context.fromRoomId} (${reverseDirection})`);
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+            returnConnectionCreated = true; // Connection already exists
+            if (this.isDebugEnabled()) {
+              console.log(`ℹ️  Return connection already exists: ${reverseDirection} from room ${roomResult.lastID}`);
+            }
+          } else {
+            if (this.isDebugEnabled()) {
+              console.error(`❌ Failed to create mandatory return connection: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+        }
+      }
+
+      // Create AI-generated connections from the new room (in addition to the mandatory return path)
+      if (this.isDebugEnabled()) {
+        console.log(`[DEBUG] AI generated ${newRoom.connections?.length || 0} connections for room "${newRoom.name}"`);
+      }
+      
       if (newRoom.connections && newRoom.connections.length > 0) {
         for (const connection of newRoom.connections) {
           // Find if this connection leads back to the origin room
           const isReturnPath = connection.direction === this.getReverseDirection(context.direction);
           
           if (isReturnPath) {
-            // Create the return connection with thematic name
-            await this.db.run(
-              'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-              [context.gameId, roomResult.lastID, context.fromRoomId, connection.direction, connection.name]
-            );
+            // Skip - we already created the mandatory return connection above
+            if (this.isDebugEnabled()) {
+              console.log(`ℹ️  Skipping AI return connection - mandatory return already created (${connection.direction})`);
+            }
           } else {
             // For other directions, we'll create stub rooms later (in Phase 4)
             // For now, just log that we have additional connections planned
@@ -248,14 +417,12 @@ export class RoomGenerationService {
             }
           }
         }
-      } else {
-        // Fallback: ensure new room has at least one exit (back to where we came from)
-        const reverseDirection = this.getReverseDirection(context.direction);
-        if (reverseDirection) {
-          await this.db.run(
-            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-            [context.gameId, roomResult.lastID, context.fromRoomId, reverseDirection, returnThematicName]
-          );
+      }
+      
+      // Final safety check - ensure return connection was created
+      if (!returnConnectionCreated) {
+        if (this.isDebugEnabled()) {
+          console.error(`❌ CRITICAL: No return connection created for room ${roomResult.lastID}!`);
         }
       }
 

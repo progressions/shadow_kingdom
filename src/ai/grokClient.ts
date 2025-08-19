@@ -20,6 +20,15 @@ export interface RoomContext {
   direction: string;
   gameHistory?: string[];
   theme?: string;
+  regionContext?: {
+    region: {
+      type: string;
+      name: string | null;
+      description: string;
+    };
+    distanceFromCenter: number;
+  };
+  adjacentRooms?: string[];
 }
 
 export interface GeneratedRoom {
@@ -146,27 +155,53 @@ export class GrokClient {
     const themeNote = context.theme || 'mysterious fantasy kingdom';
     const reverseDirection = this.getReverseDirection(context.direction) || 'back';
 
-    const prompt = `You are creating a room for a text adventure game called Shadow Kingdom.
-    
+    // Build region-aware prompt
+    let prompt = `You are creating a room for a text adventure game called Shadow Kingdom.
+
 Current room: ${context.currentRoom.name}
 Description: ${context.currentRoom.description}
 Player is trying to go: ${context.direction}
-Existing rooms in this game: ${existingRooms}
+Existing rooms in this game: ${existingRooms}`;
+
+    // Add region context if available
+    if (context.regionContext) {
+      const { region, distanceFromCenter } = context.regionContext;
+      prompt += `
+
+REGION CONTEXT:
+- This room is part of the ${region.type} region${region.name ? ` called "${region.name}"` : ''}
+- Region theme: ${region.description}
+- ${distanceFromCenter === 0 ? 'This is the CENTER of the region - make it grand and significant!' : `This room is ${distanceFromCenter} steps from the region center`}
+- Ensure the room fits naturally within the ${region.type} theme and atmosphere`;
+    }
+
+    // Add adjacent room context if available
+    if (context.adjacentRooms && context.adjacentRooms.length > 0) {
+      prompt += `
+
+ADJACENT ROOMS CONTEXT:
+${context.adjacentRooms.join('\n')}
+- Generate a room that logically connects to these adjacent spaces
+- Consider the architectural flow and thematic consistency`;
+    }
+
+    prompt += `
 
 Generate a NEW and UNIQUE room that the player discovers when going ${context.direction}. 
-Make it thematically consistent with a ${themeNote} setting.
+Make it thematically consistent with a ${themeNote} setting${context.regionContext ? ` and the ${context.regionContext.region.type} region theme` : ''}.
 
 ROOM REQUIREMENTS:
 - Create a room name that is DIFFERENT from all existing rooms
 - Make the room unique and interesting, not generic
-- Consider the direction and current room context
+- Consider the direction and current room context${context.regionContext ? ' and regional theme' : ''}
 - Avoid repetitive names like "Chamber", "Room", "Hall" unless very specific
+${context.regionContext?.distanceFromCenter === 0 ? '- Make this room GRAND and SIGNIFICANT as it is the region center' : ''}
 
 CONNECTION GENERATION RULES:
 - ALWAYS include a return connection back to where the player came from
 - For each of the other 5 directions (north, south, east, west, up, down - excluding the return path), roll a 30% chance to create an exit
 - This means most rooms will have 2-4 total connections (including the return path)
-- Create thematic names that fit the room's atmosphere and architecture
+- Create thematic names that fit the room's atmosphere and architecture${context.regionContext ? ` and ${context.regionContext.region.type} theme` : ''}
 - Make connection names immersive and descriptive, not just directions
 
 EXAMPLES OF GOOD THEMATIC CONNECTIONS:
@@ -180,7 +215,7 @@ EXAMPLES OF GOOD THEMATIC CONNECTIONS:
 Respond in JSON format:
 {
   "name": "Unique Room Name (avoid duplicates)",
-  "description": "Detailed atmospheric description of the room",
+  "description": "Detailed atmospheric description of the room${context.regionContext ? ` that fits the ${context.regionContext.region.type} theme` : ''}",
   "connections": [
     {"direction": "${reverseDirection}", "name": "thematic description for return path"},
     {"direction": "north", "name": "through the ornate archway"},

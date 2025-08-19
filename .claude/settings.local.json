@@ -27,9 +27,18 @@
       "Bash(timeout 15s npm test)",
       "Bash(timeout 30s npm test:*)",
       "Bash(git commit:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(DB_PATH=/tmp/test_regions.db npm start)",
+      "Bash(npx ts-node:*)",
+      "Bash(chmod:*)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev)",
+      "Bash(./scripts/test-region-display.ts)",
+      "Bash(./scripts/test-current-room-region.ts)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/private/tmp"
+    ]
   }
 }

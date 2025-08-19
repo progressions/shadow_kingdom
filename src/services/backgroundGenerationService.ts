@@ -38,6 +38,9 @@ export class BackgroundGenerationService {
    * Trigger background room generation for adjacent rooms (entry point from GameController)
    */
   async preGenerateAdjacentRooms(currentRoomId: number, gameId: number): Promise<void> {
+    if (this.isDebugEnabled()) {
+      console.log(`[DEBUG] BackgroundGenerationService.preGenerateAdjacentRooms called with roomId: ${currentRoomId}, gameId: ${gameId}`);
+    }
     try {
       const limits = this.getGenerationLimits();
       
@@ -95,7 +98,25 @@ export class BackgroundGenerationService {
     try {
       const limits = this.getGenerationLimits();
       
+      // Only generate if the player is running low on unvisited rooms
+      const totalUnprocessedRooms = await this.db.get(
+        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ? AND (generation_processed = FALSE OR generation_processed IS NULL)',
+        [gameId]
+      );
+      
+      if (totalUnprocessedRooms && totalUnprocessedRooms.count >= 3) {
+        if (this.isDebugEnabled()) {
+          console.log(`[DEBUG] ${totalUnprocessedRooms.count} unprocessed rooms available - skipping generation`);
+        }
+        return; // Player has plenty of unvisited rooms to explore
+      }
+      
+      if (this.isDebugEnabled()) {
+        console.log(`[DEBUG] Only ${totalUnprocessedRooms?.count || 0} unprocessed rooms left - proceeding with generation`);
+      }
+
       // Get all connections FROM current room to existing rooms that haven't been processed yet
+      // Generate for unprocessed rooms connected to ANY room (visited or not)
       const connections = await this.db.all(
         'SELECT c.*, r.generation_processed FROM connections c ' +
         'JOIN rooms r ON c.to_room_id = r.id ' +
@@ -145,19 +166,31 @@ export class BackgroundGenerationService {
         );
 
         if (targetRoom) {
-          const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
-            targetRoom.id, 
-            gameId, 
-            limits.maxGenerationDepth, 
-            roomsToGenerate - generatedCount
-          );
-          generatedCount += roomsGenerated;
-          
-          // Mark this room as processed so we don't generate for it again
-          await this.db.run(
-            'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
+          // Double-check room is still unprocessed before generation (race condition protection)
+          const currentStatus = await this.db.get(
+            'SELECT generation_processed FROM rooms WHERE id = ?',
             [targetRoom.id]
           );
+          
+          if (currentStatus && !currentStatus.generation_processed) {
+            if (this.isDebugEnabled()) {
+              console.log(`[DEBUG] Expanding generation for unprocessed room "${targetRoom.name}" (ID: ${targetRoom.id})`);
+            }
+            const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
+              targetRoom.id, 
+              gameId, 
+              limits.maxGenerationDepth, 
+              roomsToGenerate - generatedCount
+            );
+            generatedCount += roomsGenerated;
+            
+            // Mark this room as processed so we don't generate for it again
+            // Only update if it's still FALSE (another process might have marked it)
+            await this.db.run(
+              'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
+              [targetRoom.id]
+            );
+          }
         }
       }
       
