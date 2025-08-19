@@ -7,12 +7,8 @@ import { GrokClient } from './ai/grokClient';
 import { UnifiedNLPEngine } from './nlp/unifiedNLPEngine';
 import { GameContext } from './nlp/types';
 import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
+import { CommandRouter, Command, CommandExecutionContext } from './services/commandRouter';
 
-interface Command {
-  name: string;
-  description: string;
-  handler: (args: string[]) => void | Promise<void>;
-}
 
 interface Game {
   id: number;
@@ -51,11 +47,10 @@ export class GameController {
   private db: Database;
   private grokClient: GrokClient;
   private nlpEngine: UnifiedNLPEngine;
+  private commandRouter: CommandRouter;
   private mode: Mode = 'menu';
   private currentGameId: number | null = null;
   private currentRoomId: number | null = null;
-  private menuCommands: Map<string, Command> = new Map();
-  private gameCommands: Map<string, Command> = new Map();
   private lastGenerationTime: number = 0;
   private generationInProgress: Set<number> = new Set();
   private recentCommands: string[] = [];
@@ -69,6 +64,11 @@ export class GameController {
     const config = applyEnvironmentOverrides(baseConfig);
     this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config);
     
+    // Initialize command router
+    this.commandRouter = new CommandRouter(this.nlpEngine, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
+    
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -81,31 +81,31 @@ export class GameController {
   }
 
   private setupMenuCommands() {
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'help',
       description: 'Show available menu commands',
-      handler: () => this.showMenuHelp()
+      handler: () => this.commandRouter.showHelp('menu')
     });
 
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'new',
       description: 'Start a new game',
       handler: async () => await this.startNewGame()
     });
 
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'load',
       description: 'Load an existing game',
       handler: async () => await this.loadGame()
     });
 
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'delete',
       description: 'Delete a saved game',
       handler: async () => await this.deleteGame()
     });
 
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
@@ -114,19 +114,19 @@ export class GameController {
       }
     });
 
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'nlp-stats',
       description: 'Show natural language processing statistics',
       handler: () => this.showNLPStats()
     });
 
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'exit',
       description: 'Exit Shadow Kingdom',
       handler: () => this.exit()
     });
 
-    this.addMenuCommand({
+    this.commandRouter.addMenuCommand({
       name: 'quit',
       description: 'Quit Shadow Kingdom (alias for "exit")',
       handler: () => this.exit()
@@ -134,99 +134,99 @@ export class GameController {
   }
 
   private setupGameCommands() {
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'help',
       description: 'Show available commands',
-      handler: () => this.showGameHelp()
+      handler: () => this.commandRouter.showHelp('game')
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'look',
       description: 'Look around the current room',
       handler: async () => await this.lookAround()
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'go',
       description: 'Move in a direction (e.g., "go north")',
       handler: async (args) => await this.move(args)
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'move',
       description: 'Move in a direction (alias for "go")',
       handler: async (args) => await this.move(args)
     });
 
     // Cardinal direction shortcuts
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'north',
       description: 'Move north',
       handler: async () => await this.move(['north'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'south',
       description: 'Move south',
       handler: async () => await this.move(['south'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'east',
       description: 'Move east',
       handler: async () => await this.move(['east'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'west',
       description: 'Move west',
       handler: async () => await this.move(['west'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'up',
       description: 'Move up',
       handler: async () => await this.move(['up'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'down',
       description: 'Move down',
       handler: async () => await this.move(['down'])
     });
 
     // Short aliases for cardinal directions
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'n',
       description: 'Move north (shortcut)',
       handler: async () => await this.move(['north'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 's',
       description: 'Move south (shortcut)',
       handler: async () => await this.move(['south'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'e',
       description: 'Move east (shortcut)',
       handler: async () => await this.move(['east'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'w',
       description: 'Move west (shortcut)',
       handler: async () => await this.move(['west'])
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'echo',
       description: 'Echo back the provided text',
       handler: (args) => console.log(args.join(' '))
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
@@ -235,19 +235,19 @@ export class GameController {
       }
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'exit',
       description: 'Exit to main menu',
       handler: async () => await this.returnToMenu()
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'quit',
       description: 'Quit to main menu (alias for "exit")',
       handler: async () => await this.returnToMenu()
     });
 
-    this.addGameCommand({
+    this.commandRouter.addGameCommand({
       name: 'menu',
       description: 'Return to main menu',
       handler: async () => await this.returnToMenu()
@@ -267,13 +267,6 @@ export class GameController {
     });
   }
 
-  private addMenuCommand(command: Command) {
-    this.menuCommands.set(command.name, command);
-  }
-
-  private addGameCommand(command: Command) {
-    this.gameCommands.set(command.name, command);
-  }
 
   private async processCommand(input: string) {
     if (!input) return;
@@ -284,80 +277,17 @@ export class GameController {
       this.recentCommands.pop();
     }
 
-    // First try exact command matching (existing system)
-    const parts = input.split(' ');
-    const commandName = parts[0].toLowerCase();
-    const args = parts.slice(1);
+    // Create execution context
+    const executionContext: CommandExecutionContext = {
+      mode: this.mode,
+      gameContext: await this.buildGameContext(),
+      recentCommands: this.recentCommands
+    };
 
-    const commands = this.mode === 'menu' ? this.menuCommands : this.gameCommands;
-    const exactCommand = commands.get(commandName);
-    
-    if (exactCommand) {
-      try {
-        await exactCommand.handler(args);
-        return;
-      } catch (error) {
-        console.error(`Error executing command "${commandName}":`, error);
-        return;
-      }
-    }
-
-    // If exact match fails, try unified NLP processing
-    const context = await this.buildGameContext();
-    const nlpResult = await this.nlpEngine.processCommand(input, context);
-
-    if (nlpResult) {
-      // Check if the NLP-resolved command exists
-      const resolvedCommand = commands.get(nlpResult.action);
-      
-      if (resolvedCommand) {
-        try {
-          if (process.env.AI_DEBUG_LOGGING === 'true') {
-            const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
-            console.log(`${sourceIcon} NLP: "${input}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)}, source: ${nlpResult.source})`);
-            if (nlpResult.reasoning) {
-              console.log(`   Reasoning: ${nlpResult.reasoning}`);
-            }
-          }
-          await resolvedCommand.handler(nlpResult.params);
-          return;
-        } catch (error) {
-          console.error(`Error executing NLP-resolved command "${nlpResult.action}":`, error);
-          return;
-        }
-      }
-    }
-
-    // If neither exact nor NLP matching worked, show error
-    console.log(`Unknown command: ${commandName}. Type "help" for available commands.`);
-    
-    // In debug mode, show NLP analysis
-    if (process.env.AI_DEBUG_LOGGING === 'true' && nlpResult) {
-      console.log(`🧠 NLP attempted: "${nlpResult.action}" but command not found in ${this.mode} mode`);
-    }
+    // Delegate to command router
+    await this.commandRouter.processCommand(input, executionContext);
   }
 
-  private showMenuHelp() {
-    console.log('\nMain Menu Commands:');
-    console.log('==================');
-    
-    this.menuCommands.forEach((command) => {
-      console.log(`  ${command.name.padEnd(12)} - ${command.description}`);
-    });
-    
-    console.log('\nPress Ctrl+C or type "exit" to quit.\n');
-  }
-
-  private showGameHelp() {
-    console.log('\nAvailable commands:');
-    console.log('==================');
-    
-    this.gameCommands.forEach((command) => {
-      console.log(`  ${command.name.padEnd(12)} - ${command.description}`);
-    });
-    
-    console.log('\nPress Ctrl+C or type "exit" to quit.\n');
-  }
 
   private showWelcome() {
     console.log('Welcome to Shadow Kingdom!');
@@ -369,16 +299,22 @@ export class GameController {
     console.log('\n📊 Natural Language Processing Statistics');
     console.log('=========================================');
     
-    const stats = this.nlpEngine.getStats();
+    const commandStats = this.commandRouter.getStats();
+    const nlpStats = commandStats.nlpStats;
     const config = this.nlpEngine.getConfig();
     
+    console.log('\n🎮 Command Router Statistics:');
+    console.log(`  Menu commands registered: ${commandStats.menuCommandCount}`);
+    console.log(`  Game commands registered: ${commandStats.gameCommandCount}`);
+    console.log(`  Total commands registered: ${commandStats.totalCommands}`);
+    
     console.log('\n🎯 Processing Statistics:');
-    console.log(`  Total commands processed: ${stats.totalCommands}`);
-    console.log(`  Local pattern matches: ${stats.localMatches} (${(stats.localSuccessRate * 100).toFixed(1)}%)`);
-    console.log(`  AI fallback matches: ${stats.aiMatches} (${(stats.aiSuccessRate * 100).toFixed(1)}%)`);
-    console.log(`  Failed to parse: ${stats.failures} (${((stats.failures / stats.totalCommands) * 100 || 0).toFixed(1)}%)`);
-    console.log(`  Overall success rate: ${(stats.successRate * 100).toFixed(1)}%`);
-    console.log(`  Average processing time: ${stats.avgProcessingTime.toFixed(2)}ms`);
+    console.log(`  Total commands processed: ${nlpStats.totalCommands}`);
+    console.log(`  Local pattern matches: ${nlpStats.localMatches} (${(nlpStats.localSuccessRate * 100).toFixed(1)}%)`);
+    console.log(`  AI fallback matches: ${nlpStats.aiMatches} (${(nlpStats.aiSuccessRate * 100).toFixed(1)}%)`);
+    console.log(`  Failed to parse: ${nlpStats.failures} (${((nlpStats.failures / nlpStats.totalCommands) * 100 || 0).toFixed(1)}%)`);
+    console.log(`  Overall success rate: ${(nlpStats.successRate * 100).toFixed(1)}%`);
+    console.log(`  Average processing time: ${nlpStats.avgProcessingTime.toFixed(2)}ms`);
     
     console.log('\n⚙️  Configuration:');
     console.log(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`);
@@ -388,14 +324,14 @@ export class GameController {
     console.log(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`);
     
     console.log('\n🧠 Local Processor:');
-    console.log(`  Patterns loaded: ${stats.localProcessor.patternsLoaded}`);
-    console.log(`  Synonyms loaded: ${stats.localProcessor.synonymsLoaded}`);
-    console.log(`  Uptime: ${stats.localProcessor.uptimeMs}ms`);
+    console.log(`  Patterns loaded: ${nlpStats.localProcessor.patternsLoaded}`);
+    console.log(`  Synonyms loaded: ${nlpStats.localProcessor.synonymsLoaded}`);
+    console.log(`  Uptime: ${nlpStats.localProcessor.uptimeMs}ms`);
     
     if (config.enableAIFallback) {
       console.log('\n🤖 AI Usage:');
-      console.log(`  Estimated cost: ${stats.aiUsage.estimatedCost}`);
-      console.log(`  Tokens used: ${stats.aiUsage.tokensUsed.input} input, ${stats.aiUsage.tokensUsed.output} output`);
+      console.log(`  Estimated cost: ${nlpStats.aiUsage.estimatedCost}`);
+      console.log(`  Tokens used: ${nlpStats.aiUsage.tokensUsed.input} input, ${nlpStats.aiUsage.tokensUsed.output} output`);
     }
     
     console.log('\n💡 Tip: Use NLP_DEBUG_LOGGING=true to see real-time processing details.\n');

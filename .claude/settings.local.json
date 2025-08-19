@@ -20,7 +20,9 @@
       "Bash(git tag:*)",
       "Bash(npx tsc:*)",
       "Bash(npx jest:*)",
-      "Bash(timeout 10s npm test:*)"
+      "Bash(timeout 10s npm test:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []
