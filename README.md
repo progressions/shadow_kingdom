@@ -10,6 +10,7 @@ Shadow Kingdom is an interactive text-based adventure game that uses AI to gener
 
 - **🏰 Region-Based World Generation**: Thematically coherent areas (mansions, forests, caves, towns) with distance-based transitions
 - **🤖 AI-Generated Content**: Rooms, descriptions, and connections dynamically created by Grok AI with regional context
+- **⚡ Background Generation**: World expands automatically as you explore - new rooms generate in real-time
 - **🧭 Dual Navigation System**: Navigate using cardinal directions ("north") or atmospheric descriptions ("through the crystal archway")
 - **💾 Persistent Worlds**: Save and load multiple game sessions with SQLite database
 - **📍 Region Discovery**: Explore region centers containing important content and NPCs
@@ -94,16 +95,19 @@ For automation and testing, use the session interface:
 
 ```bash
 # Basic exploration
-node dist/sessionInterface.js --cmd "look"
-node dist/sessionInterface.js --cmd "go north" --game-id 1
+npm run dev -- --cmd "look"                    # Start new game and look around
+npm run dev -- --cmd "go north" --game-id 1    # Move north in existing game
+
+# With debug output to see background generation
+AI_DEBUG_LOGGING=true npm run dev -- --cmd "look"  # Shows room generation in real-time
 
 # Region inspection
-node dist/sessionInterface.js --cmd "region" --game-id 1
-node dist/sessionInterface.js --cmd "regions" --game-id 1
-node dist/sessionInterface.js --cmd "region-stats" --game-id 1
+npm run dev -- --cmd "region" --game-id 1     # Show current room's region
+npm run dev -- --cmd "regions" --game-id 1    # List all regions in game
+npm run dev -- --cmd "region-stats" --game-id 1  # Show detailed region statistics
 
 # Get help
-node dist/sessionInterface.js --cmd "help" --game-id 1
+npm run dev -- --cmd "help" --game-id 1       # Show available commands
 ```
 
 ### Example Gameplay

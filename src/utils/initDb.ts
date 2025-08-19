@@ -285,27 +285,28 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
     const regionId = regionResult.lastID;
 
     // Create initial rooms for this game with rich, atmospheric descriptions
-    // All rooms start unprocessed and get locked when player first visits them
+    // Core starter rooms (entrance, library, garden) are marked as processed (already locked)
+    // Leaf rooms (tower stairs, crypt entrance, observatory steps) remain unprocessed for expansion
     // The entrance hall is the center of the manor region (distance 0)
     const entranceResult = await db.run(
       'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
       [gameId, 'Grand Entrance Hall', 
        `You stand in a magnificent entrance hall that speaks of forgotten grandeur. Towering marble columns stretch up to a vaulted ceiling painted with faded celestial murals, their gold leaf catching the light that filters through tall, arched windows. The polished marble floor beneath your feet reflects the dancing dust motes like stars in a night sky. Ancient tapestries hang between the windows, their once-vibrant colors now muted by centuries of shadow. The air carries a faint echo of footsteps from ages past, and the silence feels both reverent and expectant.`, 
-       false, regionId, 0]
+       true, regionId, 0]
     );
 
     const libraryResult = await db.run(
       'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
       [gameId, 'Scholar\'s Library', 
        `You enter a vast library that seems to hold the weight of countless ages. Floor-to-ceiling bookshelves carved from dark oak stretch into the shadows above, filled with leather-bound tomes whose gilded spines catch the warm glow of brass reading lamps. The air is thick with the intoxicating scent of old parchment, leather bindings, and the faintest hint of forgotten incense. A massive oak desk sits near the center, its surface covered with open books, scrolls, and an ornate brass inkwell. Dust motes drift lazily through shafts of amber light, and somewhere in the depths of the shelves, you can hear the occasional whisper of settling books and the soft tick of an ancient clock.`, 
-       false, regionId, 1]
+       true, regionId, 1]
     );
 
     const gardenResult = await db.run(
       'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
       [gameId, 'Moonlit Courtyard Garden', 
        `You step into an enchanted courtyard garden where nature has reclaimed its ancient dominion. Weathered stone paths wind between overgrown flowerbeds where wild roses climb trellises heavy with blooms that seem to glow in the perpetual twilight. At the garden's heart stands a marble fountain whose crystal waters still flow with an otherworldly luminescence, casting dancing reflections on the moss-covered statues that watch over this secret sanctuary. Night-blooming jasmine fills the air with its heady perfume, and somewhere in the shadows, you can hear the gentle tinkle of wind chimes and the soft rustle of leaves that seem to whisper secrets of the old kingdom.`, 
-       false, regionId, 1]
+       true, regionId, 1]
     );
 
     // Create leaf nodes - unprocessed rooms that will become expansion points

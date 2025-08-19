@@ -66,6 +66,8 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { GameStateManager } = await import('./services/gameStateManager');
   const { RoomDisplayService } = await import('./services/roomDisplayService');
   const { RegionService } = await import('./services/regionService');
+  const { RoomGenerationService } = await import('./services/roomGenerationService');
+  const { BackgroundGenerationService } = await import('./services/backgroundGenerationService');
   const { GrokClient } = await import('./ai/grokClient');
   const { UnifiedNLPEngine } = await import('./nlp/unifiedNLPEngine');
   const { getNLPConfig, applyEnvironmentOverrides } = await import('./nlp/config');
@@ -115,9 +117,20 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     const regionService = new RegionService(db, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
+
+    // Initialize room generation service with region service
+    const roomGenerationService = new RoomGenerationService(db, grokClient, regionService, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
     
-    // Set up game commands (like GameController.setupGameCommands does)
-    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, db);
+    // Initialize background generation service with test mode to force await (no fire-and-forget)
+    const backgroundGenerationService = new BackgroundGenerationService(db, roomGenerationService, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true',
+      disableBackgroundGeneration: true  // Force await mode to prevent database closure issues
+    });
+    
+    // Set up game commands with background generation support
+    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db);
     
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
@@ -140,12 +153,13 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   }
 }
 
-// Helper function to set up game commands (extracted from GameController logic)
+// Helper function to set up game commands with background generation support
 async function setupGameCommands(
   commandRouter: any, 
   gameStateManager: any, 
   roomDisplayService: any,
   regionService: any,
+  backgroundGenerationService: any,
   db: any
 ): Promise<void> {
   // Add the basic game commands that GameController sets up
@@ -159,11 +173,17 @@ async function setupGameCommands(
     name: 'look',
     description: 'Look around the current room',
     handler: async () => {
-      // Same as GameController.lookAround()
+      // Same logic as GameController.lookAround() but with background generation
+      const session = gameStateManager.getCurrentSession();
       const room = await gameStateManager.getCurrentRoom();
       const connections = await gameStateManager.getCurrentRoomConnections();
       
       if (room) {
+        // Trigger background room generation to find connected unprocessed rooms and expand them
+        // Background generation will mark TARGET rooms as processed after expanding them
+        // DO NOT mark the current room as processed here - that's not how the system works!
+        await backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+
         roomDisplayService.displayRoom(room, connections);
       } else {
         console.log('You are nowhere to be found.');
@@ -175,7 +195,7 @@ async function setupGameCommands(
     name: 'go',
     description: 'Move in a direction (e.g., "go north")',
     handler: async (args: string[]) => {
-      // Same as GameController.move()
+      // Same as GameController.move() but with background generation
       if (args.length === 0) {
         console.log('Move where? Specify a direction (e.g., "go north")');
         return;
@@ -195,11 +215,17 @@ async function setupGameCommands(
         // Move to the new room using game state manager
         await gameStateManager.moveToRoom(connection.to_room_id);
         
-        // Show the new room
+        // Show the new room with background generation
+        const session = gameStateManager.getCurrentSession();
         const room = await gameStateManager.getCurrentRoom();
         const connections = await gameStateManager.getCurrentRoomConnections();
         
         if (room) {
+          // Trigger background room generation to find connected unprocessed rooms and expand them
+          // Background generation will mark TARGET rooms as processed after expanding them
+          // DO NOT mark the current room as processed here - that's not how the system works!
+          await backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+
           roomDisplayService.displayRoom(room, connections);
         }
       } catch (error) {
@@ -335,3 +361,4 @@ async function setupGameCommands(
     }
   });
 }
+

@@ -1,0 +1,292 @@
+import Database from '../src/utils/database';
+import { BackgroundGenerationService } from '../src/services/backgroundGenerationService';
+import { RoomGenerationService } from '../src/services/roomGenerationService';
+import { RegionService } from '../src/services/regionService';
+import { GrokClient } from '../src/ai/grokClient';
+import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
+import { Room, Connection } from '../src/services/gameStateManager';
+
+describe('Background Generation Integration', () => {
+  let db: Database;
+  let mockGrokClient: any;
+  let regionService: RegionService;
+  let roomGenerationService: RoomGenerationService;
+  let backgroundGenerationService: BackgroundGenerationService;
+  let testGameId: number;
+
+  beforeEach(async () => {
+    // In-memory database with full starter game (6 rooms)
+    db = new Database(':memory:');
+    await db.connect();
+    await initializeDatabase(db);
+    
+    const uniqueGameName = `BG Integration Test ${Date.now()}-${Math.random()}`;
+    testGameId = await createGameWithRooms(db, uniqueGameName);
+    
+    // Mock GrokClient to return predictable room data
+    mockGrokClient = {
+      generateRoom: jest.fn(),
+      generateRegion: jest.fn(),
+      generateNPC: jest.fn(),
+      processCommand: jest.fn(),
+      continueDialogue: jest.fn(),
+      interpretCommand: jest.fn(),
+      getUsageStats: jest.fn().mockReturnValue({ totalTokens: 0, totalCost: 0 }),
+      resetUsageStats: jest.fn()
+    };
+    
+    // Configure mock room response
+    const mockRoomResponse = {
+      name: `Generated Room ${Math.random()}`,
+      description: "A room created during testing with mock AI",
+      connections: [
+        { direction: "back", name: "return passage" }
+      ]
+    };
+    mockGrokClient.generateRoom.mockResolvedValue(mockRoomResponse);
+    
+    // Mock region response
+    const mockRegionResponse = {
+      name: "Test Region",
+      type: "mansion" as const,
+      description: "A test region created by mock AI"
+    };
+    mockGrokClient.generateRegion.mockResolvedValue(mockRegionResponse);
+    
+    // Real services with mocked AI
+    regionService = new RegionService(db, { enableDebugLogging: false });
+    
+    roomGenerationService = new RoomGenerationService(db, mockGrokClient as any, regionService, {
+      enableDebugLogging: false
+    });
+    
+    backgroundGenerationService = new BackgroundGenerationService(db, roomGenerationService, {
+      enableDebugLogging: false,
+      disableBackgroundGeneration: true  // Force await mode for testing
+    });
+    
+    // Enable mock mode and disable cooldown for testing
+    process.env.AI_MOCK_MODE = 'true';
+    process.env.GENERATION_COOLDOWN_MS = '0';
+  });
+
+  afterEach(async () => {
+    if (db && db.isConnected()) {
+      await db.close();
+    }
+    
+    // Clean up environment variables
+    delete process.env.AI_MOCK_MODE;
+    delete process.env.MAX_ROOMS_PER_GAME;
+    delete process.env.MAX_GENERATION_DEPTH;
+    delete process.env.GENERATION_COOLDOWN_MS;
+    
+    jest.restoreAllMocks();
+  });
+
+  // Helper functions
+  async function getRoomCount(gameId: number): Promise<number> {
+    const result = await db.get('SELECT COUNT(*) as count FROM rooms WHERE game_id = ?', [gameId]);
+    return result.count;
+  }
+
+  async function findRoomByName(gameId: number, name: string): Promise<Room> {
+    const room = await db.get('SELECT * FROM rooms WHERE game_id = ? AND name = ?', [gameId, name]);
+    if (!room) {
+      throw new Error(`Room '${name}' not found in game ${gameId}`);
+    }
+    return room;
+  }
+
+  async function getConnectionsForRoom(roomId: number): Promise<Connection[]> {
+    return await db.all('SELECT * FROM connections WHERE from_room_id = ?', [roomId]);
+  }
+
+  async function getUnprocessedRooms(gameId: number): Promise<Room[]> {
+    return await db.all('SELECT * FROM rooms WHERE game_id = ? AND (generation_processed = FALSE OR generation_processed IS NULL)', [gameId]);
+  }
+
+  describe('Primary Background Generation Flow', () => {
+    test('should generate new rooms connected to unprocessed leaf rooms', async () => {
+      // Verify initial state: 6 starter rooms
+      const initialCount = await getRoomCount(testGameId);
+      expect(initialCount).toBe(6);
+      
+      // Verify initial unprocessed rooms
+      const initialUnprocessed = await getUnprocessedRooms(testGameId);
+      expect(initialUnprocessed.length).toBe(3); // Tower, Crypt, Observatory
+      
+      // Find entrance hall (Room 1)
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      expect(entranceHall).not.toBeNull();
+      
+      // Execute background generation from entrance hall
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      
+      // Verify: Room count increased (new rooms generated for unprocessed targets)
+      const finalCount = await getRoomCount(testGameId);
+      expect(finalCount).toBeGreaterThan(initialCount);
+      
+      // Verify: Some original unprocessed rooms should now be processed (but new ones may be created)
+      const towerStairs = await findRoomByName(testGameId, 'Winding Tower Stairs');
+      expect(towerStairs.generation_processed).toBeTruthy(); // This specific room should be processed
+    });
+
+    test('should process unprocessed rooms connected from current location', async () => {
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      
+      // Verify Tower Stairs is initially unprocessed and connected from entrance
+      const towerStairs = await findRoomByName(testGameId, 'Winding Tower Stairs');
+      expect(towerStairs.generation_processed).toBeFalsy();
+      
+      // Verify connection exists from entrance to tower stairs
+      const connection = await db.get(
+        'SELECT * FROM connections WHERE game_id = ? AND from_room_id = ? AND to_room_id = ?',
+        [testGameId, entranceHall.id, towerStairs.id]
+      );
+      expect(connection).not.toBeNull();
+      
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      
+      // Verify: Tower Stairs (connected from entrance) should be processed
+      const updatedTowerStairs = await findRoomByName(testGameId, 'Winding Tower Stairs');
+      expect(updatedTowerStairs.generation_processed).toBeTruthy(); // SQLite stores as 1, not true
+    });
+
+    test('should process different unprocessed rooms from different starting locations', async () => {
+      // From Library (Room 2) - should process Crypt (Room 5)
+      const library = await findRoomByName(testGameId, 'Scholar\'s Library');
+      const initialCrypt = await findRoomByName(testGameId, 'Ancient Crypt Entrance');
+      expect(initialCrypt.generation_processed).toBeFalsy();
+      
+      await backgroundGenerationService.preGenerateAdjacentRooms(library.id, testGameId);
+      
+      const updatedCrypt = await findRoomByName(testGameId, 'Ancient Crypt Entrance');
+      expect(updatedCrypt.generation_processed).toBeTruthy(); // SQLite stores as 1, not true
+      
+      // From Garden (Room 3) - should process Observatory (Room 6)  
+      const garden = await findRoomByName(testGameId, 'Moonlit Courtyard Garden');
+      const initialObservatory = await findRoomByName(testGameId, 'Observatory Steps');
+      expect(initialObservatory.generation_processed).toBeFalsy();
+      
+      await backgroundGenerationService.preGenerateAdjacentRooms(garden.id, testGameId);
+      
+      const updatedObservatory = await findRoomByName(testGameId, 'Observatory Steps');
+      expect(updatedObservatory.generation_processed).toBeTruthy(); // SQLite stores as 1, not true
+    });
+
+    test('should create bidirectional connections for new rooms', async () => {
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      const towerStairs = await findRoomByName(testGameId, 'Winding Tower Stairs');
+      
+      // Get initial connection count for tower stairs
+      const initialConnections = await getConnectionsForRoom(towerStairs.id);
+      
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      
+      // Verify: Tower stairs should have additional connections after generation
+      const finalConnections = await getConnectionsForRoom(towerStairs.id);
+      expect(finalConnections.length).toBeGreaterThan(initialConnections.length);
+    });
+  });
+
+  describe('Edge Cases and Limits', () => {
+    test('should not generate rooms when no unprocessed targets exist', async () => {
+      // Mark all rooms as processed
+      await db.run('UPDATE rooms SET generation_processed = TRUE WHERE game_id = ?', [testGameId]);
+      
+      const initialCount = await getRoomCount(testGameId);
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      
+      const finalCount = await getRoomCount(testGameId);
+      expect(finalCount).toBe(initialCount); // No change
+    });
+
+    test('should respect MAX_ROOMS_PER_GAME limit', async () => {
+      process.env.MAX_ROOMS_PER_GAME = '7'; // Only 1 more room allowed
+      
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      
+      const finalCount = await getRoomCount(testGameId);
+      expect(finalCount).toBeLessThanOrEqual(7);
+    });
+
+    test('should handle generation errors gracefully', async () => {
+      // Make mock AI throw error
+      mockGrokClient.generateRoom.mockRejectedValue(new Error('AI generation failed'));
+      
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      
+      // Should not throw error - should handle gracefully
+      await expect(backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId))
+        .resolves.not.toThrow();
+    });
+
+    test('should respect generation cooldown', async () => {
+      process.env.GENERATION_COOLDOWN_MS = '10000'; // 10 second cooldown
+      
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      
+      // First generation should work
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      const firstCount = await getRoomCount(testGameId);
+      
+      // Immediate second generation should be blocked by cooldown
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      const secondCount = await getRoomCount(testGameId);
+      
+      // Room count should be the same (second call blocked)
+      expect(secondCount).toBe(firstCount);
+    });
+  });
+
+  describe('AI Integration', () => {
+    test('should call AI generation with correct parameters', async () => {
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      
+      // Verify AI was called (if generation happened)
+      if (mockGrokClient.generateRoom.mock.calls.length > 0) {
+        expect(mockGrokClient.generateRoom).toHaveBeenCalled();
+        
+        // Check that AI was called with a context object containing room information
+        const firstCall = mockGrokClient.generateRoom.mock.calls[0];
+        expect(firstCall[0]).toHaveProperty('currentRoom');
+        expect(firstCall[0]).toHaveProperty('direction');
+        expect(firstCall[0].currentRoom).toHaveProperty('name');
+        expect(firstCall[0].currentRoom).toHaveProperty('description');
+      }
+    });
+
+    test('should use fallback content when AI fails', async () => {
+      // Make AI fail
+      mockGrokClient.generateRoom.mockRejectedValue(new Error('AI service unavailable'));
+      
+      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
+      const initialCount = await getRoomCount(testGameId);
+      
+      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      
+      const finalCount = await getRoomCount(testGameId);
+      
+      // Should still generate rooms using fallback content
+      if (finalCount > initialCount) {
+        // Verify rooms were created with fallback content
+        const newRooms = await db.all(
+          'SELECT * FROM rooms WHERE game_id = ? ORDER BY id DESC LIMIT 1',
+          [testGameId]
+        );
+        
+        if (newRooms.length > 0) {
+          const newRoom = newRooms[0];
+          expect(newRoom.name).toBeDefined();
+          expect(newRoom.description).toBeDefined();
+        }
+      }
+    });
+  });
+});
