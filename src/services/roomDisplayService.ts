@@ -82,11 +82,13 @@ export class RoomDisplayService {
         return undefined;
       }
 
-      // Format region information
-      let regionDisplay = `Region: ${region.type}`;
+      // Format region information - always show region name prominently
+      let regionDisplay = '';
       
       if (region.name) {
-        regionDisplay += ` (${region.name})`;
+        regionDisplay = `Region: ${region.name}`;
+      } else {
+        regionDisplay = `Region: ${region.type}`;
       }
       
       if (room.region_distance !== null && room.region_distance !== undefined) {

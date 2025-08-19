@@ -490,6 +490,22 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
       [gameId, observatoryStepsId, gardenId, 'down', 'down the starlit steps to the garden']
     );
 
+    // Create the Elegant Mansion region for all starter rooms
+    const regionResult = await db.run(
+      'INSERT INTO regions (game_id, name, type, description, center_room_id) VALUES (?, ?, ?, ?, ?)',
+      [gameId, 'Elegant Mansion', 'mansion', 'A grand estate filled with opulent rooms and refined architectural details, where nobility once lived in splendor', entranceId]
+    );
+
+    const regionId = regionResult.lastID;
+
+    // Assign all starter rooms to the Elegant Mansion region with appropriate distances
+    await db.run('UPDATE rooms SET region_id = ?, region_distance = ? WHERE id = ?', [regionId, 0, entranceId]); // Grand Entrance Hall (center)
+    await db.run('UPDATE rooms SET region_id = ?, region_distance = ? WHERE id = ?', [regionId, 1, libraryId]); // Scholar's Library
+    await db.run('UPDATE rooms SET region_id = ?, region_distance = ? WHERE id = ?', [regionId, 1, gardenId]); // Moonlit Courtyard Garden
+    await db.run('UPDATE rooms SET region_id = ?, region_distance = ? WHERE id = ?', [regionId, 1, observatoryStepsId]); // Observatory Steps
+    await db.run('UPDATE rooms SET region_id = ?, region_distance = ? WHERE id = ?', [regionId, 2, towerStairsId]); // Winding Tower Stairs
+    await db.run('UPDATE rooms SET region_id = ?, region_distance = ? WHERE id = ?', [regionId, 2, cryptEntranceId]); // Ancient Crypt Entrance
+
     // Create initial game state (player starts in entrance hall)
     await db.run(
       'INSERT INTO game_state (game_id, current_room_id) VALUES (?, ?)',

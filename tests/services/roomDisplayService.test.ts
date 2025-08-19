@@ -383,6 +383,126 @@ describe('RoomDisplayService', () => {
     });
   });
 
+  describe('Region Display', () => {
+    test('should display room with region name prominently', async () => {
+      // Create region first
+      const regionResult = await db.run(
+        'INSERT INTO regions (game_id, name, type, description) VALUES (?, ?, ?, ?)',
+        [1, 'Elegant Mansion', 'mansion', 'A grand estate']
+      );
+      
+      const room: Room = {
+        id: 1,
+        game_id: 1,
+        name: 'Grand Hall',
+        description: 'A magnificent entrance hall.',
+        region_id: regionResult.lastID as number,
+        region_distance: 0
+      };
+
+      const result = await roomDisplayService.displayRoom(room, []);
+
+      // Verify the specific console calls we expect for room display
+      expect(consoleSpy).toHaveBeenCalledWith('\nGrand Hall');
+      expect(consoleSpy).toHaveBeenCalledWith('==========');
+      expect(consoleSpy).toHaveBeenCalledWith('A magnificent entrance hall.');
+      expect(consoleSpy).toHaveBeenCalledWith('Region: Elegant Mansion [CENTER]');
+      expect(consoleSpy).toHaveBeenCalledWith('\nThere are no obvious exits.');
+
+      expect(result.regionInfo).toBe('Region: Elegant Mansion [CENTER]');
+    });
+
+    test('should display room with region distance from center', async () => {
+      // Create region first
+      const regionResult = await db.run(
+        'INSERT INTO regions (game_id, name, type, description) VALUES (?, ?, ?, ?)',
+        [1, 'Mystical Forest', 'forest', 'Ancient woodland']
+      );
+      
+      const room: Room = {
+        id: 1,
+        game_id: 1,
+        name: 'Forest Path',
+        description: 'A winding path through trees.',
+        region_id: regionResult.lastID as number,
+        region_distance: 3
+      };
+
+      const result = await roomDisplayService.displayRoom(room, []);
+
+      expect(consoleSpy).toHaveBeenCalledWith('Region: Mystical Forest [3 steps from center]');
+      expect(result.regionInfo).toBe('Region: Mystical Forest [3 steps from center]');
+    });
+
+    test('should fall back to region type when no region name provided', async () => {
+      // Create region without name
+      const regionResult = await db.run(
+        'INSERT INTO regions (game_id, name, type, description) VALUES (?, ?, ?, ?)',
+        [1, null, 'cave', 'Dark underground chambers']
+      );
+      
+      const room: Room = {
+        id: 1,
+        game_id: 1,
+        name: 'Cave Entrance',
+        description: 'A dark cavern opening.',
+        region_id: regionResult.lastID as number,
+        region_distance: 1
+      };
+
+      const result = await roomDisplayService.displayRoom(room, []);
+
+      expect(consoleSpy).toHaveBeenCalledWith('Region: cave [1 steps from center]');
+      expect(result.regionInfo).toBe('Region: cave [1 steps from center]');
+    });
+
+    test('should not display region info when room has no region', async () => {
+      const room: Room = {
+        id: 1,
+        game_id: 1,
+        name: 'Isolated Room',
+        description: 'A room with no regional connection.'
+      };
+
+      const result = await roomDisplayService.displayRoom(room, []);
+
+      // Should only display room info and exits, no region line
+      expect(consoleSpy).toHaveBeenCalledWith('\nIsolated Room');
+      expect(consoleSpy).toHaveBeenCalledWith('=============');
+      expect(consoleSpy).toHaveBeenCalledWith('A room with no regional connection.');
+      expect(consoleSpy).toHaveBeenCalledWith('\nThere are no obvious exits.');
+
+      expect(result.regionInfo).toBeUndefined();
+    });
+
+    test('should include debug information when debug logging enabled', async () => {
+      roomDisplayService.updateOptions({ enableDebugLogging: true });
+      
+      // Create region first
+      const regionResult = await db.run(
+        'INSERT INTO regions (game_id, name, type, description) VALUES (?, ?, ?, ?)',
+        [1, 'Test Region', 'tower', 'A tall spire']
+      );
+      
+      const room: Room = {
+        id: 1,
+        game_id: 1,
+        name: 'Tower Base',
+        description: 'The ground floor of a tower.',
+        region_id: regionResult.lastID as number,
+        region_distance: 0
+      };
+
+      const result = await roomDisplayService.displayRoom(room, []);
+
+      // Check that debug info is included (ID will vary based on test order)
+      expect(result.regionInfo).toContain('Region: Test Region [CENTER]');
+      expect(result.regionInfo).toContain('[DEBUG] Region ID:');
+      expect(result.regionInfo).toContain('Type: tower, Distance: 0');
+      expect(result.regionInfo).toContain('[DEBUG] Description: A tall spire');
+    });
+  });
+
   describe('Integration Tests', () => {
     test('should maintain consistent formatting across multiple room displays', async () => {
       const rooms = [
