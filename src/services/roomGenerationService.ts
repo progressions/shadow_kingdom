@@ -556,12 +556,13 @@ export class RoomGenerationService {
       );
       const roomNames = existingRooms.map(room => room.name);
 
-      // Generate room with enhanced context, including incoming connection details
+      // Generate room with connection context for better AI prompting
       const newRoom = await this.grokClient.generateRoom({
         currentRoom: { name: fromRoom.name, description: fromRoom.description },
         direction: connection.direction,
         gameHistory: roomNames,
-        theme: enhancedPrompt // Use the regional prompt as theme
+        theme: enhancedPrompt, // Use the regional prompt as theme
+        connectionName: connection.name // Pass the connection name for context-aware generation
       });
 
       // Check for duplicate room names and make unique if needed

@@ -228,7 +228,7 @@ describe('Connection-Based Generation Schema', () => {
       const mockGrokClient = {
         generateRoom: jest.fn().mockResolvedValue({
           name: 'Portal Chamber',
-          description: 'A chamber containing swirling portals.',
+          description: 'A chamber containing swirling portals accessed through the mysterious portal.',
           connections: [
             { direction: 'south', name: 'back through the portal' },
             { direction: 'up', name: 'ascending spiral ramp' }
@@ -280,6 +280,58 @@ describe('Connection-Based Generation Schema', () => {
       );
       expect(newUnfilledConnection).toBeDefined();
       expect(newUnfilledConnection!.name).toBe('ascending spiral ramp');
+    });
+
+    it('should pass connection name to AI for context-aware generation', async () => {
+      const gameId = await createGameWithRooms(db, `AI Context Test ${Date.now()}-${Math.random()}`);
+      
+      // Create an unfilled connection with a specific thematic name
+      const connectionResult = await db.run(
+        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+        [gameId, 1, null, 'north', 'through the shimmering crystal archway']
+      );
+
+      const connectionId = connectionResult.lastID;
+      const unfilledConnection = await db.get<UnfilledConnection>(
+        'SELECT * FROM connections WHERE id = ?',
+        [connectionId]
+      );
+
+      // Mock AI client to capture the context passed to it
+      const mockGrokClient = {
+        generateRoom: jest.fn().mockResolvedValue({
+          name: 'Crystal Chamber',
+          description: 'A magnificent chamber accessed through the shimmering crystal archway, filled with prismatic light.',
+          connections: [
+            { direction: 'south', name: 'back through the crystal archway' }
+          ]
+        }),
+        generateRegion: jest.fn()
+      };
+
+      const mockRegionService = {
+        shouldCreateNewRegion: jest.fn().mockReturnValue(false),
+        getRegionsForGame: jest.fn().mockResolvedValue([]),
+        getRegion: jest.fn().mockResolvedValue({ id: 1, type: 'mansion', description: 'A grand manor' }),
+        getAdjacentRoomDescriptions: jest.fn().mockResolvedValue([]),
+        buildRoomGenerationPrompt: jest.fn().mockResolvedValue('mansion themed prompt'),
+        generateRegionDistance: jest.fn().mockReturnValue(1)
+      };
+
+      const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
+        db,
+        mockGrokClient as any,
+        mockRegionService as any,
+        { enableDebugLogging: false }
+      );
+
+      // Generate room for the connection
+      await roomGenService.generateRoomForConnection(unfilledConnection!);
+
+      // Verify that generateRoom was called with the connection name
+      expect(mockGrokClient.generateRoom).toHaveBeenCalledTimes(1);
+      const callArgs = mockGrokClient.generateRoom.mock.calls[0][0];
+      expect(callArgs.connectionName).toBe('through the shimmering crystal archway');
     });
   });
 
