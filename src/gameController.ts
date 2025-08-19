@@ -9,6 +9,7 @@ import { GameContext } from './nlp/types';
 import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
 import { CommandRouter, Command, CommandExecutionContext } from './services/commandRouter';
 import { GameStateManager, Mode } from './services/gameStateManager';
+import { RoomDisplayService } from './services/roomDisplayService';
 
 
 // Interfaces imported from GameStateManager
@@ -21,6 +22,7 @@ export class GameController {
   private nlpEngine: UnifiedNLPEngine;
   private commandRouter: CommandRouter;
   private gameStateManager: GameStateManager;
+  private roomDisplayService: RoomDisplayService;
   private lastGenerationTime: number = 0;
   private generationInProgress: Set<number> = new Set();
 
@@ -40,6 +42,11 @@ export class GameController {
     
     // Initialize command router
     this.commandRouter = new CommandRouter(this.nlpEngine, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
+    
+    // Initialize room display service
+    this.roomDisplayService = new RoomDisplayService({
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -472,7 +479,7 @@ export class GameController {
 
   private async lookAround() {
     if (!this.gameStateManager.isInGame()) {
-      console.log('No game is currently loaded.');
+      this.roomDisplayService.displayNoGameLoaded();
       return;
     }
 
@@ -488,41 +495,25 @@ export class GameController {
           [session.roomId]
         );
 
-        console.log(`\n${room.name}`);
-        console.log('='.repeat(room.name.length));
-        console.log(room.description);
-        
         // Get available connections from this room within this game
         const connections = await this.gameStateManager.getCurrentRoomConnections();
         
-        if (connections && connections.length > 0) {
-          // Display thematic names with direction in parentheses
-          const exits = connections.map(c => {
-            // If name is same as direction, just show direction
-            if (c.name === c.direction) {
-              return c.direction;
-            }
-            // Otherwise show thematic name with direction in parentheses
-            return `${c.name} (${c.direction})`;
-          }).join(', ');
-          console.log(`\nExits: ${exits}`);
-        } else {
-          console.log('\nThere are no obvious exits.');
-        }
+        // Use room display service to format and display the room
+        this.roomDisplayService.displayRoom(room, connections);
 
         // Trigger background room generation (fire and forget)
         this.preGenerateAdjacentRooms(session.roomId!);
       } else {
-        console.log('You are in a void. Something went wrong!');
+        this.roomDisplayService.displayVoidState();
       }
     } catch (error) {
-      console.error('Error looking around:', error);
+      this.roomDisplayService.displayError('Error looking around', error as Error);
     }
   }
 
   private async move(args: string[]) {
     if (!this.gameStateManager.isInGame()) {
-      console.log('No game is currently loaded.');
+      this.roomDisplayService.displayNoGameLoaded();
       return;
     }
 
@@ -566,7 +557,7 @@ export class GameController {
           }
         }
         
-        console.log(`You can't go ${userInput} from here.`);
+        this.roomDisplayService.displayMovementError(userInput);
         return;
       }
 
