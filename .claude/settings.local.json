@@ -28,7 +28,8 @@
       "Bash(timeout 30s npm test:*)",
       "Bash(git commit:*)",
       "Bash(timeout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(gh pr:*)"
     ],
     "deny": [],
     "ask": []
