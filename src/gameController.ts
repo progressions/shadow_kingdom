@@ -702,7 +702,6 @@ export class GameController {
 
   private async exit() {
     await this.cleanup();
-    console.log('Goodbye!');
     this.rl.close();
   }
 
