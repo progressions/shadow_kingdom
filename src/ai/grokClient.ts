@@ -401,13 +401,18 @@ Respond in JSON format:
   "description": "Rich, detailed description that provides context for AI room generation. Should capture the region's atmosphere, history, notable features, and potential room types it might contain."
 }`;
 
+    let response = '';
     try {
-      const response = await this.callGrokAPI(prompt);
+      response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('Raw API response for region generation:', response);
+      }
       const result = JSON.parse(response);
       return result as GeneratedRegion;
     } catch (error) {
       if (process.env.AI_DEBUG_LOGGING === 'true') {
         console.error('Error generating region:', error);
+        console.error('Raw response that failed to parse:', response);
       }
       // Return a fallback region instead of throwing
       return this.getFallbackRegion(context);
