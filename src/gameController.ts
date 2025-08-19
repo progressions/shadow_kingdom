@@ -55,8 +55,13 @@ export class GameController {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
-    // Initialize room generation service
-    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, {
+    // Initialize region service first
+    this.regionService = new RegionService(db, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
+
+    // Initialize room generation service with region service
+    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, this.regionService, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -73,11 +78,6 @@ export class GameController {
     
     // Initialize game management service
     this.gameManagementService = new GameManagementService(db, this.rl, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
-
-    // Initialize region service
-    this.regionService = new RegionService(db, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
 
@@ -514,15 +514,19 @@ export class GameController {
               }
             }
             
-            // Update current room
             // Move to the new room using game state manager
             await this.gameStateManager.moveToRoom(nlpConnection.to_room_id);
             
             // Show the new room
             await this.lookAround();
             return;
+          } else {
+            // NLP resolved direction but no connection exists - try to generate room
+            // Fall through to check if resolved direction is a basic direction
           }
         }
+
+        // No valid connection found - show appropriate error
         
         this.roomDisplayService.displayMovementError(userInput);
         return;

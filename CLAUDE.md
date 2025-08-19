@@ -117,9 +117,80 @@ rooms.id ← connections.from_room_id / to_room_id
 - Fallback content when AI generation fails
 
 **Room Generation Services:** Located in `src/services/`
-- `RoomGenerationService`: Core room creation logic
-- `BackgroundGenerationService`: Proactive room generation
-- `RegionService`: Region management and context building
+- `RoomGenerationService`: Core room creation logic with region integration
+- `BackgroundGenerationService`: Proactive generation triggered by player movement
+- `RegionService`: Region management and AI context building
+
+**Service Integration Flow**:
+1. Player moves → `GameController.lookAround()` calls `BackgroundGenerationService.preGenerateAdjacentRooms()`
+2. `BackgroundGenerationService` finds unprocessed leaf rooms needing connections
+3. `BackgroundGenerationService` calls `RoomGenerationService.generateSingleRoom()`
+4. `RoomGenerationService` uses `RegionService` to determine region assignment
+5. `RoomGenerationService` uses `GrokClient.generateRegion()` if new region needed
+6. `RoomGenerationService` uses regional context for enhanced room generation
+7. New rooms and connections created, ready for future player discovery
+
+**CRITICAL: Room Generation vs Movement Logic**
+
+❌ **INCORRECT Behavior** (Never implement this):
+- Movement commands should NOT generate rooms when no connection exists
+- Players should NOT be able to walk in any direction and have rooms appear
+- "go north" from a room with no north connection should NOT create a north room
+
+✅ **CORRECT Behavior** (Text Adventure Standard):
+- Movement only works if a connection already exists
+- "You can't go north" when no north connection exists
+- Room generation happens via background systems, not failed movement attempts
+- Players must discover existing paths, not create new ones by walking
+
+**Movement Logic**: `src/gameController.ts` move() method
+- Checks for existing connections first
+- Shows error if no connection exists  
+- NEVER generates rooms during movement commands
+- Only follows pre-existing connections between rooms
+
+**How Room Generation Actually Works** (The Correct Flow):
+
+1. **Player Movement**: Only follows existing connections
+   - "go north" only works if a north connection exists
+   - Movement NEVER creates rooms directly
+   - Failed movement shows "You can't go north" message
+
+2. **Background Generation Trigger**: When player enters a room
+   - Moving into a room triggers background generation tasks
+   - System finds "leaf rooms" (unprocessed rooms with missing connections)
+   - Background generation creates NEW rooms connected to these leaf rooms
+   - These new rooms get proper region assignment via RegionService
+
+3. **Visit-to-Lock System**: Room processing state
+   - New rooms start as `generation_processed = FALSE` (unprocessed)
+   - When player visits a room, it becomes `generation_processed = TRUE` (locked)
+   - Background generation only expands from unprocessed leaf rooms
+   - This creates a expanding frontier of exploration
+
+4. **Region Assignment During Background Generation**:
+   - `BackgroundGenerationService` calls `RoomGenerationService`
+   - `RoomGenerationService` uses `RegionService` for region logic
+   - Distance-based probability determines same region vs new region
+   - AI generates region-appropriate room descriptions and connections
+
+**Example Flow**:
+```
+Player: "go east" 
+→ Follows existing east connection to Room B
+→ Player now in Room B (gets locked as processed)
+→ Background generation finds unprocessed "leaf rooms" 
+→ Generates new Room C connected to a leaf room
+→ Room C gets region assignment (same region or new region based on distance)
+→ Player can later discover Room C by following its connection
+```
+
+**Room Generation Triggers** (When rooms SHOULD be created):
+- Background generation when entering rooms (`BackgroundGenerationService`)
+- Proactive generation from unprocessed leaf rooms
+- Story/quest progression creating specific rooms
+- NEVER directly from movement commands
+- NEVER from failed movement attempts
 
 ## Key Features Implementation
 

@@ -28,7 +28,9 @@
       "Bash(timeout 30s npm test:*)",
       "Bash(git commit:*)",
       "Bash(timeout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"look\")",
+      "Bash(AI_DEBUG_LOGGING=true node dist/sessionInterface.js --cmd \"go up\" --game-id 47)"
     ],
     "deny": [],
     "ask": []
