@@ -10,10 +10,8 @@ beforeAll(() => {
 
 afterAll(() => {
   jest.restoreAllMocks();
-});
-
-// Clean up any test database files
-afterEach(() => {
+  
+  // Clean up any test database files at the end
   const testDbFiles = [
     'test_shadow_kingdom.db',
     'test_shadow_kingdom.db-journal',
@@ -33,22 +31,27 @@ afterEach(() => {
   });
 
   // Clean up any temp test files
-  const tempFiles = fs.readdirSync(process.cwd()).filter(file => 
-    file.startsWith('temp_test_') && file.endsWith('.db')
-  );
-  
-  tempFiles.forEach(file => {
-    try {
-      fs.unlinkSync(path.join(process.cwd(), file));
-      // Also clean up journal files
-      const journalFile = file + '-journal';
-      if (fs.existsSync(journalFile)) {
-        fs.unlinkSync(path.join(process.cwd(), journalFile));
+  try {
+    const tempFiles = fs.readdirSync(process.cwd()).filter(file => 
+      file.startsWith('temp_test_') && file.endsWith('.db')
+    );
+    
+    tempFiles.forEach(file => {
+      try {
+        fs.unlinkSync(path.join(process.cwd(), file));
+        // Also clean up journal files
+        const journalFile = file + '-journal';
+        const journalPath = path.join(process.cwd(), journalFile);
+        if (fs.existsSync(journalPath)) {
+          fs.unlinkSync(journalPath);
+        }
+      } catch (error) {
+        // Ignore cleanup errors
       }
-    } catch (error) {
-      // Ignore cleanup errors
-    }
-  });
+    });
+  } catch (error) {
+    // Ignore directory read errors
+  }
 });
 
 // Set test timeout

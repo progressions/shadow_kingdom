@@ -23,47 +23,110 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
   }
 
   /**
+   * Check if input contains ambiguous references that require context resolution
+   */
+  private hasAmbiguousReferences(input: string): boolean {
+    const normalizedInput = input.toLowerCase().trim();
+    
+    // Check for pronouns - these are truly ambiguous
+    if (/\b(it|that|this|them|they|he|she|him|her)\b/.test(normalizedInput)) {
+      return true;
+    }
+    
+    // Check for compound commands (and, then, but) - these need complex parsing
+    if (/\b(and|then|but)\b/.test(normalizedInput)) {
+      return true;
+    }
+    
+    // Check for spatial/definite references with specific articles that suggest context dependency
+    // But exclude simple "the X" patterns that local patterns can handle
+    if (/\b(the|this|that)\s+(fountain|librarian|archway|door|chest|altar)\b/.test(normalizedInput)) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
    * Process command with enhanced context resolution
    */
   async processCommand(input: string, context: GameContext): Promise<NLPResult | null> {
     const startTime = Date.now();
     
-    // First try the base unified engine (local patterns + AI fallback)
+    // Check if the input contains ambiguous references that require context resolution
+    const needsContextResolution = this.hasAmbiguousReferences(input);
+    
+    if (needsContextResolution) {
+      // Try context resolution first for ambiguous references
+      const extendedContext = await this.buildExtendedContext(context);
+      const contextResult = await this.processWithContext(input, extendedContext);
+      
+      if (contextResult) {
+        const processingTime = Date.now() - startTime;
+        
+        if (contextResult.isCompound) {
+          return {
+            action: 'compound',
+            params: [],
+            confidence: contextResult.confidence,
+            source: 'context',
+            processingTime,
+            reasoning: 'Compound command resolved with context',
+            isCompound: true,
+            compoundCommands: contextResult.compoundCommands
+          };
+        } else {
+          return {
+            action: contextResult.action,
+            params: contextResult.params,
+            confidence: contextResult.confidence,
+            source: 'context',
+            processingTime,
+            reasoning: contextResult.reasoning || 'Context resolution successful',
+            resolvedObjects: contextResult.resolvedObjects
+          };
+        }
+      }
+    }
+    
+    // Try the base unified engine (local patterns + AI fallback)
     const baseResult = await super.processCommand(input, context);
     
     // If base processing succeeded with high confidence, use it
-    if (baseResult && baseResult.confidence >= 0.8) {
+    if (baseResult && baseResult.confidence >= this.config.localConfidenceThreshold) {
       return baseResult;
     }
 
-    // Try enhanced context resolution
-    const extendedContext = await this.buildExtendedContext(context);
-    const contextResult = await this.processWithContext(input, extendedContext);
-    
-    if (contextResult) {
-      const processingTime = Date.now() - startTime;
+    // If base failed and we haven't tried context resolution yet, try it now
+    if (!needsContextResolution) {
+      const extendedContext = await this.buildExtendedContext(context);
+      const contextResult = await this.processWithContext(input, extendedContext);
       
-      if (contextResult.isCompound) {
-        return {
-          action: 'compound',
-          params: [],
-          confidence: contextResult.confidence,
-          source: 'context',
-          processingTime,
-          reasoning: 'Compound command resolved with context',
-          isCompound: true,
-          compoundCommands: contextResult.compoundCommands
-        };
-      } else {
-        return {
-          action: contextResult.action,
-          params: contextResult.params,
-          confidence: contextResult.confidence,
-          source: 'context',
-          processingTime,
-          reasoning: contextResult.reasoning,
-          resolvedObjects: contextResult.resolvedObjects
-        };
+      if (contextResult) {
+        const processingTime = Date.now() - startTime;
+      
+        if (contextResult.isCompound) {
+          return {
+            action: 'compound',
+            params: [],
+            confidence: contextResult.confidence,
+            source: 'context',
+            processingTime,
+            reasoning: 'Compound command resolved with context',
+            isCompound: true,
+            compoundCommands: contextResult.compoundCommands
+          };
+        } else {
+          return {
+            action: contextResult.action,
+            params: contextResult.params,
+            confidence: contextResult.confidence,
+            source: 'context',
+            processingTime,
+            reasoning: contextResult.reasoning,
+            resolvedObjects: contextResult.resolvedObjects
+          };
+        }
       }
     }
 
