@@ -2,7 +2,6 @@
 
 import * as readline from 'readline';
 import Database from './utils/database';
-import { initializeDatabase, seedDatabase, migrateExistingData, createGameWithRooms } from './utils/initDb';
 import { GrokClient } from './ai/grokClient';
 import { UnifiedNLPEngine } from './nlp/unifiedNLPEngine';
 import { GameContext } from './nlp/types';
@@ -12,6 +11,7 @@ import { GameStateManager, Mode } from './services/gameStateManager';
 import { RoomDisplayService } from './services/roomDisplayService';
 import { RoomGenerationService } from './services/roomGenerationService';
 import { BackgroundGenerationService } from './services/backgroundGenerationService';
+import { GameManagementService } from './services/gameManagementService';
 
 
 // Interfaces imported from GameStateManager
@@ -27,6 +27,7 @@ export class GameController {
   private roomDisplayService: RoomDisplayService;
   private roomGenerationService: RoomGenerationService;
   private backgroundGenerationService: BackgroundGenerationService;
+  private gameManagementService: GameManagementService;
 
   constructor(db: Database) {
     this.db = db;
@@ -66,6 +67,11 @@ export class GameController {
       input: process.stdin,
       output: process.stdout,
       prompt: 'menu> '
+    });
+    
+    // Initialize game management service
+    this.gameManagementService = new GameManagementService(db, this.rl, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
 
     this.setupMenuCommands();
@@ -330,40 +336,21 @@ export class GameController {
   private async startNewGame() {
     console.log('Starting a new game...\n');
     
-    try {
-      // Initialize database tables if needed
-      await initializeDatabase(this.db);
-      
-      // Get game name from user
-      console.log('Enter a name for your new game:');
-      const gameName = await this.promptForInput('Game name: ');
-      
-      if (!gameName.trim()) {
-        console.log('Game name cannot be empty. Returning to main menu.');
-        return;
-      }
-
-      // Check if game name already exists
-      const existingGame = await this.db.get<Game>(
-        'SELECT id FROM games WHERE name = ?',
-        [gameName.trim()]
-      );
-
-      if (existingGame) {
-        console.log('A game with that name already exists. Please choose a different name.');
-        return;
-      }
-
-      // Create new game with rooms
-      const gameId = await createGameWithRooms(this.db, gameName.trim());
-      
+    const result = await this.gameManagementService.createNewGame();
+    
+    if (!result.success) {
+      console.log(result.error || 'Failed to create new game. Returning to main menu.');
+      return;
+    }
+    
+    if (result.gameId && result.gameName) {
       // Start game session using game state manager
-      await this.gameStateManager.startGameSession(gameId);
+      await this.gameStateManager.startGameSession(result.gameId);
       this.rl.setPrompt('> ');
       
       console.clear();
       console.log(`Welcome to Shadow Kingdom!`);
-      console.log(`Game: ${gameName}`);
+      console.log(`Game: ${result.gameName}`);
       console.log('Initializing game world...\n');
       console.log('\nType "help" for available commands.');
       console.log('Type "look" to see where you are.');
@@ -371,110 +358,52 @@ export class GameController {
       
       // Show initial room
       await this.lookAround();
-    } catch (error) {
-      console.error('Failed to start new game:', error);
     }
   }
 
   private async loadGame() {
     console.log('Loading existing games...\n');
     
-    try {
-      // Get all games ordered by last played
-      const games = await this.db.all<Game>(
-        'SELECT id, name, created_at, last_played_at FROM games ORDER BY last_played_at DESC'
-      );
-
-      if (!games || games.length === 0) {
-        console.log('No saved games found. Create a new game first.');
-        return;
-      }
-
-      console.log('Select a game to load:\n');
-      games.forEach((game, index) => {
-        const lastPlayed = this.formatTimestamp(game.last_played_at);
-        console.log(`${index + 1}. ${game.name} (Last played: ${lastPlayed})`);
-      });
-      console.log('0. Cancel\n');
-
-      const choice = await this.promptForInput('Enter your choice: ');
-      const choiceNum = parseInt(choice);
-
-      if (isNaN(choiceNum) || choiceNum < 0 || choiceNum > games.length) {
-        console.log('Invalid choice. Returning to main menu.');
-        return;
-      }
-
-      if (choiceNum === 0) {
-        console.log('Cancelled.');
-        return;
-      }
-
-      const selectedGame = games[choiceNum - 1];
-      await this.loadSelectedGame(selectedGame);
-
-    } catch (error) {
-      console.error('Failed to load game:', error);
+    const result = await this.gameManagementService.selectGameFromList('load');
+    
+    if (!result.success) {
+      console.log(result.error || 'Failed to load game.');
+      return;
+    }
+    
+    if (result.cancelled) {
+      console.log('Cancelled.');
+      return;
+    }
+    
+    if (result.game) {
+      await this.loadSelectedGame(result.game);
     }
   }
 
   private async deleteGame() {
     console.log('Deleting games...\n');
     
-    try {
-      // Get all games ordered by last played
-      const games = await this.db.all<Game>(
-        'SELECT id, name, created_at, last_played_at FROM games ORDER BY last_played_at DESC'
-      );
-
-      if (!games || games.length === 0) {
-        console.log('No saved games found to delete.');
-        return;
-      }
-
-      console.log('Select a game to delete:\n');
-      games.forEach((game, index) => {
-        const lastPlayed = this.formatTimestamp(game.last_played_at);
-        console.log(`${index + 1}. ${game.name} (Last played: ${lastPlayed})`);
-      });
-      console.log('0. Cancel\n');
-
-      const choice = await this.promptForInput('Enter your choice: ');
-      const choiceNum = parseInt(choice);
-
-      if (isNaN(choiceNum) || choiceNum < 0 || choiceNum > games.length) {
-        console.log('Invalid choice. Returning to main menu.');
-        return;
-      }
-
-      if (choiceNum === 0) {
-        console.log('Cancelled.');
-        return;
-      }
-
-      const selectedGame = games[choiceNum - 1];
+    const result = await this.gameManagementService.selectGameFromList('delete');
+    
+    if (!result.success) {
+      console.log(result.error || 'Failed to delete game.');
+      return;
+    }
+    
+    if (result.cancelled) {
+      console.log('Cancelled.');
+      return;
+    }
+    
+    if (result.game) {
+      const deleteResult = await this.gameManagementService.deleteGameWithConfirmation(result.game);
       
-      // Confirm deletion
-      console.log(`\nAre you sure you want to delete "${selectedGame.name}"?`);
-      console.log('This action cannot be undone.');
-      const confirm = await this.promptForInput('Type "yes" to confirm: ');
-
-      if (confirm.toLowerCase() !== 'yes') {
-        console.log('Deletion cancelled.');
-        return;
+      if (deleteResult.success) {
+        console.log(`Game "${result.game.name}" has been deleted.`);
+      } else {
+        console.log(deleteResult.error || 'Deletion failed.');
       }
-
-      // Delete related data manually (since foreign keys might not be enabled)
-      await this.db.run('DELETE FROM connections WHERE game_id = ?', [selectedGame.id]);
-      await this.db.run('DELETE FROM game_state WHERE game_id = ?', [selectedGame.id]);
-      await this.db.run('DELETE FROM rooms WHERE game_id = ?', [selectedGame.id]);
-      
-      // Finally delete the game
-      await this.db.run('DELETE FROM games WHERE id = ?', [selectedGame.id]);
-      console.log(`Game "${selectedGame.name}" has been deleted.`);
-
-    } catch (error) {
-      console.error('Failed to delete game:', error);
     }
   }
 
@@ -593,34 +522,7 @@ export class GameController {
     // Don't close DB connection
   }
 
-  private async promptForInput(promptText: string): Promise<string> {
-    return new Promise((resolve) => {
-      this.rl.question(promptText, (answer) => {
-        resolve(answer);
-      });
-    });
-  }
 
-  private formatTimestamp(timestamp: string): string {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) {
-      return 'just now';
-    } else if (diffMins < 60) {
-      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  }
 
   private async loadSelectedGame(game: Game) {
     try {

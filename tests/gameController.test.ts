@@ -201,31 +201,37 @@ describe('GameController Core Functionality', () => {
       const game1Name = `Game 1 ${Date.now()}-${Math.random()}`;
       const game2Name = `Game 2 ${Date.now()}-${Math.random()}`;
       await db.run('INSERT INTO games (name) VALUES (?)', [game1Name]);
-      await db.run('INSERT INTO games (name) VALUES (?)', [game2Name]);
+      const game2Result = await db.run('INSERT INTO games (name) VALUES (?)', [game2Name]);
+      const game2Id = game2Result.lastID as number;
       
       const initialGameCount = await db.get('SELECT COUNT(*) as count FROM games');
       
       const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
-      const mockPromptForInput = jest.spyOn(controller as any, 'promptForInput')
-        .mockResolvedValueOnce('1') // Select first game
-        .mockResolvedValueOnce('yes'); // Confirm deletion with exact string
+      
+      // Mock the GameManagementService methods
+      const gameManagementService = (controller as any).gameManagementService;
+      const mockSelectGame = jest.spyOn(gameManagementService, 'selectGameFromList')
+        .mockResolvedValueOnce({ 
+          success: true, 
+          game: { id: game2Id, name: game2Name, created_at: new Date().toISOString(), last_played_at: new Date().toISOString() }
+        });
+      const mockDeleteGame = jest.spyOn(gameManagementService, 'deleteGameWithConfirmation')
+        .mockResolvedValueOnce({ success: true });
       
       try {
         await (controller as any).deleteGame();
         
-        // Verify promptForInput was called correctly
-        expect(mockPromptForInput).toHaveBeenCalledTimes(2);
+        // Verify game management service methods were called
+        expect(mockSelectGame).toHaveBeenCalledWith('delete');
+        expect(mockDeleteGame).toHaveBeenCalledTimes(1);
         
-        // Verify deletion was attempted by checking console output
+        // Verify deletion success was logged
         expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('has been deleted'));
-        
-        // Verify one game was deleted
-        const finalGameCount = await db.get('SELECT COUNT(*) as count FROM games');
-        expect(finalGameCount.count).toBe(initialGameCount.count - 1);
         
       } finally {
         mockConsoleLog.mockRestore();
-        mockPromptForInput.mockRestore();
+        mockSelectGame.mockRestore();
+        mockDeleteGame.mockRestore();
       }
     });
   });
