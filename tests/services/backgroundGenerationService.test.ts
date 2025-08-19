@@ -1,6 +1,7 @@
 import Database from '../../src/utils/database';
 import { BackgroundGenerationService } from '../../src/services/backgroundGenerationService';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
+import { RegionService } from '../../src/services/regionService';
 import { GrokClient } from '../../src/ai/grokClient';
 import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
 import { Room, Connection } from '../../src/services/gameStateManager';
@@ -8,6 +9,7 @@ import { Room, Connection } from '../../src/services/gameStateManager';
 describe('BackgroundGenerationService', () => {
   let db: Database;
   let grokClient: GrokClient;
+  let regionService: RegionService;
   let roomGenerationService: RoomGenerationService;
   let backgroundGenerationService: BackgroundGenerationService;
   let testGameId: number;
@@ -22,8 +24,11 @@ describe('BackgroundGenerationService', () => {
     // Create mock GrokClient for testing
     grokClient = new GrokClient();
     
+    // Create RegionService for testing
+    regionService = new RegionService(db);
+    
     // Create room generation service with debug logging disabled for clean test output
-    roomGenerationService = new RoomGenerationService(db, grokClient, {
+    roomGenerationService = new RoomGenerationService(db, grokClient, regionService, {
       enableDebugLogging: false
     });
     
@@ -34,6 +39,9 @@ describe('BackgroundGenerationService', () => {
     
     // Ensure debug logging is disabled in environment too
     process.env.AI_DEBUG_LOGGING = 'false';
+    
+    // Enable mock mode to prevent actual AI calls that could timeout
+    process.env.AI_MOCK_MODE = 'true';
 
     // Mock expandFromAdjacentRooms to prevent fire-and-forget promises from hanging tests
     jest.spyOn(backgroundGenerationService, 'expandFromAdjacentRooms' as any)
