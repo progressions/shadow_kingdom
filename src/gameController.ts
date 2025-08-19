@@ -13,6 +13,7 @@ import { RoomGenerationService } from './services/roomGenerationService';
 import { BackgroundGenerationService } from './services/backgroundGenerationService';
 import { GameManagementService } from './services/gameManagementService';
 import { RegionService } from './services/regionService';
+import { ServiceFactory, ServiceInstances } from './services/serviceFactory';
 
 
 // Interfaces imported from GameStateManager
@@ -24,12 +25,12 @@ export class GameController {
   private grokClient: GrokClient;
   private nlpEngine: UnifiedNLPEngine;
   private commandRouter: CommandRouter;
-  private gameStateManager: GameStateManager;
+  private gameStateManager: ServiceInstances['gameStateManager'];
   private roomDisplayService: RoomDisplayService;
-  private roomGenerationService: RoomGenerationService;
-  private backgroundGenerationService: BackgroundGenerationService;
-  private gameManagementService: GameManagementService;
-  private regionService: RegionService;
+  private roomGenerationService: ServiceInstances['roomGenerationService'];
+  private backgroundGenerationService: ServiceInstances['backgroundGenerationService'];
+  private gameManagementService: ServiceInstances['gameManagementService'];
+  private regionService: ServiceInstances['regionService'];
 
   constructor(db: Database) {
     this.db = db;
@@ -39,11 +40,6 @@ export class GameController {
     const baseConfig = getNLPConfig();
     const config = applyEnvironmentOverrides(baseConfig);
     this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config);
-    
-    // Initialize game state manager
-    this.gameStateManager = new GameStateManager(db, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
     
     // Initialize command router
     this.commandRouter = new CommandRouter(this.nlpEngine, {
@@ -55,31 +51,27 @@ export class GameController {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
-    // Initialize region service first
-    this.regionService = new RegionService(db, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
-
-    // Initialize room generation service with region service
-    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, this.regionService, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
-    
-    // Initialize background generation service
-    this.backgroundGenerationService = new BackgroundGenerationService(db, this.roomGenerationService, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
-    
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
       prompt: 'menu> '
     });
     
-    // Initialize game management service
-    this.gameManagementService = new GameManagementService(db, this.rl, {
+    // Use ServiceFactory to create either legacy or Prisma services
+    const serviceOptions = {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
+    };
+    
+    ServiceFactory.logConfiguration();
+    
+    const services = ServiceFactory.createServices(db, this.rl, this.grokClient, serviceOptions);
+    
+    // Assign services from factory
+    this.gameStateManager = services.gameStateManager;
+    this.gameManagementService = services.gameManagementService;
+    this.regionService = services.regionService;
+    this.roomGenerationService = services.roomGenerationService;
+    this.backgroundGenerationService = services.backgroundGenerationService;
 
     this.setupMenuCommands();
     this.setupGameCommands();

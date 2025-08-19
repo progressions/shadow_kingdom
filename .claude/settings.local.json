@@ -59,7 +59,13 @@
       "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\" --start-session)",
       "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"new\" --start-session)",
       "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"look\" --start-session)",
-      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"look\")"
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"look\")",
+      "Bash(npm install:*)",
+      "Bash(npx prisma init:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(USE_PRISMA=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\" --start-session)",
+      "Bash(USE_PRISMA=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"new\" --start-session)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
