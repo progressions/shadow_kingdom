@@ -30,7 +30,7 @@ export async function initializeDatabase(db: Database): Promise<void> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         game_id INTEGER NOT NULL,
         from_room_id INTEGER NOT NULL,
-        to_room_id INTEGER NOT NULL,
+        to_room_id INTEGER,
         name TEXT NOT NULL,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
         FOREIGN KEY (from_room_id) REFERENCES rooms(id),
@@ -93,6 +93,9 @@ export async function initializeDatabase(db: Database): Promise<void> {
 
     // Check if region columns exist in rooms table, add them if not
     await ensureRegionColumns(db);
+
+    // Migrate connections table to support nullable to_room_id
+    await ensureNullableToRoomId(db);
 
     console.log('Database tables initialized successfully');
   } catch (error) {
@@ -262,6 +265,75 @@ async function ensureRegionColumns(db: Database): Promise<void> {
     console.log('Region columns and triggers ensured successfully');
   } catch (error) {
     console.error('Error ensuring region columns:', error);
+    throw error;
+  }
+}
+
+async function ensureNullableToRoomId(db: Database): Promise<void> {
+  try {
+    // Check if we need to migrate the connections table to allow NULL to_room_id
+    // We'll check if there are any constraints that would prevent NULL values
+    const tableInfo = await db.all(`PRAGMA table_info('connections')`);
+    const toRoomIdColumn = tableInfo.find((col: any) => col.name === 'to_room_id');
+    
+    // If the column exists and is marked as NOT NULL, we need to migrate
+    if (toRoomIdColumn && toRoomIdColumn.notnull === 1) {
+      console.log('Migrating connections table to allow NULL to_room_id...');
+      
+      // SQLite requires recreating the table to remove NOT NULL constraint
+      await db.run('PRAGMA foreign_keys=off');
+      
+      // Create new table with nullable to_room_id
+      await db.run(`
+        CREATE TABLE connections_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          game_id INTEGER NOT NULL,
+          from_room_id INTEGER NOT NULL,
+          to_room_id INTEGER,
+          direction TEXT,
+          name TEXT NOT NULL,
+          FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+          FOREIGN KEY (from_room_id) REFERENCES rooms(id),
+          FOREIGN KEY (to_room_id) REFERENCES rooms(id)
+        )
+      `);
+      
+      // Copy existing data
+      await db.run(`
+        INSERT INTO connections_new (id, game_id, from_room_id, to_room_id, direction, name)
+        SELECT id, game_id, from_room_id, to_room_id, direction, name FROM connections
+      `);
+      
+      // Drop old table and rename new one
+      await db.run('DROP TABLE connections');
+      await db.run('ALTER TABLE connections_new RENAME TO connections');
+      
+      await db.run('PRAGMA foreign_keys=on');
+      
+      console.log('Connections table migrated successfully');
+    }
+    
+    // Add optimized indexes for connection-based generation
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_unfilled 
+      ON connections(game_id, from_room_id) WHERE to_room_id IS NULL
+    `);
+    
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_filled 
+      ON connections(game_id, from_room_id, to_room_id) WHERE to_room_id IS NOT NULL
+    `);
+    
+    // Update existing connection indexes
+    await db.run('DROP INDEX IF EXISTS idx_connections_from_room');
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_from_room 
+      ON connections(from_room_id, direction, name)
+    `);
+    
+    console.log('Connection table migration and indexes ensured successfully');
+  } catch (error) {
+    console.error('Error ensuring nullable to_room_id:', error);
     throw error;
   }
 }
