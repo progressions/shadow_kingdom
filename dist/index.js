@@ -7,7 +7,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameCLI = void 0;
 const database_1 = __importDefault(require("./utils/database"));
 const gameController_1 = require("./gameController");
+const sessionInterface_1 = require("./sessionInterface");
 async function main() {
+    const args = process.argv.slice(2);
+    // Check if we should use session mode
+    if ((0, sessionInterface_1.shouldUseSessionMode)(args)) {
+        try {
+            await (0, sessionInterface_1.runSessionMode)(args);
+            return;
+        }
+        catch (error) {
+            console.error('Failed to run session mode:', error);
+            process.exit(1);
+        }
+    }
+    // Default interactive mode
     const db = new database_1.default();
     try {
         await db.connect();

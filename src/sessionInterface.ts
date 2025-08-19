@@ -65,6 +65,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { CommandRouter } = await import('./services/commandRouter');
   const { GameStateManager } = await import('./services/gameStateManager');
   const { RoomDisplayService } = await import('./services/roomDisplayService');
+  const { RegionService } = await import('./services/regionService');
   const { GrokClient } = await import('./ai/grokClient');
   const { UnifiedNLPEngine } = await import('./nlp/unifiedNLPEngine');
   const { getNLPConfig, applyEnvironmentOverrides } = await import('./nlp/config');
@@ -110,9 +111,13 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     const roomDisplayService = new RoomDisplayService({
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
+
+    const regionService = new RegionService(db, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
     
     // Set up game commands (like GameController.setupGameCommands does)
-    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService);
+    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, db);
     
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
@@ -139,7 +144,9 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
 async function setupGameCommands(
   commandRouter: any, 
   gameStateManager: any, 
-  roomDisplayService: any
+  roomDisplayService: any,
+  regionService: any,
+  db: any
 ): Promise<void> {
   // Add the basic game commands that GameController sets up
   commandRouter.addGameCommand({
@@ -197,6 +204,133 @@ async function setupGameCommands(
         }
       } catch (error) {
         console.error('Error moving:', error);
+      }
+    }
+  });
+
+  // Region debug commands
+  commandRouter.addGameCommand({
+    name: 'region',
+    description: 'Show current room region information',
+    handler: async () => {
+      try {
+        const session = gameStateManager.getCurrentSession();
+        if (!session.gameId || !session.roomId) {
+          console.log('No active game session.');
+          return;
+        }
+
+        const room = await db.get('SELECT * FROM rooms WHERE id = ?', [session.roomId]);
+        if (!room) {
+          console.log('Current room not found.');
+          return;
+        }
+
+        if (!room.region_id) {
+          console.log('Current room is not part of any region.');
+          return;
+        }
+
+        const region = await regionService.getRegion(room.region_id);
+        if (!region) {
+          console.log('Region not found.');
+          return;
+        }
+
+        const roomsInRegion = await regionService.getRoomsInRegion(region.id);
+        
+        let output = `\nCurrent Region: ${region.name || region.type}\n`;
+        output += `Type: ${region.type}\n`;
+        output += `Description: ${region.description}\n`;
+        output += `Distance from center: ${room.region_distance}\n`;
+        output += `Total rooms in region: ${roomsInRegion.length}\n`;
+        
+        if (region.center_room_id) {
+          const centerRoom = await db.get('SELECT * FROM rooms WHERE id = ?', [region.center_room_id]);
+          output += `Center room: ${centerRoom?.name || 'Unknown'}\n`;
+        } else {
+          output += `Center: Not yet discovered\n`;
+        }
+        
+        console.log(output);
+      } catch (error) {
+        console.error('Error showing region info:', error);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'regions',
+    description: 'List all regions in current game',
+    handler: async () => {
+      try {
+        const session = gameStateManager.getCurrentSession();
+        if (!session.gameId) {
+          console.log('No active game session.');
+          return;
+        }
+
+        const regions = await regionService.getRegionsForGame(session.gameId);
+        
+        if (regions.length === 0) {
+          console.log('No regions found in current game.');
+          return;
+        }
+
+        let output = '\nRegions in current game:\n';
+        for (const region of regions) {
+          const roomCount = await db.get(
+            'SELECT COUNT(*) as count FROM rooms WHERE region_id = ?',
+            [region.id]
+          );
+          
+          output += `- ${region.name || region.type} (${region.type}): ${roomCount?.count || 0} rooms\n`;
+        }
+        
+        console.log(output);
+      } catch (error) {
+        console.error('Error listing regions:', error);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'region-stats',
+    description: 'Show region statistics for current game',
+    handler: async () => {
+      try {
+        const session = gameStateManager.getCurrentSession();
+        if (!session.gameId) {
+          console.log('No active game session.');
+          return;
+        }
+
+        const stats = await regionService.getRegionStats(session.gameId);
+        
+        if (stats.length === 0) {
+          console.log('No regions found in current game.');
+          return;
+        }
+
+        let output = '\nRegion Statistics:\n';
+        output += '==================\n';
+        
+        for (const stat of stats) {
+          const region = stat.region;
+          output += `\n${region.name || region.type} (${region.type})\n`;
+          output += `  Rooms: ${stat.roomCount}\n`;
+          output += `  Center: ${stat.hasCenter ? 'Discovered' : 'Not yet found'}\n`;
+          output += `  Description: ${region.description}\n`;
+          
+          if (stat.hasCenter && region.center_room_id) {
+            const centerRoom = await db.get('SELECT * FROM rooms WHERE id = ?', [region.center_room_id]);
+            output += `  Center room: ${centerRoom?.name || 'Unknown'}\n`;
+          }
+        }
+        
+        console.log(output);
+      } catch (error) {
+        console.error('Error showing region stats:', error);
       }
     }
   });
