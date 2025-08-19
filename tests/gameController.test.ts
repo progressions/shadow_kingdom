@@ -28,7 +28,10 @@ describe('GameController Integration', () => {
     
     // Get the mock readline interface
     const readline = require('readline');
-    mockRl = readline.createInterface();
+    mockRl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
   });
 
   afterEach(async () => {
@@ -37,16 +40,23 @@ describe('GameController Integration', () => {
       // Remove all listeners to prevent process.exit from being called
       (controller as any).rl.removeAllListeners();
       (controller as any).rl.close();
+      (controller as any).rl = null;
     }
     
     // Close the mock readline interface
     if (mockRl) {
+      mockRl.removeAllListeners();
       mockRl.close();
+      mockRl = null;
     }
     
-    if (db.isConnected()) {
+    if (db && db.isConnected()) {
       await db.close();
     }
+    
+    // Clear references
+    controller = null as any;
+    db = null as any;
   });
 
   describe('Initialization', () => {
@@ -96,12 +106,23 @@ describe('GameController Core Functionality', () => {
   });
 
   afterEach(async () => {
-    if (db.isConnected()) {
+    // Close controller's readline interface
+    if (controller && (controller as any).rl) {
+      (controller as any).rl.removeAllListeners();
+      (controller as any).rl.close();
+      (controller as any).rl = null;
+    }
+    
+    if (db && db.isConnected()) {
       await db.close();
     }
     
     // Clean up environment variable
     delete process.env.AI_MOCK_MODE;
+    
+    // Clear references
+    controller = null as any;
+    db = null as any;
   });
 
   describe('Game Management Operations', () => {

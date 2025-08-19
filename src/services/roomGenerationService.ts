@@ -27,13 +27,12 @@ export interface GenerationLimits {
 }
 
 /**
- * RoomGenerationService handles all room and connection generation logic.
- * Responsible for AI-powered room creation, connection management, and background generation.
+ * RoomGenerationService handles core room and connection generation logic.
+ * Responsible for AI-powered room creation and connection management.
+ * Background generation is handled by BackgroundGenerationService.
  */
 export class RoomGenerationService {
   private options: RoomGenerationOptions;
-  private lastGenerationTime: number = 0;
-  private generationInProgress: Set<number> = new Set();
 
   constructor(
     private db: Database,
@@ -46,126 +45,6 @@ export class RoomGenerationService {
     };
   }
 
-  /**
-   * Trigger background room generation for adjacent rooms
-   */
-  async preGenerateAdjacentRooms(currentRoomId: number, gameId: number): Promise<void> {
-    const limits = this.getGenerationLimits();
-    
-    // Check cooldown period
-    const timeSinceLastGeneration = Date.now() - this.lastGenerationTime;
-    
-    if (timeSinceLastGeneration < limits.generationCooldownMs) {
-      return; // Still in cooldown
-    }
-
-    // Check if generation is already in progress for this room
-    if (this.generationInProgress.has(currentRoomId)) {
-      return; // Already generating
-    }
-
-    // Check total room count limit
-    const roomCount = await this.db.get(
-      'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
-      [gameId]
-    );
-    
-    if (roomCount?.count >= limits.maxRoomsPerGame) {
-      if (this.isDebugEnabled()) {
-        console.log(`🏰 Room limit reached (${limits.maxRoomsPerGame}). No more rooms will be generated.`);
-      }
-      return;
-    }
-
-    // Fire and forget - don't await this in production
-    this.expandFromAdjacentRooms(currentRoomId, gameId);
-    this.lastGenerationTime = Date.now();
-  }
-
-  /**
-   * Expand room generation from adjacent unprocessed rooms
-   */
-  async expandFromAdjacentRooms(currentRoomId: number, gameId: number): Promise<void> {
-    this.generationInProgress.add(currentRoomId);
-    
-    try {
-      const limits = this.getGenerationLimits();
-      
-      // Get all connections FROM current room to existing rooms that haven't been processed yet
-      const connections = await this.db.all(
-        'SELECT c.*, r.generation_processed FROM connections c ' +
-        'JOIN rooms r ON c.to_room_id = r.id ' +
-        'WHERE c.from_room_id = ? AND c.game_id = ? AND (r.generation_processed = FALSE OR r.generation_processed IS NULL)',
-        [currentRoomId, gameId]
-      );
-
-      let roomsToGenerate = 0;
-      
-      // For each connection that leads to an unprocessed room
-      for (const connection of connections) {
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
-
-        if (targetRoom) {
-          // Count missing rooms for this target
-          const missingCount = await this.countMissingRoomsFor(targetRoom.id, gameId);
-          roomsToGenerate += Math.min(missingCount, limits.maxGenerationDepth);
-        }
-      }
-
-      // Check if we can generate the requested rooms without exceeding limits
-      const currentRoomCount = await this.db.get(
-        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
-        [gameId]
-      );
-      
-      const roomsCanGenerate = Math.max(0, limits.maxRoomsPerGame - (currentRoomCount?.count || 0));
-      
-      if (roomsToGenerate > roomsCanGenerate) {
-        if (this.isDebugEnabled()) {
-          console.log(`🏰 Limited generation: ${roomsCanGenerate} rooms available (${roomsToGenerate} requested)`);
-        }
-        roomsToGenerate = roomsCanGenerate;
-      }
-
-      // Generate rooms with depth limit
-      let generatedCount = 0;
-      for (const connection of connections) {
-        if (generatedCount >= roomsToGenerate) break;
-        
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
-
-        if (targetRoom) {
-          const roomsGenerated = await this.generateMissingRoomsFor(
-            targetRoom.id, 
-            gameId, 
-            limits.maxGenerationDepth, 
-            roomsToGenerate - generatedCount
-          );
-          generatedCount += roomsGenerated;
-          
-          // Mark this room as processed so we don't generate for it again
-          await this.db.run(
-            'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
-            [targetRoom.id]
-          );
-        }
-      }
-      
-    } catch (error) {
-      if (this.isDebugEnabled()) {
-        console.error('Background generation failed:', error);
-      }
-      // Silent failure - game continues normally
-    } finally {
-      this.generationInProgress.delete(currentRoomId);
-    }
-  }
 
   /**
    * Count missing basic direction connections for a room
@@ -456,16 +335,6 @@ export class RoomGenerationService {
     }
   }
 
-  /**
-   * Get generation limits from environment or defaults
-   */
-  private getGenerationLimits(): GenerationLimits {
-    return {
-      maxRoomsPerGame: parseInt(process.env.MAX_ROOMS_PER_GAME || '100'),
-      maxGenerationDepth: parseInt(process.env.MAX_GENERATION_DEPTH || '5'),
-      generationCooldownMs: parseInt(process.env.GENERATION_COOLDOWN_MS || '5000')
-    };
-  }
 
   /**
    * Check if debug logging is enabled
@@ -488,14 +357,4 @@ export class RoomGenerationService {
     return { ...this.options };
   }
 
-  /**
-   * Get generation statistics
-   */
-  getGenerationStats() {
-    return {
-      lastGenerationTime: this.lastGenerationTime,
-      activeGenerations: this.generationInProgress.size,
-      roomsInProgress: Array.from(this.generationInProgress)
-    };
-  }
 }

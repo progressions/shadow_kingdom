@@ -11,6 +11,7 @@ import { CommandRouter, Command, CommandExecutionContext } from './services/comm
 import { GameStateManager, Mode } from './services/gameStateManager';
 import { RoomDisplayService } from './services/roomDisplayService';
 import { RoomGenerationService } from './services/roomGenerationService';
+import { BackgroundGenerationService } from './services/backgroundGenerationService';
 
 
 // Interfaces imported from GameStateManager
@@ -25,6 +26,7 @@ export class GameController {
   private gameStateManager: GameStateManager;
   private roomDisplayService: RoomDisplayService;
   private roomGenerationService: RoomGenerationService;
+  private backgroundGenerationService: BackgroundGenerationService;
 
   constructor(db: Database) {
     this.db = db;
@@ -52,6 +54,11 @@ export class GameController {
     
     // Initialize room generation service
     this.roomGenerationService = new RoomGenerationService(db, this.grokClient, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
+    
+    // Initialize background generation service
+    this.backgroundGenerationService = new BackgroundGenerationService(db, this.roomGenerationService, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -507,7 +514,7 @@ export class GameController {
         this.roomDisplayService.displayRoom(room, connections);
 
         // Trigger background room generation (fire and forget)
-        this.roomGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+        this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
       } else {
         this.roomDisplayService.displayVoidState();
       }
