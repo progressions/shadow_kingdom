@@ -15,16 +15,23 @@ export interface Room {
   game_id: number;
   name: string;
   description: string;
-  generation_processed?: boolean;
 }
 
 export interface Connection {
   id: number;
   game_id: number;
   from_room_id: number;
-  to_room_id: number;
+  to_room_id: number | null;  // Changed: nullable for unfilled connections
   direction: string;
   name: string;
+}
+
+export interface UnfilledConnection extends Connection {
+  to_room_id: null;  // Type narrowing for unfilled connections
+}
+
+export interface FilledConnection extends Connection {
+  to_room_id: number;  // Type narrowing for filled connections
 }
 
 export interface Game {
@@ -199,16 +206,16 @@ export class GameStateManager {
   }
 
   /**
-   * Get connections for current room
+   * Get connections for current room (only filled connections for player navigation)
    */
-  async getCurrentRoomConnections(): Promise<Connection[]> {
+  async getCurrentRoomConnections(): Promise<FilledConnection[]> {
     if (!this.isInGame()) {
       return [];
     }
 
     try {
-      const connections = await this.db.all<Connection>(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? ORDER BY direction',
+      const connections = await this.db.all<FilledConnection>(
+        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND to_room_id IS NOT NULL ORDER BY direction',
         [this.currentRoomId, this.currentGameId]
       );
 
@@ -220,17 +227,17 @@ export class GameStateManager {
   }
 
   /**
-   * Find connection by direction or thematic name
+   * Find connection by direction or thematic name (only filled connections)
    */
-  async findConnection(directionOrName: string): Promise<Connection | null> {
+  async findConnection(directionOrName: string): Promise<FilledConnection | null> {
     if (!this.isInGame()) {
       return null;
     }
 
     try {
-      // Try exact match first (case-insensitive)
-      const connection = await this.db.get<Connection>(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
+      // Try exact match first (case-insensitive) - only filled connections
+      const connection = await this.db.get<FilledConnection>(
+        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND to_room_id IS NOT NULL AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
         [this.currentRoomId, this.currentGameId, directionOrName, directionOrName]
       );
 

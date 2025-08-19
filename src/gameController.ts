@@ -456,15 +456,8 @@ export class GameController {
       const room = await this.gameStateManager.getCurrentRoom();
 
       if (room) {
-        // FIRST: Trigger background room generation before marking as processed
-        // This ensures generation happens while room is still unprocessed
+        // Trigger background generation for unfilled connections
         this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
-
-        // SECOND: Mark room as processed when player visits it (locks in the current design)
-        await this.db.run(
-          'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
-          [session.roomId]
-        );
 
         // Get available connections from this room within this game
         const connections = await this.gameStateManager.getCurrentRoomConnections();

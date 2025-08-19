@@ -20,6 +20,8 @@ export interface RoomContext {
   direction: string;
   gameHistory?: string[];
   theme?: string;
+  // Simple: Just add connection name for connection-based generation
+  connectionName?: string; // "through the crystal archway" - used when filling specific connections
 }
 
 export interface GeneratedRoom {
@@ -168,47 +170,65 @@ export class GrokClient {
     const themeNote = context.theme || 'mysterious fantasy kingdom';
     const reverseDirection = this.getReverseDirection(context.direction) || 'back';
 
-    const prompt = `You are creating a room for a text adventure game called Shadow Kingdom.
+    // Simple enhancement: Adjust prompt if we're filling a specific connection
+    let prompt: string;
+    if (context.connectionName) {
+      // Connection-based generation - acknowledge the specific connection
+      prompt = `You are creating a room for Shadow Kingdom text adventure game.
+
+Current room: ${context.currentRoom.name}
+Description: ${context.currentRoom.description}
+Player accesses new room via: "${context.connectionName}" (${context.direction})
+Existing rooms: ${existingRooms}
+
+Generate a room that makes sense when accessed via "${context.connectionName}". 
+The room description should acknowledge this specific entrance method.
+Theme: ${themeNote}
+
+REQUIREMENTS:
+- Room name must be UNIQUE (different from existing rooms)
+- Description should naturally reference arriving via "${context.connectionName}"
+- Include return connection that complements the entrance
+- Generate 2-4 total connections with thematic names
+- Make connection names immersive and descriptive
+
+RESPONSE FORMAT:
+{
+  "name": "Unique Room Name",
+  "description": "Room description acknowledging arrival via '${context.connectionName}'",
+  "connections": [
+    {"direction": "${reverseDirection}", "name": "complementary return connection"},
+    {"direction": "north", "name": "thematic connection"}
+  ]
+}`;
+    } else {
+      // Standard generation
+      prompt = `You are creating a room for Shadow Kingdom text adventure game.
     
 Current room: ${context.currentRoom.name}
 Description: ${context.currentRoom.description}
 Player is trying to go: ${context.direction}
-Existing rooms in this game: ${existingRooms}
+Existing rooms: ${existingRooms}
 
 Generate a NEW and UNIQUE room that the player discovers when going ${context.direction}. 
 Make it thematically consistent with a ${themeNote} setting.
 
-ROOM REQUIREMENTS:
+REQUIREMENTS:
 - Create a room name that is DIFFERENT from all existing rooms
 - Make the room unique and interesting, not generic
-- Consider the direction and current room context
-- Avoid repetitive names like "Chamber", "Room", "Hall" unless very specific
+- Include return connection to ${reverseDirection}
+- Generate 2-4 total connections with thematic names
 
-CONNECTION GENERATION RULES:
-- ALWAYS include a return connection back to where the player came from
-- For each of the other 5 directions (north, south, east, west, up, down - excluding the return path), roll a 30% chance to create an exit
-- This means most rooms will have 2-4 total connections (including the return path)
-- Create thematic names that fit the room's atmosphere and architecture
-- Make connection names immersive and descriptive, not just directions
-
-EXAMPLES OF GOOD THEMATIC CONNECTIONS:
-- "through the ornate archway" (north)
-- "down the spiral staircase" (down) 
-- "via the hidden passage" (east)
-- "through the shimmering portal" (west)
-- "up the crumbling ladder" (up)
-- "through the crystal doorway" (south)
-
-Respond in JSON format:
+RESPONSE FORMAT:
 {
-  "name": "Unique Room Name (avoid duplicates)",
-  "description": "Detailed atmospheric description of the room",
+  "name": "Unique Room Name",
+  "description": "Detailed atmospheric description",
   "connections": [
-    {"direction": "${reverseDirection}", "name": "thematic description for return path"},
-    {"direction": "north", "name": "through the ornate archway"},
-    {"direction": "down", "name": "down the spiral staircase"}
+    {"direction": "${reverseDirection}", "name": "return connection"},
+    {"direction": "north", "name": "thematic connection"}
   ]
 }`;
+    }
 
     try {
       const response = await this.callGrokAPI(prompt);
@@ -218,7 +238,6 @@ Respond in JSON format:
       if (process.env.AI_DEBUG_LOGGING === 'true') {
         console.error('Error generating room:', error);
       }
-      // Return a fallback room instead of throwing
       return this.getFallbackRoom(context);
     }
   }
@@ -382,13 +401,18 @@ Respond in JSON format:
   "description": "Rich, detailed description that provides context for AI room generation. Should capture the region's atmosphere, history, notable features, and potential room types it might contain."
 }`;
 
+    let response = '';
     try {
-      const response = await this.callGrokAPI(prompt);
+      response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('Raw API response for region generation:', response);
+      }
       const result = JSON.parse(response);
       return result as GeneratedRegion;
     } catch (error) {
       if (process.env.AI_DEBUG_LOGGING === 'true') {
         console.error('Error generating region:', error);
+        console.error('Raw response that failed to parse:', response);
       }
       // Return a fallback region instead of throwing
       return this.getFallbackRegion(context);
@@ -513,7 +537,6 @@ If the command cannot be interpreted as a valid game action, return null.`;
     }
   }
 
-  // Mock implementations for testing without API calls
   private mockGenerateRoom(context: RoomContext): GeneratedRoom {
     const reverseDirection = this.getReverseDirection(context.direction) || 'back';
     

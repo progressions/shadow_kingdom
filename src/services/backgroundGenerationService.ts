@@ -1,5 +1,6 @@
 import Database from '../utils/database';
 import { RoomGenerationService, GenerationLimits } from './roomGenerationService';
+import { UnfilledConnection } from './gameStateManager';
 
 export interface BackgroundGenerationOptions {
   enableDebugLogging?: boolean;
@@ -87,7 +88,62 @@ export class BackgroundGenerationService {
   }
 
   /**
-   * Expand room generation from adjacent unprocessed rooms
+   * Find unfilled connections that need room generation
+   */
+  async findUnfilledConnections(gameId: number): Promise<UnfilledConnection[]> {
+    try {
+      const connections = await this.db.all<UnfilledConnection>(
+        'SELECT c.*, r.name as from_room_name FROM connections c ' +
+        'JOIN rooms r ON c.from_room_id = r.id ' +
+        'WHERE c.to_room_id IS NULL AND c.game_id = ? ' +
+        'ORDER BY c.id LIMIT ?',
+        [gameId, this.getGenerationLimits().maxGenerationDepth]
+      );
+
+      return connections || [];
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to find unfilled connections:', error);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Find unfilled connections near the current location for prioritized generation
+   */
+  async findNearbyUnfilledConnections(currentRoomId: number, gameId: number): Promise<UnfilledConnection[]> {
+    try {
+      // Find connections within discovery radius that need filling
+      const connections = await this.db.all<UnfilledConnection>(`
+        WITH RECURSIVE reachable_rooms(room_id, distance) AS (
+          SELECT ?, 0
+          UNION ALL
+          SELECT c.to_room_id, r.distance + 1
+          FROM connections c
+          JOIN reachable_rooms r ON c.from_room_id = r.room_id
+          WHERE c.to_room_id IS NOT NULL AND r.distance < 2
+        )
+        SELECT c.*, r.name as from_room_name FROM connections c
+        JOIN reachable_rooms rr ON c.from_room_id = rr.room_id
+        JOIN rooms r ON c.from_room_id = r.id
+        WHERE c.to_room_id IS NULL AND c.game_id = ?
+        ORDER BY rr.distance, c.id
+        LIMIT ?
+      `, [currentRoomId, gameId, this.getGenerationLimits().maxGenerationDepth]);
+
+      return connections || [];
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to find nearby unfilled connections:', error);
+      }
+      // Fall back to general unfilled connections
+      return await this.findUnfilledConnections(gameId);
+    }
+  }
+
+  /**
+   * Expand room generation from unfilled connections (new connection-based approach)
    */
   async expandFromAdjacentRooms(currentRoomId: number, gameId: number): Promise<void> {
     this.generationInProgress.add(currentRoomId);
@@ -95,36 +151,17 @@ export class BackgroundGenerationService {
     try {
       const limits = this.getGenerationLimits();
       
-      // Get all connections FROM current room to existing rooms that haven't been processed yet
-      const connections = await this.db.all(
-        'SELECT c.*, r.generation_processed FROM connections c ' +
-        'JOIN rooms r ON c.to_room_id = r.id ' +
-        'WHERE c.from_room_id = ? AND c.game_id = ? AND (r.generation_processed = FALSE OR r.generation_processed IS NULL)',
-        [currentRoomId, gameId]
-      );
-
-      let roomsToGenerate = 0;
+      // Find unfilled connections that need room generation, prioritizing nearby ones
+      const nearbyUnfilledConnections = await this.findNearbyUnfilledConnections(currentRoomId, gameId);
       
-      // For each connection that leads to an unprocessed room
-      for (const connection of connections) {
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
-
-        if (targetRoom) {
-          // CRITICAL: Double-check if room is still unprocessed
-          if (!targetRoom.generation_processed) {
-            // Count missing rooms for this target
-            const missingCount = await this.roomGenerationService.countMissingRoomsFor(targetRoom.id, gameId);
-            roomsToGenerate += Math.min(missingCount, limits.maxGenerationDepth);
-          } else if (this.isDebugEnabled()) {
-            console.log(`🔒 Target room ${targetRoom.id} already processed - skipping`);
-          }
+      if (nearbyUnfilledConnections.length === 0) {
+        if (this.isDebugEnabled()) {
+          console.log('🔍 No unfilled connections found for background generation');
         }
+        return;
       }
 
-      // Check if we can generate the requested rooms without exceeding limits
+      // Check total room count limit
       const currentRoomCount = await this.db.get(
         'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
         [gameId]
@@ -132,43 +169,52 @@ export class BackgroundGenerationService {
       
       const roomsCanGenerate = Math.max(0, limits.maxRoomsPerGame - (currentRoomCount?.count || 0));
       
-      if (roomsToGenerate > roomsCanGenerate) {
+      if (roomsCanGenerate <= 0) {
         if (this.isDebugEnabled()) {
-          console.log(`🏰 Limited generation: ${roomsCanGenerate} rooms available (${roomsToGenerate} requested)`);
+          console.log(`🏰 Room limit reached (${limits.maxRoomsPerGame}). No more rooms will be generated.`);
         }
-        roomsToGenerate = roomsCanGenerate;
+        return;
       }
 
-      // Generate rooms with depth limit
-      let generatedCount = 0;
-      for (const connection of connections) {
-        if (generatedCount >= roomsToGenerate) break;
-        
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
+      const connectionsToFill = Math.min(nearbyUnfilledConnections.length, roomsCanGenerate);
+      
+      if (this.isDebugEnabled()) {
+        console.log(`🔗 Filling ${connectionsToFill} unfilled connections (${nearbyUnfilledConnections.length} found, ${roomsCanGenerate} rooms available)`);
+      }
 
-        if (targetRoom) {
-          // CRITICAL: Final check before generation
-          if (!targetRoom.generation_processed) {
-            const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
-              targetRoom.id, 
-              gameId, 
-              limits.maxGenerationDepth, 
-              roomsToGenerate - generatedCount
-            );
-            generatedCount += roomsGenerated;
-            
-            // Mark this room as processed so we don't generate for it again
-            await this.db.run(
-              'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
-              [targetRoom.id]
-            );
-          } else if (this.isDebugEnabled()) {
-            console.log(`🔒 Target room ${targetRoom.id} was processed before generation - skipping`);
+      // Generate rooms for unfilled connections
+      let generatedCount = 0;
+      for (let i = 0; i < connectionsToFill; i++) {
+        const connection = nearbyUnfilledConnections[i];
+        
+        // Verify connection is still unfilled (race condition protection)
+        const currentConnection = await this.db.get<UnfilledConnection>(
+          'SELECT * FROM connections WHERE id = ? AND to_room_id IS NULL',
+          [connection.id]
+        );
+        
+        if (!currentConnection) {
+          if (this.isDebugEnabled()) {
+            console.log(`🔗 Connection ${connection.id} already filled - skipping`);
           }
+          continue;
         }
+
+        // Generate room for this connection
+        const result = await this.roomGenerationService.generateRoomForConnection(currentConnection);
+        
+        if (result.success) {
+          generatedCount++;
+          if (this.isDebugEnabled()) {
+            console.log(`✨ Filled connection ${connection.id}: ${connection.name} -> Room ${result.roomId}`);
+          }
+        } else if (this.isDebugEnabled()) {
+          console.log(`❌ Failed to fill connection ${connection.id}: ${result.error?.message}`);
+        }
+      }
+      
+      if (this.isDebugEnabled()) {
+        console.log(`🎯 Background generation completed: ${generatedCount} connections filled`);
       }
       
     } catch (error) {
@@ -180,6 +226,7 @@ export class BackgroundGenerationService {
       this.generationInProgress.delete(currentRoomId);
     }
   }
+
 
   /**
    * Get generation limits from environment or defaults

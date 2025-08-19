@@ -96,7 +96,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
       }
     }
     
-    // Create services following the same pattern as GameController but without readline
+    // Create services for session commands without readline dependencies
     const grokClient = new GrokClient();
     const baseConfig = getNLPConfig();
     const config = applyEnvironmentOverrides(baseConfig);
@@ -135,17 +135,17 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
     
-    // Add command to history (same as GameController does)
+    // Add command to history for context tracking
     gameStateManager.addRecentCommand(commandInput);
     
-    // Create execution context (same as GameController does)
+    // Create execution context for command processing
     const executionContext = {
       mode: gameStateManager.getCurrentSession().mode,
       gameContext: await gameStateManager.buildGameContext(),
       recentCommands: gameStateManager.getRecentCommands()
     };
     
-    // Process the command using the same system as GameController
+    // Process the command using the command router system
     await commandRouter.processCommand(commandInput, executionContext);
     
   } finally {
@@ -162,7 +162,7 @@ async function setupGameCommands(
   backgroundGenerationService: any,
   db: any
 ): Promise<void> {
-  // Add the basic game commands that GameController sets up
+  // Add the basic game commands for session interface
   commandRouter.addGameCommand({
     name: 'help',
     description: 'Show available commands',
@@ -173,7 +173,7 @@ async function setupGameCommands(
     name: 'look',
     description: 'Look around the current room',
     handler: async () => {
-      // Same logic as GameController.lookAround() but with background generation
+      // Display current room and trigger background generation
       const session = gameStateManager.getCurrentSession();
       const room = await gameStateManager.getCurrentRoom();
       const connections = await gameStateManager.getCurrentRoomConnections();
@@ -195,7 +195,7 @@ async function setupGameCommands(
     name: 'go',
     description: 'Move in a direction (e.g., "go north")',
     handler: async (args: string[]) => {
-      // Same as GameController.move() but with background generation
+      // Move to a new room and trigger background generation
       if (args.length === 0) {
         console.log('Move where? Specify a direction (e.g., "go north")');
         return;

@@ -19,7 +19,6 @@ export async function initializeDatabase(db: Database): Promise<void> {
         game_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
-        generation_processed BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
       )
     `);
@@ -30,7 +29,7 @@ export async function initializeDatabase(db: Database): Promise<void> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         game_id INTEGER NOT NULL,
         from_room_id INTEGER NOT NULL,
-        to_room_id INTEGER NOT NULL,
+        to_room_id INTEGER,
         name TEXT NOT NULL,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
         FOREIGN KEY (from_room_id) REFERENCES rooms(id),
@@ -85,14 +84,15 @@ export async function initializeDatabase(db: Database): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_regions_game ON regions(game_id)
     `);
 
-    // Check if generation_processed column exists, add it if not
-    await ensureGenerationProcessedColumn(db);
 
     // Check if direction column exists in connections table, add it if not
     await ensureConnectionDirectionColumn(db);
 
     // Check if region columns exist in rooms table, add them if not
     await ensureRegionColumns(db);
+
+    // Migrate connections table to support nullable to_room_id
+    await ensureNullableToRoomId(db);
 
     console.log('Database tables initialized successfully');
   } catch (error) {
@@ -159,30 +159,6 @@ export async function migrateExistingData(db: Database): Promise<void> {
   }
 }
 
-async function ensureGenerationProcessedColumn(db: Database): Promise<void> {
-  try {
-    // Check if generation_processed column exists
-    const columnExists = await db.get<{ count: number }>(
-      `SELECT COUNT(*) as count FROM pragma_table_info('rooms') 
-       WHERE name = 'generation_processed'`
-    );
-
-    if (!columnExists || columnExists.count === 0) {
-      console.log('Adding generation_processed column to rooms table...');
-      
-      // Add the column with default value FALSE
-      await db.run('ALTER TABLE rooms ADD COLUMN generation_processed BOOLEAN DEFAULT FALSE');
-      
-      // Update all existing rooms to not be processed (so they can be processed once)
-      await db.run('UPDATE rooms SET generation_processed = FALSE');
-      
-      console.log('generation_processed column added successfully');
-    }
-  } catch (error) {
-    console.error('Error ensuring generation_processed column:', error);
-    throw error;
-  }
-}
 
 async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
   try {
@@ -266,6 +242,75 @@ async function ensureRegionColumns(db: Database): Promise<void> {
   }
 }
 
+async function ensureNullableToRoomId(db: Database): Promise<void> {
+  try {
+    // Check if we need to migrate the connections table to allow NULL to_room_id
+    // We'll check if there are any constraints that would prevent NULL values
+    const tableInfo = await db.all(`PRAGMA table_info('connections')`);
+    const toRoomIdColumn = tableInfo.find((col: any) => col.name === 'to_room_id');
+    
+    // If the column exists and is marked as NOT NULL, we need to migrate
+    if (toRoomIdColumn && toRoomIdColumn.notnull === 1) {
+      console.log('Migrating connections table to allow NULL to_room_id...');
+      
+      // SQLite requires recreating the table to remove NOT NULL constraint
+      await db.run('PRAGMA foreign_keys=off');
+      
+      // Create new table with nullable to_room_id
+      await db.run(`
+        CREATE TABLE connections_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          game_id INTEGER NOT NULL,
+          from_room_id INTEGER NOT NULL,
+          to_room_id INTEGER,
+          direction TEXT,
+          name TEXT NOT NULL,
+          FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+          FOREIGN KEY (from_room_id) REFERENCES rooms(id),
+          FOREIGN KEY (to_room_id) REFERENCES rooms(id)
+        )
+      `);
+      
+      // Copy existing data
+      await db.run(`
+        INSERT INTO connections_new (id, game_id, from_room_id, to_room_id, direction, name)
+        SELECT id, game_id, from_room_id, to_room_id, direction, name FROM connections
+      `);
+      
+      // Drop old table and rename new one
+      await db.run('DROP TABLE connections');
+      await db.run('ALTER TABLE connections_new RENAME TO connections');
+      
+      await db.run('PRAGMA foreign_keys=on');
+      
+      console.log('Connections table migrated successfully');
+    }
+    
+    // Add optimized indexes for connection-based generation
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_unfilled 
+      ON connections(game_id, from_room_id) WHERE to_room_id IS NULL
+    `);
+    
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_filled 
+      ON connections(game_id, from_room_id, to_room_id) WHERE to_room_id IS NOT NULL
+    `);
+    
+    // Update existing connection indexes
+    await db.run('DROP INDEX IF EXISTS idx_connections_from_room');
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_connections_from_room 
+      ON connections(from_room_id, direction, name)
+    `);
+    
+    console.log('Connection table migration and indexes ensured successfully');
+  } catch (error) {
+    console.error('Error ensuring nullable to_room_id:', error);
+    throw error;
+  }
+}
+
 export async function createGameWithRooms(db: Database, gameName: string): Promise<number> {
   try {
     // Create the new game
@@ -285,50 +330,48 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
     const regionId = regionResult.lastID;
 
     // Create initial rooms for this game with rich, atmospheric descriptions
-    // Core starter rooms (entrance, library, garden) are marked as processed (already locked)
-    // Leaf rooms (tower stairs, crypt entrance, observatory steps) remain unprocessed for expansion
     // The entrance hall is the center of the manor region (distance 0)
     const entranceResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
       [gameId, 'Grand Entrance Hall', 
        `You stand in a magnificent entrance hall that speaks of forgotten grandeur. Towering marble columns stretch up to a vaulted ceiling painted with faded celestial murals, their gold leaf catching the light that filters through tall, arched windows. The polished marble floor beneath your feet reflects the dancing dust motes like stars in a night sky. Ancient tapestries hang between the windows, their once-vibrant colors now muted by centuries of shadow. The air carries a faint echo of footsteps from ages past, and the silence feels both reverent and expectant.`, 
-       true, regionId, 0]
+       regionId, 0]
     );
 
     const libraryResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
       [gameId, 'Scholar\'s Library', 
        `You enter a vast library that seems to hold the weight of countless ages. Floor-to-ceiling bookshelves carved from dark oak stretch into the shadows above, filled with leather-bound tomes whose gilded spines catch the warm glow of brass reading lamps. The air is thick with the intoxicating scent of old parchment, leather bindings, and the faintest hint of forgotten incense. A massive oak desk sits near the center, its surface covered with open books, scrolls, and an ornate brass inkwell. Dust motes drift lazily through shafts of amber light, and somewhere in the depths of the shelves, you can hear the occasional whisper of settling books and the soft tick of an ancient clock.`, 
-       true, regionId, 1]
+       regionId, 1]
     );
 
     const gardenResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
       [gameId, 'Moonlit Courtyard Garden', 
        `You step into an enchanted courtyard garden where nature has reclaimed its ancient dominion. Weathered stone paths wind between overgrown flowerbeds where wild roses climb trellises heavy with blooms that seem to glow in the perpetual twilight. At the garden's heart stands a marble fountain whose crystal waters still flow with an otherworldly luminescence, casting dancing reflections on the moss-covered statues that watch over this secret sanctuary. Night-blooming jasmine fills the air with its heady perfume, and somewhere in the shadows, you can hear the gentle tinkle of wind chimes and the soft rustle of leaves that seem to whisper secrets of the old kingdom.`, 
-       true, regionId, 1]
+       regionId, 1]
     );
 
-    // Create leaf nodes - unprocessed rooms that will become expansion points
+    // Create expansion point rooms
     const towerStairsResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
       [gameId, 'Winding Tower Stairs', 
        `A narrow spiral staircase winds upward into shadow, its stone steps worn smooth by countless centuries of use. Tall, narrow windows pierce the curved wall at irregular intervals, casting shifting patterns of light and shadow on the ancient stonework. The air grows cooler as you ascend, carrying the faint sound of wind whistling through distant chambers above. Iron sconces hold long-cold torches, their brackets green with age, and somewhere far above you can hear the distant echo of your own footsteps.`, 
-       false, regionId, 2]
+       regionId, 2]
     );
 
     const cryptEntranceResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
       [gameId, 'Ancient Crypt Entrance', 
        `You stand before the entrance to what appears to be an ancient crypt, its arched doorway carved with weathered symbols that seem to shift in your peripheral vision. Cool air flows from the depths beyond, carrying the scent of stone and time itself. Flickering torchlight from within casts dancing shadows on walls lined with worn burial niches, their occupants long since turned to dust. The silence here is profound, broken only by the occasional drip of water and the whisper of air moving through forgotten passages.`, 
-       false, regionId, 2]
+       regionId, 2]
     );
 
     const observatoryStepsResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
       [gameId, 'Observatory Steps', 
        `Wide stone steps lead upward toward what must once have been a grand observatory or watchtower. Star charts and celestial maps are carved into the stone walls, their intricate details still visible despite the passage of ages. Through gaps in the stonework above, you can glimpse the night sky, where stars seem unusually bright and close. The air here thrums with a subtle energy, and you can hear the faint whisper of wind through the apparatus that waits somewhere above.`, 
-       false, regionId, 1]
+       regionId, 1]
     );
 
     const entranceId = entranceResult.lastID;
@@ -407,6 +450,43 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
     await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
       [gameId, observatoryStepsId, gardenId, 'down', 'down the starlit steps to the garden']
+    );
+
+    // Create unfilled connections for background generation expansion
+    // These are the expansion points that will be filled when players explore
+    
+    // From Winding Tower Stairs - unfilled connections for expansion
+    await db.run(
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, towerStairsId, null, 'north', 'through the shadowed northern passage']
+    );
+    await db.run(
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, towerStairsId, null, 'east', 'through the ornate eastern passage']
+    );
+    await db.run(
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, towerStairsId, null, 'south', 'through the mysterious southern passage']
+    );
+
+    // From Ancient Crypt Entrance - unfilled connections for expansion  
+    await db.run(
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, cryptEntranceId, null, 'north', 'deeper into the crypts']
+    );
+    await db.run(
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, cryptEntranceId, null, 'south', 'through the bone-carved archway']
+    );
+
+    // From Observatory Steps - unfilled connections for expansion
+    await db.run(
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, observatoryStepsId, null, 'north', 'via the ancient northern passage']
+    );
+    await db.run(
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+      [gameId, observatoryStepsId, null, 'east', 'through the starlit eastern corridor']
     );
 
     // Create initial game state (player starts in entrance hall)
