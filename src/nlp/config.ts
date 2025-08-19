@@ -27,7 +27,7 @@ export const CONSERVATIVE_NLP_CONFIG: NLPConfig = {
  */
 export const AGGRESSIVE_NLP_CONFIG: NLPConfig = {
   localConfidenceThreshold: 0.5,     // Lower threshold for local patterns
-  aiConfidenceThreshold: 0.4,        // Lower threshold for AI
+  aiConfidenceThreshold: 0.2,        // Lower threshold for AI
   enableAIFallback: true,             // Always use AI fallback
   maxProcessingTime: 5000,            // Longer timeout for complex AI processing
   enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'

@@ -11,7 +11,21 @@
       "Bash(npm run dev:*)",
       "Bash(node:*)",
       "Bash(rm:*)",
-      "Bash(ts-node:*)"
+      "Bash(ts-node:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(awk:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(mkdir:*)",
+      "Bash(git tag:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx jest:*)",
+      "Bash(timeout 10s npm test:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run:*)",
+      "Bash(timeout 15s npm test -- --detectOpenHandles)",
+      "Bash(timeout 15s npm test)",
+      "Bash(timeout 30s npm test:*)"
     ],
     "deny": [],
     "ask": []

@@ -2,12 +2,27 @@ import Database from '../src/utils/database';
 import { GameController } from '../src/gameController';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
 
+// Mock readline to avoid actual I/O during testing
+jest.mock('readline', () => ({
+  createInterface: jest.fn(() => ({
+    on: jest.fn(),
+    setPrompt: jest.fn(),
+    prompt: jest.fn(),
+    question: jest.fn(),
+    close: jest.fn(),
+    removeAllListeners: jest.fn()
+  }))
+}));
+
 describe('NLP Integration Tests', () => {
   let db: Database;
   let gameController: GameController;
   let testGameId: number;
 
   beforeEach(async () => {
+    // Enable mock mode for AI to prevent actual API calls and enable pattern matching
+    process.env.AI_MOCK_MODE = 'true';
+    
     // Use a test database
     db = new Database(':memory:');
     await db.connect();
@@ -16,12 +31,22 @@ describe('NLP Integration Tests', () => {
     // Create test game controller
     gameController = new GameController(db);
     
-    // Create a test game
-    testGameId = await createGameWithRooms(db, 'NLP Test Game');
+    // Create a test game with unique name
+    const uniqueGameName = `NLP Test Game ${Date.now()}-${Math.random()}`;
+    testGameId = await createGameWithRooms(db, uniqueGameName);
   });
 
   afterEach(async () => {
+    // Clean up readline interface to prevent hanging and memory leaks
+    if (gameController && (gameController as any).rl) {
+      (gameController as any).rl.removeAllListeners();
+      (gameController as any).rl.close();
+    }
+    
     await db.close();
+    
+    // Clean up environment variable
+    delete process.env.AI_MOCK_MODE;
   });
 
   describe('Menu Mode NLP', () => {
@@ -29,47 +54,42 @@ describe('NLP Integration Tests', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       
       // Simulate processing help commands
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const helpVariations = ['help', 'h', '?'];
-      helpVariations.forEach(variation => {
-        const result = processor.processCommand(variation, context);
+      for (const variation of helpVariations) {
+        const result = await processor.processCommand(variation, context);
         expect(result).not.toBeNull();
         expect(result!.action).toBe('help');
         expect(result!.confidence).toBeGreaterThan(0.7);
-      });
+      }
 
       consoleSpy.mockRestore();
     });
 
     test('should handle natural language exit commands', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const exitVariations = ['quit', 'exit', 'leave', 'q'];
-      exitVariations.forEach(variation => {
-        const result = processor.processCommand(variation, context);
+      for (const variation of exitVariations) {
+        const result = await processor.processCommand(variation, context);
         expect(result).not.toBeNull();
         expect(result!.action).toBe('exit');
-      });
+      }
     });
   });
 
   describe('Game Mode NLP', () => {
     beforeEach(async () => {
-      // Set up game mode context
-      gameController['currentGameId'] = testGameId;
-      gameController['mode'] = 'game';
-      
-      // Get starting room
-      const gameState = await db.get('SELECT current_room_id FROM game_state WHERE game_id = ?', [testGameId]);
-      gameController['currentRoomId'] = gameState.current_room_id;
+      // Set up game mode context using GameStateManager
+      await gameController['gameStateManager'].startGameSession(testGameId);
     });
 
     test('should handle natural language movement commands', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const movementVariations = [
         { input: 'go north', expected: 'go', params: ['north'] },
@@ -88,18 +108,18 @@ describe('NLP Integration Tests', () => {
         { input: 'descend', expected: 'go', params: ['down'] }
       ];
 
-      movementVariations.forEach(({ input, expected, params }) => {
-        const result = processor.processCommand(input, context);
+      for (const { input, expected, params } of movementVariations) {
+        const result = await processor.processCommand(input, context);
         expect(result).not.toBeNull();
         expect(result!.action).toBe(expected);
         expect(result!.params).toEqual(params);
         expect(result!.confidence).toBeGreaterThan(0.8); // Higher confidence in game mode
-      });
+      }
     });
 
     test('should handle natural language examination commands', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const examineVariations = [
         { input: 'look', expected: 'look', params: [] },
@@ -112,17 +132,17 @@ describe('NLP Integration Tests', () => {
         { input: 'check painting', expected: 'examine', params: ['painting'] }
       ];
 
-      examineVariations.forEach(({ input, expected, params }) => {
-        const result = processor.processCommand(input, context);
+      for (const { input, expected, params } of examineVariations) {
+        const result = await processor.processCommand(input, context);
         expect(result).not.toBeNull();
         expect(result!.action).toBe(expected);
         expect(result!.params).toEqual(params);
-      });
+      }
     });
 
     test('should handle natural language interaction commands', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const interactionVariations = [
         { input: 'take sword', expected: 'take', params: ['sword'] },
@@ -137,22 +157,22 @@ describe('NLP Integration Tests', () => {
         { input: 'activate lever', expected: 'use', params: ['lever'] }
       ];
 
-      interactionVariations.forEach(({ input, expected, params }) => {
-        const result = processor.processCommand(input, context);
+      for (const { input, expected, params } of interactionVariations) {
+        const result = await processor.processCommand(input, context);
         expect(result).not.toBeNull();
         expect(result!.action).toBe(expected);
         expect(result!.params).toEqual(params);
-      });
+      }
     });
 
     test('should provide context-aware confidence scoring', async () => {
-      const processor = gameController['nlpProcessor'];
-      const gameContext = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const gameContext = await gameController['gameStateManager'].buildGameContext();
       const menuContext = { mode: 'menu' as const, recentCommands: [] };
       
       // Movement commands should have higher confidence in game mode
-      const gameResult = processor.processCommand('go north', gameContext);
-      const menuResult = processor.processCommand('go north', menuContext);
+      const gameResult = await processor.processCommand('go north', gameContext);
+      const menuResult = await processor.processCommand('go north', menuContext);
       
       expect(gameResult).not.toBeNull();
       expect(menuResult).not.toBeNull();
@@ -160,8 +180,8 @@ describe('NLP Integration Tests', () => {
     });
 
     test('should handle case insensitive input', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const caseVariations = [
         'GO NORTH',
@@ -172,18 +192,18 @@ describe('NLP Integration Tests', () => {
         'HELP'
       ];
 
-      caseVariations.forEach(input => {
-        const result = processor.processCommand(input, context);
+      for (const input of caseVariations) {
+        const result = await processor.processCommand(input, context);
         expect(result).not.toBeNull();
-        expect(result!.source).toBe('pattern');
-      });
+        expect(result!.source).toBe('local');
+      }
     });
   });
 
   describe('Performance Tests', () => {
     test('should process commands within performance targets', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const testCommands = [
         'go north', 'look', 'take sword', 'n', 's', 'e', 'w',
@@ -192,11 +212,11 @@ describe('NLP Integration Tests', () => {
       
       const startTime = Date.now();
       
-      testCommands.forEach(command => {
-        const result = processor.processCommand(command, context);
+      for (const command of testCommands) {
+        const result = await processor.processCommand(command, context);
         expect(result).not.toBeNull();
         expect(result!.processingTime).toBeLessThan(50); // Target: <50ms per command
-      });
+      }
       
       const totalTime = Date.now() - startTime;
       const avgTime = totalTime / testCommands.length;
@@ -207,8 +227,8 @@ describe('NLP Integration Tests', () => {
 
   describe('Fallback Behavior', () => {
     test('should return null for unrecognized commands', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const unrecognizedCommands = [
         'blahblahblah',
@@ -217,22 +237,22 @@ describe('NLP Integration Tests', () => {
         'teleport to dimension x'
       ];
 
-      unrecognizedCommands.forEach(command => {
-        const result = processor.processCommand(command, context);
+      for (const command of unrecognizedCommands) {
+        const result = await processor.processCommand(command, context);
         expect(result).toBeNull();
-      });
+      }
     });
 
     test('should handle empty and whitespace input gracefully', async () => {
-      const processor = gameController['nlpProcessor'];
-      const context = await gameController['buildGameContext']();
+      const processor = gameController['nlpEngine'];
+      const context = await gameController['gameStateManager'].buildGameContext();
       
       const emptyInputs = ['', '   ', '\t', '\n', '  \t  \n  '];
 
-      emptyInputs.forEach(input => {
-        const result = processor.processCommand(input, context);
+      for (const input of emptyInputs) {
+        const result = await processor.processCommand(input, context);
         expect(result).toBeNull();
-      });
+      }
     });
   });
 });

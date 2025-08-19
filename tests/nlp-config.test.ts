@@ -3,6 +3,7 @@ import {
   CONSERVATIVE_NLP_CONFIG, 
   AGGRESSIVE_NLP_CONFIG, 
   TESTING_NLP_CONFIG,
+  AI_FIRST_NLP_CONFIG,
   getNLPConfig,
   applyEnvironmentOverrides
 } from '../src/nlp/config';
@@ -11,7 +12,7 @@ describe('NLP Configuration', () => {
   describe('Default Configurations', () => {
     test('should have sensible default values', () => {
       expect(DEFAULT_NLP_CONFIG.localConfidenceThreshold).toBe(0.7);
-      expect(DEFAULT_NLP_CONFIG.aiConfidenceThreshold).toBe(0.6);
+      expect(DEFAULT_NLP_CONFIG.aiConfidenceThreshold).toBe(0.3);
       expect(DEFAULT_NLP_CONFIG.enableAIFallback).toBe(true);
       expect(DEFAULT_NLP_CONFIG.maxProcessingTime).toBe(3000);
     });
@@ -48,10 +49,10 @@ describe('NLP Configuration', () => {
       process.env = originalEnv;
     });
 
-    test('should return default config when no environment variable is set', () => {
+    test('should return ai_first config when no environment variable is set', () => {
       delete process.env.NLP_CONFIG;
       const config = getNLPConfig();
-      expect(config).toEqual(DEFAULT_NLP_CONFIG);
+      expect(config).toEqual(AI_FIRST_NLP_CONFIG);
     });
 
     test('should return conservative config when specified', () => {
@@ -78,10 +79,10 @@ describe('NLP Configuration', () => {
       expect(config).toEqual(CONSERVATIVE_NLP_CONFIG);
     });
 
-    test('should fallback to default for unknown config names', () => {
+    test('should fallback to ai_first for unknown config names', () => {
       process.env.NLP_CONFIG = 'unknown_config';
       const config = getNLPConfig();
-      expect(config).toEqual(DEFAULT_NLP_CONFIG);
+      expect(config).toEqual(AI_FIRST_NLP_CONFIG);
     });
   });
 
