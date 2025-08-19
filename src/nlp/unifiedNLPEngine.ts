@@ -88,12 +88,22 @@ export class UnifiedNLPEngine {
           mode: context.mode
         };
 
-        const aiResult = await Promise.race([
-          this.grokClient.interpretCommand(aiContext),
-          this.createTimeoutPromise(this.config.maxProcessingTime)
-        ]);
+        // Create timeout promise with cleanup capability
+        let timeoutHandle: NodeJS.Timeout | undefined;
+        const timeoutPromise = new Promise<null>((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error('AI processing timeout')), this.config.maxProcessingTime);
+        });
 
-        if (aiResult) {
+        try {
+          const aiResult = await Promise.race([
+            this.grokClient.interpretCommand(aiContext),
+            timeoutPromise
+          ]);
+          
+          // Clear timeout if AI call completed first
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+
+          if (aiResult) {
           // If AI returns a result, trust it
           this.stats.aiMatches++;
           
@@ -116,6 +126,11 @@ export class UnifiedNLPEngine {
           }
           
           return result;
+        }
+        } catch (error) {
+          // Clear timeout on any error
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+          // AI failed, continue to return null so local processing is used
         }
         
       } catch (error) {
@@ -194,11 +209,6 @@ export class UnifiedNLPEngine {
     };
   }
 
-  private createTimeoutPromise(ms: number): Promise<null> {
-    return new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('AI processing timeout')), ms);
-    });
-  }
 
   private updateAverageProcessingTime(newTime: number): void {
     if (this.stats.totalCommands === 1) {

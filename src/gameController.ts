@@ -549,7 +549,12 @@ export class GameController {
         return;
       }
 
-      // Delete the game (cascade will handle related data)
+      // Delete related data manually (since foreign keys might not be enabled)
+      await this.db.run('DELETE FROM connections WHERE game_id = ?', [selectedGame.id]);
+      await this.db.run('DELETE FROM game_state WHERE game_id = ?', [selectedGame.id]);
+      await this.db.run('DELETE FROM rooms WHERE game_id = ?', [selectedGame.id]);
+      
+      // Finally delete the game
       await this.db.run('DELETE FROM games WHERE id = ?', [selectedGame.id]);
       console.log(`Game "${selectedGame.name}" has been deleted.`);
 
