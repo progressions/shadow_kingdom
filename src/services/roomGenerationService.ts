@@ -98,6 +98,9 @@ export class RoomGenerationService {
 
     // If room was processed, don't add more connections FROM it
     if (room && room.generation_processed) {
+      if (this.isDebugEnabled()) {
+        console.log(`[DEBUG] Skipping generation for room ID ${roomId} - already processed`);
+      }
       return 0;
     }
 
@@ -117,7 +120,11 @@ export class RoomGenerationService {
 
       if (!existingConnection) {
         // Generate new room in this direction
-        const result = await this.generateSingleRoom({
+        if (this.isDebugEnabled()) {
+          console.log(`[DEBUG] Generating room from ID ${roomId} in direction ${direction}`);
+        }
+        
+        const result = await this.generateRoomWithRegion({
           gameId,
           fromRoomId: roomId,
           direction,
@@ -126,6 +133,13 @@ export class RoomGenerationService {
         
         if (result.success) {
           generatedCount++;
+          if (this.isDebugEnabled()) {
+            console.log(`[DEBUG] Successfully generated room ID ${result.roomId} from ${roomId} via ${direction}`);
+          }
+        } else {
+          if (this.isDebugEnabled()) {
+            console.log(`[DEBUG] Failed to generate room from ${roomId} via ${direction}: ${result.error?.message}`);
+          }
         }
       }
     }
@@ -351,28 +365,49 @@ export class RoomGenerationService {
         throw error; // Re-throw other errors
       }
 
-      // Create AI-generated connections from the new room
+      // ALWAYS ensure there's a return connection to the parent room
+      // This is critical for game navigation - do this BEFORE processing AI connections
+      const reverseDirection = this.getReverseDirection(context.direction);
+      let returnConnectionCreated = false;
+      
+      if (reverseDirection) {
+        try {
+          await this.db.run(
+            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+            [context.gameId, roomResult.lastID, context.fromRoomId, reverseDirection, returnThematicName]
+          );
+          returnConnectionCreated = true;
+          if (this.isDebugEnabled()) {
+            console.log(`✅ Created MANDATORY return connection from ${roomResult.lastID} to ${context.fromRoomId} (${reverseDirection})`);
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+            returnConnectionCreated = true; // Connection already exists
+            if (this.isDebugEnabled()) {
+              console.log(`ℹ️  Return connection already exists: ${reverseDirection} from room ${roomResult.lastID}`);
+            }
+          } else {
+            if (this.isDebugEnabled()) {
+              console.error(`❌ Failed to create mandatory return connection: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+        }
+      }
+
+      // Create AI-generated connections from the new room (in addition to the mandatory return path)
+      if (this.isDebugEnabled()) {
+        console.log(`[DEBUG] AI generated ${newRoom.connections?.length || 0} connections for room "${newRoom.name}"`);
+      }
+      
       if (newRoom.connections && newRoom.connections.length > 0) {
         for (const connection of newRoom.connections) {
           // Find if this connection leads back to the origin room
           const isReturnPath = connection.direction === this.getReverseDirection(context.direction);
           
           if (isReturnPath) {
-            // Create the return connection with thematic name
-            try {
-              await this.db.run(
-                'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-                [context.gameId, roomResult.lastID, context.fromRoomId, connection.direction, connection.name]
-              );
-            } catch (error) {
-              if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
-                if (this.isDebugEnabled()) {
-                  console.log(`🚫 Unique constraint prevented duplicate return connection: ${connection.direction} from room ${roomResult.lastID}`);
-                }
-                // Continue processing other connections even if this one fails
-              } else {
-                throw error; // Re-throw other errors
-              }
+            // Skip - we already created the mandatory return connection above
+            if (this.isDebugEnabled()) {
+              console.log(`ℹ️  Skipping AI return connection - mandatory return already created (${connection.direction})`);
             }
           } else {
             // For other directions, we'll create stub rooms later (in Phase 4)
@@ -382,25 +417,12 @@ export class RoomGenerationService {
             }
           }
         }
-      } else {
-        // Fallback: ensure new room has at least one exit (back to where we came from)
-        const reverseDirection = this.getReverseDirection(context.direction);
-        if (reverseDirection) {
-          try {
-            await this.db.run(
-              'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-              [context.gameId, roomResult.lastID, context.fromRoomId, reverseDirection, returnThematicName]
-            );
-          } catch (error) {
-            if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
-              if (this.isDebugEnabled()) {
-                console.log(`🚫 Unique constraint prevented duplicate fallback connection: ${reverseDirection} from room ${roomResult.lastID}`);
-              }
-              // This is just a fallback, so it's okay if it fails
-            } else {
-              throw error; // Re-throw other errors
-            }
-          }
+      }
+      
+      // Final safety check - ensure return connection was created
+      if (!returnConnectionCreated) {
+        if (this.isDebugEnabled()) {
+          console.error(`❌ CRITICAL: No return connection created for room ${roomResult.lastID}!`);
         }
       }
 

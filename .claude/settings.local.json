@@ -29,7 +29,9 @@
       "Bash(git commit:*)",
       "Bash(timeout:*)",
       "Bash(DB_PATH=/tmp/test_regions.db npm start)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(chmod:*)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev)"
     ],
     "deny": [],
     "ask": [],

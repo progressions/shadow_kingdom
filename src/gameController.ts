@@ -436,10 +436,14 @@ export class GameController {
 
       if (room) {
         // Mark room as processed when player visits it (locks in the current design)
-        await this.db.run(
+        const updateResult = await this.db.run(
           'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND generation_processed = FALSE',
           [session.roomId]
         );
+        
+        if (process.env.AI_DEBUG_LOGGING === 'true' && updateResult.changes && updateResult.changes > 0) {
+          console.log(`[DEBUG] Locked room "${room.name}" (ID: ${session.roomId}) - marked as processed`);
+        }
 
         // Get available connections from this room within this game
         const connections = await this.gameStateManager.getCurrentRoomConnections();
@@ -447,8 +451,17 @@ export class GameController {
         // Use room display service to format and display the room
         await this.roomDisplayService.displayRoom(room, connections);
 
-        // Trigger background room generation (fire and forget)
-        this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+        // Only trigger background generation if room was just processed (first visit)
+        // If updateResult.changes > 0, it means this was the first visit and we should generate adjacent rooms
+        // If updateResult.changes === 0, room was already processed, so don't generate
+        if (updateResult.changes && updateResult.changes > 0) {
+          if (process.env.AI_DEBUG_LOGGING === 'true') {
+            console.log(`[DEBUG] First visit to room "${room.name}" (ID: ${session.roomId}) - triggering background generation`);
+          }
+          this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
+        } else if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log(`[DEBUG] Room "${room.name}" (ID: ${session.roomId}) already processed - skipping background generation`);
+        }
       } else {
         this.roomDisplayService.displayVoidState();
       }
