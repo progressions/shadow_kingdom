@@ -10,6 +10,7 @@ import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
 import { CommandRouter, Command, CommandExecutionContext } from './services/commandRouter';
 import { GameStateManager, Mode } from './services/gameStateManager';
 import { RoomDisplayService } from './services/roomDisplayService';
+import { RoomGenerationService } from './services/roomGenerationService';
 
 
 // Interfaces imported from GameStateManager
@@ -23,8 +24,7 @@ export class GameController {
   private commandRouter: CommandRouter;
   private gameStateManager: GameStateManager;
   private roomDisplayService: RoomDisplayService;
-  private lastGenerationTime: number = 0;
-  private generationInProgress: Set<number> = new Set();
+  private roomGenerationService: RoomGenerationService;
 
   constructor(db: Database) {
     this.db = db;
@@ -47,6 +47,11 @@ export class GameController {
     
     // Initialize room display service
     this.roomDisplayService = new RoomDisplayService({
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
+    
+    // Initialize room generation service
+    this.roomGenerationService = new RoomGenerationService(db, this.grokClient, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -502,7 +507,7 @@ export class GameController {
         this.roomDisplayService.displayRoom(room, connections);
 
         // Trigger background room generation (fire and forget)
-        this.preGenerateAdjacentRooms(session.roomId!);
+        this.roomGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
       } else {
         this.roomDisplayService.displayVoidState();
       }
@@ -632,382 +637,6 @@ export class GameController {
   }
 
 
-  // Background Room Generation Methods
-  private async preGenerateAdjacentRooms(currentRoomId: number): Promise<void> {
-    // Check cooldown period
-    const cooldown = parseInt(process.env.GENERATION_COOLDOWN_MS || '5000');
-    const timeSinceLastGeneration = Date.now() - this.lastGenerationTime;
-    
-    if (timeSinceLastGeneration < cooldown) {
-      return; // Still in cooldown
-    }
-
-    // Check if generation is already in progress for this room
-    if (this.generationInProgress.has(currentRoomId)) {
-      return; // Already generating
-    }
-
-    // Check total room count limit
-    const session = this.gameStateManager.getCurrentSession();
-    if (session.gameId) {
-      const roomCount = await this.db.get(
-        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
-        [session.gameId]
-      );
-      
-      const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '100');
-      if (roomCount?.count >= maxRooms) {
-        if (process.env.AI_DEBUG_LOGGING === 'true') {
-          console.log(`🏰 Room limit reached (${maxRooms}). No more rooms will be generated.`);
-        }
-        return;
-      }
-    }
-
-    // Fire and forget - don't await this in production
-    this.expandFromAdjacentRooms(currentRoomId);
-    this.lastGenerationTime = Date.now();
-  }
-
-  private async expandFromAdjacentRooms(currentRoomId: number): Promise<void> {
-    this.generationInProgress.add(currentRoomId);
-    
-    try {
-      const maxDepth = parseInt(process.env.MAX_GENERATION_DEPTH || '5');
-      
-      // Get all connections FROM current room to existing rooms that haven't been processed yet
-      const session = this.gameStateManager.getCurrentSession();
-      const connections = await this.db.all(
-        'SELECT c.*, r.generation_processed FROM connections c ' +
-        'JOIN rooms r ON c.to_room_id = r.id ' +
-        'WHERE c.from_room_id = ? AND c.game_id = ? AND (r.generation_processed = FALSE OR r.generation_processed IS NULL)',
-        [currentRoomId, session.gameId]
-      );
-
-      let roomsToGenerate = 0;
-      
-      // For each connection that leads to an unprocessed room
-      for (const connection of connections) {
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
-
-        if (targetRoom) {
-          // Count missing rooms for this target
-          const missingCount = await this.countMissingRoomsFor(targetRoom.id);
-          roomsToGenerate += Math.min(missingCount, maxDepth);
-        }
-      }
-
-      // Check if we can generate the requested rooms without exceeding limits
-      if (session.gameId) {
-        const currentRoomCount = await this.db.get(
-          'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
-          [session.gameId]
-        );
-        
-        const maxRooms = parseInt(process.env.MAX_ROOMS_PER_GAME || '100');
-        const roomsCanGenerate = Math.max(0, maxRooms - (currentRoomCount?.count || 0));
-        
-        if (roomsToGenerate > roomsCanGenerate) {
-          if (process.env.AI_DEBUG_LOGGING === 'true') {
-            console.log(`🏰 Limited generation: ${roomsCanGenerate} rooms available (${roomsToGenerate} requested)`);
-          }
-          roomsToGenerate = roomsCanGenerate;
-        }
-      }
-
-      // Generate rooms with depth limit
-      let generatedCount = 0;
-      for (const connection of connections) {
-        if (generatedCount >= roomsToGenerate) break;
-        
-        const targetRoom = await this.db.get(
-          'SELECT * FROM rooms WHERE id = ?',
-          [connection.to_room_id]
-        );
-
-        if (targetRoom) {
-          const roomsGenerated = await this.generateMissingRoomsFor(targetRoom.id, maxDepth, roomsToGenerate - generatedCount);
-          generatedCount += roomsGenerated;
-          
-          // Mark this room as processed so we don't generate for it again
-          await this.db.run(
-            'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
-            [targetRoom.id]
-          );
-        }
-      }
-      
-    } catch (error) {
-      if (process.env.AI_DEBUG_LOGGING === 'true') {
-        console.error('Background generation failed:', error);
-      }
-      // Silent failure - game continues normally
-    } finally {
-      this.generationInProgress.delete(currentRoomId);
-    }
-  }
-
-  private async countMissingRoomsFor(roomId: number): Promise<number> {
-    const session = this.gameStateManager.getCurrentSession();
-    
-    // Check if this room was AI-generated and processed
-    const room = await this.db.get(
-      'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
-      [roomId, session.gameId]
-    );
-
-    // If room was AI-processed, respect its design - don't add more connections
-    if (room && room.generation_processed) {
-      return 0;
-    }
-
-    // For unprocessed rooms, check for missing basic directions
-    const basicDirections = ['north', 'south', 'east', 'west'];
-    let missingCount = 0;
-
-    for (const direction of basicDirections) {
-      const existingConnection = await this.db.get(
-        'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [roomId, direction, session.gameId]
-      );
-
-      if (!existingConnection) {
-        missingCount++;
-      }
-    }
-
-    return Math.min(missingCount, 4);
-  }
-
-  private async generateMissingRoomsFor(roomId: number, maxRooms: number = 6, remainingQuota: number = Infinity): Promise<number> {
-    const session = this.gameStateManager.getCurrentSession();
-    
-    // Check if this room was already processed
-    const room = await this.db.get(
-      'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
-      [roomId, session.gameId]
-    );
-
-    // If room was processed, don't add more connections
-    if (room && room.generation_processed) {
-      return 0;
-    }
-
-    // Generate missing connections for unprocessed rooms
-    const basicDirections = ['north', 'south', 'east', 'west'];
-    let generatedCount = 0;
-    const maxGenerations = Math.min(maxRooms, remainingQuota, 4);
-
-    for (const direction of basicDirections) {
-      if (generatedCount >= maxGenerations) break;
-      
-      // Check if connection already exists
-      const existingConnection = await this.db.get(
-        'SELECT * FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [roomId, direction, session.gameId]
-      );
-
-      if (!existingConnection) {
-        // Generate new room in this direction
-        const success = await this.generateSingleRoom(roomId, direction);
-        if (success) {
-          generatedCount++;
-        }
-      }
-    }
-
-    // Mark room as processed after generating connections
-    if (generatedCount > 0) {
-      await this.db.run(
-        'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
-        [roomId]
-      );
-    }
-
-    return generatedCount;
-  }
-
-  private async generateSingleRoom(fromRoomId: number, direction: string): Promise<boolean> {
-    const session = this.gameStateManager.getCurrentSession();
-    
-    try {
-      // Check if a connection already exists for this direction to prevent duplicates
-      const existingConnection = await this.db.get(
-        'SELECT id FROM connections WHERE from_room_id = ? AND direction = ? AND game_id = ?',
-        [fromRoomId, direction, session.gameId]
-      );
-      
-      if (existingConnection) {
-        return false; // Connection already exists, don't generate
-      }
-
-      const fromRoom = await this.db.get('SELECT * FROM rooms WHERE id = ?', [fromRoomId]);
-
-      // Get existing room names for context
-      const existingRooms = await this.db.all(
-        'SELECT name FROM rooms WHERE game_id = ? ORDER BY id',
-        [session.gameId]
-      );
-      const roomNames = existingRooms.map(room => room.name);
-
-      const newRoom = await this.grokClient.generateRoom({
-        currentRoom: { name: fromRoom.name, description: fromRoom.description },
-        direction: direction,
-        gameHistory: roomNames,
-        theme: 'mysterious fantasy kingdom'
-      });
-
-      // Check for duplicate room names and make unique if needed
-      let uniqueName = newRoom.name;
-      let counter = 1;
-      
-      while (true) {
-        const existingRoom = await this.db.get(
-          'SELECT id FROM rooms WHERE game_id = ? AND name = ?',
-          [session.gameId, uniqueName]
-        );
-        
-        if (!existingRoom) {
-          break; // Name is unique
-        }
-        
-        // Add counter to make name unique
-        uniqueName = `${newRoom.name} ${counter}`;
-        counter++;
-        
-        // Prevent infinite loop
-        if (counter > 100) {
-          uniqueName = `${newRoom.name} ${Date.now()}`;
-          break;
-        }
-      }
-
-      // Save to database (new rooms start as unprocessed)
-      const roomResult = await this.db.run(
-        'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-        [session.gameId, uniqueName, newRoom.description, false]
-      );
-
-      // Find the AI-generated thematic name for the outgoing connection
-      let outgoingThematicName = direction; // fallback to basic direction
-      let returnThematicName = this.getReverseDirection(direction) || 'back';
-      
-      // Look for AI-generated connection descriptions
-      if (newRoom.connections && newRoom.connections.length > 0) {
-        // Find the return path connection for thematic naming
-        const returnConnection = newRoom.connections.find(c => 
-          c.direction === this.getReverseDirection(direction)
-        );
-        
-        if (returnConnection) {
-          returnThematicName = returnConnection.name;
-          // Create a complementary thematic name for the outgoing connection
-          outgoingThematicName = this.generateComplementaryConnectionName(returnConnection.name, direction);
-        }
-      }
-
-      // Create outgoing connection from origin room with thematic name
-      await this.db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [session.gameId, fromRoomId, roomResult.lastID, direction, outgoingThematicName]
-      );
-
-      // Create AI-generated connections from the new room
-      if (newRoom.connections && newRoom.connections.length > 0) {
-        for (const connection of newRoom.connections) {
-          // Find if this connection leads back to the origin room
-          const isReturnPath = connection.direction === this.getReverseDirection(direction);
-          
-          if (isReturnPath) {
-            // Create the return connection with thematic name
-            await this.db.run(
-              'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-              [session.gameId, roomResult.lastID, fromRoomId, connection.direction, connection.name]
-            );
-          } else {
-            // For other directions, we'll create stub rooms later (in Phase 4)
-            // For now, just log that we have additional connections planned
-            if (process.env.AI_DEBUG_LOGGING === 'true') {
-              console.log(`🔗 Planned connection: ${connection.name} (${connection.direction})`);
-            }
-          }
-        }
-      } else {
-        // Fallback: ensure new room has at least one exit (back to where we came from)
-        const reverseDirection = this.getReverseDirection(direction);
-        if (reverseDirection) {
-          await this.db.run(
-            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-            [session.gameId, roomResult.lastID, fromRoomId, reverseDirection, returnThematicName]
-          );
-        }
-      }
-
-      // Only show generation messages in debug mode
-      if (process.env.AI_DEBUG_LOGGING === 'true') {
-        console.log(`✨ Generated new area: ${uniqueName} (${direction})`);
-      }
-      return true;
-
-    } catch (error) {
-      // Silent failure - this is background generation
-      if (process.env.AI_DEBUG_LOGGING === 'true') {
-        console.error(`Failed to generate room ${direction} from ${fromRoomId}:`, error);
-      }
-      return false;
-    }
-  }
-
-  private getReverseDirection(direction: string): string | null {
-    const directionMap: { [key: string]: string } = {
-      'north': 'south',
-      'south': 'north',
-      'east': 'west',
-      'west': 'east',
-      'up': 'down',
-      'down': 'up'
-    };
-    
-    return directionMap[direction.toLowerCase()] || null;
-  }
-
-
-  private generateComplementaryConnectionName(returnName: string, direction: string): string {
-    // Create a complementary thematic name based on the return path description
-    // This ensures both directions have thematic names that make sense together
-    
-    // Extract key elements from the return name to create a complementary forward name
-    if (returnName.includes('back through')) {
-      // "back through the crystal entrance" -> "through the crystal entrance"
-      return returnName.replace('back through', 'through');
-    } else if (returnName.includes('back to')) {
-      // "back to the garden" -> "to the shadowed passage"
-      return `through the ${direction}ern passage`;
-    } else if (returnName.includes('down')) {
-      // "down the starlit steps" -> "up the starlit steps"
-      return returnName.replace('down', 'up');
-    } else if (returnName.includes('up')) {
-      // "up the ancient stairs" -> "down the ancient stairs"
-      return returnName.replace('up', 'down');
-    } else if (returnName.includes('through')) {
-      // Keep the thematic element but make it directional
-      return returnName;
-    } else {
-      // Fallback: create a generic thematic name
-      const thematicPrefixes = [
-        'through the shadowed',
-        'via the ancient',
-        'through the ornate',
-        'via the weathered',
-        'through the mysterious'
-      ];
-      const prefix = thematicPrefixes[Math.floor(Math.random() * thematicPrefixes.length)];
-      return `${prefix} ${direction}ern passage`;
-    }
-  }
 
   public async start() {
     console.clear();

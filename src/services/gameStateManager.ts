@@ -15,6 +15,7 @@ export interface Room {
   game_id: number;
   name: string;
   description: string;
+  generation_processed?: boolean;
 }
 
 export interface Connection {
