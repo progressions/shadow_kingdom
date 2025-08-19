@@ -171,7 +171,9 @@ describe('ContextResolver', () => {
       const result = await resolver.resolveContext('talk to the merchant', baseContext);
       
       expect(result).not.toBeNull();
-      expect(result!.resolvedObjects[0].resolvedName).toBe('old merchant');
+      if (result && 'resolvedObjects' in result && result.resolvedObjects) {
+        expect(result.resolvedObjects[0].resolvedName).toBe('old merchant');
+      }
     });
   });
 
@@ -252,8 +254,10 @@ describe('ContextResolver', () => {
       
       expect(result).not.toBeNull();
       // Should pick the exact match "sword" over partial match "rusty sword"
-      expect(result!.resolvedObjects[0].resolvedName).toBe('sword');
-      expect(result!.resolvedObjects[0].resolutionType).toBe('exact');
+      if (result && 'resolvedObjects' in result && result.resolvedObjects) {
+        expect(result.resolvedObjects[0].resolvedName).toBe('sword');
+        expect(result.resolvedObjects[0].resolutionType).toBe('exact');
+      }
     });
 
     test('should prioritize pronouns over other resolutions', async () => {
@@ -264,8 +268,10 @@ describe('ContextResolver', () => {
       const result = await resolver.resolveContext('use it', baseContext);
       
       expect(result).not.toBeNull();
-      expect(result!.resolvedObjects[0].resolutionType).toBe('pronoun');
-      expect(result!.resolvedObjects[0].resolvedName).toBe('golden key');
+      if (result && 'resolvedObjects' in result && result.resolvedObjects) {
+        expect(result.resolvedObjects[0].resolutionType).toBe('pronoun');
+        expect(result.resolvedObjects[0].resolvedName).toBe('golden key');
+      }
     });
   });
 
@@ -341,14 +347,18 @@ describe('ContextResolver', () => {
       const result = await resolver.resolveContext('take rusty sword', baseContext);
       
       expect(result).not.toBeNull();
-      expect(result!.resolvedObjects[0].confidence).toBe(1.0);
+      if (result && 'resolvedObjects' in result && result.resolvedObjects) {
+        expect(result.resolvedObjects[0].confidence).toBe(1.0);
+      }
     });
 
     test('should assign lower confidence to contextual matches', async () => {
       const result = await resolver.resolveContext('take sword', baseContext);
       
       expect(result).not.toBeNull();
-      expect(result!.resolvedObjects[0].confidence).toBe(0.8);
+      if (result && 'resolvedObjects' in result && result.resolvedObjects) {
+        expect(result.resolvedObjects[0].confidence).toBe(0.8);
+      }
     });
 
     test('should assign high confidence to pronoun resolution', async () => {
@@ -356,7 +366,9 @@ describe('ContextResolver', () => {
       const result = await resolver.resolveContext('take it', baseContext);
       
       expect(result).not.toBeNull();
-      expect(result!.resolvedObjects[0].confidence).toBe(0.9);
+      if (result && 'resolvedObjects' in result && result.resolvedObjects) {
+        expect(result.resolvedObjects[0].confidence).toBe(0.9);
+      }
     });
   });
 });

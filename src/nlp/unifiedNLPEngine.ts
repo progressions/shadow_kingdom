@@ -13,7 +13,7 @@ export interface NLPConfig {
 export class UnifiedNLPEngine {
   private localProcessor: LocalNLPProcessor;
   private grokClient: GrokClient;
-  private config: NLPConfig;
+  protected config: NLPConfig;
   private stats = {
     totalCommands: 0,
     localMatches: 0,

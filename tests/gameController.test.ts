@@ -69,13 +69,15 @@ describe('GameController Integration', () => {
   // on the testable parts of the controller.
 });
 
-describe('GameController Menu Commands', () => {
+describe('GameController Core Functionality', () => {
   let db: Database;
+  let controller: GameController;
 
   beforeEach(async () => {
-    db = new Database(':memory:'); // Use in-memory database for tests
+    db = new Database(':memory:');
     await db.connect();
     await initializeDatabase(db);
+    controller = new GameController(db);
   });
 
   afterEach(async () => {
@@ -84,50 +86,318 @@ describe('GameController Menu Commands', () => {
     }
   });
 
-  // These tests would require exposing some internal methods or creating
-  // a test interface for the controller. For now, we'll test the database
-  // operations that the controller depends on.
+  describe('Game Management Operations', () => {
+    test('should create new game successfully', async () => {
+      // Mock user input for game name
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      const uniqueGameName = `Test Game ${Date.now()}-${Math.random()}`;
+      const mockQuestion = jest.fn().mockImplementation((question, callback) => {
+        callback(uniqueGameName);
+      });
+      
+      // Mock the readline interface
+      (controller as any).rl.question = mockQuestion;
+      
+      try {
+        await (controller as any).startNewGame();
+        
+        // Verify game was created in database
+        const games = await db.all('SELECT * FROM games WHERE name = ?', [uniqueGameName]);
+        expect(games.length).toBe(1);
+        expect(games[0].name).toBe(uniqueGameName);
+        
+        // Verify initial room was created
+        const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [games[0].id]);
+        expect(rooms.length).toBeGreaterThan(0);
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
 
-  test('should be able to query games for load menu', async () => {
-    // Create some test games
-    const timestamp = Date.now();
-    const name1 = `Game 1 ${timestamp}-${Math.random()}`;
-    const name2 = `Game 2 ${timestamp}-${Math.random()}`;
-    await db.run('INSERT INTO games (name) VALUES (?)', [name1]);
-    await db.run('INSERT INTO games (name) VALUES (?)', [name2]);
+    test('should load existing game', async () => {
+      // Create a test game first
+      const uniqueLoadGameName = `Test Load Game ${Date.now()}-${Math.random()}`;
+      const gameResult = await db.run('INSERT INTO games (name) VALUES (?)', [uniqueLoadGameName]);
+      const gameId = gameResult.lastID;
+      
+      // Create initial room for the game
+      const roomResult = await db.run(
+        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
+        [gameId, 'Test Room', 'A room for testing']
+      );
+      const roomId = roomResult.lastID;
+      
+      // Create game state
+      await db.run(
+        'INSERT INTO game_state (game_id, current_room_id) VALUES (?, ?)',
+        [gameId, roomId]
+      );
 
-    const games = await db.all(
-      'SELECT id, name, created_at, last_played_at FROM games ORDER BY last_played_at DESC'
-    );
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      const mockQuestion = jest.fn().mockImplementation((question, callback) => {
+        callback('1'); // Select first game
+      });
+      
+      (controller as any).rl.question = mockQuestion;
+      
+      try {
+        await (controller as any).loadGame();
+        
+        // Verify controller state - check the state was loaded, IDs may differ due to auto-increment
+        expect((controller as any).currentGameId).toEqual(gameId);
+        expect((controller as any).currentRoomId).toEqual(roomId);
+        expect((controller as any).mode).toBe('game');
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
 
-    expect(games.length).toBeGreaterThanOrEqual(2);
-    expect(games[0].name).toBeDefined();
-    expect(games[0].last_played_at).toBeDefined();
+    test('should delete game correctly', async () => {
+      // Create test games with unique names
+      const game1Name = `Game 1 ${Date.now()}-${Math.random()}`;
+      const game2Name = `Game 2 ${Date.now()}-${Math.random()}`;
+      const game1 = await db.run('INSERT INTO games (name) VALUES (?)', [game1Name]);
+      const game2 = await db.run('INSERT INTO games (name) VALUES (?)', [game2Name]);
+      
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      const mockQuestion = jest.fn()
+        .mockImplementationOnce((question, callback) => callback('1')) // Select first game
+        .mockImplementationOnce((question, callback) => callback('y')); // Confirm deletion
+      
+      (controller as any).rl.question = mockQuestion;
+      
+      try {
+        await (controller as any).deleteGame();
+        
+        // Verify first game was deleted (exact count depends on existing games from other tests)
+        const games = await db.all('SELECT * FROM games ORDER BY id');
+        const game1Still = await db.get('SELECT * FROM games WHERE id = ?', [game1.lastID]);
+        const game2Still = await db.get('SELECT * FROM games WHERE id = ?', [game2.lastID]);
+        
+        expect(game1Still).toBeUndefined(); // First game should be deleted
+        expect(game2Still).toBeDefined(); // Second game should remain
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
   });
 
-  test('should be able to delete games', async () => {
-    const uniqueName = `To Delete ${Date.now()}-${Math.random()}`;
-    const result = await db.run('INSERT INTO games (name) VALUES (?)', [uniqueName]);
-    const gameId = result.lastID;
+  describe('Game Play Operations', () => {
+    let gameId: number;
+    let roomId: number;
 
-    await db.run('DELETE FROM games WHERE id = ?', [gameId]);
+    beforeEach(async () => {
+      // Set up a game session for gameplay tests with unique name
+      const uniqueGameplayName = `Test Gameplay ${Date.now()}-${Math.random()}`;
+      const gameResult = await db.run('INSERT INTO games (name) VALUES (?)', [uniqueGameplayName]);
+      gameId = gameResult.lastID!;
+      
+      const roomResult = await db.run(
+        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
+        [gameId, 'Starting Room', 'A room with exits to the north and east.']
+      );
+      roomId = roomResult.lastID!;
+      
+      await db.run(
+        'INSERT INTO game_state (game_id, current_room_id) VALUES (?, ?)',
+        [gameId, roomId]
+      );
+      
+      // Set controller state
+      (controller as any).currentGameId = gameId;
+      (controller as any).currentRoomId = roomId;
+      (controller as any).mode = 'game';
+    });
 
-    const game = await db.get('SELECT * FROM games WHERE id = ?', [gameId]);
-    expect(game).toBeUndefined();
+    test('should handle look around command', async () => {
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      
+      try {
+        await (controller as any).lookAround();
+        
+        // Verify output includes room information
+        expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Starting Room'));
+        expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('A room with exits'));
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
+
+    test('should handle movement between rooms', async () => {
+      // Create a connected room
+      const northRoomResult = await db.run(
+        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
+        [gameId, 'North Room', 'A northern chamber.']
+      );
+      const northRoomId = northRoomResult.lastID!;
+      
+      // Create connection
+      await db.run(
+        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+        [gameId, roomId, northRoomId, 'north', 'archway to the north']
+      );
+      
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      
+      try {
+        await (controller as any).move(['north']);
+        
+        // Verify movement successful
+        expect((controller as any).currentRoomId).toBe(northRoomId);
+        
+        // Verify game state updated in database
+        const gameState = await db.get('SELECT * FROM game_state WHERE game_id = ?', [gameId]);
+        expect(gameState.current_room_id).toBe(northRoomId);
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
+
+    test('should handle invalid movement', async () => {
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      
+      try {
+        await (controller as any).move(['west']); // No western exit
+        
+        // Verify player stayed in same room
+        expect((controller as any).currentRoomId).toBe(roomId);
+        
+        // Verify error message
+        expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining("can't go"));
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
+
+    test('should save game state periodically', async () => {
+      const originalLastPlayedAt = await db.get(
+        'SELECT last_played_at FROM games WHERE id = ?', 
+        [gameId]
+      );
+      
+      // Wait a moment to ensure timestamp difference
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      await (controller as any).saveGameState();
+      
+      const updatedLastPlayedAt = await db.get(
+        'SELECT last_played_at FROM games WHERE id = ?', 
+        [gameId]
+      );
+      
+      expect(new Date(updatedLastPlayedAt.last_played_at).getTime())
+        .toBeGreaterThan(new Date(originalLastPlayedAt.last_played_at).getTime());
+    });
   });
 
-  test('should format timestamps correctly', () => {
-    // Test the timestamp formatting logic that would be used in the controller
-    const now = new Date();
-    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-    const yesterdayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  describe('Command Processing', () => {
+    test('should process simple commands', async () => {
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      
+      try {
+        await (controller as any).processCommand('help');
+        
+        // Should display help information
+        expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('help'));
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
 
-    // This would test the formatTimestamp method if it were exposed
-    // For now, we can test the logic separately or expose it for testing
-    
-    expect(fiveMinutesAgo.getTime()).toBeLessThan(now.getTime());
-    expect(twoHoursAgo.getTime()).toBeLessThan(now.getTime());
-    expect(yesterdayAgo.getTime()).toBeLessThan(now.getTime());
+    test('should handle unknown commands gracefully', async () => {
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      
+      try {
+        await (controller as any).processCommand('invalid command xyz');
+        
+        // Should show appropriate error message
+        expect(mockConsoleLog).toHaveBeenCalledWith(
+          expect.stringContaining("Unknown command")
+        );
+        
+      } finally {
+        mockConsoleLog.mockRestore();
+      }
+    });
+  });
+
+  describe('Room Generation', () => {
+    let gameId: number;
+    let roomId: number;
+
+    beforeEach(async () => {
+      const uniqueGenerationName = `Generation Test ${Date.now()}-${Math.random()}`;
+      const gameResult = await db.run('INSERT INTO games (name) VALUES (?)', [uniqueGenerationName]);
+      gameId = gameResult.lastID!;
+      
+      const roomResult = await db.run(
+        'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
+        [gameId, 'Origin Room', 'Starting point for generation tests.']
+      );
+      roomId = roomResult.lastID!;
+      
+      (controller as any).currentGameId = gameId;
+      (controller as any).currentRoomId = roomId;
+    });
+
+    test('should generate new room when moving to unmapped direction', async () => {
+      const initialRoomCount = await db.get(
+        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+        [gameId]
+      );
+      
+      // Try to move north (should trigger room generation)
+      await (controller as any).move(['north']);
+      
+      const finalRoomCount = await db.get(
+        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+        [gameId]
+      );
+      
+      // Should have generated at least one new room
+      expect(finalRoomCount.count).toBeGreaterThan(initialRoomCount.count);
+    });
+
+    test('should respect room generation limits', async () => {
+      // Set a low limit for testing
+      const originalLimit = process.env.MAX_ROOMS_PER_GAME;
+      process.env.MAX_ROOMS_PER_GAME = '3';
+      
+      try {
+        // Create rooms up to the limit
+        await db.run('INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)', [gameId, 'Room 2', 'Test']);
+        await db.run('INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)', [gameId, 'Room 3', 'Test']);
+        
+        const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+        
+        try {
+          await (controller as any).move(['north']);
+          
+          // Should show limit reached message instead of generating
+          const roomCount = await db.get(
+            'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+            [gameId]
+          );
+          expect(roomCount.count).toBe(3); // No new room generated
+          
+        } finally {
+          mockConsoleLog.mockRestore();
+        }
+        
+      } finally {
+        if (originalLimit) {
+          process.env.MAX_ROOMS_PER_GAME = originalLimit;
+        } else {
+          delete process.env.MAX_ROOMS_PER_GAME;
+        }
+      }
+    });
   });
 });
