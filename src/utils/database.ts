@@ -5,7 +5,7 @@ export class Database {
   private db: sqlite3.Database | null = null;
   private dbPath: string;
 
-  constructor(dbName: string = 'shadow_kingdom.db') {
+  constructor(dbName: string = 'data/db/shadow_kingdom.db') {
     this.dbPath = path.join(process.cwd(), dbName);
   }
 

@@ -1,6 +1,8 @@
 import Database from '../utils/database';
-import { GrokClient } from '../ai/grokClient';
+import { GrokClient, RegionGenerationContext } from '../ai/grokClient';
 import { Room, Connection } from './gameStateManager';
+import { RegionService } from './regionService';
+import { Region } from '../types/region';
 
 export interface RoomGenerationOptions {
   enableDebugLogging?: boolean;
@@ -37,6 +39,7 @@ export class RoomGenerationService {
   constructor(
     private db: Database,
     private grokClient: GrokClient,
+    private regionService: RegionService,
     options: RoomGenerationOptions = {}
   ) {
     this.options = {
@@ -88,14 +91,17 @@ export class RoomGenerationService {
     maxRooms: number = 6, 
     remainingQuota: number = Infinity
   ): Promise<number> {
-    // Check if this room was already processed
+    // CRITICAL: Double-check if this room was already processed
     const room = await this.db.get(
       'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
       [roomId, gameId]
     );
 
-    // If room was processed, don't add more connections
+    // If room was processed, absolutely do NOT add more connections
     if (room && room.generation_processed) {
+      if (this.isDebugEnabled()) {
+        console.log(`🔒 Room ${roomId} is already processed - skipping generation`);
+      }
       return 0;
     }
 
@@ -114,6 +120,19 @@ export class RoomGenerationService {
       );
 
       if (!existingConnection) {
+        // CRITICAL: Final safety check - ensure room is still unprocessed before generating
+        const finalCheck = await this.db.get(
+          'SELECT generation_processed FROM rooms WHERE id = ? AND game_id = ?',
+          [roomId, gameId]
+        );
+        
+        if (finalCheck && finalCheck.generation_processed) {
+          if (this.isDebugEnabled()) {
+            console.log(`🔒 Room ${roomId} was processed during generation - aborting`);
+          }
+          break; // Stop generating for this room
+        }
+
         // Generate new room in this direction
         const result = await this.generateSingleRoom({
           gameId,
@@ -157,7 +176,96 @@ export class RoomGenerationService {
         };
       }
 
-      const fromRoom = await this.db.get('SELECT * FROM rooms WHERE id = ?', [context.fromRoomId]);
+      const fromRoom = await this.db.get<any>('SELECT * FROM rooms WHERE id = ?', [context.fromRoomId]);
+
+      // Determine region assignment using RegionService
+      let regionId: number;
+      let regionDistance: number;
+
+      if (fromRoom.region_id && fromRoom.region_distance !== null) {
+        // Check if we should create a new region or continue in current one
+        const shouldCreateNewRegion = this.regionService.shouldCreateNewRegion(fromRoom.region_distance);
+        
+        if (shouldCreateNewRegion) {
+          // Generate new region with AI
+          const existingRegions = await this.regionService.getRegionsForGame(context.gameId);
+          const regionContext: RegionGenerationContext = {
+            gameId: context.gameId,
+            transitionFrom: {
+              room: {
+                name: fromRoom.name,
+                description: fromRoom.description
+              },
+              region: existingRegions.find(r => r.id === fromRoom.region_id)
+            },
+            existingRegions: existingRegions.map(r => r.name || r.type)
+          };
+
+          const generatedRegion = await this.grokClient.generateRegion(regionContext);
+          const newRegion = await this.regionService.createRegion(
+            context.gameId,
+            generatedRegion.type,
+            generatedRegion.description,
+            generatedRegion.name
+          );
+          
+          regionId = newRegion.id;
+          regionDistance = this.regionService.generateRegionDistance(); // 2-7
+          
+          if (this.isDebugEnabled()) {
+            console.log(`🏛️ Created new region: ${generatedRegion.name} (${generatedRegion.type}) at distance ${regionDistance}`);
+          }
+        } else {
+          // Continue in current region, increase distance
+          regionId = fromRoom.region_id;
+          regionDistance = fromRoom.region_distance + 1;
+          
+          if (this.isDebugEnabled()) {
+            console.log(`📍 Continuing in region ${regionId} at distance ${regionDistance}`);
+          }
+        }
+      } else {
+        // From room has no region - create new one
+        const regionContext: RegionGenerationContext = {
+          gameId: context.gameId,
+          transitionFrom: {
+            room: {
+              name: fromRoom.name,
+              description: fromRoom.description
+            }
+          }
+        };
+
+        const generatedRegion = await this.grokClient.generateRegion(regionContext);
+        const newRegion = await this.regionService.createRegion(
+          context.gameId,
+          generatedRegion.type,
+          generatedRegion.description,
+          generatedRegion.name
+        );
+        
+        regionId = newRegion.id;
+        regionDistance = this.regionService.generateRegionDistance();
+        
+        if (this.isDebugEnabled()) {
+          console.log(`🏛️ Created first region: ${generatedRegion.name} (${generatedRegion.type})`);
+        }
+      }
+
+      // Build regional context for room generation
+      const region = await this.regionService.getRegion(regionId);
+      if (!region) {
+        throw new Error('Failed to retrieve region for room generation');
+      }
+
+      const regionContext = {
+        region,
+        isCenter: regionDistance === 0,
+        distanceFromCenter: regionDistance
+      };
+
+      const adjacentDescriptions = await this.regionService.getAdjacentRoomDescriptions(context.fromRoomId);
+      const enhancedPrompt = await this.regionService.buildRoomGenerationPrompt(regionContext, adjacentDescriptions);
 
       // Get existing room names for context
       const existingRooms = await this.db.all(
@@ -166,11 +274,12 @@ export class RoomGenerationService {
       );
       const roomNames = existingRooms.map(room => room.name);
 
+      // Generate room with enhanced regional context
       const newRoom = await this.grokClient.generateRoom({
         currentRoom: { name: fromRoom.name, description: fromRoom.description },
         direction: context.direction,
         gameHistory: roomNames,
-        theme: context.theme || 'mysterious fantasy kingdom'
+        theme: enhancedPrompt // Use the regional prompt as theme
       });
 
       // Check for duplicate room names and make unique if needed
@@ -198,10 +307,10 @@ export class RoomGenerationService {
         }
       }
 
-      // Save to database (new rooms start as unprocessed)
+      // Save to database with region assignment (new rooms start as unprocessed)
       const roomResult = await this.db.run(
-        'INSERT INTO rooms (game_id, name, description, generation_processed) VALUES (?, ?, ?, ?)',
-        [context.gameId, uniqueName, newRoom.description, false]
+        'INSERT INTO rooms (game_id, name, description, generation_processed, region_id, region_distance) VALUES (?, ?, ?, ?, ?, ?)',
+        [context.gameId, uniqueName, newRoom.description, false, regionId, regionDistance]
       );
 
       // Find the AI-generated thematic name for the outgoing connection

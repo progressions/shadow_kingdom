@@ -113,9 +113,14 @@ export class BackgroundGenerationService {
         );
 
         if (targetRoom) {
-          // Count missing rooms for this target
-          const missingCount = await this.roomGenerationService.countMissingRoomsFor(targetRoom.id, gameId);
-          roomsToGenerate += Math.min(missingCount, limits.maxGenerationDepth);
+          // CRITICAL: Double-check if room is still unprocessed
+          if (!targetRoom.generation_processed) {
+            // Count missing rooms for this target
+            const missingCount = await this.roomGenerationService.countMissingRoomsFor(targetRoom.id, gameId);
+            roomsToGenerate += Math.min(missingCount, limits.maxGenerationDepth);
+          } else if (this.isDebugEnabled()) {
+            console.log(`🔒 Target room ${targetRoom.id} already processed - skipping`);
+          }
         }
       }
 
@@ -145,19 +150,24 @@ export class BackgroundGenerationService {
         );
 
         if (targetRoom) {
-          const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
-            targetRoom.id, 
-            gameId, 
-            limits.maxGenerationDepth, 
-            roomsToGenerate - generatedCount
-          );
-          generatedCount += roomsGenerated;
-          
-          // Mark this room as processed so we don't generate for it again
-          await this.db.run(
-            'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
-            [targetRoom.id]
-          );
+          // CRITICAL: Final check before generation
+          if (!targetRoom.generation_processed) {
+            const roomsGenerated = await this.roomGenerationService.generateMissingRoomsFor(
+              targetRoom.id, 
+              gameId, 
+              limits.maxGenerationDepth, 
+              roomsToGenerate - generatedCount
+            );
+            generatedCount += roomsGenerated;
+            
+            // Mark this room as processed so we don't generate for it again
+            await this.db.run(
+              'UPDATE rooms SET generation_processed = TRUE WHERE id = ?',
+              [targetRoom.id]
+            );
+          } else if (this.isDebugEnabled()) {
+            console.log(`🔒 Target room ${targetRoom.id} was processed before generation - skipping`);
+          }
         }
       }
       

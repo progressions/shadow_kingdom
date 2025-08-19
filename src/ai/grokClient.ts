@@ -92,6 +92,28 @@ export interface InterpretedCommand {
   reasoning: string;
 }
 
+export interface RegionGenerationContext {
+  gameId: number;
+  transitionFrom?: {
+    room: {
+      name: string;
+      description: string;
+    };
+    region?: {
+      name: string | null;
+      type: string;
+      description: string;
+    };
+  };
+  existingRegions?: string[];
+}
+
+export interface GeneratedRegion {
+  name: string;
+  type: string;
+  description: string;
+}
+
 interface GrokAPIResponse {
   choices: {
     message: {
@@ -303,6 +325,73 @@ Respond in JSON format:
       }
       // Return a fallback dialogue instead of throwing
       return this.getFallbackDialogue(context);
+    }
+  }
+
+  async generateRegion(context: RegionGenerationContext): Promise<GeneratedRegion> {
+    if (this.config.mockMode) {
+      return this.mockGenerateRegion(context);
+    }
+
+    let prompt = "You are creating a new thematic region for the text adventure game Shadow Kingdom. ";
+
+    if (context.transitionFrom) {
+      const { room, region } = context.transitionFrom;
+      prompt += `The player is transitioning from: "${room.name}" - ${room.description} `;
+      
+      if (region) {
+        prompt += `This was part of ${region.name || `a ${region.type}`} region (${region.description}). `;
+        prompt += `Create a region that would logically connect but be thematically DIFFERENT from the ${region.type} theme. `;
+      }
+    }
+
+    if (context.existingRegions && context.existingRegions.length > 0) {
+      prompt += `Existing regions in this game: ${context.existingRegions.join(', ')}. `;
+      prompt += `Make sure the new region is distinct from these. `;
+    }
+
+    prompt += `Create a cohesive region that would contain multiple related rooms. `;
+
+    prompt += `REGION TYPE EXAMPLES (be creative, don't limit to these):
+- mansion: Grand estates, noble houses, castles with multiple wings
+- forest: Woodland areas, groves, natural sanctuaries  
+- cave: Underground systems, caverns, crystal chambers
+- dungeon: Dark fortresses, prison complexes, underground lairs
+- town: Settlements, villages, urban districts
+- temple: Religious complexes, sacred sites, monasteries
+- ruins: Ancient sites, abandoned structures, archaeological areas
+- tower: Tall structures, observatories, wizard towers
+- library: Vast knowledge repositories, scriptoriums, archive complexes
+- garden: Botanical paradises, hedge mazes, conservatories
+- market: Trading districts, bazaars, commercial quarters
+- mine: Underground workings, crystal formations, abandoned shafts
+- ship: Vessels, harbors, floating structures
+- academy: Schools of magic, training grounds, scholarly institutions
+
+REQUIREMENTS:
+- Create your own region type that fits the fantasy setting (can be from examples or original)
+- Create a unique, evocative name
+- Write a rich description that will guide future room generation
+- Ensure thematic coherence with potential room variety
+- Make it feel like a real place with history and purpose
+
+Respond in JSON format:
+{
+  "name": "Evocative Region Name",
+  "type": "your_creative_region_type",
+  "description": "Rich, detailed description that provides context for AI room generation. Should capture the region's atmosphere, history, notable features, and potential room types it might contain."
+}`;
+
+    try {
+      const response = await this.callGrokAPI(prompt);
+      const result = JSON.parse(response);
+      return result as GeneratedRegion;
+    } catch (error) {
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating region:', error);
+      }
+      // Return a fallback region instead of throwing
+      return this.getFallbackRegion(context);
     }
   }
 
@@ -528,6 +617,53 @@ If the command cannot be interpreted as a valid game action, return null.`;
     return responses[Math.floor(Math.random() * responses.length)];
   }
 
+  private mockGenerateRegion(context: RegionGenerationContext): GeneratedRegion {
+    const mockRegions: GeneratedRegion[] = [
+      {
+        name: 'Shadowmere Estate',
+        type: 'mansion',
+        description: 'An imposing estate filled with grand halls, ornate chambers, and mysterious passages. The architecture speaks of old wealth and darker secrets.'
+      },
+      {
+        name: 'Whispering Woods',
+        type: 'enchanted forest',
+        description: 'A mystical woodland where ancient trees tower overhead and magical creatures make their homes among the dappled shadows.'
+      },
+      {
+        name: 'Crystal Singing Caverns',
+        type: 'resonance cave',
+        description: 'A vast network of underground chambers where crystalline formations create haunting melodies when touched by underground winds.'
+      },
+      {
+        name: 'The Floating Archive',
+        type: 'sky library',
+        description: 'An impossible collection of books and scrolls suspended in mid-air, organized by arcane principles and tended by spectral librarians.'
+      },
+      {
+        name: 'Night Bazaar',
+        type: 'phantom market',
+        description: 'A marketplace that appears only in moonlight, where ghostly merchants trade in memories, dreams, and things that never were.'
+      },
+      {
+        name: 'The Clockwork Gardens',
+        type: 'mechanical conservatory',
+        description: 'An intricate garden where brass flowers bloom on schedule and steam-powered butterflies pollinate geometric topiaries.'
+      },
+      {
+        name: 'Starfall Observatory',
+        type: 'celestial tower',
+        description: 'A spiraling tower topped with mystical apparatus for studying the movements of stars and the patterns they weave in mortal fate.'
+      },
+      {
+        name: 'The Sunken Monastery',
+        type: 'underwater temple',
+        description: 'A sacred complex submerged beneath crystal-clear waters, where air-breathing visitors can walk through bubble-filled chambers.'
+      }
+    ];
+
+    return mockRegions[Math.floor(Math.random() * mockRegions.length)];
+  }
+
   private mockInterpretCommand(context: CommandInterpretationContext): InterpretedCommand | null {
     const command = context.command.toLowerCase().trim();
     
@@ -639,6 +775,37 @@ If the command cannot be interpreted as a valid game action, return null.`;
       response: "The figure remains silent, as if lost in thought.",
       emotion: "mysterious"
     };
+  }
+
+  private getFallbackRegion(context: RegionGenerationContext): GeneratedRegion {
+    // Determine type based on context or use random fallback
+    const fallbackTypes = ['mansion', 'forest', 'cave', 'town'];
+    const selectedType = fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)];
+    
+    const fallbackRegions: { [key: string]: GeneratedRegion } = {
+      mansion: {
+        name: 'Mysterious Manor',
+        type: 'mansion',
+        description: 'A grand estate shrouded in shadow, its ornate halls and hidden chambers waiting to reveal their secrets to those brave enough to explore.'
+      },
+      forest: {
+        name: 'Enchanted Grove',
+        type: 'forest',
+        description: 'A mystical woodland where ancient magic flows through the trees and every path leads to wonder or peril.'
+      },
+      cave: {
+        name: 'Shadowed Caverns',
+        type: 'cave',
+        description: 'A network of underground passages carved by forgotten waters, their crystal-lined walls holding echoes of ages past.'
+      },
+      town: {
+        name: 'Wanderer\'s Rest',
+        type: 'town',
+        description: 'A modest settlement where travelers gather to share stories and merchants peddle their wares beneath the watchful eyes of ancient guardians.'
+      }
+    };
+
+    return fallbackRegions[selectedType];
   }
 
   getUsageStats() {
