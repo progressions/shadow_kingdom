@@ -72,6 +72,15 @@ export async function initializeDatabase(db: Database): Promise<void> {
     // Check if direction column exists in connections table, add it if not
     await ensureConnectionDirectionColumn(db);
 
+    // Ensure regions table exists (Phase 1.1)
+    await ensureRegionsTable(db);
+
+    // Add region columns to rooms table (Phase 1.2)
+    await ensureRoomRegionColumns(db);
+
+    // Add database validation triggers (Phase 1.3)
+    await ensureRegionTriggers(db);
+
     console.log('Database tables initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -191,6 +200,118 @@ async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
     }
   } catch (error) {
     console.error('Error ensuring direction column:', error);
+    throw error;
+  }
+}
+
+async function ensureRegionsTable(db: Database): Promise<void> {
+  try {
+    // Check if regions table exists
+    const tableExists = await db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM sqlite_master 
+       WHERE type='table' AND name='regions'`
+    );
+
+    if (!tableExists || tableExists.count === 0) {
+      console.log('Creating regions table...');
+      
+      // Create regions table
+      await db.run(`
+        CREATE TABLE regions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          game_id INTEGER NOT NULL,
+          name TEXT,
+          type TEXT NOT NULL,
+          description TEXT NOT NULL,
+          center_room_id INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Create index for performance
+      await db.run('CREATE INDEX idx_regions_game ON regions(game_id)');
+      
+      console.log('Regions table created successfully');
+    }
+  } catch (error) {
+    console.error('Error ensuring regions table:', error);
+    throw error;
+  }
+}
+
+async function ensureRoomRegionColumns(db: Database): Promise<void> {
+  try {
+    // Check if region_id column exists
+    const regionIdExists = await db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM pragma_table_info('rooms') 
+       WHERE name = 'region_id'`
+    );
+
+    if (!regionIdExists || regionIdExists.count === 0) {
+      console.log('Adding region_id column to rooms table...');
+      await db.run('ALTER TABLE rooms ADD COLUMN region_id INTEGER');
+      console.log('region_id column added successfully');
+    }
+
+    // Check if region_distance column exists
+    const regionDistanceExists = await db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM pragma_table_info('rooms') 
+       WHERE name = 'region_distance'`
+    );
+
+    if (!regionDistanceExists || regionDistanceExists.count === 0) {
+      console.log('Adding region_distance column to rooms table...');
+      await db.run('ALTER TABLE rooms ADD COLUMN region_distance INTEGER');
+      console.log('region_distance column added successfully');
+    }
+
+    // Create indexes for region queries
+    await db.run('CREATE INDEX IF NOT EXISTS idx_rooms_region ON rooms(region_id)');
+    await db.run('CREATE INDEX IF NOT EXISTS idx_rooms_region_distance ON rooms(region_id, region_distance) WHERE region_id IS NOT NULL');
+    
+    console.log('Room region columns and indexes ensured successfully');
+  } catch (error) {
+    console.error('Error ensuring room region columns:', error);
+    throw error;
+  }
+}
+
+async function ensureRegionTriggers(db: Database): Promise<void> {
+  try {
+    console.log('Ensuring region database triggers...');
+
+    // Trigger to set region center when distance 0 room is created
+    await db.run(`
+      CREATE TRIGGER IF NOT EXISTS set_region_center
+        AFTER INSERT ON rooms
+        WHEN NEW.region_distance = 0 AND NEW.region_id IS NOT NULL
+        BEGIN
+          UPDATE regions 
+          SET center_room_id = NEW.id
+          WHERE id = NEW.region_id AND center_room_id IS NULL;
+        END
+    `);
+
+    // Trigger to prevent multiple centers per region (optional but helpful)
+    await db.run(`
+      CREATE TRIGGER IF NOT EXISTS prevent_multiple_centers
+        BEFORE INSERT ON rooms
+        WHEN NEW.region_distance = 0 AND NEW.region_id IS NOT NULL
+        BEGIN
+          SELECT CASE
+            WHEN EXISTS (
+              SELECT 1 FROM regions 
+              WHERE id = NEW.region_id AND center_room_id IS NOT NULL
+            )
+            THEN RAISE(ABORT, 'Region already has a center room')
+          END;
+        END
+    `);
+
+    console.log('Region database triggers created successfully');
+  } catch (error) {
+    console.error('Error ensuring region triggers:', error);
     throw error;
   }
 }

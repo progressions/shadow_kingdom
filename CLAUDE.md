@@ -254,6 +254,90 @@ issues/                       # Issue tracking in markdown format
 └── ...                      # Other tracked issues
 ```
 
+## Database Migration Guidelines
+
+Shadow Kingdom uses a migration-style pattern in `src/utils/initDb.ts` to handle database schema changes safely and consistently.
+
+### Migration Pattern
+
+**1. Add Migration Function**
+Create a new `ensure[FeatureName]` function in `initDb.ts`:
+```typescript
+async function ensureNewFeature(db: Database): Promise<void> {
+  try {
+    // Check if feature already exists
+    const exists = await db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM sqlite_master 
+       WHERE type='table' AND name='new_table'`
+    );
+
+    if (!exists || exists.count === 0) {
+      console.log('Creating new feature...');
+      
+      // Create tables, columns, indexes, triggers
+      await db.run(`CREATE TABLE new_table (...)`);
+      await db.run('CREATE INDEX ...');
+      
+      console.log('New feature created successfully');
+    }
+  } catch (error) {
+    console.error('Error ensuring new feature:', error);
+    throw error;
+  }
+}
+```
+
+**2. Call Migration in initializeDatabase**
+Add the call to `initializeDatabase()` function:
+```typescript
+export async function initializeDatabase(db: Database): Promise<void> {
+  try {
+    // ... existing migrations ...
+    await ensureNewFeature(db);
+    console.log('Database tables initialized successfully');
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    throw error;
+  }
+}
+```
+
+**3. Test Migration**
+Create a test script to verify the migration:
+```typescript
+#!/usr/bin/env ts-node
+import Database from './src/utils/database';
+import { initializeDatabase } from './src/utils/initDb';
+
+async function testMigration() {
+  const db = new Database('test_migration.db');
+  try {
+    await db.connect();
+    await initializeDatabase(db);
+    // ... test the new feature ...
+  } finally {
+    await db.close();
+  }
+}
+```
+
+**4. Migration Best Practices**
+- Always use `IF NOT EXISTS` for CREATE statements where possible
+- Check for existence before making changes
+- Use transactions for multi-step migrations
+- Add appropriate indexes for performance
+- Test on both fresh databases and existing data
+- Never modify existing columns - always ADD new ones
+- Use ALTER TABLE for additive changes only
+
+**5. Example: Adding Region Support**
+The region system migration demonstrates this pattern:
+- `ensureRegionsTable()` - Creates regions table
+- `ensureRoomRegionColumns()` - Adds region_id and region_distance to rooms
+- `ensureRegionTriggers()` - Creates database triggers for data integrity
+
+Each function checks for existence and only makes changes if needed, ensuring safe re-execution.
+
 ## Performance Considerations
 
 - Background room generation uses fire-and-forget pattern to avoid blocking gameplay
