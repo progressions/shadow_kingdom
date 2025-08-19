@@ -12,6 +12,7 @@ import { RoomDisplayService } from './services/roomDisplayService';
 import { RoomGenerationService } from './services/roomGenerationService';
 import { BackgroundGenerationService } from './services/backgroundGenerationService';
 import { GameManagementService } from './services/gameManagementService';
+import { RegionService } from './services/regionService';
 
 
 // Interfaces imported from GameStateManager
@@ -28,6 +29,7 @@ export class GameController {
   private roomGenerationService: RoomGenerationService;
   private backgroundGenerationService: BackgroundGenerationService;
   private gameManagementService: GameManagementService;
+  private regionService: RegionService;
 
   constructor(db: Database) {
     this.db = db;
@@ -73,6 +75,9 @@ export class GameController {
     this.gameManagementService = new GameManagementService(db, this.rl, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
+    
+    // Initialize region service
+    this.regionService = new RegionService(db);
 
     this.setupMenuCommands();
     this.setupGameCommands();
@@ -546,6 +551,11 @@ export class GameController {
   }
 
 
+
+  // Helper method for testing access to region service
+  public getRegionService(): RegionService {
+    return this.regionService;
+  }
 
   public async start() {
     console.clear();
