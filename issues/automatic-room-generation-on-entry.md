@@ -1,9 +1,10 @@
 # Automatic Room Generation on Entry
 
-**Status:** Open  
+**Status:** Completed  
 **Priority:** Medium  
 **Category:** Enhancement / Room Generation  
 **Created:** 2025-08-20  
+**Completed:** 2025-08-20  
 
 ## Feature Request
 
