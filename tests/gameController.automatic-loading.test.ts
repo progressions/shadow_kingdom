@@ -66,6 +66,8 @@ describe('GameController Automatic Loading', () => {
   });
 
   afterEach(async () => {
+    // Clean up GameController event listeners
+    controller.removeEventListeners();
     await db.close();
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();

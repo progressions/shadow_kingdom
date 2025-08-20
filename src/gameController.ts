@@ -283,17 +283,30 @@ export class GameController {
     });
   }
 
-  private setupEventHandlers() {
-    this.rl.on('line', async (input: string) => {
-      await this.processCommand(input.trim());
-      this.rl.prompt();
-    });
+  private lineHandler = async (input: string) => {
+    await this.processCommand(input.trim());
+    this.rl.prompt();
+  };
 
-    this.rl.on('close', async () => {
-      await this.cleanup();
-      console.log('\nGoodbye!');
-      process.exit(0);
-    });
+  private closeHandler = async () => {
+    await this.cleanup();
+    console.log('\nGoodbye!');
+    process.exit(0);
+  };
+
+  private setupEventHandlers() {
+    this.rl.on('line', this.lineHandler);
+    this.rl.on('close', this.closeHandler);
+  }
+
+  /**
+   * Remove event listeners (for test cleanup)
+   */
+  public removeEventListeners() {
+    if (this.rl && typeof this.rl.removeListener === 'function') {
+      this.rl.removeListener('line', this.lineHandler);
+      this.rl.removeListener('close', this.closeHandler);
+    }
   }
 
 

@@ -37,6 +37,11 @@ describe('NLP Integration Tests', () => {
   });
 
   afterEach(async () => {
+    // Clean up GameController event listeners
+    if (gameController) {
+      gameController.removeEventListeners();
+    }
+    
     // Clean up readline interface to prevent hanging and memory leaks
     if (gameController && (gameController as any).rl) {
       (gameController as any).rl.removeAllListeners();

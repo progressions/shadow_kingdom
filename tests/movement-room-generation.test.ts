@@ -45,6 +45,11 @@ describe('Movement Room Generation Integration', () => {
   });
 
   afterEach(async () => {
+    // Clean up GameController event listeners
+    if (gameController) {
+      gameController.removeEventListeners();
+    }
+    
     if (db && db.isConnected()) {
       await db.close();
     }
