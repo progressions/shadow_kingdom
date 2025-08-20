@@ -1101,6 +1101,15 @@ export class GameController {
       // For this phase, use game ID as character ID (simple approach for single-player game)
       const characterId = session.gameId!;
 
+      // Check if character can add another item to inventory
+      const canAddItem = await this.itemService.canAddItemToInventory(characterId);
+      if (!canAddItem) {
+        const inventoryStatus = await this.itemService.getInventoryStatus(characterId);
+        this.tui.display('Your inventory is full!', MessageType.ERROR);
+        this.tui.display(inventoryStatus, MessageType.SYSTEM);
+        return;
+      }
+
       // Transfer item from room to character inventory
       await this.itemService.transferItemToInventory(
         characterId, 
@@ -1139,10 +1148,15 @@ export class GameController {
       const inventory = await this.itemService.getCharacterInventory(characterId);
       
       if (inventory.length === 0) {
+        const inventoryStatus = await this.itemService.getInventoryStatus(characterId);
         this.tui.display('Your inventory is empty.', MessageType.NORMAL);
+        this.tui.display(inventoryStatus, MessageType.SYSTEM);
         return;
       }
 
+      // Show inventory status and items
+      const inventoryStatus = await this.itemService.getInventoryStatus(characterId);
+      this.tui.display(inventoryStatus, MessageType.SYSTEM);
       this.tui.display('You are carrying:', MessageType.SYSTEM);
       inventory.forEach(invItem => {
         const quantityText = invItem.quantity > 1 ? ` x${invItem.quantity}` : '';
