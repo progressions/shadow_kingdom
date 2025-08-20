@@ -137,7 +137,56 @@ export class ItemService {
     roomId: number, 
     quantity: number = 1
   ): Promise<void> {
-    throw new Error('Not implemented - Phase 4');
+    // Check if the item exists in the room
+    const roomItem = await this.db.get<any>(`
+      SELECT * FROM room_items 
+      WHERE room_id = ? AND item_id = ?
+    `, [roomId, itemId]);
+
+    if (!roomItem) {
+      throw new Error('Item not found in room');
+    }
+
+    if (roomItem.quantity < quantity) {
+      throw new Error('Not enough quantity available in room');
+    }
+
+    // Check if character already has this item (for stacking)
+    const existingInventoryItem = await this.db.get<any>(`
+      SELECT * FROM character_inventory 
+      WHERE character_id = ? AND item_id = ?
+    `, [characterId, itemId]);
+
+    if (existingInventoryItem) {
+      // Update existing inventory item quantity
+      await this.db.run(`
+        UPDATE character_inventory 
+        SET quantity = quantity + ?
+        WHERE character_id = ? AND item_id = ?
+      `, [quantity, characterId, itemId]);
+    } else {
+      // Add new inventory item
+      await this.db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, itemId, quantity]);
+    }
+
+    // Update or remove room item
+    if (roomItem.quantity === quantity) {
+      // Remove completely from room
+      await this.db.run(`
+        DELETE FROM room_items 
+        WHERE room_id = ? AND item_id = ?
+      `, [roomId, itemId]);
+    } else {
+      // Reduce quantity in room
+      await this.db.run(`
+        UPDATE room_items 
+        SET quantity = quantity - ?
+        WHERE room_id = ? AND item_id = ?
+      `, [quantity, roomId, itemId]);
+    }
   }
 
   /**
