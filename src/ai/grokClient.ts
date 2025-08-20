@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import * as dotenv from 'dotenv';
+import { MockAIEngine } from './mockAIEngine';
 
 dotenv.config();
 
@@ -137,6 +138,7 @@ export class GrokClient {
     output: number;
     cost: number;
   } = { input: 0, output: 0, cost: 0 };
+  private mockEngine: MockAIEngine;
 
   constructor(config?: Partial<GrokConfig>) {
     this.config = {
@@ -159,77 +161,25 @@ export class GrokClient {
         'Content-Type': 'application/json'
       }
     });
+
+    // Initialize mock engine with configuration
+    this.mockEngine = new MockAIEngine({
+      debug: process.env.AI_DEBUG_LOGGING === 'true',
+      quality: process.env.AI_MOCK_QUALITY as any || 'high',
+      variation: process.env.AI_MOCK_VARIATION !== 'false',
+      repetitionAvoidance: process.env.AI_MOCK_REPETITION_AVOIDANCE !== 'false',
+      contextSensitivity: parseFloat(process.env.AI_MOCK_CONTEXT_SENSITIVITY || '0.8'),
+      creativityLevel: parseFloat(process.env.AI_MOCK_CREATIVITY || '0.3'),
+      seed: process.env.AI_MOCK_SEED ? parseInt(process.env.AI_MOCK_SEED) : undefined
+    });
   }
 
   async generateRoom(context: RoomContext): Promise<GeneratedRoom> {
     if (this.config.mockMode) {
-      return this.mockGenerateRoom(context);
+      return await this.mockEngine.generateRoom(this.buildPrompt(context), context);
     }
 
-    const existingRooms = context.gameHistory?.join(', ') || 'none';
-    const themeNote = context.theme || 'mysterious fantasy kingdom';
-    const reverseDirection = this.getReverseDirection(context.direction) || 'back';
-
-    // Simple enhancement: Adjust prompt if we're filling a specific connection
-    let prompt: string;
-    if (context.connectionName) {
-      // Connection-based generation - acknowledge the specific connection
-      prompt = `You are creating a room for Shadow Kingdom text adventure game.
-
-Current room: ${context.currentRoom.name}
-Description: ${context.currentRoom.description}
-Player accesses new room via: "${context.connectionName}" (${context.direction})
-Existing rooms: ${existingRooms}
-
-Generate a room that makes sense when accessed via "${context.connectionName}". 
-The room description should acknowledge this specific entrance method.
-Theme: ${themeNote}
-
-REQUIREMENTS:
-- Room name must be UNIQUE (different from existing rooms)
-- Description should naturally reference arriving via "${context.connectionName}"
-- Include return connection that complements the entrance
-- Generate 2-4 total connections with thematic names
-- Make connection names immersive and descriptive
-
-RESPONSE FORMAT:
-{
-  "name": "Unique Room Name",
-  "description": "Room description acknowledging arrival via '${context.connectionName}'",
-  "connections": [
-    {"direction": "${reverseDirection}", "name": "complementary return connection"},
-    {"direction": "north", "name": "thematic connection"}
-  ]
-}`;
-    } else {
-      // Standard generation
-      prompt = `You are creating a room for Shadow Kingdom text adventure game.
-    
-Current room: ${context.currentRoom.name}
-Description: ${context.currentRoom.description}
-Player is trying to go: ${context.direction}
-Existing rooms: ${existingRooms}
-
-Generate a NEW and UNIQUE room that the player discovers when going ${context.direction}. 
-Make it thematically consistent with a ${themeNote} setting.
-
-REQUIREMENTS:
-- Create a room name that is DIFFERENT from all existing rooms
-- Make the room unique and interesting, not generic
-- Include return connection to ${reverseDirection}
-- CONNECTION COUNT: ${process.env.DEAD_END_CHANCE || '5'}% chance the room has only one connection back where you came from. Otherwise, roll ${process.env.CONNECTION_DICE || '2d4'} for total number of connections (including the return path).
-- DIRECTIONS: Choose cardinal directions (north, south, east, west, up, down) or thematic connections (bookshelf, tapestry, hidden door, etc.)
-
-RESPONSE FORMAT:
-{
-  "name": "Unique Room Name",
-  "description": "Detailed atmospheric description",
-  "connections": [
-    {"direction": "${reverseDirection}", "name": "return connection"},
-    {"direction": "north", "name": "thematic connection"}
-  ]
-}`;
-    }
+    const prompt = this.buildPrompt(context);
 
     try {
       const response = await this.callGrokAPI(prompt);
@@ -538,40 +488,69 @@ If the command cannot be interpreted as a valid game action, return null.`;
     }
   }
 
-  private mockGenerateRoom(context: RoomContext): GeneratedRoom {
+  private buildPrompt(context: RoomContext): string {
+    const existingRooms = context.gameHistory?.join(', ') || 'none';
+    const themeNote = context.theme || 'mysterious fantasy kingdom';
     const reverseDirection = this.getReverseDirection(context.direction) || 'back';
-    
-    const mockRooms: GeneratedRoom[] = [
-      {
-        name: "Crystal Cavern",
-        description: "You enter a cavern filled with glowing crystals. The walls shimmer with an ethereal light, casting dancing shadows across the rocky floor.",
-        connections: [
-          { direction: reverseDirection, name: "back through the crystal entrance" },
-          { direction: "north", name: "through the shimmering archway" },
-          { direction: "east", name: "via the glowing crystal tunnel" }
-        ]
-      },
-      {
-        name: "Ancient Armory",
-        description: "Rows of rusted weapons and armor line the walls. Dust motes dance in shafts of light filtering through cracks in the ceiling.",
-        connections: [
-          { direction: reverseDirection, name: "back to the previous chamber" },
-          { direction: "up", name: "up the worn stone steps" },
-          { direction: "west", name: "through the weapon vault door" }
-        ]
-      },
-      {
-        name: "Mystic Pool",
-        description: "A serene pool of crystal-clear water reflects an impossible starry sky above, despite being indoors. The air hums with magical energy.",
-        connections: [
-          { direction: reverseDirection, name: "back through the misty veil" },
-          { direction: "west", name: "via the moonlit pathway" },
-          { direction: "down", name: "down into the luminous depths" }
-        ]
-      }
-    ];
 
-    return mockRooms[Math.floor(Math.random() * mockRooms.length)];
+    if (context.connectionName) {
+      // Connection-based generation - acknowledge the specific connection
+      return `You are creating a room for Shadow Kingdom text adventure game.
+
+Current room: ${context.currentRoom.name}
+Description: ${context.currentRoom.description}
+Player accesses new room via: "${context.connectionName}" (${context.direction})
+Existing rooms: ${existingRooms}
+
+Generate a room that makes sense when accessed via "${context.connectionName}". 
+The room description should acknowledge this specific entrance method.
+Theme: ${themeNote}
+
+REQUIREMENTS:
+- Room name must be UNIQUE (different from existing rooms)
+- Description should naturally reference arriving via "${context.connectionName}"
+- Include return connection that complements the entrance
+- Generate 2-4 total connections with thematic names
+- Make connection names immersive and descriptive
+
+RESPONSE FORMAT:
+{
+  "name": "Unique Room Name",
+  "description": "Room description acknowledging arrival via '${context.connectionName}'",
+  "connections": [
+    {"direction": "${reverseDirection}", "name": "complementary return connection"},
+    {"direction": "north", "name": "thematic connection"}
+  ]
+}`;
+    } else {
+      // Standard generation
+      return `You are creating a room for Shadow Kingdom text adventure game.
+    
+Current room: ${context.currentRoom.name}
+Description: ${context.currentRoom.description}
+Player is trying to go: ${context.direction}
+Existing rooms: ${existingRooms}
+
+Generate a NEW and UNIQUE room that the player discovers when going ${context.direction}. 
+Make it thematically consistent with a ${themeNote} setting.
+
+REQUIREMENTS:
+- Create a room name that is DIFFERENT from all existing rooms
+- Make the room unique and interesting, not generic
+- Include return connection to ${reverseDirection}
+- CONNECTION COUNT: ${process.env.DEAD_END_CHANCE || '5'}% chance the room has only one connection back where you came from. Otherwise, roll ${process.env.CONNECTION_DICE || '2d4'} for total number of connections (including the return path).
+- DIRECTIONS: Choose cardinal directions (north, south, east, west, up, down) or thematic connections (bookshelf, tapestry, hidden door, etc.)
+
+RESPONSE FORMAT:
+{
+  "name": "Unique Room Name",
+  "description": "Detailed atmospheric description",
+  "connections": [
+    {"direction": "${reverseDirection}", "name": "return connection"},
+    {"direction": "north", "name": "thematic connection"}
+  ]
+}`;
+    }
   }
 
   private mockGenerateNPC(context: NPCContext): GeneratedNPC {
