@@ -1,7 +1,7 @@
 # Equipment System
 
 **Date**: 2025-08-20  
-**Status**: Open  
+**Status**: In Progress - Phase 1 Complete  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -23,7 +23,7 @@ Create an equipment system with the following features:
 - **Weapon Damage**: Different weapons provide varied damage and properties
 
 **Acceptance criteria:**
-- [ ] Equipment slot system (main hand, off-hand, armor, accessories)
+- [x] Equipment slot system (main hand, off-hand, armor, accessories) - Database schema (Phase 1 Complete)
 - [ ] `equip <item>` and `unequip <item>` commands
 - [ ] Automatic stat recalculation when equipment changes
 - [ ] Equipment display in character status

@@ -69,6 +69,51 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       )
     `);
 
+    // Create items table
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        type TEXT NOT NULL, -- weapon, armor, consumable, misc, quest
+        weight REAL DEFAULT 0.0,
+        value INTEGER DEFAULT 0, -- in copper pieces
+        stackable BOOLEAN DEFAULT FALSE,
+        max_stack INTEGER DEFAULT 1,
+        weapon_damage TEXT, -- e.g., '1d6+1'
+        armor_rating INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create character_inventory table
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS character_inventory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        character_id INTEGER NOT NULL,
+        item_id INTEGER NOT NULL,
+        quantity INTEGER DEFAULT 1,
+        equipped BOOLEAN DEFAULT FALSE,
+        equipped_slot TEXT, -- weapon, armor, accessory
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create room_items table
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS room_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id INTEGER NOT NULL,
+        item_id INTEGER NOT NULL,
+        quantity INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    `);
+
     // Create indexes for faster lookups
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_connections_from_room 
@@ -102,6 +147,27 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_connections_filled 
       ON connections(game_id, from_room_id, to_room_id) WHERE to_room_id IS NOT NULL
+    `);
+
+    // Create indexes for item tables
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_character_inventory_character 
+      ON character_inventory(character_id)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_character_inventory_item 
+      ON character_inventory(item_id)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_room_items_room 
+      ON room_items(room_id)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_room_items_item 
+      ON room_items(item_id)
     `);
 
     // Run migrations for all databases, but skip the complex table recreation for in-memory
