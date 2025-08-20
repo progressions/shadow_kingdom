@@ -197,6 +197,7 @@ export class InkTUIBridge implements TUIInterface {
   displayRoom(roomName: string, description: string, exits: string[]): void {
     // Add spacing
     this.display('', MessageType.NORMAL);
+    this.display('', MessageType.NORMAL);
     
     // Room title
     this.display(roomName, MessageType.ROOM_TITLE);
