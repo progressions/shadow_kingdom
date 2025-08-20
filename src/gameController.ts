@@ -2,6 +2,7 @@
 
 import * as readline from 'readline';
 import Database from './utils/database';
+import { HistoryManager } from './utils/historyManager';
 import { GrokClient } from './ai/grokClient';
 import { UnifiedNLPEngine } from './nlp/unifiedNLPEngine';
 import { GameContext } from './nlp/types';
@@ -26,17 +27,18 @@ interface CommandState {
 }
 
 export class GameController {
-  private rl: readline.Interface;
+  private rl!: readline.Interface; // Initialized in initializeReadlineInterface()
   private db: Database;
+  private historyManager: HistoryManager;
   private grokClient: GrokClient;
   private nlpEngine: UnifiedNLPEngine;
   private commandRouter: CommandRouter;
-  private gameStateManager: ServiceInstances['gameStateManager'];
+  private gameStateManager!: ServiceInstances['gameStateManager']; // Initialized in initializeReadlineInterface()
   private roomDisplayService: RoomDisplayService;
-  private roomGenerationService: ServiceInstances['roomGenerationService'];
-  private backgroundGenerationService: ServiceInstances['backgroundGenerationService'];
-  private gameManagementService: ServiceInstances['gameManagementService'];
-  private regionService: ServiceInstances['regionService'];
+  private roomGenerationService!: ServiceInstances['roomGenerationService']; // Initialized in initializeReadlineInterface()
+  private backgroundGenerationService!: ServiceInstances['backgroundGenerationService']; // Initialized in initializeReadlineInterface()
+  private gameManagementService!: ServiceInstances['gameManagementService']; // Initialized in initializeReadlineInterface()
+  private regionService!: ServiceInstances['regionService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
   constructor(db: Database) {
@@ -63,31 +65,14 @@ export class GameController {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      prompt: 'menu> '
-    });
+    // Initialize history manager
+    const maxHistorySize = parseInt(process.env.COMMAND_HISTORY_SIZE || '100');
+    this.historyManager = new HistoryManager(process.env.COMMAND_HISTORY_FILE, maxHistorySize);
     
-    // Use ServiceFactory to create either legacy or Prisma services
-    const serviceOptions = {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    };
+    // Initialize services immediately for backward compatibility with tests
+    this.initializeServices();
     
-    ServiceFactory.logConfiguration();
-    
-    const services = ServiceFactory.createServices(db, this.rl, this.grokClient, serviceOptions);
-    
-    // Assign services from factory
-    this.gameStateManager = services.gameStateManager;
-    this.gameManagementService = services.gameManagementService;
-    this.regionService = services.regionService;
-    this.roomGenerationService = services.roomGenerationService;
-    this.backgroundGenerationService = services.backgroundGenerationService;
-
-    this.setupMenuCommands();
-    this.setupGameCommands();
-    this.setupEventHandlers();
+    // Note: readline interface will be initialized in start() method after loading history
   }
 
   private setupMenuCommands() {
@@ -284,7 +269,14 @@ export class GameController {
   }
 
   private lineHandler = async (input: string) => {
-    await this.processCommand(input.trim());
+    const command = input.trim();
+    
+    // Save command to history (before processing in case command causes exit)
+    if (process.env.COMMAND_HISTORY_ENABLED !== 'false') {
+      await this.historyManager.saveCommand(command);
+    }
+    
+    await this.processCommand(command);
     this.rl.prompt();
   };
 
@@ -667,10 +659,81 @@ export class GameController {
     }
   }
 
+  /**
+   * Initialize services (called from constructor for backward compatibility)
+   */
+  private initializeServices(): void {
+    // Create temporary mock readline interface for service initialization
+    const tempRl = {
+      question: () => {},
+      close: () => {},
+      on: () => {},
+      once: () => {},
+      removeListener: () => {},
+      off: () => {},
+      removeAllListeners: () => {},
+      setMaxListeners: () => {},
+      getMaxListeners: () => 10,
+      listeners: () => [],
+      rawListeners: () => [],
+      emit: () => false,
+      listenerCount: () => 0,
+      prependListener: () => {},
+      prependOnceListener: () => {},
+      eventNames: () => [],
+      setPrompt: () => {},
+      prompt: () => {}
+    } as any;
 
+    this.rl = tempRl;
+
+    // Initialize services
+    const serviceOptions = {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    };
+    
+    ServiceFactory.logConfiguration();
+    
+    const services = ServiceFactory.createServices(this.db, this.rl, this.grokClient, serviceOptions);
+    
+    // Assign services from factory
+    this.gameStateManager = services.gameStateManager;
+    this.gameManagementService = services.gameManagementService;
+    this.regionService = services.regionService;
+    this.roomGenerationService = services.roomGenerationService;
+    this.backgroundGenerationService = services.backgroundGenerationService;
+    
+    // Set up commands
+    this.setupMenuCommands();
+    this.setupGameCommands();
+  }
+
+  /**
+   * Initialize readline interface with command history
+   */
+  private async initializeReadlineInterface(): Promise<void> {
+    // Load command history
+    const history = await this.historyManager.loadHistory();
+    
+    // Replace temporary readline interface with real one with history support
+    // Note: readline expects history in reverse order (most recent first)
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      prompt: 'menu> ',
+      historySize: parseInt(process.env.COMMAND_HISTORY_SIZE || '100'),
+      history: history.slice().reverse() // reverse() for readline, slice() to avoid mutating original
+    });
+    
+    // Set up event listeners for the real readline interface
+    this.setupEventHandlers();
+  }
 
   public async start() {
     console.clear();
+    
+    // Load command history and initialize readline interface
+    await this.initializeReadlineInterface();
     
     // Try to automatically load the most recent game
     const mostRecentGame = await this.gameManagementService.getMostRecentGame();

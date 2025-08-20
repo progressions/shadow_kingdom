@@ -31,6 +31,63 @@ npm run test:errors        # Test error handling
 npm run test:tracking      # Test generation tracking
 ```
 
+## Jest Exit Requirements
+
+**CRITICAL**: Tests MUST always exit cleanly without timeouts or warnings.
+
+### ✅ Expected Behavior (Tests are healthy):
+```bash
+$ npm test
+# Tests run and complete...
+Test Suites: 4 skipped, 25 passed, 25 of 29 total
+Tests:       62 skipped, 282 passed, 344 total
+Snapshots:   0 total
+Time:        21.797 s, estimated 24 s
+Ran all test suites.
+$ # <-- Command prompt returns immediately
+```
+
+### ❌ Warning Signs (Jest has open handles):
+```bash
+$ npm test
+# Tests run and complete...
+Test Suites: 4 skipped, 25 passed, 25 of 29 total
+Tests:       62 skipped, 282 passed, 344 total
+Snapshots:   0 total
+Time:        21.797 s, estimated 24 s
+Ran all test suites.
+Jest did not exit one second after the test run has completed.
+
+This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.
+# <-- Process hangs here, no command prompt
+```
+
+### Debugging Open Handles:
+```bash
+# Identify what's keeping Jest alive
+npm test -- --detectOpenHandles
+
+# Force exit (masks the problem - don't use for development)
+npm test -- --forceExit
+```
+
+### What Causes Open Handles:
+- **Database connections** not properly closed
+- **HTTP connections** (axios, node-fetch) keeping connection pools alive  
+- **Timers/intervals** not cleared (setTimeout, setInterval)
+- **Event listeners** not removed from process/streams
+- **File handles** not closed
+- **Singleton services** maintaining persistent resources
+
+### Our Solution:
+The project has comprehensive cleanup in `tests/setup.ts` that handles:
+- PrismaService singleton destruction
+- HTTP/HTTPS global agent cleanup
+- Timer/interval cleanup  
+- Process handle cleanup
+
+**Remember**: If you see the "Jest did not exit" warning, there's a resource leak that MUST be fixed. Never ignore this warning or mask it with timeouts.
+
 ## Test Database Isolation
 
 Each test uses an in-memory SQLite database (`:memory:`) to ensure complete isolation between tests. This means:
