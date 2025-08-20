@@ -830,4 +830,18 @@ RESPONSE FORMAT:
     
     return directionMap[direction.toLowerCase()] || null;
   }
+
+  /**
+   * Cleanup method to properly destroy HTTP connections
+   * Call this in test environments to prevent hanging handles
+   */
+  cleanup(): void {
+    if (this.client && (this.client as any).defaults?.adapter) {
+      // Destroy any persistent HTTP connections
+      const adapter = (this.client as any).defaults.adapter;
+      if (adapter && adapter.destroy) {
+        adapter.destroy();
+      }
+    }
+  }
 }

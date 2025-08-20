@@ -6,6 +6,7 @@ import { RegionService } from '../src/services/regionService';
 describe('Duplicate Room Generation Race Condition Fix', () => {
   let db: Database;
   let roomGenerationService: RoomGenerationService;
+  let grokClient: GrokClient;
 
   beforeEach(async () => {
     // Initialize database and services
@@ -13,7 +14,7 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
     await db.connect();
     await initializeDatabase(db);
     
-    const grokClient = new GrokClient({ mockMode: true });
+    grokClient = new GrokClient({ mockMode: true });
     const regionService = new RegionService(db, { 
       enableDebugLogging: true 
     });
@@ -27,6 +28,11 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
   });
 
   afterEach(async () => {
+    // Clean up GrokClient HTTP connections
+    if (grokClient) {
+      grokClient.cleanup();
+    }
+    
     if (db) {
       await db.close();
     }

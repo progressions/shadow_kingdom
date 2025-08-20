@@ -85,6 +85,11 @@ describe('Automatic Room Generation on Entry', () => {
       backgroundGenerationService.resetGenerationState();
     }
     
+    // Clean up GrokClient HTTP connections
+    if (grokClient) {
+      grokClient.cleanup();
+    }
+    
     if (db) {
       await db.close();
     }

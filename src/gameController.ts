@@ -309,6 +309,16 @@ export class GameController {
     }
   }
 
+  /**
+   * Cleanup method for test environments
+   * Cleans up HTTP connections and other resources
+   */
+  public cleanup() {
+    if (this.grokClient) {
+      this.grokClient.cleanup();
+    }
+  }
+
 
   private async processCommand(input: string) {
     if (!input) return;
@@ -630,9 +640,6 @@ export class GameController {
     this.rl.close();
   }
 
-  private async cleanup() {
-    // Don't close DB connection
-  }
 
 
 

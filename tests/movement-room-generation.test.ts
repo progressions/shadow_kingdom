@@ -45,9 +45,10 @@ describe('Movement Room Generation Integration', () => {
   });
 
   afterEach(async () => {
-    // Clean up GameController event listeners
+    // Clean up GameController event listeners and HTTP connections
     if (gameController) {
       gameController.removeEventListeners();
+      gameController.cleanup();
       
       // Clean up background generation promises via GameController
       const backgroundService = (gameController as any).backgroundGenerationService;

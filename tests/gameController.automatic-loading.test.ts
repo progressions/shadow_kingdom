@@ -66,8 +66,9 @@ describe('GameController Automatic Loading', () => {
   });
 
   afterEach(async () => {
-    // Clean up GameController event listeners
+    // Clean up GameController event listeners and HTTP connections
     controller.removeEventListeners();
+    controller.cleanup();
     
     // Clean up background generation promises via GameController
     const backgroundService = (controller as any).backgroundGenerationService;
