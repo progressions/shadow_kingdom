@@ -79,6 +79,12 @@ describe('Automatic Room Generation on Entry', () => {
   });
 
   afterEach(async () => {
+    // Clean up background generation promises
+    if (backgroundGenerationService) {
+      await backgroundGenerationService.waitForBackgroundOperations();
+      backgroundGenerationService.resetGenerationState();
+    }
+    
     if (db) {
       await db.close();
     }

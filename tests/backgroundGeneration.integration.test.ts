@@ -71,6 +71,12 @@ describe('Background Generation Integration', () => {
   });
 
   afterEach(async () => {
+    // Clean up background generation promises
+    if (backgroundGenerationService) {
+      await backgroundGenerationService.waitForBackgroundOperations();
+      backgroundGenerationService.resetGenerationState();
+    }
+    
     if (db && db.isConnected()) {
       await db.close();
     }

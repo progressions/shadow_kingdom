@@ -68,6 +68,14 @@ describe('GameController Automatic Loading', () => {
   afterEach(async () => {
     // Clean up GameController event listeners
     controller.removeEventListeners();
+    
+    // Clean up background generation promises via GameController
+    const backgroundService = (controller as any).backgroundGenerationService;
+    if (backgroundService) {
+      await backgroundService.waitForBackgroundOperations();
+      backgroundService.resetGenerationState();
+    }
+    
     await db.close();
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();

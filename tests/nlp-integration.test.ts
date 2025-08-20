@@ -40,6 +40,13 @@ describe('NLP Integration Tests', () => {
     // Clean up GameController event listeners
     if (gameController) {
       gameController.removeEventListeners();
+      
+      // Clean up background generation promises via GameController
+      const backgroundService = (gameController as any).backgroundGenerationService;
+      if (backgroundService) {
+        await backgroundService.waitForBackgroundOperations();
+        backgroundService.resetGenerationState();
+      }
     }
     
     // Clean up readline interface to prevent hanging and memory leaks
