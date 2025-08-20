@@ -152,20 +152,182 @@ describe('ItemService', () => {
       expect(typeof itemService.listItems).toBe('function');
     });
 
-    test('should throw "not implemented" errors for placeholder methods', async () => {
-      // Test that placeholder methods throw appropriate errors
-      await expect(itemService.createItem({
-        name: 'Test Item',
-        description: 'A test item',
+    test('should have working CRUD methods', async () => {
+      // Test that CRUD methods are now implemented and working
+      expect(typeof itemService.createItem).toBe('function');
+      expect(typeof itemService.getItem).toBe('function');
+      expect(typeof itemService.listItems).toBe('function');
+    });
+  });
+
+  describe('CRUD Operations', () => {
+    test('should create an item and return its ID', async () => {
+      const testItem = {
+        name: 'Test Sword',
+        description: 'A sword for testing',
+        type: ItemType.WEAPON,
+        weight: 2.0,
+        value: 50,
+        stackable: false,
+        max_stack: 1,
+        weapon_damage: '1d6'
+      };
+
+      const itemId = await itemService.createItem(testItem);
+      
+      expect(itemId).toBeDefined();
+      expect(typeof itemId).toBe('number');
+      expect(itemId).toBeGreaterThan(0);
+    });
+
+    test('should retrieve an item by ID', async () => {
+      // Create an item first
+      const testItem = {
+        name: 'Test Potion',
+        description: 'A healing potion',
+        type: ItemType.CONSUMABLE,
+        weight: 0.5,
+        value: 25,
+        stackable: true,
+        max_stack: 10
+      };
+
+      const itemId = await itemService.createItem(testItem);
+      
+      // Retrieve the item
+      const retrievedItem = await itemService.getItem(itemId);
+      
+      expect(retrievedItem).toBeDefined();
+      expect(retrievedItem!.id).toBe(itemId);
+      expect(retrievedItem!.name).toBe(testItem.name);
+      expect(retrievedItem!.description).toBe(testItem.description);
+      expect(retrievedItem!.type).toBe(testItem.type);
+      expect(retrievedItem!.weight).toBe(testItem.weight);
+      expect(retrievedItem!.value).toBe(testItem.value);
+      expect(Boolean(retrievedItem!.stackable)).toBe(testItem.stackable);
+      expect(retrievedItem!.max_stack).toBe(testItem.max_stack);
+    });
+
+    test('should return null for non-existent item', async () => {
+      const item = await itemService.getItem(99999);
+      expect(item).toBeNull();
+    });
+
+    test('should list all items', async () => {
+      // Start with empty list (items table might have seed data)
+      const initialItems = await itemService.listItems();
+      const initialCount = initialItems.length;
+      
+      // Create test items
+      const testItems = [
+        {
+          name: 'Test Item 1',
+          description: 'First test item',
+          type: ItemType.MISC,
+          weight: 1.0,
+          value: 10,
+          stackable: false,
+          max_stack: 1
+        },
+        {
+          name: 'Test Item 2',
+          description: 'Second test item',
+          type: ItemType.MISC,
+          weight: 2.0,
+          value: 20,
+          stackable: true,
+          max_stack: 5
+        }
+      ];
+
+      for (const item of testItems) {
+        await itemService.createItem(item);
+      }
+
+      // List items
+      const items = await itemService.listItems();
+      
+      expect(items.length).toBe(initialCount + testItems.length);
+      
+      // Verify items are sorted by name
+      for (let i = 1; i < items.length; i++) {
+        expect(items[i].name.localeCompare(items[i-1].name)).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    test('should handle items with all property types', async () => {
+      const testItem = {
+        name: 'Complete Test Item',
+        description: 'An item with all properties set',
+        type: ItemType.WEAPON,
+        weight: 3.5,
+        value: 100,
+        stackable: false,
+        max_stack: 1,
+        weapon_damage: '2d6+2',
+        armor_rating: 5
+      };
+
+      const itemId = await itemService.createItem(testItem);
+      const retrievedItem = await itemService.getItem(itemId);
+      
+      expect(retrievedItem).toBeDefined();
+      expect(retrievedItem!.weapon_damage).toBe(testItem.weapon_damage);
+      expect(retrievedItem!.armor_rating).toBe(testItem.armor_rating);
+      expect(retrievedItem!.created_at).toBeDefined();
+    });
+
+    test('should handle items with null optional properties', async () => {
+      const testItem = {
+        name: 'Simple Test Item',
+        description: 'An item with minimal properties',
         type: ItemType.MISC,
         weight: 1.0,
-        value: 10,
-        stackable: false,
-        max_stack: 1
-      })).rejects.toThrow('Not implemented - Phase 2');
+        value: 5,
+        stackable: true,
+        max_stack: 10
+      };
 
-      await expect(itemService.getItem(1)).rejects.toThrow('Not implemented - Phase 2');
-      await expect(itemService.listItems()).rejects.toThrow('Not implemented - Phase 2');
+      const itemId = await itemService.createItem(testItem);
+      const retrievedItem = await itemService.getItem(itemId);
+      
+      expect(retrievedItem).toBeDefined();
+      expect(retrievedItem!.weapon_damage).toBeNull();
+      expect([0, null]).toContain(retrievedItem!.armor_rating); // Default value or null
+    });
+  });
+
+  describe('Seed Items', () => {
+    test('should have seed items available after database initialization', async () => {
+      // The database should have been seeded during initialization
+      const items = await itemService.listItems();
+      
+      // Should have at least some seed items
+      expect(items.length).toBeGreaterThan(0);
+      
+      // Check for specific seed items
+      const itemNames = items.map(item => item.name);
+      expect(itemNames).toContain('Iron Sword');
+      expect(itemNames).toContain('Health Potion');
+      expect(itemNames).toContain('Gold Coins');
+    });
+
+    test('should have properly configured seed items', async () => {
+      const items = await itemService.listItems();
+      
+      const ironSword = items.find(item => item.name === 'Iron Sword');
+      if (ironSword) {
+        expect(ironSword.type).toBe(ItemType.WEAPON);
+        expect(ironSword.weapon_damage).toBe('1d8+1');
+        expect(Boolean(ironSword.stackable)).toBe(false);
+      }
+
+      const healthPotion = items.find(item => item.name === 'Health Potion');
+      if (healthPotion) {
+        expect(healthPotion.type).toBe(ItemType.CONSUMABLE);
+        expect(Boolean(healthPotion.stackable)).toBe(true);
+        expect(healthPotion.max_stack).toBe(10);
+      }
     });
   });
 
