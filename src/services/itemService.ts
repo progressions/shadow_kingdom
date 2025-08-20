@@ -67,7 +67,10 @@ export class ItemService {
    * @param quantity Quantity to place (default: 1)
    */
   async placeItemInRoom(roomId: number, itemId: number, quantity: number = 1): Promise<void> {
-    throw new Error('Not implemented - Phase 3');
+    await this.db.run(`
+      INSERT INTO room_items (room_id, item_id, quantity)
+      VALUES (?, ?, ?)
+    `, [roomId, itemId, quantity]);
   }
 
   /**
@@ -76,7 +79,36 @@ export class ItemService {
    * @returns Array of room items with item details
    */
   async getRoomItems(roomId: number): Promise<RoomItem[]> {
-    throw new Error('Not implemented - Phase 3');
+    const rows = await this.db.all<any>(`
+      SELECT ri.id, ri.room_id, ri.item_id, ri.quantity, ri.created_at,
+             i.id as item_id_full, i.name, i.description, i.type, i.weight, i.value, 
+             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.created_at as item_created_at
+      FROM room_items ri 
+      JOIN items i ON ri.item_id = i.id 
+      WHERE ri.room_id = ?
+      ORDER BY i.name
+    `, [roomId]);
+
+    return rows.map(row => ({
+      id: row.id,
+      room_id: row.room_id,
+      item_id: row.item_id,
+      quantity: row.quantity,
+      created_at: row.created_at,
+      item: {
+        id: row.item_id_full,
+        name: row.name,
+        description: row.description,
+        type: row.type,
+        weight: row.weight,
+        value: row.value,
+        stackable: Boolean(row.stackable),
+        max_stack: row.max_stack,
+        weapon_damage: row.weapon_damage,
+        armor_rating: row.armor_rating,
+        created_at: row.item_created_at
+      }
+    }));
   }
 
   // ============================================================================

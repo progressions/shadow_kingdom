@@ -42,6 +42,7 @@ export class GameController {
   private backgroundGenerationService!: ServiceInstances['backgroundGenerationService']; // Initialized in initializeReadlineInterface()
   private gameManagementService!: ServiceInstances['gameManagementService']; // Initialized in initializeReadlineInterface()
   private regionService!: ServiceInstances['regionService']; // Initialized in initializeReadlineInterface()
+  private itemService!: ServiceInstances['itemService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
   constructor(db: Database, tui?: TUIInterface) {
@@ -629,6 +630,17 @@ export class GameController {
         // Use TUI to display the room
         const exitNames = connections.map(c => c.name === c.direction ? c.direction : `${c.name} (${c.direction})`);
         this.tui.displayRoom(room.name, room.description, exitNames);
+        
+        // Display items in the room
+        const roomItems = await this.itemService.getRoomItems(room.id);
+        if (roomItems.length > 0) {
+          this.tui.display('', MessageType.NORMAL); // Add spacing
+          this.tui.display('You see:', MessageType.SYSTEM);
+          roomItems.forEach(roomItem => {
+            const quantityText = roomItem.quantity > 1 ? ` x${roomItem.quantity}` : '';
+            this.tui.display(`• ${roomItem.item.name}${quantityText}`, MessageType.NORMAL);
+          });
+        }
       } else {
         this.tui.display('You are in a void. Something went wrong!', MessageType.ERROR);
       }
@@ -797,6 +809,7 @@ export class GameController {
     this.regionService = services.regionService;
     this.roomGenerationService = services.roomGenerationService;
     this.backgroundGenerationService = services.backgroundGenerationService;
+    this.itemService = services.itemService;
     
     // Set up commands
     this.setupCommands();

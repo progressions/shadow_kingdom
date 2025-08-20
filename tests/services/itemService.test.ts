@@ -451,4 +451,188 @@ describe('ItemService', () => {
       expect(item.created_at).toBeDefined();
     });
   });
+
+  describe('Room Items (Phase 3)', () => {
+    let testRoomId: number;
+    let testItemId: number;
+
+    beforeEach(async () => {
+      // Create a test room for placing items
+      const roomResult = await db.run(`
+        INSERT INTO rooms (name, description, game_id, region_id)
+        VALUES ('Test Room', 'A room for testing items', 1, 1)
+      `);
+      testRoomId = roomResult.lastID!;
+
+      // Create a test item
+      const testItem = {
+        name: 'Test Item for Room',
+        description: 'An item to test room placement',
+        type: ItemType.MISC,
+        weight: 1.0,
+        value: 10,
+        stackable: false,
+        max_stack: 1
+      };
+      testItemId = await itemService.createItem(testItem);
+    });
+
+    test('should place an item in a room', async () => {
+      await itemService.placeItemInRoom(testRoomId, testItemId, 1);
+
+      // Verify the item was placed by checking the database directly
+      const roomItem = await db.get(`
+        SELECT * FROM room_items 
+        WHERE room_id = ? AND item_id = ?
+      `, [testRoomId, testItemId]);
+
+      expect(roomItem).toBeDefined();
+      expect(roomItem.room_id).toBe(testRoomId);
+      expect(roomItem.item_id).toBe(testItemId);
+      expect(roomItem.quantity).toBe(1);
+    });
+
+    test('should place multiple quantities of an item in a room', async () => {
+      const quantity = 5;
+      await itemService.placeItemInRoom(testRoomId, testItemId, quantity);
+
+      const roomItem = await db.get(`
+        SELECT * FROM room_items 
+        WHERE room_id = ? AND item_id = ?
+      `, [testRoomId, testItemId]);
+
+      expect(roomItem.quantity).toBe(quantity);
+    });
+
+    test('should retrieve items from a room', async () => {
+      // Place multiple items in the room
+      const item1 = await itemService.createItem({
+        name: 'Room Item 1',
+        description: 'First item',
+        type: ItemType.WEAPON,
+        weight: 2.0,
+        value: 50,
+        stackable: false,
+        max_stack: 1
+      });
+
+      const item2 = await itemService.createItem({
+        name: 'Room Item 2',
+        description: 'Second item',
+        type: ItemType.CONSUMABLE,
+        weight: 0.5,
+        value: 25,
+        stackable: true,
+        max_stack: 10
+      });
+
+      await itemService.placeItemInRoom(testRoomId, item1, 1);
+      await itemService.placeItemInRoom(testRoomId, item2, 3);
+
+      // Retrieve room items
+      const roomItems = await itemService.getRoomItems(testRoomId);
+
+      expect(roomItems.length).toBe(2);
+      
+      // Check first item
+      const firstItem = roomItems.find(ri => ri.item.name === 'Room Item 1');
+      expect(firstItem).toBeDefined();
+      expect(firstItem!.quantity).toBe(1);
+      expect(firstItem!.room_id).toBe(testRoomId);
+      expect(firstItem!.item.type).toBe(ItemType.WEAPON);
+
+      // Check second item
+      const secondItem = roomItems.find(ri => ri.item.name === 'Room Item 2');
+      expect(secondItem).toBeDefined();
+      expect(secondItem!.quantity).toBe(3);
+      expect(secondItem!.item.type).toBe(ItemType.CONSUMABLE);
+      expect(Boolean(secondItem!.item.stackable)).toBe(true);
+    });
+
+    test('should return empty array for room with no items', async () => {
+      const roomItems = await itemService.getRoomItems(testRoomId);
+      expect(roomItems).toEqual([]);
+    });
+
+    test('should handle non-existent room gracefully', async () => {
+      const roomItems = await itemService.getRoomItems(99999);
+      expect(roomItems).toEqual([]);
+    });
+
+    test('should order room items by name', async () => {
+      // Create items with names that will test ordering
+      const itemZ = await itemService.createItem({
+        name: 'Z Last Item',
+        description: 'Should appear last',
+        type: ItemType.MISC,
+        weight: 1.0,
+        value: 10,
+        stackable: false,
+        max_stack: 1
+      });
+
+      const itemA = await itemService.createItem({
+        name: 'A First Item',
+        description: 'Should appear first',
+        type: ItemType.MISC,
+        weight: 1.0,
+        value: 10,
+        stackable: false,
+        max_stack: 1
+      });
+
+      const itemM = await itemService.createItem({
+        name: 'M Middle Item',
+        description: 'Should appear in middle',
+        type: ItemType.MISC,
+        weight: 1.0,
+        value: 10,
+        stackable: false,
+        max_stack: 1
+      });
+
+      // Place items in reverse alphabetical order
+      await itemService.placeItemInRoom(testRoomId, itemZ, 1);
+      await itemService.placeItemInRoom(testRoomId, itemM, 1);
+      await itemService.placeItemInRoom(testRoomId, itemA, 1);
+
+      const roomItems = await itemService.getRoomItems(testRoomId);
+      
+      expect(roomItems.length).toBe(3);
+      expect(roomItems[0].item.name).toBe('A First Item');
+      expect(roomItems[1].item.name).toBe('M Middle Item');
+      expect(roomItems[2].item.name).toBe('Z Last Item');
+    });
+
+    test('should properly map all item properties in room items', async () => {
+      // Create an item with all properties set
+      const complexItem = await itemService.createItem({
+        name: 'Complex Test Item',
+        description: 'An item with all properties',
+        type: ItemType.WEAPON,
+        weight: 3.5,
+        value: 150,
+        stackable: false,
+        max_stack: 1,
+        weapon_damage: '2d6+3',
+        armor_rating: 2
+      });
+
+      await itemService.placeItemInRoom(testRoomId, complexItem, 1);
+
+      const roomItems = await itemService.getRoomItems(testRoomId);
+      const retrievedItem = roomItems[0];
+
+      expect(retrievedItem.item.name).toBe('Complex Test Item');
+      expect(retrievedItem.item.description).toBe('An item with all properties');
+      expect(retrievedItem.item.type).toBe(ItemType.WEAPON);
+      expect(retrievedItem.item.weight).toBe(3.5);
+      expect(retrievedItem.item.value).toBe(150);
+      expect(Boolean(retrievedItem.item.stackable)).toBe(false);
+      expect(retrievedItem.item.max_stack).toBe(1);
+      expect(retrievedItem.item.weapon_damage).toBe('2d6+3');
+      expect(retrievedItem.item.armor_rating).toBe(2);
+      expect(retrievedItem.item.created_at).toBeDefined();
+    });
+  });
 });
