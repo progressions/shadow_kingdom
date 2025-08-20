@@ -100,6 +100,23 @@ export class PrismaService {
   }
 
   /**
+   * Completely destroy the singleton instance (for final cleanup)
+   */
+  public static async destroy(): Promise<void> {
+    if (PrismaService.instance) {
+      // Clean up handlers first
+      PrismaService.instance.removeShutdownHandlers();
+      
+      if (PrismaService.instance.client) {
+        // Properly await disconnect for final cleanup
+        await PrismaService.instance.client.$disconnect();
+      }
+    }
+    // @ts-ignore - Nullify the singleton for complete cleanup
+    PrismaService.instance = null;
+  }
+
+  /**
    * Get the appropriate database URL based on environment
    */
   private getDatabaseUrl(): string {
