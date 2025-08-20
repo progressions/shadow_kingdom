@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import * as readline from 'readline';
+import { TUIManager } from './ui/TUIManager';
+import { GameState as TUIGameState } from './ui/StatusManager';
+import { MessageType } from './ui/MessageFormatter';
 import Database from './utils/database';
 import { HistoryManager } from './utils/historyManager';
 import { GrokClient } from './ai/grokClient';
@@ -27,7 +29,7 @@ interface CommandState {
 }
 
 export class GameController {
-  private rl!: readline.Interface; // Initialized in initializeReadlineInterface()
+  private tui: TUIManager;
   private db: Database;
   private historyManager: HistoryManager;
   private grokClient: GrokClient;
@@ -72,7 +74,8 @@ export class GameController {
     // Initialize services immediately for backward compatibility with tests
     this.initializeServices();
     
-    // Note: readline interface will be initialized in start() method after loading history
+    // Initialize TUI
+    this.tui = new TUIManager();
   }
 
   private setupMenuCommands() {
@@ -218,15 +221,15 @@ export class GameController {
     this.commandRouter.addGameCommand({
       name: 'echo',
       description: 'Echo back the provided text',
-      handler: (args) => console.log(args.join(' '))
+      handler: (args) => this.tui.display(args.join(' '))
     });
 
     this.commandRouter.addGameCommand({
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
-        console.clear();
-        console.log('Welcome to Shadow Kingdom!');
+        this.tui.clear();
+        this.tui.showWelcome('Welcome to Shadow Kingdom!');
       }
     });
 
@@ -268,37 +271,66 @@ export class GameController {
     });
   }
 
-  private lineHandler = async (input: string) => {
-    const command = input.trim();
-    
-    // Save command to history (before processing in case command causes exit)
-    if (process.env.COMMAND_HISTORY_ENABLED !== 'false') {
-      await this.historyManager.saveCommand(command);
+  private async processInput(): Promise<void> {
+    while (true) {
+      try {
+        const input = await this.tui.getInput();
+        const command = input.trim();
+        if (!command) {
+          continue; // Skip empty commands
+        }
+        
+        await this.processCommand(command);
+        this.updateStatusDisplay();
+      } catch (error) {
+        console.error('Input processing error:', error);
+        // Continue the loop
+      }
     }
-    
-    await this.processCommand(command);
-    this.rl.prompt();
-  };
+  }
 
-  private closeHandler = async () => {
+  private async handleExit(): Promise<void> {
     await this.cleanup();
-    console.log('\nGoodbye!');
+    this.tui.display('Goodbye!', MessageType.SYSTEM);
+    this.tui.destroy();
     process.exit(0);
-  };
+  }
 
-  private setupEventHandlers() {
-    this.rl.on('line', this.lineHandler);
-    this.rl.on('close', this.closeHandler);
+  private updateStatusDisplay(): void {
+    const gameState = this.getCurrentGameState();
+    this.tui.updateStatus(gameState);
+  }
+
+  private getCurrentGameState(): TUIGameState {
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      
+      if (!session.gameId) {
+        return {
+          mode: 'menu'
+        };
+      }
+      
+      // Get basic game info
+      const gameState: TUIGameState = {
+        mode: 'game',
+        gameName: 'Current Game', // TODO: Get actual game name
+        roomCount: 0 // TODO: Get actual room count
+      };
+      
+      return gameState;
+    } catch (error) {
+      return {
+        mode: 'menu'
+      };
+    }
   }
 
   /**
    * Remove event listeners (for test cleanup)
    */
   public removeEventListeners() {
-    if (this.rl && typeof this.rl.removeListener === 'function') {
-      this.rl.removeListener('line', this.lineHandler);
-      this.rl.removeListener('close', this.closeHandler);
-    }
+    // TUI cleanup handled by destroy method
   }
 
   /**
@@ -361,9 +393,9 @@ export class GameController {
 
 
   private showWelcome() {
-    console.log('Welcome to Shadow Kingdom!');
-    console.log('A dynamic, AI-powered text adventure.');
-    console.log('\nType "help" for commands or "new" to start your first game.\n');
+    this.tui.showWelcome('Welcome to Shadow Kingdom!');
+    this.tui.display('A dynamic, AI-powered text adventure.');
+    this.tui.display('Type "help" for commands or "new" to start your first game.');
   }
 
   private showNLPStats() {
@@ -421,15 +453,14 @@ export class GameController {
     if (result.gameId && result.gameName) {
       // Start game session using game state manager
       await this.gameStateManager.startGameSession(result.gameId);
-      this.rl.setPrompt('> ');
       
-      console.clear();
-      console.log(`Welcome to Shadow Kingdom!`);
-      console.log(`Game: ${result.gameName}`);
-      console.log('Initializing game world...\n');
-      console.log('\nType "help" for available commands.');
-      console.log('Type "look" to see where you are.');
-      console.log('Type "menu" to return to main menu.\n');
+      this.tui.clear();
+      this.tui.showWelcome('Welcome to Shadow Kingdom!');
+      this.tui.display(`Game: ${result.gameName}`);
+      this.tui.display('Initializing game world...');
+      this.tui.display('Type "help" for available commands.');
+      this.tui.display('Type "look" to see where you are.');
+      this.tui.display('Type "menu" to return to main menu.');
       
       // Show initial room
       await this.lookAround();
@@ -488,14 +519,13 @@ export class GameController {
     // End game session (automatically saves state)
     await this.gameStateManager.endGameSession();
     
-    this.rl.setPrompt('menu> ');
-    console.clear();
+    this.tui.clear();
     this.showWelcome();
   }
 
   private async lookAround() {
     if (!this.gameStateManager.isInGame()) {
-      this.roomDisplayService.displayNoGameLoaded();
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
       return;
     }
 
@@ -514,24 +544,25 @@ export class GameController {
         // Get available connections from this room within this game
         const connections = await this.gameStateManager.getCurrentRoomConnections();
         
-        // Use room display service to format and display the room
-        this.roomDisplayService.displayRoom(room, connections);
+        // Use TUI to display the room
+        const exitNames = connections.map(c => c.name === c.direction ? c.direction : `${c.name} (${c.direction})`);
+        this.tui.displayRoom(room.name, room.description, exitNames);
       } else {
-        this.roomDisplayService.displayVoidState();
+        this.tui.display('You are in a void. Something went wrong!', MessageType.ERROR);
       }
     } catch (error) {
-      this.roomDisplayService.displayError('Error looking around', error as Error);
+      this.tui.showError('Error looking around', (error as Error)?.message);
     }
   }
 
   private async move(args: string[]) {
     if (!this.gameStateManager.isInGame()) {
-      this.roomDisplayService.displayNoGameLoaded();
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
       return;
     }
 
     if (args.length === 0) {
-      console.log('Move where? Specify a direction (e.g., "go north")');
+      this.tui.display('Move where? Specify a direction (e.g., "go north")', MessageType.SYSTEM);
       return;
     }
 
@@ -562,21 +593,20 @@ export class GameController {
             
             // Check if NLP connection needs room generation
             if (!nlpConnection.to_room_id) {
-              console.log(`\n🌟 Generating new room to the ${resolvedDirection}...`);
-              console.log('⏳ Please wait, this may take a moment...\n');
+              this.tui.showAIProgress('Generating new room', resolvedDirection);
               
               // Generate room synchronously for unfilled connection
               const unfilledConnection = nlpConnection as any; // Cast to allow null to_room_id
               const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
               
               if (!generationResult.success) {
-                console.log('❌ Failed to generate room. You cannot go that way.');
+                this.tui.display('❌ Failed to generate room. You cannot go that way.', MessageType.ERROR);
                 return;
               }
               
               // Update connection with newly generated room
               nlpConnection.to_room_id = generationResult.roomId!;
-              console.log('✅ Room generation complete!\n');
+              this.tui.display('✅ Room generation complete!', MessageType.AI_GENERATION);
             }
             
             // Move to the new room using game state manager
@@ -593,7 +623,7 @@ export class GameController {
 
         // No valid connection found - show appropriate error
         
-        this.roomDisplayService.displayMovementError(userInput);
+        this.tui.display(`You can't go ${userInput} from here.`, MessageType.ERROR);
         return;
       }
 
@@ -629,7 +659,7 @@ export class GameController {
 
   private async exit() {
     await this.cleanup();
-    this.rl.close();
+    this.tui.destroy();
   }
 
 
@@ -639,21 +669,21 @@ export class GameController {
     try {
       // Start game session using game state manager
       await this.gameStateManager.startGameSession(game.id);
-      this.rl.setPrompt('> ');
       
-      console.clear();
-      console.log(`Welcome back to Shadow Kingdom!`);
-      console.log(`Game: ${game.name}`);
-      console.log('Loading your saved game...\n');
-      console.log('\nType "help" for available commands.');
-      console.log('Type "look" to see where you are.');
-      console.log('Type "menu" to return to main menu.\n');
+      this.tui.clear();
+      this.tui.showWelcome('Welcome back to Shadow Kingdom!');
+      this.tui.display(`Game: ${game.name}`);
+      this.tui.display('Loading your saved game...');
+      this.tui.display('Type "help" for available commands.');
+      this.tui.display('Type "look" to see where you are.');
+      this.tui.display('Type "menu" to return to main menu.');
       
       // Show current room
       await this.lookAround();
+      this.updateStatusDisplay();
       
-      // Show the prompt
-      this.rl.prompt();
+      // Start input processing loop
+      this.processInput();
     } catch (error) {
       console.error('Failed to load selected game:', error);
     }
@@ -685,7 +715,7 @@ export class GameController {
       prompt: () => {}
     } as any;
 
-    this.rl = tempRl;
+    // Use tempRl for service initialization
 
     // Initialize services
     const serviceOptions = {
@@ -694,7 +724,7 @@ export class GameController {
     
     ServiceFactory.logConfiguration();
     
-    const services = ServiceFactory.createServices(this.db, this.rl, this.grokClient, serviceOptions);
+    const services = ServiceFactory.createServices(this.db, tempRl, this.grokClient, serviceOptions);
     
     // Assign services from factory
     this.gameStateManager = services.gameStateManager;
@@ -709,55 +739,40 @@ export class GameController {
   }
 
   /**
-   * Initialize readline interface with command history
+   * Initialize TUI interface
    */
-  private async initializeReadlineInterface(): Promise<void> {
-    // Load command history
-    const history = await this.historyManager.loadHistory();
-    
-    // Replace temporary readline interface with real one with history support
-    // Note: readline expects history in reverse order (most recent first)
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      prompt: 'menu> ',
-      historySize: parseInt(process.env.COMMAND_HISTORY_SIZE || '100'),
-      history: history.slice().reverse() // reverse() for readline, slice() to avoid mutating original
-    });
-    
-    // Set up event listeners for the real readline interface
-    this.setupEventHandlers();
+  private async initializeTUI(): Promise<void> {
+    await this.tui.initialize();
+    this.updateStatusDisplay();
   }
 
   public async start() {
-    console.clear();
-    
-    // Load command history and initialize readline interface
-    await this.initializeReadlineInterface();
+    // Initialize TUI interface
+    await this.initializeTUI();
     
     // Try to automatically load the most recent game
     const mostRecentGame = await this.gameManagementService.getMostRecentGame();
     
     if (mostRecentGame) {
       // Auto-load the most recent game
-      console.log(`Welcome back to Shadow Kingdom!`);
-      console.log(`Continuing: "${mostRecentGame.name}"\n`);
-      console.log('Type "menu" to manage games.\n');
+      this.tui.showWelcome('Welcome back to Shadow Kingdom!');
+      this.tui.display(`Continuing: "${mostRecentGame.name}"`);
+      this.tui.display('Type "menu" to manage games.');
       
       await this.loadSelectedGame(mostRecentGame);
     } else {
       // No games exist, auto-create new game
-      console.log('Welcome to Shadow Kingdom!');
-      console.log('Starting your first adventure...\n');
+      this.tui.showWelcome('Welcome to Shadow Kingdom!');
+      this.tui.display('Starting your first adventure...');
       
       const result = await this.gameManagementService.createGameAutomatic();
       if (result.success && result.game) {
-        console.log(`Created: "${result.game.name}"\n`);
+        this.tui.display(`Created: "${result.game.name}"`);
         await this.loadSelectedGame(result.game);
       } else {
         // Fallback to menu if auto-creation fails
         this.showWelcome();
-        this.rl.prompt();
+        this.processInput(); // Start input processing loop
       }
     }
   }
