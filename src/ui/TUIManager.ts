@@ -21,6 +21,8 @@ export class TUIManager {
   private currentStatus: StatusInfo;
   private inputBuffer: string = '';
   private inputResolver?: (value: string) => void;
+  private currentInput: string = '';
+  private cursorPosition: number = 0;
   
   // Configuration
   private readonly maxScrollback: number = 2000;
@@ -82,8 +84,8 @@ export class TUIManager {
       tags: true // Enable blessed color tags
     });
 
-    // Input box (floats above status)
-    this.inputBox = blessed.textbox({
+    // Input box (floats above status) - using regular box with manual input handling
+    this.inputBox = blessed.box({
       left: 0,
       right: 0,
       height: 3,
@@ -101,14 +103,11 @@ export class TUIManager {
           }
         }
       },
-      inputOnFocus: false,  // Prevent duplication
       keys: true,
       mouse: true,
       tags: true,
-      secret: false,  // Ensure input is visible
-      censor: false,  // Don't censor input
-      // Using manual visual cursor indicator instead
-    });
+      focusable: true
+    }) as blessed.Widgets.TextboxElement;
 
     // Status area (bottom, variable height)
     this.statusBox = blessed.box({
@@ -161,9 +160,12 @@ export class TUIManager {
       this.screen.render();
     });
     
-    // Input handling
-    this.inputBox.on('submit', (value: string) => {
-      this.handleInput(value);
+    // Manual key handling for input to avoid blessed.js textbox duplication bug
+    this.screen.on('keypress', (ch: string, key: any) => {
+      // Only handle keys when input box is focused and we're waiting for input
+      if ((this.inputBox as any).focused && this.inputResolver) {
+        this.handleKeyInput(ch, key);
+      }
     });
     
     // Handle terminal resize
@@ -175,28 +177,63 @@ export class TUIManager {
   }
 
   /**
-   * Handle input submission
+   * Handle individual key presses for manual input
    */
-  private async handleInput(value: string): Promise<void> {
-    const command = value.trim();
+  private async handleKeyInput(ch: string, key: any): Promise<void> {
+    if (!key) return;
     
-    if (command) {
-      // Echo command since inputOnFocus: false doesn't display it
-      this.display(`${this.inputPrompt}${command}`, MessageType.COMMAND_ECHO);
+    if (key.name === 'enter' || key.name === 'return') {
+      // Submit the current input
+      const command = this.currentInput.trim();
       
-      // Save to history
-      await this.historyManager.saveCommand(command);
-      
-      // Resolve the input promise
-      if (this.inputResolver) {
-        this.inputResolver(command);
-        this.inputResolver = undefined;
+      if (command) {
+        // Echo command 
+        this.display(`${this.inputPrompt}${command}`, MessageType.COMMAND_ECHO);
+        
+        // Save to history
+        await this.historyManager.saveCommand(command);
       }
+      
+      // Resolve the promise if there's a waiting resolver
+      if (this.inputResolver) {
+        const resolver = this.inputResolver;
+        this.inputResolver = undefined;
+        resolver(command);
+      }
+      
+      // Clear current input for next command
+      this.currentInput = '';
+      this.cursorPosition = 0;
+      this.updateInputDisplay();
+      
+    } else if (key.name === 'backspace') {
+      // Handle backspace
+      if (this.cursorPosition > 0) {
+        this.currentInput = this.currentInput.slice(0, this.cursorPosition - 1) + 
+                           this.currentInput.slice(this.cursorPosition);
+        this.cursorPosition--;
+        this.updateInputDisplay();
+      }
+      
+    } else if (ch && ch.length === 1 && !key.ctrl && !key.meta) {
+      // Handle regular character input
+      this.currentInput = this.currentInput.slice(0, this.cursorPosition) + 
+                         ch + 
+                         this.currentInput.slice(this.cursorPosition);
+      this.cursorPosition++;
+      this.updateInputDisplay();
     }
+  }
+
+  /**
+   * Update the visual display of the input box with current input
+   */
+  private updateInputDisplay(): void {
+    // Show prompt and current input with a simple cursor at the end
+    const displayText = `${this.inputPrompt}${this.currentInput}_`;
     
-    // Clear input and reset focus
-    this.inputBox.clearValue();
-    this.inputBox.focus();
+    this.inputBox.setContent(displayText);
+    this.screen.render();
   }
 
   /**
@@ -263,14 +300,20 @@ export class TUIManager {
    */
   public getInput(): Promise<string> {
     return new Promise<string>((resolve) => {
+      // Store the resolver for this input request
       this.inputResolver = resolve;
       
-      // Ensure input box is focused and ready
+      // Clear current input state
+      this.currentInput = '';
+      this.cursorPosition = 0;
+      
+      // Focus the input box 
       this.inputBox.focus();
       
-      // Start reading input immediately to avoid needing enter first
-      this.inputBox.readInput();
+      // Update the display to show the prompt
+      this.updateInputDisplay();
       
+      // Render the screen
       this.screen.render();
     });
   }
