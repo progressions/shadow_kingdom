@@ -438,45 +438,45 @@ export class GameController {
   }
 
   private showNLPStats() {
-    console.log('\n📊 Natural Language Processing Statistics');
-    console.log('=========================================');
+    this.tui.display('📊 Natural Language Processing Statistics', MessageType.NORMAL);
+    this.tui.display('=========================================', MessageType.NORMAL);
     
     const commandStats = this.commandRouter.getStats();
     const nlpStats = commandStats.nlpStats;
     const config = this.nlpEngine.getConfig();
     
-    console.log('\n🎮 Command Router Statistics:');
-    console.log(`  Menu commands registered: ${commandStats.menuCommandCount}`);
-    console.log(`  Game commands registered: ${commandStats.gameCommandCount}`);
-    console.log(`  Total commands registered: ${commandStats.totalCommands}`);
+    this.tui.display('🎮 Command Router Statistics:', MessageType.NORMAL);
+    this.tui.display(`  Menu commands registered: ${commandStats.menuCommandCount}`, MessageType.NORMAL);
+    this.tui.display(`  Game commands registered: ${commandStats.gameCommandCount}`, MessageType.NORMAL);
+    this.tui.display(`  Total commands registered: ${commandStats.totalCommands}`, MessageType.NORMAL);
     
-    console.log('\n🎯 Processing Statistics:');
-    console.log(`  Total commands processed: ${nlpStats.totalCommands}`);
-    console.log(`  Local pattern matches: ${nlpStats.localMatches} (${(nlpStats.localSuccessRate * 100).toFixed(1)}%)`);
-    console.log(`  AI fallback matches: ${nlpStats.aiMatches} (${(nlpStats.aiSuccessRate * 100).toFixed(1)}%)`);
-    console.log(`  Failed to parse: ${nlpStats.failures} (${((nlpStats.failures / nlpStats.totalCommands) * 100 || 0).toFixed(1)}%)`);
-    console.log(`  Overall success rate: ${(nlpStats.successRate * 100).toFixed(1)}%`);
-    console.log(`  Average processing time: ${nlpStats.avgProcessingTime.toFixed(2)}ms`);
+    this.tui.display('🎯 Processing Statistics:', MessageType.NORMAL);
+    this.tui.display(`  Total commands processed: ${nlpStats.totalCommands}`, MessageType.NORMAL);
+    this.tui.display(`  Local pattern matches: ${nlpStats.localMatches} (${(nlpStats.localSuccessRate * 100).toFixed(1)}%)`, MessageType.NORMAL);
+    this.tui.display(`  AI fallback matches: ${nlpStats.aiMatches} (${(nlpStats.aiSuccessRate * 100).toFixed(1)}%)`, MessageType.NORMAL);
+    this.tui.display(`  Failed to parse: ${nlpStats.failures} (${((nlpStats.failures / nlpStats.totalCommands) * 100 || 0).toFixed(1)}%)`, MessageType.NORMAL);
+    this.tui.display(`  Overall success rate: ${(nlpStats.successRate * 100).toFixed(1)}%`, MessageType.NORMAL);
+    this.tui.display(`  Average processing time: ${nlpStats.avgProcessingTime.toFixed(2)}ms`, MessageType.NORMAL);
     
-    console.log('\n⚙️  Configuration:');
-    console.log(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`);
-    console.log(`  AI confidence threshold: ${(config.aiConfidenceThreshold * 100).toFixed(0)}%`);
-    console.log(`  AI fallback enabled: ${config.enableAIFallback ? 'Yes' : 'No'}`);
-    console.log(`  Max processing time: ${config.maxProcessingTime}ms`);
-    console.log(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`);
+    this.tui.display('⚙️  Configuration:', MessageType.NORMAL);
+    this.tui.display(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
+    this.tui.display(`  AI confidence threshold: ${(config.aiConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
+    this.tui.display(`  AI fallback enabled: ${config.enableAIFallback ? 'Yes' : 'No'}`, MessageType.NORMAL);
+    this.tui.display(`  Max processing time: ${config.maxProcessingTime}ms`, MessageType.NORMAL);
+    this.tui.display(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`, MessageType.NORMAL);
     
-    console.log('\n🧠 Local Processor:');
-    console.log(`  Patterns loaded: ${nlpStats.localProcessor.patternsLoaded}`);
-    console.log(`  Synonyms loaded: ${nlpStats.localProcessor.synonymsLoaded}`);
-    console.log(`  Uptime: ${nlpStats.localProcessor.uptimeMs}ms`);
+    this.tui.display('🧠 Local Processor:', MessageType.NORMAL);
+    this.tui.display(`  Patterns loaded: ${nlpStats.localProcessor.patternsLoaded}`, MessageType.NORMAL);
+    this.tui.display(`  Synonyms loaded: ${nlpStats.localProcessor.synonymsLoaded}`, MessageType.NORMAL);
+    this.tui.display(`  Uptime: ${nlpStats.localProcessor.uptimeMs}ms`, MessageType.NORMAL);
     
     if (config.enableAIFallback) {
-      console.log('\n🤖 AI Usage:');
-      console.log(`  Estimated cost: ${nlpStats.aiUsage.estimatedCost}`);
-      console.log(`  Tokens used: ${nlpStats.aiUsage.tokensUsed.input} input, ${nlpStats.aiUsage.tokensUsed.output} output`);
+      this.tui.display('🤖 AI Usage:', MessageType.NORMAL);
+      this.tui.display(`  Estimated cost: ${nlpStats.aiUsage.estimatedCost}`, MessageType.NORMAL);
+      this.tui.display(`  Tokens used: ${nlpStats.aiUsage.tokensUsed.input} input, ${nlpStats.aiUsage.tokensUsed.output} output`, MessageType.NORMAL);
     }
     
-    console.log('\n💡 Tip: Use NLP_DEBUG_LOGGING=true to see real-time processing details.\n');
+    this.tui.display('💡 Tip: Use NLP_DEBUG_LOGGING=true to see real-time processing details.', MessageType.NORMAL);
   }
 
   private async startNewGame() {
@@ -786,30 +786,6 @@ export class GameController {
    * Initialize services (called from constructor for backward compatibility)
    */
   private initializeServices(): void {
-    // Create temporary mock readline interface for service initialization
-    const tempRl = {
-      question: () => {},
-      close: () => {},
-      on: () => {},
-      once: () => {},
-      removeListener: () => {},
-      off: () => {},
-      removeAllListeners: () => {},
-      setMaxListeners: () => {},
-      getMaxListeners: () => 10,
-      listeners: () => [],
-      rawListeners: () => [],
-      emit: () => false,
-      listenerCount: () => 0,
-      prependListener: () => {},
-      prependOnceListener: () => {},
-      eventNames: () => [],
-      setPrompt: () => {},
-      prompt: () => {}
-    } as any;
-
-    // Use tempRl for service initialization
-
     // Initialize services
     const serviceOptions = {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
@@ -817,7 +793,7 @@ export class GameController {
     
     ServiceFactory.logConfiguration();
     
-    const services = ServiceFactory.createServices(this.db, tempRl, this.grokClient, serviceOptions);
+    const services = ServiceFactory.createServices(this.db, this.tui, this.grokClient, serviceOptions);
     
     // Assign services from factory
     this.gameStateManager = services.gameStateManager;

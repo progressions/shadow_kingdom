@@ -1,7 +1,8 @@
-import * as readline from 'readline';
 import Database from '../utils/database';
 import { initializeDatabase, createGameWithRooms } from '../utils/initDb';
 import { Game } from './gameStateManager';
+import { TUIManager } from '../ui/TUIManager';
+import { MessageType } from '../ui/MessageFormatter';
 
 export interface GameManagementOptions {
   enableDebugLogging?: boolean;
@@ -24,7 +25,7 @@ export class GameManagementService {
 
   constructor(
     private db: Database,
-    private rl: readline.Interface,
+    private tui: TUIManager,
     options: GameManagementOptions = {}
   ) {
     this.options = {
@@ -42,7 +43,7 @@ export class GameManagementService {
       await initializeDatabase(this.db);
       
       // Get game name from user
-      console.log('Enter a name for your new game:');
+      this.tui.display('Enter a name for your new game:', MessageType.SYSTEM);
       const gameName = await this.promptForInput('Game name: ');
       
       if (!gameName.trim()) {
@@ -173,12 +174,12 @@ export class GameManagementService {
       }
 
       const actionText = purpose === 'load' ? 'load' : 'delete';
-      console.log(`Select a game to ${actionText}:\n`);
+      this.tui.display(`Select a game to ${actionText}:`, MessageType.SYSTEM);
       games.forEach((game, index) => {
         const lastPlayed = this.formatTimestamp(game.last_played_at);
-        console.log(`${index + 1}. ${game.name} (Last played: ${lastPlayed})`);
+        this.tui.display(`${index + 1}. ${game.name} (Last played: ${lastPlayed})`, MessageType.NORMAL);
       });
-      console.log('0. Cancel\n');
+      this.tui.display('0. Cancel', MessageType.NORMAL);
 
       const choice = await this.promptForInput('Enter your choice: ');
       const choiceNum = parseInt(choice);
@@ -208,8 +209,8 @@ export class GameManagementService {
   async deleteGameWithConfirmation(game: Game): Promise<{ success: boolean; error?: string }> {
     try {
       // Confirm deletion
-      console.log(`\nAre you sure you want to delete "${game.name}"?`);
-      console.log('This action cannot be undone.');
+      this.tui.display(`Are you sure you want to delete "${game.name}"?`, MessageType.ERROR);
+      this.tui.display('This action cannot be undone.', MessageType.ERROR);
       const confirm = await this.promptForInput('Type "yes" to confirm: ');
 
       if (confirm.toLowerCase() !== 'yes') {
@@ -363,11 +364,8 @@ export class GameManagementService {
    * Prompt user for input
    */
   private async promptForInput(promptText: string): Promise<string> {
-    return new Promise((resolve) => {
-      this.rl.question(promptText, (answer) => {
-        resolve(answer);
-      });
-    });
+    this.tui.display(promptText, MessageType.SYSTEM);
+    return await this.tui.getInput();
   }
 
   /**

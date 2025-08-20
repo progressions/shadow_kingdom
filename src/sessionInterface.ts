@@ -55,10 +55,14 @@ export async function runSessionMode(args: string[]): Promise<void> {
   }
   
   // For other commands, just log what we would do
+  // NOTE: Console output is intentional here - SessionInterface is for programmatic/command-line usage, not TUI
   console.log(`Session mode: ${command.command}`);
 }
 
 async function executeCommand(commandInput: string, gameId?: number): Promise<void> {
+  // NOTE: All console output in SessionInterface is intentional for programmatic/command-line usage
+  // This interface is used for automation and testing, not the interactive TUI mode
+  
   // Import required classes
   const Database = (await import('./utils/database')).default;
   const { initializeDatabase, createGameWithRooms } = await import('./utils/initDb');
