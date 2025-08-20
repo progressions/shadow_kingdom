@@ -73,7 +73,8 @@
       "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go up\")",
       "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"go north\")",
       "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"go up\")",
-      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"go east\")"
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"go east\")",
+      "Bash(gh pr merge:*)"
     ],
     "deny": [],
     "ask": []
