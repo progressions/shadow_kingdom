@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import * as readline from 'readline';
+import { TUIManager } from './ui/TUIManager';
+import { GameState as TUIGameState } from './ui/StatusManager';
+import { MessageType } from './ui/MessageFormatter';
 import Database from './utils/database';
 import { HistoryManager } from './utils/historyManager';
 import { GrokClient } from './ai/grokClient';
@@ -27,7 +29,7 @@ interface CommandState {
 }
 
 export class GameController {
-  private rl!: readline.Interface; // Initialized in initializeReadlineInterface()
+  private tui: TUIManager;
   private db: Database;
   private historyManager: HistoryManager;
   private grokClient: GrokClient;
@@ -41,7 +43,7 @@ export class GameController {
   private regionService!: ServiceInstances['regionService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
-  constructor(db: Database) {
+  constructor(db: Database, tui?: TUIManager) {
     this.db = db;
     this.grokClient = new GrokClient();
     
@@ -55,11 +57,6 @@ export class GameController {
     const config = applyEnvironmentOverrides(baseConfig);
     this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config);
     
-    // Initialize command router
-    this.commandRouter = new CommandRouter(this.nlpEngine, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
-    
     // Initialize room display service
     this.roomDisplayService = new RoomDisplayService({
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
@@ -69,10 +66,24 @@ export class GameController {
     const maxHistorySize = parseInt(process.env.COMMAND_HISTORY_SIZE || '100');
     this.historyManager = new HistoryManager(process.env.COMMAND_HISTORY_FILE, maxHistorySize);
     
-    // Initialize services immediately for backward compatibility with tests
-    this.initializeServices();
+    // Initialize TUI (use provided TUI or create new one)
+    // In test environment, create a mock TUI to avoid blessed.js TTY requirements
+    if (tui) {
+      this.tui = tui;
+    } else if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+      // Create a minimal mock TUI for tests
+      this.tui = this.createMockTUI();
+    } else {
+      this.tui = new TUIManager();
+    }
     
-    // Note: readline interface will be initialized in start() method after loading history
+    // Initialize command router (after TUI is available)
+    this.commandRouter = new CommandRouter(this.nlpEngine, this.tui, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
+    
+    // Initialize services after command router is ready
+    this.initializeServices();
   }
 
   private setupMenuCommands() {
@@ -104,7 +115,7 @@ export class GameController {
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
-        console.clear();
+        this.tui.clear();
         this.showWelcome();
       }
     });
@@ -126,6 +137,7 @@ export class GameController {
       description: 'Quit Shadow Kingdom (alias for "exit")',
       handler: () => this.exit()
     });
+
   }
 
   private setupGameCommands() {
@@ -218,15 +230,15 @@ export class GameController {
     this.commandRouter.addGameCommand({
       name: 'echo',
       description: 'Echo back the provided text',
-      handler: (args) => console.log(args.join(' '))
+      handler: (args) => this.tui.display(args.join(' '))
     });
 
     this.commandRouter.addGameCommand({
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
-        console.clear();
-        console.log('Welcome to Shadow Kingdom!');
+        this.tui.clear();
+        this.tui.showWelcome('Welcome to Shadow Kingdom!');
       }
     });
 
@@ -241,6 +253,7 @@ export class GameController {
       description: 'Quit to main menu (alias for "exit")',
       handler: async () => await this.returnToMenu()
     });
+
 
     this.commandRouter.addGameCommand({
       name: 'menu',
@@ -268,37 +281,103 @@ export class GameController {
     });
   }
 
-  private lineHandler = async (input: string) => {
-    const command = input.trim();
-    
-    // Save command to history (before processing in case command causes exit)
-    if (process.env.COMMAND_HISTORY_ENABLED !== 'false') {
-      await this.historyManager.saveCommand(command);
+  private async processInput(): Promise<void> {
+    while (true) {
+      try {
+        const input = await this.tui.getInput();
+        const command = input.trim();
+        if (!command) {
+          continue; // Skip empty commands
+        }
+        
+        await this.processCommand(command);
+        this.updateStatusDisplay();
+      } catch (error) {
+        console.error('Input processing error:', error);
+        // Continue the loop
+      }
     }
-    
-    await this.processCommand(command);
-    this.rl.prompt();
-  };
+  }
 
-  private closeHandler = async () => {
+  private async handleExit(): Promise<void> {
     await this.cleanup();
-    console.log('\nGoodbye!');
+    this.tui.display('Goodbye!', MessageType.SYSTEM);
+    this.tui.destroy();
     process.exit(0);
-  };
+  }
 
-  private setupEventHandlers() {
-    this.rl.on('line', this.lineHandler);
-    this.rl.on('close', this.closeHandler);
+  private updateStatusDisplay(): void {
+    const gameState = this.getCurrentGameState();
+    this.tui.updateStatus(gameState);
+  }
+
+  private getCurrentGameState(): TUIGameState {
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      
+      if (!session.gameId) {
+        return {
+          mode: 'menu'
+        };
+      }
+      
+      // Get basic game info (synchronously for now)
+      const gameState: TUIGameState = {
+        mode: 'game'
+      };
+      
+      // Fetch game data asynchronously and update later
+      this.updateGameStateAsync(session.gameId, gameState);
+      
+      return gameState;
+    } catch (error) {
+      return {
+        mode: 'menu'
+      };
+    }
+  }
+
+  private async updateGameStateAsync(gameId: number, gameState: TUIGameState): Promise<void> {
+    try {
+      // Get game name
+      const game = await this.gameManagementService.getGameById(gameId);
+      if (game) {
+        gameState.gameName = game.name;
+      }
+      
+      // Get room count
+      const roomCountResult = await this.db.get<{ count: number }>(
+        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+        [gameId]
+      );
+      if (roomCountResult) {
+        gameState.roomCount = roomCountResult.count;
+      }
+      
+      // Get current room name
+      const session = this.gameStateManager.getCurrentSession();
+      if (session.roomId) {
+        const room = await this.db.get<{ name: string }>(
+          'SELECT name FROM rooms WHERE id = ?',
+          [session.roomId]
+        );
+        if (room) {
+          gameState.currentRoomName = room.name;
+        }
+      }
+      
+      // Update the TUI display
+      this.tui.updateStatus(gameState);
+    } catch (error) {
+      // Silent fail - status will just show basic info
+    }
   }
 
   /**
    * Remove event listeners (for test cleanup)
    */
   public removeEventListeners() {
-    if (this.rl && typeof this.rl.removeListener === 'function') {
-      this.rl.removeListener('line', this.lineHandler);
-      this.rl.removeListener('close', this.closeHandler);
-    }
+    // TUI cleanup handled by destroy method
   }
 
   /**
@@ -323,9 +402,9 @@ export class GameController {
     if (this.commandState.isProcessing && !allowedDuringProcessing.includes(commandName)) {
       const elapsed = Date.now() - (this.commandState.startTime || 0);
       const elapsedSeconds = Math.floor(elapsed / 1000);
-      console.log(`⏳ Please wait for the current command to complete... (${elapsedSeconds}s elapsed)`);
-      console.log(`📋 Processing: "${this.commandState.currentCommand}"`);
-      console.log(`💡 Tip: You can still type "quit" or "help" commands`);
+      this.tui.display(`⏳ Please wait for the current command to complete... (${elapsedSeconds}s elapsed)`, MessageType.SYSTEM);
+      this.tui.display(`📋 Processing: "${this.commandState.currentCommand}"`, MessageType.SYSTEM);
+      this.tui.display(`💡 Tip: You can still type "quit" or "help" commands`, MessageType.SYSTEM);
       return;
     }
 
@@ -361,141 +440,186 @@ export class GameController {
 
 
   private showWelcome() {
-    console.log('Welcome to Shadow Kingdom!');
-    console.log('A dynamic, AI-powered text adventure.');
-    console.log('\nType "help" for commands or "new" to start your first game.\n');
+    this.tui.showWelcome('Welcome to Shadow Kingdom!');
+    this.tui.display('A dynamic, AI-powered text adventure.');
+    this.tui.display('Type "help" for commands or "new" to start your first game.');
   }
 
   private showNLPStats() {
-    console.log('\n📊 Natural Language Processing Statistics');
-    console.log('=========================================');
+    this.tui.display('📊 Natural Language Processing Statistics', MessageType.NORMAL);
+    this.tui.display('=========================================', MessageType.NORMAL);
     
     const commandStats = this.commandRouter.getStats();
     const nlpStats = commandStats.nlpStats;
     const config = this.nlpEngine.getConfig();
     
-    console.log('\n🎮 Command Router Statistics:');
-    console.log(`  Menu commands registered: ${commandStats.menuCommandCount}`);
-    console.log(`  Game commands registered: ${commandStats.gameCommandCount}`);
-    console.log(`  Total commands registered: ${commandStats.totalCommands}`);
+    this.tui.display('🎮 Command Router Statistics:', MessageType.NORMAL);
+    this.tui.display(`  Menu commands registered: ${commandStats.menuCommandCount}`, MessageType.NORMAL);
+    this.tui.display(`  Game commands registered: ${commandStats.gameCommandCount}`, MessageType.NORMAL);
+    this.tui.display(`  Total commands registered: ${commandStats.totalCommands}`, MessageType.NORMAL);
     
-    console.log('\n🎯 Processing Statistics:');
-    console.log(`  Total commands processed: ${nlpStats.totalCommands}`);
-    console.log(`  Local pattern matches: ${nlpStats.localMatches} (${(nlpStats.localSuccessRate * 100).toFixed(1)}%)`);
-    console.log(`  AI fallback matches: ${nlpStats.aiMatches} (${(nlpStats.aiSuccessRate * 100).toFixed(1)}%)`);
-    console.log(`  Failed to parse: ${nlpStats.failures} (${((nlpStats.failures / nlpStats.totalCommands) * 100 || 0).toFixed(1)}%)`);
-    console.log(`  Overall success rate: ${(nlpStats.successRate * 100).toFixed(1)}%`);
-    console.log(`  Average processing time: ${nlpStats.avgProcessingTime.toFixed(2)}ms`);
+    this.tui.display('🎯 Processing Statistics:', MessageType.NORMAL);
+    this.tui.display(`  Total commands processed: ${nlpStats.totalCommands}`, MessageType.NORMAL);
+    this.tui.display(`  Local pattern matches: ${nlpStats.localMatches} (${(nlpStats.localSuccessRate * 100).toFixed(1)}%)`, MessageType.NORMAL);
+    this.tui.display(`  AI fallback matches: ${nlpStats.aiMatches} (${(nlpStats.aiSuccessRate * 100).toFixed(1)}%)`, MessageType.NORMAL);
+    this.tui.display(`  Failed to parse: ${nlpStats.failures} (${((nlpStats.failures / nlpStats.totalCommands) * 100 || 0).toFixed(1)}%)`, MessageType.NORMAL);
+    this.tui.display(`  Overall success rate: ${(nlpStats.successRate * 100).toFixed(1)}%`, MessageType.NORMAL);
+    this.tui.display(`  Average processing time: ${nlpStats.avgProcessingTime.toFixed(2)}ms`, MessageType.NORMAL);
     
-    console.log('\n⚙️  Configuration:');
-    console.log(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`);
-    console.log(`  AI confidence threshold: ${(config.aiConfidenceThreshold * 100).toFixed(0)}%`);
-    console.log(`  AI fallback enabled: ${config.enableAIFallback ? 'Yes' : 'No'}`);
-    console.log(`  Max processing time: ${config.maxProcessingTime}ms`);
-    console.log(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`);
+    this.tui.display('⚙️  Configuration:', MessageType.NORMAL);
+    this.tui.display(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
+    this.tui.display(`  AI confidence threshold: ${(config.aiConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
+    this.tui.display(`  AI fallback enabled: ${config.enableAIFallback ? 'Yes' : 'No'}`, MessageType.NORMAL);
+    this.tui.display(`  Max processing time: ${config.maxProcessingTime}ms`, MessageType.NORMAL);
+    this.tui.display(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`, MessageType.NORMAL);
     
-    console.log('\n🧠 Local Processor:');
-    console.log(`  Patterns loaded: ${nlpStats.localProcessor.patternsLoaded}`);
-    console.log(`  Synonyms loaded: ${nlpStats.localProcessor.synonymsLoaded}`);
-    console.log(`  Uptime: ${nlpStats.localProcessor.uptimeMs}ms`);
+    this.tui.display('🧠 Local Processor:', MessageType.NORMAL);
+    this.tui.display(`  Patterns loaded: ${nlpStats.localProcessor.patternsLoaded}`, MessageType.NORMAL);
+    this.tui.display(`  Synonyms loaded: ${nlpStats.localProcessor.synonymsLoaded}`, MessageType.NORMAL);
+    this.tui.display(`  Uptime: ${nlpStats.localProcessor.uptimeMs}ms`, MessageType.NORMAL);
     
     if (config.enableAIFallback) {
-      console.log('\n🤖 AI Usage:');
-      console.log(`  Estimated cost: ${nlpStats.aiUsage.estimatedCost}`);
-      console.log(`  Tokens used: ${nlpStats.aiUsage.tokensUsed.input} input, ${nlpStats.aiUsage.tokensUsed.output} output`);
+      this.tui.display('🤖 AI Usage:', MessageType.NORMAL);
+      this.tui.display(`  Estimated cost: ${nlpStats.aiUsage.estimatedCost}`, MessageType.NORMAL);
+      this.tui.display(`  Tokens used: ${nlpStats.aiUsage.tokensUsed.input} input, ${nlpStats.aiUsage.tokensUsed.output} output`, MessageType.NORMAL);
     }
     
-    console.log('\n💡 Tip: Use NLP_DEBUG_LOGGING=true to see real-time processing details.\n');
+    this.tui.display('💡 Tip: Use NLP_DEBUG_LOGGING=true to see real-time processing details.', MessageType.NORMAL);
   }
 
   private async startNewGame() {
-    console.log('Starting a new game...\n');
+    this.tui.display('Starting a new game...', MessageType.SYSTEM);
+    this.tui.display('Enter a name for your new game:', MessageType.SYSTEM);
     
-    const result = await this.gameManagementService.createNewGame();
+    // Get game name from user via TUI
+    const gameName = await this.tui.getInput();
     
-    if (!result.success) {
-      console.log(result.error || 'Failed to create new game. Returning to main menu.');
+    if (!gameName.trim()) {
+      this.tui.display('Game name cannot be empty.', MessageType.ERROR);
       return;
     }
     
-    if (result.gameId && result.gameName) {
+    // Create game with the provided name
+    const result = await this.gameManagementService.createGameWithName(gameName.trim());
+    
+    if (!result.success) {
+      this.tui.display(result.error || 'Failed to create new game. Returning to main menu.', MessageType.ERROR);
+      return;
+    }
+    
+    if (result.game) {
       // Start game session using game state manager
-      await this.gameStateManager.startGameSession(result.gameId);
-      this.rl.setPrompt('> ');
+      await this.gameStateManager.startGameSession(result.game.id);
       
-      console.clear();
-      console.log(`Welcome to Shadow Kingdom!`);
-      console.log(`Game: ${result.gameName}`);
-      console.log('Initializing game world...\n');
-      console.log('\nType "help" for available commands.');
-      console.log('Type "look" to see where you are.');
-      console.log('Type "menu" to return to main menu.\n');
+      this.tui.clear();
+      this.tui.showWelcome('Welcome to Shadow Kingdom!');
+      this.tui.display(`Game: ${result.game.name}`);
+      this.tui.display('Initializing game world...');
+      this.tui.display('Type "help" for available commands.');
+      this.tui.display('Type "look" to see where you are.');
+      this.tui.display('Type "menu" to return to main menu.');
       
       // Show initial room
       await this.lookAround();
+      this.updateStatusDisplay();
+      
+      // Start input processing loop
+      this.processInput();
     }
   }
 
   private async loadGame() {
-    console.log('Loading existing games...\n');
+    this.tui.display('Loading existing games...', MessageType.SYSTEM);
     
-    const result = await this.gameManagementService.selectGameFromList('load');
+    const game = await this.selectGameFromTUI('load');
     
-    if (!result.success) {
-      console.log(result.error || 'Failed to load game.');
-      return;
-    }
-    
-    if (result.cancelled) {
-      console.log('Cancelled.');
-      return;
-    }
-    
-    if (result.game) {
-      await this.loadSelectedGame(result.game);
+    if (game) {
+      await this.loadSelectedGame(game);
     }
   }
 
   private async deleteGame() {
-    console.log('Deleting games...\n');
+    this.tui.display('Deleting games...', MessageType.SYSTEM);
     
-    const result = await this.gameManagementService.selectGameFromList('delete');
+    const game = await this.selectGameFromTUI('delete');
     
-    if (!result.success) {
-      console.log(result.error || 'Failed to delete game.');
-      return;
-    }
-    
-    if (result.cancelled) {
-      console.log('Cancelled.');
-      return;
-    }
-    
-    if (result.game) {
-      const deleteResult = await this.gameManagementService.deleteGameWithConfirmation(result.game);
+    if (game) {
+      // Confirm deletion via TUI
+      this.tui.display(`Are you sure you want to delete "${game.name}"?`, MessageType.SYSTEM);
+      this.tui.display('This action cannot be undone.', MessageType.SYSTEM);
+      this.tui.display('Type "yes" to confirm, or anything else to cancel:', MessageType.SYSTEM);
       
-      if (deleteResult.success) {
-        console.log(`Game "${result.game.name}" has been deleted.`);
+      const confirmation = await this.tui.getInput();
+      
+      if (confirmation.toLowerCase() === 'yes') {
+        const deleteResult = await this.gameManagementService.deleteGameById(game.id);
+        if (deleteResult.success) {
+          this.tui.display(`Game "${game.name}" has been deleted.`, MessageType.SYSTEM);
+        } else {
+          this.tui.display(deleteResult.error || 'Deletion failed.', MessageType.ERROR);
+        }
       } else {
-        console.log(deleteResult.error || 'Deletion failed.');
+        this.tui.display('Deletion cancelled.', MessageType.SYSTEM);
       }
     }
   }
 
+  private async selectGameFromTUI(purpose: 'load' | 'delete'): Promise<Game | null> {
+    try {
+      const games = await this.gameManagementService.getAllGames();
+
+      if (!games || games.length === 0) {
+        const message = purpose === 'load' ? 'No saved games found. Create a new game first.' : 'No saved games found to delete.';
+        this.tui.display(message, MessageType.SYSTEM);
+        return null;
+      }
+
+      const actionText = purpose === 'load' ? 'load' : 'delete';
+      this.tui.display(`Select a game to ${actionText}:`, MessageType.SYSTEM);
+      
+      games.forEach((game, index) => {
+        const lastPlayed = new Date(game.last_played_at).toLocaleDateString();
+        this.tui.display(`${index + 1}. ${game.name} (Last played: ${lastPlayed})`, MessageType.SYSTEM);
+      });
+      this.tui.display('0. Cancel', MessageType.SYSTEM);
+
+      const choice = await this.tui.getInput();
+      const choiceNum = parseInt(choice.trim());
+
+      if (isNaN(choiceNum) || choiceNum === 0) {
+        this.tui.display('Cancelled.', MessageType.SYSTEM);
+        return null;
+      }
+
+      if (choiceNum < 1 || choiceNum > games.length) {
+        this.tui.display('Invalid choice. Please select a number from the list.', MessageType.ERROR);
+        return await this.selectGameFromTUI(purpose); // Recursively ask again
+      }
+
+      return games[choiceNum - 1];
+    } catch (error) {
+      this.tui.display('Error loading games list.', MessageType.ERROR);
+      return null;
+    }
+  }
+
   private async returnToMenu() {
-    console.log('Returning to main menu...');
+    this.tui.display('Returning to main menu...', MessageType.SYSTEM);
     
     // End game session (automatically saves state)
     await this.gameStateManager.endGameSession();
     
-    this.rl.setPrompt('menu> ');
-    console.clear();
+    this.tui.clear();
     this.showWelcome();
+    this.updateStatusDisplay();
+    
+    // Start input processing loop
+    this.processInput();
   }
 
   private async lookAround() {
     if (!this.gameStateManager.isInGame()) {
-      this.roomDisplayService.displayNoGameLoaded();
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
       return;
     }
 
@@ -514,24 +638,25 @@ export class GameController {
         // Get available connections from this room within this game
         const connections = await this.gameStateManager.getCurrentRoomConnections();
         
-        // Use room display service to format and display the room
-        this.roomDisplayService.displayRoom(room, connections);
+        // Use TUI to display the room
+        const exitNames = connections.map(c => c.name === c.direction ? c.direction : `${c.name} (${c.direction})`);
+        this.tui.displayRoom(room.name, room.description, exitNames);
       } else {
-        this.roomDisplayService.displayVoidState();
+        this.tui.display('You are in a void. Something went wrong!', MessageType.ERROR);
       }
     } catch (error) {
-      this.roomDisplayService.displayError('Error looking around', error as Error);
+      this.tui.showError('Error looking around', (error as Error)?.message);
     }
   }
 
   private async move(args: string[]) {
     if (!this.gameStateManager.isInGame()) {
-      this.roomDisplayService.displayNoGameLoaded();
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
       return;
     }
 
     if (args.length === 0) {
-      console.log('Move where? Specify a direction (e.g., "go north")');
+      this.tui.display('Move where? Specify a direction (e.g., "go north")', MessageType.SYSTEM);
       return;
     }
 
@@ -554,29 +679,28 @@ export class GameController {
           if (nlpConnection) {
             if (process.env.AI_DEBUG_LOGGING === 'true') {
               const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
-              console.log(`${sourceIcon} NLP resolved "${userInput}" → "${resolvedDirection}"`);
+              this.tui.display(`${sourceIcon} NLP resolved "${userInput}" → "${resolvedDirection}"`, MessageType.SYSTEM);
               if (nlpResult.reasoning) {
-                console.log(`   Reasoning: ${nlpResult.reasoning}`);
+                this.tui.display(`   Reasoning: ${nlpResult.reasoning}`, MessageType.SYSTEM);
               }
             }
             
             // Check if NLP connection needs room generation
             if (!nlpConnection.to_room_id) {
-              console.log(`\n🌟 Generating new room to the ${resolvedDirection}...`);
-              console.log('⏳ Please wait, this may take a moment...\n');
+              this.tui.showAIProgress('Generating new room', resolvedDirection);
               
               // Generate room synchronously for unfilled connection
               const unfilledConnection = nlpConnection as any; // Cast to allow null to_room_id
               const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
               
               if (!generationResult.success) {
-                console.log('❌ Failed to generate room. You cannot go that way.');
+                this.tui.display('❌ Failed to generate room. You cannot go that way.', MessageType.ERROR);
                 return;
               }
               
               // Update connection with newly generated room
               nlpConnection.to_room_id = generationResult.roomId!;
-              console.log('✅ Room generation complete!\n');
+              this.tui.display('✅ Room generation complete!', MessageType.AI_GENERATION);
             }
             
             // Move to the new room using game state manager
@@ -584,6 +708,9 @@ export class GameController {
             
             // Show the new room
             await this.lookAround();
+            
+            // Update status display after room change
+            this.updateStatusDisplay();
             return;
           } else {
             // NLP resolved direction but no connection exists - try to generate room
@@ -593,27 +720,26 @@ export class GameController {
 
         // No valid connection found - show appropriate error
         
-        this.roomDisplayService.displayMovementError(userInput);
+        this.tui.display(`You can't go ${userInput} from here.`, MessageType.ERROR);
         return;
       }
 
       // Check if connection needs room generation
       if (!connection.to_room_id) {
-        console.log(`\n🌟 Generating new room to the ${userInput}...`);
-        console.log('⏳ Please wait, this may take a moment...\n');
+        this.tui.showAIProgress('Generating new room', userInput);
         
         // Generate room synchronously for unfilled connection
         const unfilledConnection = connection as any; // Cast to allow null to_room_id
         const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
         
         if (!generationResult.success) {
-          console.log('❌ Failed to generate room. You cannot go that way.');
+          this.tui.display('❌ Failed to generate room. You cannot go that way.', MessageType.ERROR);
           return;
         }
         
         // Update connection with newly generated room
         connection.to_room_id = generationResult.roomId!;
-        console.log('✅ Room generation complete!\n');
+        this.tui.display('✅ Room generation complete!', MessageType.AI_GENERATION);
       }
       
       // Move to the new room using game state manager
@@ -622,6 +748,9 @@ export class GameController {
       // Show the new room
       await this.lookAround();
       
+      // Update status display after room change
+      this.updateStatusDisplay();
+      
     } catch (error) {
       console.error('Error moving:', error);
     }
@@ -629,7 +758,9 @@ export class GameController {
 
   private async exit() {
     await this.cleanup();
-    this.rl.close();
+    this.tui.display('Goodbye!', MessageType.SYSTEM);
+    this.tui.destroy();
+    process.exit(0);
   }
 
 
@@ -639,21 +770,21 @@ export class GameController {
     try {
       // Start game session using game state manager
       await this.gameStateManager.startGameSession(game.id);
-      this.rl.setPrompt('> ');
       
-      console.clear();
-      console.log(`Welcome back to Shadow Kingdom!`);
-      console.log(`Game: ${game.name}`);
-      console.log('Loading your saved game...\n');
-      console.log('\nType "help" for available commands.');
-      console.log('Type "look" to see where you are.');
-      console.log('Type "menu" to return to main menu.\n');
+      this.tui.clear();
+      this.tui.showWelcome('Welcome back to Shadow Kingdom!');
+      this.tui.display(`Game: ${game.name}`);
+      this.tui.display('Loading your saved game...');
+      this.tui.display('Type "help" for available commands.');
+      this.tui.display('Type "look" to see where you are.');
+      this.tui.display('Type "menu" to return to main menu.');
       
       // Show current room
       await this.lookAround();
+      this.updateStatusDisplay();
       
-      // Show the prompt
-      this.rl.prompt();
+      // Start input processing loop
+      this.processInput();
     } catch (error) {
       console.error('Failed to load selected game:', error);
     }
@@ -663,30 +794,6 @@ export class GameController {
    * Initialize services (called from constructor for backward compatibility)
    */
   private initializeServices(): void {
-    // Create temporary mock readline interface for service initialization
-    const tempRl = {
-      question: () => {},
-      close: () => {},
-      on: () => {},
-      once: () => {},
-      removeListener: () => {},
-      off: () => {},
-      removeAllListeners: () => {},
-      setMaxListeners: () => {},
-      getMaxListeners: () => 10,
-      listeners: () => [],
-      rawListeners: () => [],
-      emit: () => false,
-      listenerCount: () => 0,
-      prependListener: () => {},
-      prependOnceListener: () => {},
-      eventNames: () => [],
-      setPrompt: () => {},
-      prompt: () => {}
-    } as any;
-
-    this.rl = tempRl;
-
     // Initialize services
     const serviceOptions = {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
@@ -694,7 +801,7 @@ export class GameController {
     
     ServiceFactory.logConfiguration();
     
-    const services = ServiceFactory.createServices(this.db, this.rl, this.grokClient, serviceOptions);
+    const services = ServiceFactory.createServices(this.db, this.tui, this.grokClient, serviceOptions);
     
     // Assign services from factory
     this.gameStateManager = services.gameStateManager;
@@ -709,55 +816,40 @@ export class GameController {
   }
 
   /**
-   * Initialize readline interface with command history
+   * Initialize TUI interface
    */
-  private async initializeReadlineInterface(): Promise<void> {
-    // Load command history
-    const history = await this.historyManager.loadHistory();
-    
-    // Replace temporary readline interface with real one with history support
-    // Note: readline expects history in reverse order (most recent first)
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      prompt: 'menu> ',
-      historySize: parseInt(process.env.COMMAND_HISTORY_SIZE || '100'),
-      history: history.slice().reverse() // reverse() for readline, slice() to avoid mutating original
-    });
-    
-    // Set up event listeners for the real readline interface
-    this.setupEventHandlers();
+  private async initializeTUI(): Promise<void> {
+    await this.tui.initialize();
+    this.updateStatusDisplay();
   }
 
   public async start() {
-    console.clear();
-    
-    // Load command history and initialize readline interface
-    await this.initializeReadlineInterface();
+    // Initialize TUI interface
+    await this.initializeTUI();
     
     // Try to automatically load the most recent game
     const mostRecentGame = await this.gameManagementService.getMostRecentGame();
     
     if (mostRecentGame) {
       // Auto-load the most recent game
-      console.log(`Welcome back to Shadow Kingdom!`);
-      console.log(`Continuing: "${mostRecentGame.name}"\n`);
-      console.log('Type "menu" to manage games.\n');
+      this.tui.showWelcome('Welcome back to Shadow Kingdom!');
+      this.tui.display(`Continuing: "${mostRecentGame.name}"`);
+      this.tui.display('Type "menu" to manage games.');
       
       await this.loadSelectedGame(mostRecentGame);
     } else {
       // No games exist, auto-create new game
-      console.log('Welcome to Shadow Kingdom!');
-      console.log('Starting your first adventure...\n');
+      this.tui.showWelcome('Welcome to Shadow Kingdom!');
+      this.tui.display('Starting your first adventure...');
       
       const result = await this.gameManagementService.createGameAutomatic();
       if (result.success && result.game) {
-        console.log(`Created: "${result.game.name}"\n`);
+        this.tui.display(`Created: "${result.game.name}"`);
         await this.loadSelectedGame(result.game);
       } else {
         // Fallback to menu if auto-creation fails
         this.showWelcome();
-        this.rl.prompt();
+        this.processInput(); // Start input processing loop
       }
     }
   }
@@ -770,30 +862,50 @@ export class GameController {
   }
 
   /**
+   * Create a mock TUI for testing that doesn't use blessed.js
+   */
+  private createMockTUI(): any {
+    return {
+      initialize: async () => {},
+      display: () => {},
+      displayLines: () => {},
+      showWelcome: () => {},
+      getInput: () => Promise.resolve(''),
+      updateStatus: () => {},
+      clear: () => {},
+      destroy: () => {},
+      setPrompt: () => {},
+      setStatus: () => {},
+      showRoom: () => {},
+      showAIProgress: () => {}
+    };
+  }
+
+  /**
    * Show region information for the current room
    */
   private async showRegionInfo(): Promise<void> {
     try {
       const session = this.gameStateManager.getCurrentSession();
       if (!session.gameId || !session.roomId) {
-        console.log('No active game session.');
+        this.tui.display('No active game session.', MessageType.SYSTEM);
         return;
       }
 
       const room = await this.db.get<any>('SELECT * FROM rooms WHERE id = ?', [session.roomId]);
       if (!room) {
-        console.log('Current room not found.');
+        this.tui.display('Current room not found.', MessageType.ERROR);
         return;
       }
 
       if (!room.region_id) {
-        console.log('Current room is not part of any region.');
+        this.tui.display('Current room is not part of any region.', MessageType.SYSTEM);
         return;
       }
 
       const region = await this.regionService.getRegion(room.region_id);
       if (!region) {
-        console.log('Region not found.');
+        this.tui.display('Region not found.', MessageType.ERROR);
         return;
       }
 
@@ -812,7 +924,7 @@ export class GameController {
         output += `Center: Not yet discovered\n`;
       }
       
-      console.log(output);
+      this.tui.display(output.trim());
     } catch (error) {
       console.error('Error showing region info:', error);
     }
@@ -825,14 +937,14 @@ export class GameController {
     try {
       const session = this.gameStateManager.getCurrentSession();
       if (!session.gameId) {
-        console.log('No active game session.');
+        this.tui.display('No active game session.', MessageType.SYSTEM);
         return;
       }
 
       const regions = await this.regionService.getRegionsForGame(session.gameId);
       
       if (regions.length === 0) {
-        console.log('No regions found in current game.');
+        this.tui.display('No regions found in current game.', MessageType.SYSTEM);
         return;
       }
 
@@ -846,7 +958,7 @@ export class GameController {
         output += `- ${region.name || region.type} (${region.type}): ${roomCount?.count || 0} rooms\n`;
       }
       
-      console.log(output);
+      this.tui.display(output.trim());
     } catch (error) {
       console.error('Error listing regions:', error);
     }
@@ -859,14 +971,14 @@ export class GameController {
     try {
       const session = this.gameStateManager.getCurrentSession();
       if (!session.gameId) {
-        console.log('No active game session.');
+        this.tui.display('No active game session.', MessageType.SYSTEM);
         return;
       }
 
       const stats = await this.regionService.getRegionStats(session.gameId);
       
       if (stats.length === 0) {
-        console.log('No regions found in current game.');
+        this.tui.display('No regions found in current game.', MessageType.SYSTEM);
         return;
       }
 
@@ -886,7 +998,7 @@ export class GameController {
         }
       }
       
-      console.log(output);
+      this.tui.display(output.trim());
     } catch (error) {
       console.error('Error showing region stats:', error);
     }
