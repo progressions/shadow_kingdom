@@ -36,6 +36,132 @@ export class BackgroundGenerationService {
   }
 
   /**
+   * Trigger immediate room generation on room entry (new auto-generation feature)
+   */
+  async generateForRoomEntry(roomId: number, gameId: number): Promise<void> {
+    try {
+      // Check if auto-generation is enabled
+      if (process.env.AUTO_GENERATE_ON_ENTRY !== 'true') {
+        return;
+      }
+
+      // Find unfilled connections that aren't already being processed
+      const unfilledConnections = await this.db.all<UnfilledConnection>(`
+        SELECT c.*, r.name as from_room_name 
+        FROM connections c
+        JOIN rooms r ON c.from_room_id = r.id
+        WHERE c.from_room_id = ? AND c.to_room_id IS NULL AND c.processing = FALSE
+      `, [roomId]);
+
+      if (unfilledConnections.length === 0) {
+        return; // No connections to generate
+      }
+
+      // Apply max concurrent limit
+      const maxConcurrent = parseInt(process.env.AUTO_GENERATE_MAX_CONCURRENT || '3');
+      const connectionsToProcess = unfilledConnections.slice(0, maxConcurrent);
+
+      if (this.isDebugEnabled()) {
+        console.log(`🚀 Auto-generating ${connectionsToProcess.length} rooms on entry to room ${roomId}`);
+      }
+
+      // Add optional delay before starting generation
+      const delayMs = parseInt(process.env.AUTO_GENERATE_DELAY_MS || '0');
+      if (delayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+
+      // Fire and forget generation for each connection
+      const promises = connectionsToProcess.map(connection => this.generateConnectionWithProcessingFlag(connection));
+      
+      // In production mode, don't await - let them run in background
+      if (this.options.disableBackgroundGeneration) {
+        // In test mode, await to avoid dangling promises
+        await Promise.all(promises);
+      } else {
+        // In production, track promises but don't await
+        promises.forEach(promise => {
+          this.backgroundPromises.add(promise);
+          promise.finally(() => this.backgroundPromises.delete(promise));
+        });
+      }
+
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Room entry auto-generation failed:', error);
+      }
+      // Silent failure - game continues normally
+    }
+  }
+
+  /**
+   * Generate a room for a connection using processing flag to prevent duplicates
+   */
+  private async generateConnectionWithProcessingFlag(connection: UnfilledConnection): Promise<void> {
+    try {
+      // Mark as processing to prevent duplicates
+      const updateResult = await this.db.run(
+        'UPDATE connections SET processing = TRUE WHERE id = ? AND processing = FALSE',
+        [connection.id]
+      );
+
+      // If no rows were updated, another process is already handling this connection
+      if (updateResult.changes === 0) {
+        if (this.isDebugEnabled()) {
+          console.log(`🔗 Connection ${connection.id} already being processed - skipping`);
+        }
+        return;
+      }
+
+      // Generate the room
+      const result = await this.roomGenerationService.generateRoomForConnection(connection);
+
+      if (result.success && result.roomId) {
+        // Update connection with room and clear processing flag
+        await this.db.run(
+          'UPDATE connections SET to_room_id = ?, processing = FALSE WHERE id = ?',
+          [result.roomId, connection.id]
+        );
+
+        if (this.isDebugEnabled()) {
+          console.log(`✨ Auto-generated room ${result.roomId} for connection ${connection.id}: ${connection.name}`);
+        }
+      } else {
+        // Clear processing flag on failure to allow retry
+        await this.failGeneration(connection.id, result.error || new Error('Room generation failed'));
+      }
+
+    } catch (error) {
+      // Clear processing flag on error
+      await this.failGeneration(connection.id, error as Error);
+    }
+  }
+
+  /**
+   * Complete generation successfully
+   */
+  async completeGeneration(connectionId: number, roomId: number): Promise<void> {
+    await this.db.run(
+      'UPDATE connections SET to_room_id = ?, processing = FALSE WHERE id = ?',
+      [roomId, connectionId]
+    );
+  }
+
+  /**
+   * Mark generation as failed and clear processing flag to allow retry
+   */
+  async failGeneration(connectionId: number, error: Error): Promise<void> {
+    await this.db.run(
+      'UPDATE connections SET processing = FALSE WHERE id = ?',
+      [connectionId]
+    );
+    
+    if (this.isDebugEnabled()) {
+      console.error(`Generation failed for connection ${connectionId}:`, error.message);
+    }
+  }
+
+  /**
    * Trigger background room generation for adjacent rooms (entry point from GameController)
    */
   async preGenerateAdjacentRooms(currentRoomId: number, gameId: number): Promise<void> {
@@ -88,14 +214,14 @@ export class BackgroundGenerationService {
   }
 
   /**
-   * Find unfilled connections that need room generation
+   * Find unfilled connections that need room generation (excludes ones being processed)
    */
   async findUnfilledConnections(gameId: number): Promise<UnfilledConnection[]> {
     try {
       const connections = await this.db.all<UnfilledConnection>(
         'SELECT c.*, r.name as from_room_name FROM connections c ' +
         'JOIN rooms r ON c.from_room_id = r.id ' +
-        'WHERE c.to_room_id IS NULL AND c.game_id = ? ' +
+        'WHERE c.to_room_id IS NULL AND c.processing = FALSE AND c.game_id = ? ' +
         'ORDER BY c.id LIMIT ?',
         [gameId, this.getGenerationLimits().maxGenerationDepth]
       );
@@ -137,7 +263,7 @@ export class BackgroundGenerationService {
         FROM connections c
         JOIN reachable_rooms rr ON c.from_room_id = rr.room_id
         JOIN rooms r ON c.from_room_id = r.id
-        WHERE c.to_room_id IS NULL AND c.game_id = ?
+        WHERE c.to_room_id IS NULL AND c.processing = FALSE AND c.game_id = ?
         ORDER BY rr.distance, c.id
         LIMIT ?
       `, [currentRoomId, bfsRadius, gameId, limits.maxGenerationDepth]);
@@ -211,9 +337,9 @@ export class BackgroundGenerationService {
       for (let i = 0; i < connectionsToFill; i++) {
         const connection = nearbyUnfilledConnections[i];
         
-        // Verify connection is still unfilled (race condition protection)
+        // Verify connection is still unfilled and not being processed (race condition protection)
         const currentConnection = await this.db.get<UnfilledConnection>(
-          'SELECT * FROM connections WHERE id = ? AND to_room_id IS NULL',
+          'SELECT * FROM connections WHERE id = ? AND to_room_id IS NULL AND processing = FALSE',
           [connection.id]
         );
         

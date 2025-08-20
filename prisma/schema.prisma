@@ -52,6 +52,7 @@ model Connection {
   toRoomId   Int?    @map("to_room_id")
   direction  String?
   name       String
+  processing Boolean @default(false)
   
   game       Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
   fromRoom   Room    @relation("FromRoom", fields: [fromRoomId], references: [id])
@@ -60,6 +61,7 @@ model Connection {
   @@index([gameId])
   @@index([fromRoomId, direction, name])
   @@index([gameId, fromRoomId])
+  @@index([gameId, fromRoomId, processing])
   @@map("connections")
 }
 
