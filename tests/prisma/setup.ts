@@ -67,6 +67,7 @@ export async function setupTestDatabase(): Promise<PrismaClient> {
         "to_room_id" INTEGER,
         "direction" TEXT,
         "name" TEXT NOT NULL,
+        "processing" BOOLEAN NOT NULL DEFAULT false,
         CONSTRAINT "connections_game_id_fkey" FOREIGN KEY ("game_id") REFERENCES "games" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT "connections_from_room_id_fkey" FOREIGN KEY ("from_room_id") REFERENCES "rooms" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT "connections_to_room_id_fkey" FOREIGN KEY ("to_room_id") REFERENCES "rooms" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -83,6 +84,15 @@ export async function setupTestDatabase(): Promise<PrismaClient> {
         CONSTRAINT "game_state_current_room_id_fkey" FOREIGN KEY ("current_room_id") REFERENCES "rooms" ("id") ON DELETE CASCADE ON UPDATE CASCADE
     )
   `;
+  
+  // Create indices to match migration
+  await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "connections_game_id_from_room_id_processing_idx" ON "connections"("game_id", "from_room_id", "processing")`;
+  await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "connections_game_id_idx" ON "connections"("game_id")`;
+  await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "connections_from_room_id_direction_name_idx" ON "connections"("from_room_id", "direction", "name")`;
+  await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "connections_game_id_from_room_id_idx" ON "connections"("game_id", "from_room_id")`;
+  await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "rooms_game_id_idx" ON "rooms"("game_id")`;
+  await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "rooms_region_id_idx" ON "rooms"("region_id")`;
+  await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "regions_game_id_idx" ON "regions"("game_id")`;
   
   return prisma;
 }
@@ -179,7 +189,8 @@ export async function createTestGame(
           fromRoomId: entranceHall.id,
           toRoomId: library.id,
           direction: 'north',
-          name: 'through the ornate archway beneath celestial murals'
+          name: 'through the ornate archway beneath celestial murals',
+          processing: false
         },
         // Library back to Entrance
         {
@@ -187,7 +198,8 @@ export async function createTestGame(
           fromRoomId: library.id,
           toRoomId: entranceHall.id,
           direction: 'south',
-          name: 'through the shadowed archway to the grand hall'
+          name: 'through the shadowed archway to the grand hall',
+          processing: false
         },
         // Entrance to Garden
         {
@@ -195,7 +207,8 @@ export async function createTestGame(
           fromRoomId: entranceHall.id,
           toRoomId: garden.id,
           direction: 'east',
-          name: 'through the glass doors that shimmer with moonlight'
+          name: 'through the glass doors that shimmer with moonlight',
+          processing: false
         },
         // Garden back to Entrance
         {
@@ -203,7 +216,8 @@ export async function createTestGame(
           fromRoomId: garden.id,
           toRoomId: entranceHall.id,
           direction: 'west',
-          name: 'through the crystal doors back to the marble hall'
+          name: 'through the crystal doors back to the marble hall',
+          processing: false
         },
         // Unfilled connections for expansion
         {
@@ -211,14 +225,16 @@ export async function createTestGame(
           fromRoomId: library.id,
           toRoomId: null,
           direction: 'west',
-          name: 'through the hidden door behind dusty tomes'
+          name: 'through the hidden door behind dusty tomes',
+          processing: false
         },
         {
           gameId: game.id,
           fromRoomId: garden.id,
           toRoomId: null,
           direction: 'up',
-          name: 'up the celestial pathway to the stars'
+          name: 'up the celestial pathway to the stars',
+          processing: false
         }
       ]
     });

@@ -79,7 +79,7 @@ describe('RegionService', () => {
       expect(regionService.getNewRegionProbability(10)).toBe(maxProbability); // Should hit the cap
     });
 
-    test('shouldCreateNewRegion should respect probability distribution', () => {
+    test('shouldCreateNewRegion should respect probability distribution', async () => {
       // Use actual environment variables for dynamic test expectations
       const baseProbability = parseFloat(process.env.REGION_BASE_PROBABILITY || '0.05');
       const distanceMultiplier = parseFloat(process.env.REGION_DISTANCE_MULTIPLIER || '0.08');

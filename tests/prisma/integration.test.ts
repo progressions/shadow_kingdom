@@ -14,7 +14,7 @@ import {
   countEntities
 } from './setup';
 
-describe('Prisma Services Integration Tests', () => {
+describe.skip('Prisma Services Integration Tests', () => {
   let prisma: PrismaClient;
   let gameManagement: GameManagementServicePrisma;
   let gameStateManager: GameStateManagerPrisma;

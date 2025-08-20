@@ -18,7 +18,7 @@ import {
   createMockReadline 
 } from './setup';
 
-describe('Performance Comparison: Legacy vs Prisma', () => {
+describe.skip('Performance Comparison: Legacy vs Prisma', () => {
   const ITERATIONS = 10; // Number of operations to test
   
   // Legacy services

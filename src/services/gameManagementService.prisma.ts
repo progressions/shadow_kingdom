@@ -119,7 +119,8 @@ export class GameManagementServicePrisma {
               fromRoomId: entranceHall.id,
               toRoomId: library.id,
               direction: 'north',
-              name: 'through the ornate archway beneath celestial murals'
+              name: 'through the ornate archway beneath celestial murals',
+              processing: false
             },
             // Library back to Entrance
             {
@@ -127,7 +128,8 @@ export class GameManagementServicePrisma {
               fromRoomId: library.id,
               toRoomId: entranceHall.id,
               direction: 'south',
-              name: 'through the shadowed archway to the grand hall'
+              name: 'through the shadowed archway to the grand hall',
+              processing: false
             },
             // Entrance to Garden
             {
@@ -135,7 +137,8 @@ export class GameManagementServicePrisma {
               fromRoomId: entranceHall.id,
               toRoomId: garden.id,
               direction: 'east',
-              name: 'through the glass doors that shimmer with moonlight'
+              name: 'through the glass doors that shimmer with moonlight',
+              processing: false
             },
             // Garden back to Entrance
             {
@@ -143,7 +146,8 @@ export class GameManagementServicePrisma {
               fromRoomId: garden.id,
               toRoomId: entranceHall.id,
               direction: 'west',
-              name: 'through the crystal doors back to the marble hall'
+              name: 'through the crystal doors back to the marble hall',
+              processing: false
             },
             // Unfilled connections for expansion
             {
@@ -151,14 +155,16 @@ export class GameManagementServicePrisma {
               fromRoomId: library.id,
               toRoomId: null,
               direction: 'west',
-              name: 'through the hidden door behind dusty tomes'
+              name: 'through the hidden door behind dusty tomes',
+              processing: false
             },
             {
               gameId: game.id,
               fromRoomId: garden.id,
               toRoomId: null,
               direction: 'up',
-              name: 'up the celestial pathway to the stars'
+              name: 'up the celestial pathway to the stars',
+              processing: false
             }
           ]
         });

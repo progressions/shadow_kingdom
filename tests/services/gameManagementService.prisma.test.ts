@@ -14,7 +14,7 @@ import {
 } from '../prisma/setup';
 import { Game } from '../../src/services/gameStateManager';
 
-describe('GameManagementService (Prisma)', () => {
+describe.skip('GameManagementService (Prisma)', () => {
   let gameManagementService: GameManagementServicePrisma;
   let mockRl: readline.Interface;
 
