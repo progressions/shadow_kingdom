@@ -44,8 +44,13 @@ export class ItemService {
    * @returns Item or null if not found
    */
   async getItem(id: number): Promise<Item | null> {
-    const result = await this.db.get<Item>('SELECT * FROM items WHERE id = ?', [id]);
-    return result || null;
+    const result = await this.db.get<any>('SELECT * FROM items WHERE id = ?', [id]);
+    if (!result) return null;
+    
+    return {
+      ...result,
+      stackable: Boolean(result.stackable)
+    };
   }
 
   /**
@@ -53,7 +58,11 @@ export class ItemService {
    * @returns Array of all items
    */
   async listItems(): Promise<Item[]> {
-    return await this.db.all<Item>('SELECT * FROM items ORDER BY name');
+    const results = await this.db.all<any>('SELECT * FROM items ORDER BY name');
+    return results.map(result => ({
+      ...result,
+      stackable: Boolean(result.stackable)
+    }));
   }
 
   // ============================================================================
