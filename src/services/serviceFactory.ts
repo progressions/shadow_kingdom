@@ -8,6 +8,7 @@ import { GameManagementService } from './gameManagementService';
 import { RegionService } from './regionService';
 import { RoomGenerationService } from './roomGenerationService';
 import { BackgroundGenerationService } from './backgroundGenerationService';
+import { ItemService } from './itemService';
 
 // Import Prisma services
 import { GameStateManagerPrisma } from './gameStateManager.prisma';
@@ -26,6 +27,7 @@ export interface ServiceInstances {
   regionService: RegionService | RegionServicePrisma;
   roomGenerationService: RoomGenerationService | RoomGenerationServicePrisma;
   backgroundGenerationService: BackgroundGenerationService | BackgroundGenerationServicePrisma;
+  itemService: ItemService;
 }
 
 /**
@@ -70,6 +72,7 @@ export class ServiceFactory {
     const gameStateManager = new GameStateManager(db, options, tui);
     const gameManagementService = new GameManagementService(db, tui, options);
     const regionService = new RegionService(db, options);
+    const itemService = new ItemService(db);
     
     // Room generation service depends on region service
     const roomGenerationService = new RoomGenerationService(
@@ -91,7 +94,8 @@ export class ServiceFactory {
       gameManagementService,
       regionService,
       roomGenerationService,
-      backgroundGenerationService
+      backgroundGenerationService,
+      itemService
     };
   }
 
@@ -107,6 +111,8 @@ export class ServiceFactory {
     const gameStateManager = new GameStateManagerPrisma(options);
     const gameManagementService = new GameManagementServicePrisma(tui, options);
     const regionService = new RegionServicePrisma(options);
+    // Note: ItemService only has legacy implementation for now
+    const itemService = new ItemService(new Database('placeholder')); // TODO: Create Prisma version
     
     // Room generation service depends on region service
     const roomGenerationService = new RoomGenerationServicePrisma(
@@ -126,7 +132,8 @@ export class ServiceFactory {
       gameManagementService,
       regionService,
       roomGenerationService,
-      backgroundGenerationService
+      backgroundGenerationService,
+      itemService
     };
   }
 
