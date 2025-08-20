@@ -129,6 +129,7 @@ export class GameController {
       description: 'Quit Shadow Kingdom (alias for "exit")',
       handler: () => this.exit()
     });
+
   }
 
   private setupGameCommands() {
@@ -244,6 +245,7 @@ export class GameController {
       description: 'Quit to main menu (alias for "exit")',
       handler: async () => await this.returnToMenu()
     });
+
 
     this.commandRouter.addGameCommand({
       name: 'menu',
@@ -748,7 +750,9 @@ export class GameController {
 
   private async exit() {
     await this.cleanup();
+    this.tui.display('Goodbye!', MessageType.SYSTEM);
     this.tui.destroy();
+    process.exit(0);
   }
 
 
