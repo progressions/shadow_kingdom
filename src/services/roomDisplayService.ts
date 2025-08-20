@@ -1,5 +1,5 @@
 import { Room, Connection } from './gameStateManager';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
 export interface RoomDisplayOptions {

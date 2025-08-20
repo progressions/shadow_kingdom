@@ -1,8 +1,8 @@
 import Database from './database';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
-export async function initializeDatabase(db: Database, tui?: TUIManager): Promise<void> {
+export async function initializeDatabase(db: Database, tui?: TUIInterface): Promise<void> {
   try {
     // Create games table
     await db.run(`
@@ -128,7 +128,7 @@ export async function initializeDatabase(db: Database, tui?: TUIManager): Promis
   }
 }
 
-export async function migrateExistingData(db: Database, tui?: TUIManager): Promise<void> {
+export async function migrateExistingData(db: Database, tui?: TUIInterface): Promise<void> {
   try {
     // Check if the old schema exists (rooms table without game_id column)
     const hasOldSchema = await db.get<{ count: number }>(
@@ -202,7 +202,7 @@ export async function migrateExistingData(db: Database, tui?: TUIManager): Promi
 }
 
 
-async function ensureConnectionDirectionColumn(db: Database, tui?: TUIManager): Promise<void> {
+async function ensureConnectionDirectionColumn(db: Database, tui?: TUIInterface): Promise<void> {
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
@@ -253,7 +253,7 @@ async function ensureConnectionDirectionColumn(db: Database, tui?: TUIManager): 
   }
 }
 
-async function ensureRegionColumns(db: Database, tui?: TUIManager): Promise<void> {
+async function ensureRegionColumns(db: Database, tui?: TUIInterface): Promise<void> {
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
@@ -303,7 +303,7 @@ async function ensureRegionColumns(db: Database, tui?: TUIManager): Promise<void
   }
 }
 
-async function ensureNullableToRoomId(db: Database, tui?: TUIManager): Promise<void> {
+async function ensureNullableToRoomId(db: Database, tui?: TUIInterface): Promise<void> {
   try {
     // Skip complex table recreation for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
@@ -374,7 +374,7 @@ async function ensureNullableToRoomId(db: Database, tui?: TUIManager): Promise<v
   }
 }
 
-async function ensureProcessingColumn(db: Database, tui?: TUIManager): Promise<void> {
+async function ensureProcessingColumn(db: Database, tui?: TUIInterface): Promise<void> {
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
@@ -418,7 +418,7 @@ function generateTimestampGameName(): string {
 /**
  * Create a new game with rooms using timestamp-based name
  */
-export async function createGameWithRooms(db: Database, customName?: string, tui?: TUIManager): Promise<number> {
+export async function createGameWithRooms(db: Database, customName?: string, tui?: TUIInterface): Promise<number> {
   const gameName = customName || generateTimestampGameName();
   try {
     // Create the new game
@@ -618,11 +618,11 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
 /**
  * Create a new game automatically with timestamp name - no user input required
  */
-export async function createGameAutomatic(db: Database, tui?: TUIManager): Promise<number> {
+export async function createGameAutomatic(db: Database, tui?: TUIInterface): Promise<number> {
   return await createGameWithRooms(db, undefined, tui); // Uses timestamp name by default
 }
 
-export async function seedDatabase(db: Database, tui?: TUIManager): Promise<void> {
+export async function seedDatabase(db: Database, tui?: TUIInterface): Promise<void> {
   try {
     // Check if any games already exist
     const existingGames = await db.get<{ count: number }>(

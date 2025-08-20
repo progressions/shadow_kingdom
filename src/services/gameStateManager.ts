@@ -1,6 +1,6 @@
 import Database from '../utils/database';
 import { GameContext } from '../nlp/types';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
 
@@ -61,9 +61,9 @@ export class GameStateManager {
   private currentRoomId: number | null = null;
   private recentCommands: string[] = [];
   private options: GameStateManagerOptions;
-  private tui?: TUIManager;
+  private tui?: TUIInterface;
 
-  constructor(db: Database, options: GameStateManagerOptions = {}, tui?: TUIManager) {
+  constructor(db: Database, options: GameStateManagerOptions = {}, tui?: TUIInterface) {
     this.db = db;
     this.tui = tui;
     this.options = {

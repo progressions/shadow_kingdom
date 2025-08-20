@@ -1,14 +1,14 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
 export class Database {
   private db: sqlite3.Database | null = null;
   private dbPath: string;
-  private tui?: TUIManager;
+  private tui?: TUIInterface;
 
-  constructor(dbName: string = 'data/db/shadow_kingdom.db', tui?: TUIManager) {
+  constructor(dbName: string = 'data/db/shadow_kingdom.db', tui?: TUIInterface) {
     // Handle special :memory: database - don't treat as file path
     this.tui = tui;
     if (dbName === ':memory:') {
@@ -129,7 +129,7 @@ export class Database {
   /**
    * Set TUI for displaying messages instead of console output
    */
-  setTUI(tui: TUIManager): void {
+  setTUI(tui: TUIInterface): void {
     this.tui = tui;
   }
 }

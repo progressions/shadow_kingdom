@@ -1,7 +1,7 @@
 import Database from '../utils/database';
 import { initializeDatabase, createGameWithRooms, createGameAutomatic } from '../utils/initDb';
 import { Game } from './gameStateManager';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
 export interface GameManagementOptions {
@@ -25,7 +25,7 @@ export class GameManagementService {
 
   constructor(
     private db: Database,
-    private tui: TUIManager,
+    private tui: TUIInterface,
     options: GameManagementOptions = {}
   ) {
     this.options = {

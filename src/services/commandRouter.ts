@@ -1,6 +1,6 @@
 import { UnifiedNLPEngine } from '../nlp/unifiedNLPEngine';
 import { GameContext, NLPResult } from '../nlp/types';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
 export interface Command {
@@ -26,9 +26,9 @@ export class CommandRouter {
   private commands: Map<string, Command> = new Map();
   private nlpEngine: UnifiedNLPEngine;
   private options: CommandRouterOptions;
-  private tui: TUIManager | null;
+  private tui: TUIInterface | null;
 
-  constructor(nlpEngine: UnifiedNLPEngine, tui: TUIManager | null = null, options: CommandRouterOptions = {}) {
+  constructor(nlpEngine: UnifiedNLPEngine, tui: TUIInterface | null = null, options: CommandRouterOptions = {}) {
     this.nlpEngine = nlpEngine;
     this.tui = tui;
     this.options = {
