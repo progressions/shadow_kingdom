@@ -428,58 +428,51 @@ This specification outlines the detailed implementation plan for the Shadow King
 
 ---
 
-### Phase 7: Weight System
-**Objective**: Implement carrying capacity based on character strength.
+### Phase 7: Simple Item Count Limit System
+**Objective**: Implement a configurable item count limit for inventory (default: 10 items).
 
-#### Step 26: Add weight to items
-- **Database**: Weight column already exists in schema
-- **Seed data**: Update seed items with realistic weights
-- **Test**: Verify all items have weight values
+#### Step 26: Add environment configuration
+- **File**: `.env` or environment variables
+- **Setting**: `MAX_INVENTORY_ITEMS=10` (default)
+- **Test**: Verify configuration loading
 
-#### Step 27: Implement carrying capacity
+#### Step 27: Implement item count methods
 - **File**: `src/services/itemService.ts`
 - **Methods**:
   ```typescript
-  calculateCarryingCapacity(strength: number): number {
-    const baseCapacity = 50; // pounds
-    const strModifier = Math.floor((strength - 10) / 2);
-    return baseCapacity + (strModifier * 10);
+  getMaxInventoryItems(): number {
+    return parseInt(process.env.MAX_INVENTORY_ITEMS || '10');
   }
 
-  async getCurrentWeight(characterId: number): Promise<number> {
+  async getInventoryItemCount(characterId: number): Promise<number> {
     const inventory = await this.getCharacterInventory(characterId);
-    return inventory.reduce((total, invItem) => 
-      total + (invItem.item.weight * invItem.quantity), 0
-    );
+    return inventory.length; // Count distinct items, not quantities
   }
 
-  getEncumbranceLevel(currentWeight: number, maxCapacity: number): string {
-    const ratio = currentWeight / maxCapacity;
-    if (ratio <= 0.5) return 'unencumbered';
-    if (ratio <= 0.75) return 'lightly encumbered';
-    if (ratio <= 1.0) return 'heavily encumbered';
-    return 'overloaded';
+  async canAddItemToInventory(characterId: number): Promise<boolean> {
+    const currentCount = await this.getInventoryItemCount(characterId);
+    return currentCount < this.getMaxInventoryItems();
   }
   ```
 
-#### Step 28: Add weight validation
+#### Step 28: Add item count validation
 - **File**: `src/gameController.ts`
-- **Modification**: Update handlePickup to check weight limits
-- **Logic**: Prevent pickup if item would exceed carrying capacity
-- **Test**: Verify overweight prevention
+- **Modification**: Update handlePickup to check item count limits
+- **Logic**: Prevent pickup if inventory would exceed max items
+- **Test**: Verify item limit prevention
 
-#### Step 29: Display weight in inventory
+#### Step 29: Display item count in inventory
 - **File**: `src/gameController.ts`
-- **Modification**: Update handleInventory to show weight
-- **Format**: "Weight: 23.5 / 70 lbs (Unencumbered)"
-- **Test**: Verify weight display
+- **Modification**: Update handleInventory to show item count
+- **Format**: "Items: 7/10"
+- **Test**: Verify item count display
 
 #### Step 30: Add test coverage
 - **Tests**:
-  - Carrying capacity calculation
-  - Weight validation on pickup
-  - Encumbrance level calculation
-  - Weight display in inventory
+  - Item count calculation
+  - Item limit validation on pickup
+  - Environment variable configuration
+  - Item count display in inventory
 
 ---
 
