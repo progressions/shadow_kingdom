@@ -101,7 +101,7 @@ export class TUIManager {
           }
         }
       },
-      inputOnFocus: false,  // Disable auto-echo but we'll manually start input
+      inputOnFocus: false,  // Disable auto-input to prevent duplication
       keys: true,
       mouse: true,
       tags: true,
@@ -137,9 +137,8 @@ export class TUIManager {
     this.screen.append(this.inputBox);
     this.screen.append(this.statusBox);
     
-    // Focus the input box initially and start input mode
+    // Focus the input box initially
     this.inputBox.focus();
-    this.inputBox.readInput();  // Start input mode to show cursor immediately
   }
 
   /**
@@ -167,10 +166,10 @@ export class TUIManager {
       this.screen.render();
     });
     
-    // Input handling
-    this.inputBox.on('submit', (value: string) => {
-      this.handleInput(value);
-    });
+    // Input handling - we'll handle this manually in readInput callback
+    // this.inputBox.on('submit', (value: string) => {
+    //   this.handleInput(value);
+    // });
     
     // Handle terminal resize
     this.screen.on('resize', () => {
@@ -187,7 +186,7 @@ export class TUIManager {
     const command = value.trim();
     
     if (command) {
-      // Echo the command
+      // Re-enable command echo since we disabled inputOnFocus
       this.display(`${this.inputPrompt}${command}`, MessageType.COMMAND_ECHO);
       
       // Save to history
@@ -273,7 +272,17 @@ export class TUIManager {
       
       // Ensure input box is focused and ready
       this.inputBox.focus();
-      this.inputBox.readInput();  // Manually start input mode to show cursor
+      
+      // Manually set a visual indicator for input readiness
+      this.inputBox.setValue(''); // Clear any existing value
+      
+      // Force the textbox into input mode for cursor visibility
+      this.inputBox.readInput(() => {
+        // This callback is called when input is submitted
+        const value = this.inputBox.getValue();
+        this.handleInput(value);
+      });
+      
       this.screen.render();
     });
   }
