@@ -141,6 +141,7 @@ export async function migrateExistingData(db: Database, tui?: TUIManager): Promi
       if (tui) {
         tui.display('Migrating database from old schema...', MessageType.SYSTEM);
       } else {
+        console.log('Migrating database from old schema...');
       }
       
       // Check if there are existing rooms to migrate
@@ -152,6 +153,7 @@ export async function migrateExistingData(db: Database, tui?: TUIManager): Promi
         if (tui) {
           tui.display('No existing data to migrate', MessageType.SYSTEM);
         } else {
+          console.log('No existing data to migrate');
         }
         return;
       }
@@ -185,17 +187,20 @@ export async function migrateExistingData(db: Database, tui?: TUIManager): Promi
       if (tui) {
         tui.display('Data migration completed successfully', MessageType.SYSTEM);
       } else {
+        console.log('Data migration completed successfully');
       }
     } else {
       if (tui) {
         tui.display('Database already has new schema, no migration needed', MessageType.SYSTEM);
       } else {
+        console.log('Database already has new schema, no migration needed');
       }
     }
   } catch (error) {
     if (tui) {
       tui.display(`Error migrating existing data: ${error}`, MessageType.ERROR);
     } else {
+      console.error('Error migrating existing data:', error);
     }
     throw error;
   }
@@ -209,6 +214,7 @@ async function ensureConnectionDirectionColumn(db: Database, tui?: TUIManager): 
       if (tui) {
         tui.display('Skipping direction column migration for in-memory database', MessageType.SYSTEM);
       } else {
+        console.log('Skipping direction column migration for in-memory database');
       }
       return;
     }
@@ -223,6 +229,7 @@ async function ensureConnectionDirectionColumn(db: Database, tui?: TUIManager): 
       if (tui) {
         tui.display('Adding direction column to connections table...', MessageType.SYSTEM);
       } else {
+        console.log('Adding direction column to connections table...');
       }
       
       // Add the direction column
@@ -242,12 +249,14 @@ async function ensureConnectionDirectionColumn(db: Database, tui?: TUIManager): 
       if (tui) {
         tui.display('direction column added and existing connections migrated successfully', MessageType.SYSTEM);
       } else {
+        console.log('direction column added and existing connections migrated successfully');
       }
     }
   } catch (error) {
     if (tui) {
       tui.display(`Error ensuring direction column: ${error}`, MessageType.ERROR);
     } else {
+      console.error('Error ensuring direction column:', error);
     }
     throw error;
   }
@@ -257,6 +266,7 @@ async function ensureRegionColumns(db: Database, tui?: TUIManager): Promise<void
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
+      console.log('Skipping region column migration for in-memory database');
       return;
     }
 
@@ -267,6 +277,7 @@ async function ensureRegionColumns(db: Database, tui?: TUIManager): Promise<void
     `);
 
     if (!regionIdExists || regionIdExists.count === 0) {
+      console.log('Adding region_id column to rooms table...');
       await db.run('ALTER TABLE rooms ADD COLUMN region_id INTEGER');
     }
 
@@ -277,6 +288,7 @@ async function ensureRegionColumns(db: Database, tui?: TUIManager): Promise<void
     `);
 
     if (!regionDistanceExists || regionDistanceExists.count === 0) {
+      console.log('Adding region_distance column to rooms table...');
       await db.run('ALTER TABLE rooms ADD COLUMN region_distance INTEGER');
     }
 
@@ -298,7 +310,9 @@ async function ensureRegionColumns(db: Database, tui?: TUIManager): Promise<void
         END
     `);
 
+    console.log('Region columns and triggers ensured successfully');
   } catch (error) {
+    console.error('Error ensuring region columns:', error);
     throw error;
   }
 }
@@ -307,6 +321,7 @@ async function ensureNullableToRoomId(db: Database, tui?: TUIManager): Promise<v
   try {
     // Skip complex table recreation for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
+      console.log('Skipping connection migration for in-memory database');
       return;
     }
 
@@ -317,6 +332,7 @@ async function ensureNullableToRoomId(db: Database, tui?: TUIManager): Promise<v
     
     // If the column exists and is marked as NOT NULL, we need to migrate
     if (toRoomIdColumn && toRoomIdColumn.notnull === 1) {
+      console.log('Migrating connections table to allow NULL to_room_id...');
       
       // SQLite requires recreating the table to remove NOT NULL constraint
       await db.run('PRAGMA foreign_keys=off');
@@ -349,6 +365,7 @@ async function ensureNullableToRoomId(db: Database, tui?: TUIManager): Promise<v
       
       await db.run('PRAGMA foreign_keys=on');
       
+      console.log('Connections table migrated successfully');
     }
     
     // Add optimized indexes for connection-based generation
@@ -369,7 +386,9 @@ async function ensureNullableToRoomId(db: Database, tui?: TUIManager): Promise<v
       ON connections(from_room_id, direction, name)
     `);
     
+    console.log('Connection table migration and indexes ensured successfully');
   } catch (error) {
+    console.error('Error ensuring nullable to_room_id:', error);
     throw error;
   }
 }
@@ -378,6 +397,7 @@ async function ensureProcessingColumn(db: Database, tui?: TUIManager): Promise<v
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
+      console.log('Skipping processing column migration for in-memory database');
       return;
     }
 
@@ -388,6 +408,7 @@ async function ensureProcessingColumn(db: Database, tui?: TUIManager): Promise<v
     `);
 
     if (!processingColumnExists || processingColumnExists.count === 0) {
+      console.log('Adding processing column to connections table...');
       
       // Add the processing column with default FALSE
       await db.run('ALTER TABLE connections ADD COLUMN processing BOOLEAN DEFAULT FALSE');
@@ -401,8 +422,10 @@ async function ensureProcessingColumn(db: Database, tui?: TUIManager): Promise<v
         ON connections(game_id, from_room_id, processing) WHERE to_room_id IS NULL
       `);
       
+      console.log('Processing column added and existing connections migrated successfully');
     }
   } catch (error) {
+    console.error('Error ensuring processing column:', error);
     throw error;
   }
 }
@@ -630,12 +653,15 @@ export async function seedDatabase(db: Database, tui?: TUIManager): Promise<void
     );
 
     if (existingGames && existingGames.count > 0) {
+      console.log('Database already contains games, skipping seed');
       return;
     }
 
     // Create a default game with the initial world
     await createGameWithRooms(db, 'Demo Game');
+    console.log('Database seeded with demo game');
   } catch (error) {
+    console.error('Error seeding database:', error);
     throw error;
   }
 }
