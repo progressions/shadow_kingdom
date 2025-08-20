@@ -101,7 +101,7 @@ export class TUIManager {
           }
         }
       },
-      inputOnFocus: false,  // Disable auto-input to prevent duplication
+      inputOnFocus: false,  // Prevent duplication
       keys: true,
       mouse: true,
       tags: true,
@@ -181,7 +181,7 @@ export class TUIManager {
     const command = value.trim();
     
     if (command) {
-      // Re-enable command echo since we disabled inputOnFocus
+      // Echo command since inputOnFocus: false doesn't display it
       this.display(`${this.inputPrompt}${command}`, MessageType.COMMAND_ECHO);
       
       // Save to history
@@ -268,16 +268,10 @@ export class TUIManager {
       // Ensure input box is focused and ready
       this.inputBox.focus();
       
-      // Add a simple visual cursor indicator
-      this.inputBox.setValue('▌'); // Use a visual cursor character
+      // Start reading input immediately to avoid needing enter first
+      this.inputBox.readInput();
       
       this.screen.render();
-      
-      // Remove the visual cursor after a short delay and clear the field
-      setTimeout(() => {
-        this.inputBox.setValue('');
-        this.screen.render();
-      }, 500);
     });
   }
 

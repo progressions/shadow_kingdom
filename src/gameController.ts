@@ -43,7 +43,7 @@ export class GameController {
   private regionService!: ServiceInstances['regionService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
-  constructor(db: Database) {
+  constructor(db: Database, tui?: TUIManager) {
     this.db = db;
     this.grokClient = new GrokClient();
     
@@ -57,11 +57,6 @@ export class GameController {
     const config = applyEnvironmentOverrides(baseConfig);
     this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config);
     
-    // Initialize command router
-    this.commandRouter = new CommandRouter(this.nlpEngine, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
-    
     // Initialize room display service
     this.roomDisplayService = new RoomDisplayService({
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
@@ -71,11 +66,24 @@ export class GameController {
     const maxHistorySize = parseInt(process.env.COMMAND_HISTORY_SIZE || '100');
     this.historyManager = new HistoryManager(process.env.COMMAND_HISTORY_FILE, maxHistorySize);
     
-    // Initialize services immediately for backward compatibility with tests
-    this.initializeServices();
+    // Initialize TUI (use provided TUI or create new one)
+    // In test environment, create a mock TUI to avoid blessed.js TTY requirements
+    if (tui) {
+      this.tui = tui;
+    } else if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+      // Create a minimal mock TUI for tests
+      this.tui = this.createMockTUI();
+    } else {
+      this.tui = new TUIManager();
+    }
     
-    // Initialize TUI
-    this.tui = new TUIManager();
+    // Initialize command router (after TUI is available)
+    this.commandRouter = new CommandRouter(this.nlpEngine, this.tui, {
+      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+    });
+    
+    // Initialize services after command router is ready
+    this.initializeServices();
   }
 
   private setupMenuCommands() {
@@ -107,7 +115,7 @@ export class GameController {
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
-        console.clear();
+        this.tui.clear();
         this.showWelcome();
       }
     });
@@ -851,6 +859,26 @@ export class GameController {
    */
   public getCurrentSession() {
     return this.gameStateManager.getCurrentSession();
+  }
+
+  /**
+   * Create a mock TUI for testing that doesn't use blessed.js
+   */
+  private createMockTUI(): any {
+    return {
+      initialize: async () => {},
+      display: () => {},
+      displayLines: () => {},
+      showWelcome: () => {},
+      getInput: () => Promise.resolve(''),
+      updateStatus: () => {},
+      clear: () => {},
+      destroy: () => {},
+      setPrompt: () => {},
+      setStatus: () => {},
+      showRoom: () => {},
+      showAIProgress: () => {}
+    };
   }
 
   /**

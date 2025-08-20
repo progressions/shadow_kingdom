@@ -1,0 +1,94 @@
+// Shadow Kingdom Prisma Schema
+// This schema matches the existing SQLite database structure
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  createdAt    DateTime @default(now()) @map("created_at")
+  lastPlayedAt DateTime @default(now()) @map("last_played_at")
+
+  rooms       Room[]
+  connections Connection[]
+  gameState   GameState?
+  regions     Region[]
+
+  @@map("games")
+}
+
+model Room {
+  id             Int    @id @default(autoincrement())
+  gameId         Int    @map("game_id")
+  name           String
+  description    String
+  regionId       Int?   @map("region_id")
+  regionDistance Int?   @map("region_distance")
+
+  game   Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  region Region? @relation(fields: [regionId], references: [id])
+
+  connectionsFrom Connection[] @relation("FromRoom")
+  connectionsTo   Connection[] @relation("ToRoom")
+  gameStates      GameState[]
+
+  @@index([gameId])
+  @@index([regionId])
+  @@map("rooms")
+}
+
+model Connection {
+  id         Int     @id @default(autoincrement())
+  gameId     Int     @map("game_id")
+  fromRoomId Int     @map("from_room_id")
+  toRoomId   Int?    @map("to_room_id")
+  direction  String?
+  name       String
+  processing Boolean @default(false)
+
+  game     Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  fromRoom Room  @relation("FromRoom", fields: [fromRoomId], references: [id])
+  toRoom   Room? @relation("ToRoom", fields: [toRoomId], references: [id])
+
+  @@index([gameId])
+  @@index([fromRoomId, direction, name])
+  @@index([gameId, fromRoomId])
+  @@index([gameId, fromRoomId, processing])
+  @@map("connections")
+}
+
+model GameState {
+  id            Int     @id @default(autoincrement())
+  gameId        Int     @unique @map("game_id")
+  currentRoomId Int     @map("current_room_id")
+  playerName    String? @map("player_name")
+
+  game        Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  currentRoom Room @relation(fields: [currentRoomId], references: [id])
+
+  @@map("game_state")
+}
+
+model Region {
+  id           Int      @id @default(autoincrement())
+  gameId       Int      @map("game_id")
+  name         String?
+  type         String
+  description  String
+  centerRoomId Int?     @map("center_room_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  game  Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  rooms Room[]
+
+  @@index([gameId])
+  @@map("regions")
+}

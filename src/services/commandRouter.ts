@@ -1,5 +1,7 @@
 import { UnifiedNLPEngine } from '../nlp/unifiedNLPEngine';
 import { GameContext, NLPResult } from '../nlp/types';
+import { TUIManager } from '../ui/TUIManager';
+import { MessageType } from '../ui/MessageFormatter';
 
 export interface Command {
   name: string;
@@ -28,9 +30,11 @@ export class CommandRouter {
   private gameCommands: Map<string, Command> = new Map();
   private nlpEngine: UnifiedNLPEngine;
   private options: CommandRouterOptions;
+  private tui: TUIManager | null;
 
-  constructor(nlpEngine: UnifiedNLPEngine, options: CommandRouterOptions = {}) {
+  constructor(nlpEngine: UnifiedNLPEngine, tui: TUIManager | null = null, options: CommandRouterOptions = {}) {
     this.nlpEngine = nlpEngine;
+    this.tui = tui;
     this.options = {
       enableDebugLogging: false,
       ...options
@@ -77,7 +81,11 @@ export class CommandRouter {
         await exactCommand.handler(args);
         return true;
       } catch (error) {
-        console.error(`Error executing command "${commandName}":`, error);
+        if (this.tui) {
+          this.tui.display(`Error executing command "${commandName}": ${error}`, MessageType.ERROR);
+        } else {
+          console.error(`Error executing command "${commandName}":`, error);
+        }
         return false;
       }
     }
@@ -91,11 +99,19 @@ export class CommandRouter {
     }
 
     // If neither exact nor NLP matching worked, show error
-    console.log(`Unknown command: ${commandName}. Type "help" for available commands.`);
+    if (this.tui) {
+      this.tui.display(`Unknown command: ${commandName}. Type "help" for available commands.`, MessageType.ERROR);
+    } else {
+      console.log(`Unknown command: ${commandName}. Type "help" for available commands.`);
+    }
     
     // In debug mode, show NLP analysis
     if (this.isDebugEnabled() && nlpResult) {
-      console.log(`🧠 NLP attempted: "${nlpResult.action}" but command not found in ${context.mode} mode`);
+      if (this.tui) {
+        this.tui.display(`🧠 NLP attempted: "${nlpResult.action}" but command not found in ${context.mode} mode`, MessageType.SYSTEM);
+      } else {
+        console.log(`🧠 NLP attempted: "${nlpResult.action}" but command not found in ${context.mode} mode`);
+      }
     }
     
     return false;
@@ -115,15 +131,27 @@ export class CommandRouter {
       try {
         if (this.isDebugEnabled()) {
           const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
-          console.log(`${sourceIcon} NLP: "${originalInput}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)}, source: ${nlpResult.source})`);
-          if (nlpResult.reasoning) {
-            console.log(`   Reasoning: ${nlpResult.reasoning}`);
+          const debugMessage = `${sourceIcon} NLP: "${originalInput}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)}, source: ${nlpResult.source})`;
+          if (this.tui) {
+            this.tui.display(debugMessage, MessageType.SYSTEM);
+            if (nlpResult.reasoning) {
+              this.tui.display(`   Reasoning: ${nlpResult.reasoning}`, MessageType.SYSTEM);
+            }
+          } else {
+            console.log(debugMessage);
+            if (nlpResult.reasoning) {
+              console.log(`   Reasoning: ${nlpResult.reasoning}`);
+            }
           }
         }
         await resolvedCommand.handler(nlpResult.params);
         return true;
       } catch (error) {
-        console.error(`Error executing NLP-resolved command "${nlpResult.action}":`, error);
+        if (this.tui) {
+          this.tui.display(`Error executing NLP-resolved command "${nlpResult.action}": ${error}`, MessageType.ERROR);
+        } else {
+          console.error(`Error executing NLP-resolved command "${nlpResult.action}":`, error);
+        }
         return false;
       }
     }
@@ -138,14 +166,26 @@ export class CommandRouter {
     const commands = this.getCommands(mode);
     const title = mode === 'menu' ? 'Main Menu Commands:' : 'Available commands:';
     
-    console.log(`\n${title}`);
-    console.log('==================');
-    
-    commands.forEach((command) => {
-      console.log(`  ${command.name.padEnd(12)} - ${command.description}`);
-    });
-    
-    console.log('\nPress Ctrl+C or type "exit" to quit.\n');
+    if (this.tui) {
+      const tui = this.tui; // Store reference for forEach
+      tui.display(title, MessageType.SYSTEM);
+      tui.display('==================', MessageType.SYSTEM);
+      
+      commands.forEach((command) => {
+        tui.display(`  ${command.name.padEnd(12)} - ${command.description}`);
+      });
+      
+      tui.display('Press Ctrl+C or type "exit" to quit.', MessageType.SYSTEM);
+    } else {
+      console.log(`\n${title}`);
+      console.log('==================');
+      
+      commands.forEach((command) => {
+        console.log(`  ${command.name.padEnd(12)} - ${command.description}`);
+      });
+      
+      console.log('\nPress Ctrl+C or type "exit" to quit.\n');
+    }
   }
 
   /**

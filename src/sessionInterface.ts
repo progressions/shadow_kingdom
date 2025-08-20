@@ -110,7 +110,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
-    const commandRouter = new CommandRouter(nlpEngine, {
+    const commandRouter = new CommandRouter(nlpEngine, null, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
