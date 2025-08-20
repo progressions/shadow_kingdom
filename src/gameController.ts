@@ -472,19 +472,10 @@ export class GameController {
   }
 
   private async startNewGame() {
-    this.tui.display('Starting a new game...', MessageType.SYSTEM);
-    this.tui.display('Enter a name for your new game:', MessageType.SYSTEM);
+    this.tui.display('Creating a new adventure...', MessageType.SYSTEM);
     
-    // Get game name from user via TUI
-    const gameName = await this.tui.getInput();
-    
-    if (!gameName.trim()) {
-      this.tui.display('Game name cannot be empty.', MessageType.ERROR);
-      return;
-    }
-    
-    // Create game with the provided name
-    const result = await this.gameManagementService.createGameWithName(gameName.trim());
+    // Create game automatically with timestamp name - no user input required
+    const result = await this.gameManagementService.createGameAutomatic();
     
     if (!result.success) {
       this.tui.display(result.error || 'Failed to create new adventure.', MessageType.ERROR);
