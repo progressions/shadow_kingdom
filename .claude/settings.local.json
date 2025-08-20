@@ -80,7 +80,9 @@
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
       "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"new\" --start-session)",
-      "Bash(AI_MOCK_MODE=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"new\" --start-session)"
+      "Bash(AI_MOCK_MODE=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"new\" --start-session)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma migrate reset:*)"
     ],
     "deny": [],
     "ask": []
