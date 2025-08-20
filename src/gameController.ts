@@ -311,18 +311,55 @@ export class GameController {
         };
       }
       
-      // Get basic game info
+      // Get basic game info (synchronously for now)
       const gameState: TUIGameState = {
-        mode: 'game',
-        gameName: 'Current Game', // TODO: Get actual game name
-        roomCount: 0 // TODO: Get actual room count
+        mode: 'game'
       };
+      
+      // Fetch game data asynchronously and update later
+      this.updateGameStateAsync(session.gameId, gameState);
       
       return gameState;
     } catch (error) {
       return {
         mode: 'menu'
       };
+    }
+  }
+
+  private async updateGameStateAsync(gameId: number, gameState: TUIGameState): Promise<void> {
+    try {
+      // Get game name
+      const game = await this.gameManagementService.getGameById(gameId);
+      if (game) {
+        gameState.gameName = game.name;
+      }
+      
+      // Get room count
+      const roomCountResult = await this.db.get<{ count: number }>(
+        'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+        [gameId]
+      );
+      if (roomCountResult) {
+        gameState.roomCount = roomCountResult.count;
+      }
+      
+      // Get current room name
+      const session = this.gameStateManager.getCurrentSession();
+      if (session.roomId) {
+        const room = await this.db.get<{ name: string }>(
+          'SELECT name FROM rooms WHERE id = ?',
+          [session.roomId]
+        );
+        if (room) {
+          gameState.currentRoomName = room.name;
+        }
+      }
+      
+      // Update the TUI display
+      this.tui.updateStatus(gameState);
+    } catch (error) {
+      // Silent fail - status will just show basic info
     }
   }
 
@@ -355,9 +392,9 @@ export class GameController {
     if (this.commandState.isProcessing && !allowedDuringProcessing.includes(commandName)) {
       const elapsed = Date.now() - (this.commandState.startTime || 0);
       const elapsedSeconds = Math.floor(elapsed / 1000);
-      console.log(`⏳ Please wait for the current command to complete... (${elapsedSeconds}s elapsed)`);
-      console.log(`📋 Processing: "${this.commandState.currentCommand}"`);
-      console.log(`💡 Tip: You can still type "quit" or "help" commands`);
+      this.tui.display(`⏳ Please wait for the current command to complete... (${elapsedSeconds}s elapsed)`, MessageType.SYSTEM);
+      this.tui.display(`📋 Processing: "${this.commandState.currentCommand}"`, MessageType.SYSTEM);
+      this.tui.display(`💡 Tip: You can still type "quit" or "help" commands`, MessageType.SYSTEM);
       return;
     }
 
@@ -441,12 +478,12 @@ export class GameController {
   }
 
   private async startNewGame() {
-    console.log('Starting a new game...\n');
+    this.tui.display('Starting a new game...', MessageType.SYSTEM);
     
     const result = await this.gameManagementService.createNewGame();
     
     if (!result.success) {
-      console.log(result.error || 'Failed to create new game. Returning to main menu.');
+      this.tui.display(result.error || 'Failed to create new game. Returning to main menu.', MessageType.ERROR);
       return;
     }
     
@@ -468,17 +505,17 @@ export class GameController {
   }
 
   private async loadGame() {
-    console.log('Loading existing games...\n');
+    this.tui.display('Loading existing games...', MessageType.SYSTEM);
     
     const result = await this.gameManagementService.selectGameFromList('load');
     
     if (!result.success) {
-      console.log(result.error || 'Failed to load game.');
+      this.tui.display(result.error || 'Failed to load game.', MessageType.ERROR);
       return;
     }
     
     if (result.cancelled) {
-      console.log('Cancelled.');
+      this.tui.display('Cancelled.', MessageType.SYSTEM);
       return;
     }
     
@@ -488,17 +525,17 @@ export class GameController {
   }
 
   private async deleteGame() {
-    console.log('Deleting games...\n');
+    this.tui.display('Deleting games...', MessageType.SYSTEM);
     
     const result = await this.gameManagementService.selectGameFromList('delete');
     
     if (!result.success) {
-      console.log(result.error || 'Failed to delete game.');
+      this.tui.display(result.error || 'Failed to delete game.', MessageType.ERROR);
       return;
     }
     
     if (result.cancelled) {
-      console.log('Cancelled.');
+      this.tui.display('Cancelled.', MessageType.SYSTEM);
       return;
     }
     
@@ -506,15 +543,15 @@ export class GameController {
       const deleteResult = await this.gameManagementService.deleteGameWithConfirmation(result.game);
       
       if (deleteResult.success) {
-        console.log(`Game "${result.game.name}" has been deleted.`);
+        this.tui.display(`Game "${result.game.name}" has been deleted.`, MessageType.SYSTEM);
       } else {
-        console.log(deleteResult.error || 'Deletion failed.');
+        this.tui.display(deleteResult.error || 'Deletion failed.', MessageType.ERROR);
       }
     }
   }
 
   private async returnToMenu() {
-    console.log('Returning to main menu...');
+    this.tui.display('Returning to main menu...', MessageType.SYSTEM);
     
     // End game session (automatically saves state)
     await this.gameStateManager.endGameSession();
@@ -614,6 +651,9 @@ export class GameController {
             
             // Show the new room
             await this.lookAround();
+            
+            // Update status display after room change
+            this.updateStatusDisplay();
             return;
           } else {
             // NLP resolved direction but no connection exists - try to generate room
@@ -629,21 +669,20 @@ export class GameController {
 
       // Check if connection needs room generation
       if (!connection.to_room_id) {
-        console.log(`\n🌟 Generating new room to the ${userInput}...`);
-        console.log('⏳ Please wait, this may take a moment...\n');
+        this.tui.showAIProgress('Generating new room', userInput);
         
         // Generate room synchronously for unfilled connection
         const unfilledConnection = connection as any; // Cast to allow null to_room_id
         const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
         
         if (!generationResult.success) {
-          console.log('❌ Failed to generate room. You cannot go that way.');
+          this.tui.display('❌ Failed to generate room. You cannot go that way.', MessageType.ERROR);
           return;
         }
         
         // Update connection with newly generated room
         connection.to_room_id = generationResult.roomId!;
-        console.log('✅ Room generation complete!\n');
+        this.tui.display('✅ Room generation complete!', MessageType.AI_GENERATION);
       }
       
       // Move to the new room using game state manager
@@ -651,6 +690,9 @@ export class GameController {
       
       // Show the new room
       await this.lookAround();
+      
+      // Update status display after room change
+      this.updateStatusDisplay();
       
     } catch (error) {
       console.error('Error moving:', error);
@@ -791,24 +833,24 @@ export class GameController {
     try {
       const session = this.gameStateManager.getCurrentSession();
       if (!session.gameId || !session.roomId) {
-        console.log('No active game session.');
+        this.tui.display('No active game session.', MessageType.SYSTEM);
         return;
       }
 
       const room = await this.db.get<any>('SELECT * FROM rooms WHERE id = ?', [session.roomId]);
       if (!room) {
-        console.log('Current room not found.');
+        this.tui.display('Current room not found.', MessageType.ERROR);
         return;
       }
 
       if (!room.region_id) {
-        console.log('Current room is not part of any region.');
+        this.tui.display('Current room is not part of any region.', MessageType.SYSTEM);
         return;
       }
 
       const region = await this.regionService.getRegion(room.region_id);
       if (!region) {
-        console.log('Region not found.');
+        this.tui.display('Region not found.', MessageType.ERROR);
         return;
       }
 
@@ -827,7 +869,7 @@ export class GameController {
         output += `Center: Not yet discovered\n`;
       }
       
-      console.log(output);
+      this.tui.display(output.trim());
     } catch (error) {
       console.error('Error showing region info:', error);
     }
@@ -840,14 +882,14 @@ export class GameController {
     try {
       const session = this.gameStateManager.getCurrentSession();
       if (!session.gameId) {
-        console.log('No active game session.');
+        this.tui.display('No active game session.', MessageType.SYSTEM);
         return;
       }
 
       const regions = await this.regionService.getRegionsForGame(session.gameId);
       
       if (regions.length === 0) {
-        console.log('No regions found in current game.');
+        this.tui.display('No regions found in current game.', MessageType.SYSTEM);
         return;
       }
 
@@ -861,7 +903,7 @@ export class GameController {
         output += `- ${region.name || region.type} (${region.type}): ${roomCount?.count || 0} rooms\n`;
       }
       
-      console.log(output);
+      this.tui.display(output.trim());
     } catch (error) {
       console.error('Error listing regions:', error);
     }
@@ -874,14 +916,14 @@ export class GameController {
     try {
       const session = this.gameStateManager.getCurrentSession();
       if (!session.gameId) {
-        console.log('No active game session.');
+        this.tui.display('No active game session.', MessageType.SYSTEM);
         return;
       }
 
       const stats = await this.regionService.getRegionStats(session.gameId);
       
       if (stats.length === 0) {
-        console.log('No regions found in current game.');
+        this.tui.display('No regions found in current game.', MessageType.SYSTEM);
         return;
       }
 
@@ -901,7 +943,7 @@ export class GameController {
         }
       }
       
-      console.log(output);
+      this.tui.display(output.trim());
     } catch (error) {
       console.error('Error showing region stats:', error);
     }
