@@ -635,4 +635,250 @@ describe('ItemService', () => {
       expect(retrievedItem.item.created_at).toBeDefined();
     });
   });
+
+  describe('Item Transfer (Phase 4)', () => {
+    let testRoomId: number;
+    let testItemId: number;
+    let characterId: number;
+
+    beforeEach(async () => {
+      // Create a test room
+      const roomResult = await db.run(`
+        INSERT INTO rooms (name, description, game_id, region_id)
+        VALUES ('Transfer Test Room', 'A room for testing transfers', 1, 1)
+      `);
+      testRoomId = roomResult.lastID!;
+
+      // Create a test item
+      const testItem = {
+        name: 'Transferable Item',
+        description: 'An item to test transfers',
+        type: ItemType.MISC,
+        weight: 1.0,
+        value: 50,
+        stackable: true,
+        max_stack: 10
+      };
+      testItemId = await itemService.createItem(testItem);
+
+      // Use game ID as character ID (matches our implementation)
+      characterId = 1;
+    });
+
+    test('should transfer item from room to character inventory', async () => {
+      // Place item in room first
+      await itemService.placeItemInRoom(testRoomId, testItemId, 3);
+
+      // Transfer 1 item to character inventory
+      await itemService.transferItemToInventory(characterId, testItemId, testRoomId, 1);
+
+      // Check that character inventory was created
+      const inventoryItem = await db.get(`
+        SELECT * FROM character_inventory 
+        WHERE character_id = ? AND item_id = ?
+      `, [characterId, testItemId]);
+
+      expect(inventoryItem).toBeDefined();
+      expect(inventoryItem.character_id).toBe(characterId);
+      expect(inventoryItem.item_id).toBe(testItemId);
+      expect(inventoryItem.quantity).toBe(1);
+
+      // Check that room item quantity was reduced
+      const roomItem = await db.get(`
+        SELECT * FROM room_items 
+        WHERE room_id = ? AND item_id = ?
+      `, [testRoomId, testItemId]);
+
+      expect(roomItem).toBeDefined();
+      expect(roomItem.quantity).toBe(2);
+    });
+
+    test('should completely remove item from room when all quantity transferred', async () => {
+      // Place item in room
+      await itemService.placeItemInRoom(testRoomId, testItemId, 2);
+
+      // Transfer all items
+      await itemService.transferItemToInventory(characterId, testItemId, testRoomId, 2);
+
+      // Check that room item was completely removed
+      const roomItem = await db.get(`
+        SELECT * FROM room_items 
+        WHERE room_id = ? AND item_id = ?
+      `, [testRoomId, testItemId]);
+
+      expect(roomItem).toBeUndefined();
+
+      // Check that character has all items
+      const inventoryItem = await db.get(`
+        SELECT * FROM character_inventory 
+        WHERE character_id = ? AND item_id = ?
+      `, [characterId, testItemId]);
+
+      expect(inventoryItem.quantity).toBe(2);
+    });
+
+    test('should stack items when character already has the item', async () => {
+      // Place items in room
+      await itemService.placeItemInRoom(testRoomId, testItemId, 5);
+
+      // Give character some items first
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, testItemId, 3]);
+
+      // Transfer more items
+      await itemService.transferItemToInventory(characterId, testItemId, testRoomId, 2);
+
+      // Check that inventory quantity was updated (stacked)
+      const inventoryItem = await db.get(`
+        SELECT * FROM character_inventory 
+        WHERE character_id = ? AND item_id = ?
+      `, [characterId, testItemId]);
+
+      expect(inventoryItem.quantity).toBe(5); // 3 + 2
+    });
+
+    test('should throw error when item not found in room', async () => {
+      await expect(
+        itemService.transferItemToInventory(characterId, testItemId, testRoomId, 1)
+      ).rejects.toThrow('Item not found in room');
+    });
+
+    test('should throw error when not enough quantity available', async () => {
+      // Place only 2 items in room
+      await itemService.placeItemInRoom(testRoomId, testItemId, 2);
+
+      // Try to transfer 3 items
+      await expect(
+        itemService.transferItemToInventory(characterId, testItemId, testRoomId, 3)
+      ).rejects.toThrow('Not enough quantity available in room');
+    });
+
+    test('should handle transfer of non-stackable items', async () => {
+      // Create a non-stackable item
+      const nonStackableItem = await itemService.createItem({
+        name: 'Unique Sword',
+        description: 'A unique sword',
+        type: ItemType.WEAPON,
+        weight: 3.0,
+        value: 100,
+        stackable: false,
+        max_stack: 1
+      });
+
+      // Place in room
+      await itemService.placeItemInRoom(testRoomId, nonStackableItem, 1);
+
+      // Transfer to character
+      await itemService.transferItemToInventory(characterId, nonStackableItem, testRoomId, 1);
+
+      // Check character inventory
+      const inventoryItem = await db.get(`
+        SELECT * FROM character_inventory 
+        WHERE character_id = ? AND item_id = ?
+      `, [characterId, nonStackableItem]);
+
+      expect(inventoryItem).toBeDefined();
+      expect(inventoryItem.quantity).toBe(1);
+
+      // Check room item was removed
+      const roomItem = await db.get(`
+        SELECT * FROM room_items 
+        WHERE room_id = ? AND item_id = ?
+      `, [testRoomId, nonStackableItem]);
+
+      expect(roomItem).toBeUndefined();
+    });
+  });
+
+  describe('Item Finding Utility', () => {
+    test('should find item by exact name match', () => {
+      const mockItems = [
+        {
+          item: {
+            id: 1,
+            name: 'Iron Sword',
+            description: 'A sturdy iron sword',
+            type: ItemType.WEAPON,
+            weight: 2.5,
+            value: 100,
+            stackable: false,
+            max_stack: 1,
+            created_at: new Date().toISOString()
+          },
+          item_id: 1,
+          room_id: 1,
+          quantity: 1,
+          id: 1,
+          created_at: new Date().toISOString()
+        }
+      ];
+
+      const foundItem = itemService.findItemByName(mockItems, 'Iron Sword');
+      expect(foundItem).toBeDefined();
+      expect(foundItem?.item.name).toBe('Iron Sword');
+    });
+
+    test('should find item by partial name match', () => {
+      const mockItems = [
+        {
+          item: {
+            id: 1,
+            name: 'Health Potion',
+            description: 'Restores health',
+            type: ItemType.CONSUMABLE,
+            weight: 0.5,
+            value: 25,
+            stackable: true,
+            max_stack: 10,
+            created_at: new Date().toISOString()
+          },
+          item_id: 1,
+          room_id: 1,
+          quantity: 3,
+          id: 1,
+          created_at: new Date().toISOString()
+        }
+      ];
+
+      const foundItem = itemService.findItemByName(mockItems, 'potion');
+      expect(foundItem).toBeDefined();
+      expect(foundItem?.item.name).toBe('Health Potion');
+    });
+
+    test('should be case insensitive', () => {
+      const mockItems = [
+        {
+          item: {
+            id: 1,
+            name: 'Gold Coins',
+            description: 'Shiny gold coins',
+            type: ItemType.MISC,
+            weight: 0.025,
+            value: 1,
+            stackable: true,
+            max_stack: 1000,
+            created_at: new Date().toISOString()
+          },
+          item_id: 1,
+          room_id: 1,
+          quantity: 50,
+          id: 1,
+          created_at: new Date().toISOString()
+        }
+      ];
+
+      const foundItem = itemService.findItemByName(mockItems, 'GOLD');
+      expect(foundItem).toBeDefined();
+      expect(foundItem?.item.name).toBe('Gold Coins');
+    });
+
+    test('should return undefined when item not found', () => {
+      const mockItems: any[] = [];
+      
+      const foundItem = itemService.findItemByName(mockItems, 'nonexistent');
+      expect(foundItem).toBeUndefined();
+    });
+  });
 });

@@ -272,6 +272,25 @@ export class GameController {
       description: 'Show region statistics for current game',
       handler: async () => await this.showRegionStats()
     });
+
+    // Item system commands
+    this.commandRouter.addCommand({
+      name: 'pickup',
+      description: 'Pick up an item from the current room',
+      handler: async (args) => await this.handlePickup(args[0])
+    });
+
+    this.commandRouter.addCommand({
+      name: 'get',
+      description: 'Pick up an item from the current room (alias for "pickup")',
+      handler: async (args) => await this.handlePickup(args[0])
+    });
+
+    this.commandRouter.addCommand({
+      name: 'take',
+      description: 'Pick up an item from the current room (alias for "pickup")',
+      handler: async (args) => await this.handlePickup(args[0])
+    });
   }
 
   private async processInput(): Promise<void> {
@@ -1006,6 +1025,74 @@ export class GameController {
       this.tui.display(output.trim());
     } catch (error) {
       console.error('Error showing region stats:', error);
+    }
+  }
+
+  /**
+   * Handle pickup command - pick up items from current room
+   */
+  private async handlePickup(itemName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!itemName) {
+      this.tui.display('Pick up what?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      // Get all items in the current room
+      const roomItems = await this.itemService.getRoomItems(currentRoom.id);
+      
+      if (roomItems.length === 0) {
+        this.tui.display('There are no items here to pick up.', MessageType.ERROR);
+        return;
+      }
+
+      // Find item by name (case-insensitive partial match)
+      const targetItem = this.itemService.findItemByName(roomItems, itemName);
+
+      if (!targetItem) {
+        this.tui.display(`There is no ${itemName} here.`, MessageType.ERROR);
+        
+        // Show available items as a suggestion
+        this.tui.display('Available items:', MessageType.SYSTEM);
+        roomItems.forEach(roomItem => {
+          const quantityText = roomItem.quantity > 1 ? ` x${roomItem.quantity}` : '';
+          this.tui.display(`• ${roomItem.item.name}${quantityText}`, MessageType.NORMAL);
+        });
+        return;
+      }
+
+      // For this phase, use game ID as character ID (simple approach for single-player game)
+      const characterId = session.gameId!;
+
+      // Transfer item from room to character inventory
+      await this.itemService.transferItemToInventory(
+        characterId, 
+        targetItem.item_id, 
+        targetItem.room_id,
+        1
+      );
+
+      this.tui.display(`You pick up the ${targetItem.item.name}.`, MessageType.NORMAL);
+      
+      // Refresh room display to show updated items
+      await this.lookAround();
+
+    } catch (error) {
+      console.error('Error picking up item:', error);
+      this.tui.showError('Error picking up item', (error as Error)?.message);
     }
   }
 }
