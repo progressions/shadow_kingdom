@@ -19,6 +19,12 @@ import { ServiceFactory, ServiceInstances } from './services/serviceFactory';
 // Interfaces imported from GameStateManager
 import { Game, Room, Connection, GameState } from './services/gameStateManager';
 
+interface CommandState {
+  isProcessing: boolean;
+  currentCommand?: string;
+  startTime?: number;
+}
+
 export class GameController {
   private rl: readline.Interface;
   private db: Database;
@@ -31,10 +37,16 @@ export class GameController {
   private backgroundGenerationService: ServiceInstances['backgroundGenerationService'];
   private gameManagementService: ServiceInstances['gameManagementService'];
   private regionService: ServiceInstances['regionService'];
+  private commandState: CommandState;
 
   constructor(db: Database) {
     this.db = db;
     this.grokClient = new GrokClient();
+    
+    // Initialize command state
+    this.commandState = {
+      isProcessing: false
+    };
     
     // Initialize unified NLP engine with configuration
     const baseConfig = getNLPConfig();
@@ -288,18 +300,48 @@ export class GameController {
   private async processCommand(input: string) {
     if (!input) return;
 
-    // Add command to game state manager's history
-    this.gameStateManager.addRecentCommand(input);
+    // Allow certain commands even during processing (quit, exit, help)
+    const allowedDuringProcessing = ['quit', 'exit', 'help', 'q'];
+    const commandName = input.split(' ')[0].toLowerCase();
+    
+    // Check if a command is currently processing and this isn't an allowed command
+    if (this.commandState.isProcessing && !allowedDuringProcessing.includes(commandName)) {
+      const elapsed = Date.now() - (this.commandState.startTime || 0);
+      const elapsedSeconds = Math.floor(elapsed / 1000);
+      console.log(`⏳ Please wait for the current command to complete... (${elapsedSeconds}s elapsed)`);
+      console.log(`📋 Processing: "${this.commandState.currentCommand}"`);
+      console.log(`💡 Tip: You can still type "quit" or "help" commands`);
+      return;
+    }
 
-    // Create execution context
-    const executionContext: CommandExecutionContext = {
-      mode: this.gameStateManager.getCurrentSession().mode,
-      gameContext: await this.gameStateManager.buildGameContext(),
-      recentCommands: this.gameStateManager.getRecentCommands()
-    };
+    try {
+      // Mark command as processing (unless it's a quick command like help/quit)
+      if (!allowedDuringProcessing.includes(commandName)) {
+        this.commandState.isProcessing = true;
+        this.commandState.currentCommand = input;
+        this.commandState.startTime = Date.now();
+      }
 
-    // Delegate to command router
-    await this.commandRouter.processCommand(input, executionContext);
+      // Add command to game state manager's history
+      this.gameStateManager.addRecentCommand(input);
+
+      // Create execution context
+      const executionContext: CommandExecutionContext = {
+        mode: this.gameStateManager.getCurrentSession().mode,
+        gameContext: await this.gameStateManager.buildGameContext(),
+        recentCommands: this.gameStateManager.getRecentCommands()
+      };
+
+      // Delegate to command router
+      await this.commandRouter.processCommand(input, executionContext);
+    } finally {
+      // Reset command state (only if we set it)
+      if (!allowedDuringProcessing.includes(commandName)) {
+        this.commandState = {
+          isProcessing: false
+        };
+      }
+    }
   }
 
 
@@ -502,19 +544,21 @@ export class GameController {
             
             // Check if NLP connection needs room generation
             if (!nlpConnection.to_room_id) {
-              console.log('Generating room...');
+              console.log(`\n🌟 Generating new room to the ${resolvedDirection}...`);
+              console.log('⏳ Please wait, this may take a moment...\n');
               
               // Generate room synchronously for unfilled connection
               const unfilledConnection = nlpConnection as any; // Cast to allow null to_room_id
               const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
               
               if (!generationResult.success) {
-                console.log('Failed to generate room. You cannot go that way.');
+                console.log('❌ Failed to generate room. You cannot go that way.');
                 return;
               }
               
               // Update connection with newly generated room
               nlpConnection.to_room_id = generationResult.roomId!;
+              console.log('✅ Room generation complete!\n');
             }
             
             // Move to the new room using game state manager
@@ -537,19 +581,21 @@ export class GameController {
 
       // Check if connection needs room generation
       if (!connection.to_room_id) {
-        console.log('Generating room...');
+        console.log(`\n🌟 Generating new room to the ${userInput}...`);
+        console.log('⏳ Please wait, this may take a moment...\n');
         
         // Generate room synchronously for unfilled connection
         const unfilledConnection = connection as any; // Cast to allow null to_room_id
         const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
         
         if (!generationResult.success) {
-          console.log('Failed to generate room. You cannot go that way.');
+          console.log('❌ Failed to generate room. You cannot go that way.');
           return;
         }
         
         // Update connection with newly generated room
         connection.to_room_id = generationResult.roomId!;
+        console.log('✅ Room generation complete!\n');
       }
       
       // Move to the new room using game state manager
