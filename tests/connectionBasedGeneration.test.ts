@@ -156,7 +156,7 @@ describe('Connection-Based Generation Schema', () => {
           name: 'Crystal Chamber',
           description: 'A shimmering chamber filled with crystal formations.',
           connections: [
-            { direction: 'south', name: 'back through the archway' },
+            { direction: 'north', name: 'back through the archway' },
             { direction: 'east', name: 'toward the crystal spires' },
             { direction: 'west', name: 'through the gem passage' }
           ]
@@ -180,10 +180,11 @@ describe('Connection-Based Generation Schema', () => {
       );
 
       // Generate a single room (this should create unfilled connections)
+      // Use 'south' direction which doesn't exist in the default game setup
       const result = await roomGenService.generateSingleRoom({
         gameId,
         fromRoomId: 1,
-        direction: 'north',
+        direction: 'south',
         theme: 'crystal theme'
       });
 
@@ -193,7 +194,7 @@ describe('Connection-Based Generation Schema', () => {
       // Verify the return connection was created (filled)
       const returnConnection = await db.get(
         'SELECT * FROM connections WHERE from_room_id = ? AND to_room_id = ? AND direction = ?',
-        [result.roomId, 1, 'south']
+        [result.roomId, 1, 'north']
       );
       expect(returnConnection).toBeDefined();
       expect(returnConnection.to_room_id).toBe(1);
