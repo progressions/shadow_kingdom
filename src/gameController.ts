@@ -490,7 +490,10 @@ export class GameController {
       const room = await this.gameStateManager.getCurrentRoom();
 
       if (room) {
-        // Trigger background generation for unfilled connections
+        // Trigger automatic room generation on entry (new auto-generation feature)
+        this.backgroundGenerationService.generateForRoomEntry(session.roomId!, session.gameId!);
+        
+        // Trigger background generation for unfilled connections (existing system)
         this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
 
         // Get available connections from this room within this game

@@ -88,7 +88,7 @@ describe('RegionService', () => {
       // Test low distance (distance 0 - should use base probability)
       let newRegionCount = 0;
       for (let i = 0; i < 100; i++) {
-        if (regionService.shouldCreateNewRegion(0)) {
+        if (await regionService.shouldCreateNewRegion(0)) {
           newRegionCount++;
         }
       }
@@ -99,7 +99,7 @@ describe('RegionService', () => {
       newRegionCount = 0;
       const distance5Prob = Math.min(maxProbability, baseProbability + (5 * distanceMultiplier));
       for (let i = 0; i < 100; i++) {
-        if (regionService.shouldCreateNewRegion(5)) {
+        if (await regionService.shouldCreateNewRegion(5)) {
           newRegionCount++;
         }
       }
