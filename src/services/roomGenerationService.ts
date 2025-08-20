@@ -25,6 +25,7 @@ export interface RoomGenerationResult {
 export interface GenerationLimits {
   maxRoomsPerGame: number;
   maxGenerationDepth: number;
+  minGenerationPerTrigger: number;
   generationCooldownMs: number;
 }
 
