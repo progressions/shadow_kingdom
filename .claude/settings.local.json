@@ -67,7 +67,13 @@
       "Bash(USE_PRISMA=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"new\" --start-session)",
       "Bash(git rm:*)",
       "Bash(echo $USE_PRISMA)",
-      "Bash(AI_DEBUG_LOGGING=true timeout 20s npm run dev -- --cmd \"look\")"
+      "Bash(AI_DEBUG_LOGGING=true timeout 20s npm run dev -- --cmd \"look\")",
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"look\" --game-id 1)",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go bookshelf\")",
+      "Bash(AI_DEBUG_LOGGING=true npm run dev -- --cmd \"go up\")",
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"go north\")",
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"go up\")",
+      "Bash(AI_MOCK_MODE=true npm run dev -- --cmd \"go east\")"
     ],
     "deny": [],
     "ask": []

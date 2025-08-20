@@ -228,9 +228,9 @@ export class GameStateManagerPrisma {
   }
 
   /**
-   * Get connections for current room (only filled connections for player navigation)
+   * Get connections for current room (all connections including unfilled ones for exploration)
    */
-  async getCurrentRoomConnections(): Promise<FilledConnection[]> {
+  async getCurrentRoomConnections(): Promise<Connection[]> {
     if (!this.isInGame()) {
       return [];
     }
@@ -239,8 +239,7 @@ export class GameStateManagerPrisma {
       const prismaConnections = await this.prisma.connection.findMany({
         where: {
           fromRoomId: this.currentRoomId!,
-          gameId: this.currentGameId!,
-          toRoomId: { not: null }  // Only filled connections
+          gameId: this.currentGameId!
         },
         orderBy: { direction: 'asc' }
       });
@@ -249,7 +248,7 @@ export class GameStateManagerPrisma {
         id: conn.id,
         game_id: conn.gameId,
         from_room_id: conn.fromRoomId,
-        to_room_id: conn.toRoomId!,  // Safe because we filtered out nulls
+        to_room_id: conn.toRoomId,  // Can be null for unfilled connections
         direction: conn.direction || '',
         name: conn.name
       }));
@@ -260,20 +259,19 @@ export class GameStateManagerPrisma {
   }
 
   /**
-   * Find connection by direction or thematic name (only filled connections)
+   * Find connection by direction or thematic name (includes unfilled connections)
    */
-  async findConnection(directionOrName: string): Promise<FilledConnection | null> {
+  async findConnection(directionOrName: string): Promise<Connection | null> {
     if (!this.isInGame()) {
       return null;
     }
 
     try {
-      // Try exact match first (case-insensitive) - only filled connections
+      // Try exact match first (case-insensitive) - includes unfilled connections
       const prismaConnection = await this.prisma.connection.findFirst({
         where: {
           fromRoomId: this.currentRoomId!,
           gameId: this.currentGameId!,
-          toRoomId: { not: null },  // Only filled connections
           OR: [
             { direction: { equals: directionOrName } },
             { name: { equals: directionOrName } }
@@ -281,7 +279,7 @@ export class GameStateManagerPrisma {
         }
       });
 
-      if (!prismaConnection || !prismaConnection.toRoomId) return null;
+      if (!prismaConnection) return null;
 
       return {
         id: prismaConnection.id,

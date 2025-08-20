@@ -6,7 +6,12 @@ export class Database {
   private dbPath: string;
 
   constructor(dbName: string = 'data/db/shadow_kingdom.db') {
-    this.dbPath = path.join(process.cwd(), dbName);
+    // Handle special :memory: database - don't treat as file path
+    if (dbName === ':memory:') {
+      this.dbPath = ':memory:';
+    } else {
+      this.dbPath = path.join(process.cwd(), dbName);
+    }
   }
 
   async connect(): Promise<void> {

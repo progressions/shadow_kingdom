@@ -206,16 +206,16 @@ export class GameStateManager {
   }
 
   /**
-   * Get connections for current room (only filled connections for player navigation)
+   * Get connections for current room (all connections including unfilled ones for exploration)
    */
-  async getCurrentRoomConnections(): Promise<FilledConnection[]> {
+  async getCurrentRoomConnections(): Promise<Connection[]> {
     if (!this.isInGame()) {
       return [];
     }
 
     try {
-      const connections = await this.db.all<FilledConnection>(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND to_room_id IS NOT NULL ORDER BY direction',
+      const connections = await this.db.all<Connection>(
+        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? ORDER BY direction',
         [this.currentRoomId, this.currentGameId]
       );
 
@@ -227,17 +227,17 @@ export class GameStateManager {
   }
 
   /**
-   * Find connection by direction or thematic name (only filled connections)
+   * Find connection by direction or thematic name (includes unfilled connections)
    */
-  async findConnection(directionOrName: string): Promise<FilledConnection | null> {
+  async findConnection(directionOrName: string): Promise<Connection | null> {
     if (!this.isInGame()) {
       return null;
     }
 
     try {
-      // Try exact match first (case-insensitive) - only filled connections
-      const connection = await this.db.get<FilledConnection>(
-        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND to_room_id IS NOT NULL AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
+      // Try exact match first (case-insensitive) - includes unfilled connections
+      const connection = await this.db.get<Connection>(
+        'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
         [this.currentRoomId, this.currentGameId, directionOrName, directionOrName]
       );
 

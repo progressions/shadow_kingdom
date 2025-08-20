@@ -110,27 +110,37 @@ export class BackgroundGenerationService {
   }
 
   /**
-   * Find unfilled connections near the current location for prioritized generation
+   * Find unfilled connections near the current location for prioritized generation using BFS
    */
   async findNearbyUnfilledConnections(currentRoomId: number, gameId: number): Promise<UnfilledConnection[]> {
     try {
-      // Find connections within discovery radius that need filling
-      const connections = await this.db.all<UnfilledConnection>(`
+      const limits = this.getGenerationLimits();
+      const bfsRadius = parseInt(process.env.BFS_SEARCH_RADIUS || '3');
+      const prioritizeProximity = process.env.PRIORITIZE_PLAYER_PROXIMITY !== 'false';
+      
+      if (!prioritizeProximity) {
+        // Fall back to global search if proximity prioritization is disabled
+        return await this.findUnfilledConnections(gameId);
+      }
+      
+      // BFS traversal to find unfilled connections by distance from player
+      const connections = await this.db.all<UnfilledConnection & { distance: number }>(`
         WITH RECURSIVE reachable_rooms(room_id, distance) AS (
           SELECT ?, 0
           UNION ALL
           SELECT c.to_room_id, r.distance + 1
           FROM connections c
           JOIN reachable_rooms r ON c.from_room_id = r.room_id
-          WHERE c.to_room_id IS NOT NULL AND r.distance < 2
+          WHERE c.to_room_id IS NOT NULL AND r.distance < ?
         )
-        SELECT c.*, r.name as from_room_name FROM connections c
+        SELECT c.*, r.name as from_room_name, rr.distance 
+        FROM connections c
         JOIN reachable_rooms rr ON c.from_room_id = rr.room_id
         JOIN rooms r ON c.from_room_id = r.id
         WHERE c.to_room_id IS NULL AND c.game_id = ?
         ORDER BY rr.distance, c.id
         LIMIT ?
-      `, [currentRoomId, gameId, this.getGenerationLimits().maxGenerationDepth]);
+      `, [currentRoomId, bfsRadius, gameId, limits.maxGenerationDepth]);
 
       return connections || [];
     } catch (error) {
@@ -176,10 +186,24 @@ export class BackgroundGenerationService {
         return;
       }
 
-      const connectionsToFill = Math.min(nearbyUnfilledConnections.length, roomsCanGenerate);
+      // Use minimum generation to ensure consistent world expansion
+      const minGeneration = Math.min(limits.minGenerationPerTrigger, roomsCanGenerate, nearbyUnfilledConnections.length);
+      const maxGeneration = Math.min(limits.maxGenerationDepth, roomsCanGenerate, nearbyUnfilledConnections.length);
+      const connectionsToFill = Math.max(minGeneration, Math.min(maxGeneration, nearbyUnfilledConnections.length));
       
       if (this.isDebugEnabled()) {
-        console.log(`🔗 Filling ${connectionsToFill} unfilled connections (${nearbyUnfilledConnections.length} found, ${roomsCanGenerate} rooms available)`);
+        // Count connections by distance for better debug output
+        const connectionsByDistance: Record<number, number> = {};
+        nearbyUnfilledConnections.forEach(conn => {
+          const distance = (conn as any).distance || 0;
+          connectionsByDistance[distance] = (connectionsByDistance[distance] || 0) + 1;
+        });
+        
+        const distanceBreakdown = Object.entries(connectionsByDistance)
+          .map(([dist, count]) => `distance ${dist}: ${count}`)
+          .join(', ');
+        
+        console.log(`🔗 Filling ${connectionsToFill} unfilled connections (${nearbyUnfilledConnections.length} found: ${distanceBreakdown}, ${roomsCanGenerate} rooms available)`);
       }
 
       // Generate rooms for unfilled connections
@@ -235,6 +259,7 @@ export class BackgroundGenerationService {
     return {
       maxRoomsPerGame: parseInt(process.env.MAX_ROOMS_PER_GAME || '100'),
       maxGenerationDepth: parseInt(process.env.MAX_GENERATION_DEPTH || '5'),
+      minGenerationPerTrigger: parseInt(process.env.MIN_GENERATION_PER_TRIGGER || '2'),
       generationCooldownMs: parseInt(process.env.GENERATION_COOLDOWN_MS || '5000')
     };
   }
