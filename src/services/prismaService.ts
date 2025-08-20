@@ -13,6 +13,11 @@ export class PrismaService {
   private static instance: PrismaService;
   private client: PrismaClient | null = null;
   private isConnected: boolean = false;
+  private handlersSetup: boolean = false;
+  private shutdownHandler?: (signal: string) => void;
+  private beforeExitHandler?: () => void;
+  private sigintHandler?: () => void;
+  private sigtermHandler?: () => void;
 
   private constructor() {
     // Private constructor for singleton pattern
@@ -70,17 +75,26 @@ export class PrismaService {
       this.client = null;
       this.isConnected = false;
     }
+    // Only clean up handlers in test environments
+    if (process.env.NODE_ENV === 'test') {
+      this.removeShutdownHandlers();
+    }
   }
 
   /**
    * Reset the singleton instance (useful for testing)
    */
   public static reset(): void {
-    if (PrismaService.instance?.client) {
-      // Disconnect without waiting in reset to avoid hanging tests
-      PrismaService.instance.client.$disconnect().catch(() => {
-        // Ignore disconnect errors during reset
-      });
+    if (PrismaService.instance) {
+      // Clean up handlers first
+      PrismaService.instance.removeShutdownHandlers();
+      
+      if (PrismaService.instance.client) {
+        // Disconnect without waiting in reset to avoid hanging tests
+        PrismaService.instance.client.$disconnect().catch(() => {
+          // Ignore disconnect errors during reset
+        });
+      }
     }
     PrismaService.instance = new PrismaService();
   }
@@ -102,17 +116,52 @@ export class PrismaService {
    * Setup graceful shutdown handlers
    */
   private setupShutdownHandlers(): void {
-    const shutdownHandler = async (signal: string) => {
+    if (this.handlersSetup) {
+      return; // Handlers already set up
+    }
+
+    this.shutdownHandler = async (signal: string) => {
       console.log(`\nReceived ${signal}, closing database connection...`);
       await this.disconnect();
       process.exit(0);
     };
 
-    process.on('SIGINT', () => shutdownHandler('SIGINT'));
-    process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
-    process.on('beforeExit', async () => {
+    this.beforeExitHandler = async () => {
       await this.disconnect();
-    });
+    };
+
+    // Store bound functions so we can remove them later
+    this.sigintHandler = () => this.shutdownHandler!('SIGINT');
+    this.sigtermHandler = () => this.shutdownHandler!('SIGTERM');
+
+    process.on('SIGINT', this.sigintHandler);
+    process.on('SIGTERM', this.sigtermHandler);
+    process.on('beforeExit', this.beforeExitHandler);
+    
+    this.handlersSetup = true;
+  }
+
+  /**
+   * Remove shutdown handlers (for testing cleanup)
+   */
+  private removeShutdownHandlers(): void {
+    if (this.handlersSetup) {
+      if (this.sigintHandler) {
+        process.removeListener('SIGINT', this.sigintHandler);
+        this.sigintHandler = undefined;
+      }
+      if (this.sigtermHandler) {
+        process.removeListener('SIGTERM', this.sigtermHandler);
+        this.sigtermHandler = undefined;
+      }
+      if (this.beforeExitHandler) {
+        process.removeListener('beforeExit', this.beforeExitHandler);
+        this.beforeExitHandler = undefined;
+      }
+      
+      this.handlersSetup = false;
+      this.shutdownHandler = undefined;
+    }
   }
 }
 
