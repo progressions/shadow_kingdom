@@ -78,7 +78,7 @@ export class RoomGenerationService {
 
       if (fromRoom.region_id && fromRoom.region_distance !== null) {
         // Check if we should create a new region or continue in current one
-        const shouldCreateNewRegion = this.regionService.shouldCreateNewRegion(fromRoom.region_distance);
+        const shouldCreateNewRegion = await this.regionService.shouldCreateNewRegion(fromRoom.region_distance, fromRoom.region_id);
         
         if (shouldCreateNewRegion) {
           // Generate new region with AI
@@ -360,7 +360,7 @@ export class RoomGenerationService {
 
       if (fromRoom.region_id && fromRoom.region_distance !== null) {
         // Check if we should create a new region or continue in current one
-        const shouldCreateNewRegion = this.regionService.shouldCreateNewRegion(fromRoom.region_distance);
+        const shouldCreateNewRegion = await this.regionService.shouldCreateNewRegion(fromRoom.region_distance, fromRoom.region_id);
         
         if (shouldCreateNewRegion) {
           // Generate new region with AI

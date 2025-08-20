@@ -87,7 +87,22 @@ export class RegionService {
    * Determine if a new region should be created based on current distance
    * Uses distance-based probability: further from center = higher chance
    */
-  shouldCreateNewRegion(currentDistance: number): boolean {
+  async shouldCreateNewRegion(currentDistance: number, currentRegionId?: number): Promise<boolean> {
+    // If we have a current region, check its size first
+    if (currentRegionId) {
+      const regionSize = await this.getRegionRoomCount(currentRegionId);
+      const maxRegionSize = parseInt(process.env.MAX_REGION_SIZE || '10'); // Default 10 rooms max
+      
+      // Force new region creation if current region is at/over the limit
+      if (regionSize >= maxRegionSize) {
+        if (this.options.enableDebugLogging) {
+          console.log(`🚧 Region ${currentRegionId} has ${regionSize} rooms (limit: ${maxRegionSize}). Forcing new region.`);
+        }
+        return true;
+      }
+    }
+    
+    // Otherwise use normal probability-based logic
     const probability = this.getNewRegionProbability(currentDistance);
     return Math.random() < probability;
   }
@@ -102,6 +117,17 @@ export class RegionService {
     const distanceMultiplier = parseFloat(process.env.REGION_DISTANCE_MULTIPLIER || '0.08'); // 8% per distance (down from 12%)
     const maxProbability = parseFloat(process.env.REGION_MAX_PROBABILITY || '0.6'); // 60% cap (down from 80%)
     return Math.min(maxProbability, baseProbability + (currentDistance * distanceMultiplier));
+  }
+
+  /**
+   * Get the number of rooms currently in a region
+   */
+  async getRegionRoomCount(regionId: number): Promise<number> {
+    const result = await this.db.get<{ count: number }>(
+      'SELECT COUNT(*) as count FROM rooms WHERE region_id = ?',
+      [regionId]
+    );
+    return result?.count || 0;
   }
 
   /**
