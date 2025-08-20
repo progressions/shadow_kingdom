@@ -217,7 +217,8 @@ REQUIREMENTS:
 - Create a room name that is DIFFERENT from all existing rooms
 - Make the room unique and interesting, not generic
 - Include return connection to ${reverseDirection}
-- Generate 2-4 total connections with thematic names
+- CONNECTION COUNT: ${process.env.DEAD_END_CHANCE || '5'}% chance the room has only one connection back where you came from. Otherwise, roll ${process.env.CONNECTION_DICE || '2d4'} for total number of connections (including the return path).
+- DIRECTIONS: Choose cardinal directions (north, south, east, west, up, down) or thematic connections (bookshelf, tapestry, hidden door, etc.)
 
 RESPONSE FORMAT:
 {

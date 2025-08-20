@@ -2,8 +2,10 @@
 
 **Date**: 2025-08-19  
 **Priority**: Medium  
-**Status**: Open  
+**Status**: ✅ Completed  
 **Type**: Enhancement  
+**Completed**: 2025-08-20  
+**Related Issue**: Connection dead-end problem reported by user  
 
 ## Problem Statement
 
@@ -113,3 +115,47 @@ CONNECTION_DICE=3d3
   - **Mitigation**: Conservative defaults with easy tuning
 
 This enhancement will significantly improve world generation variety while maintaining the existing connection-based generation architecture.
+
+---
+
+## ✅ COMPLETION SUMMARY
+
+**Implementation Completed:** 2025-08-20  
+**Files Modified:**
+- `src/ai/grokClient.ts` - Updated AI prompt with probability-based connection generation
+- `.env` - Added configuration variables for connection control and reduced cooldown
+
+### Features Delivered
+
+✅ **Configurable Connection Probability** - Replaced fixed "2-4 connections" with dice-based system  
+✅ **Environment Variables Added:**
+- `DEAD_END_CHANCE=5` - 5% chance for dead-end rooms (atmospheric variety)
+- `CONNECTION_DICE=2d4` - 2d4 dice roll for connection count (2-8 connections possible)
+- `GENERATION_COOLDOWN_MS=2000` - Reduced from 10s to 2s for more responsive generation
+
+✅ **AI Prompt Enhancement** - Updated room generation instructions to use probability mechanics  
+✅ **Expected Distribution** - 2d4 creates variety from dead-ends (5%) to hub rooms (8 connections)  
+✅ **Backwards Compatibility** - No breaking changes to existing games
+
+### Problem Resolution
+
+**Root Cause Identified:** User experiencing "no new rooms after a minute" was due to:
+1. Fixed 2-4 connection count creating predictable layouts
+2. Background generation working but creating too few connections
+3. 10-second cooldown being too restrictive for interactive play
+
+**Solution Implemented:** 
+- **Probability-based connection generation** creates natural variety
+- **Dead-end rooms** for treasure/private chambers (5% chance)
+- **Hub rooms** for town squares/gathering points (higher connection counts)
+- **Reduced cooldown** for more responsive world expansion
+- **AI-friendly dice mechanics** that the AI can understand and implement
+
+### Testing Results
+
+- Background generation confirmed working in both session and interactive modes
+- New probability system tested with debug logging
+- Connection generation now varies based on dice rolls rather than fixed ranges
+- Reduced cooldown improves responsiveness during exploration
+
+The configurable connection probability system successfully addresses the exploration dead-end problem while providing rich, varied world generation.
