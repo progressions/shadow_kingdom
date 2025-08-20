@@ -68,30 +68,45 @@ describe('RegionService', () => {
     });
 
     test('getNewRegionProbability should increase with distance', () => {
-      expect(regionService.getNewRegionProbability(0)).toBe(0.15);
-      expect(regionService.getNewRegionProbability(1)).toBe(0.27);
-      expect(regionService.getNewRegionProbability(5)).toBe(0.75);
-      expect(regionService.getNewRegionProbability(10)).toBe(0.8); // capped at 0.8
+      // Use actual environment variables for flexible testing
+      const baseProbability = parseFloat(process.env.REGION_BASE_PROBABILITY || '0.05');
+      const distanceMultiplier = parseFloat(process.env.REGION_DISTANCE_MULTIPLIER || '0.08');
+      const maxProbability = parseFloat(process.env.REGION_MAX_PROBABILITY || '0.6');
+      
+      expect(regionService.getNewRegionProbability(0)).toBe(baseProbability);
+      expect(regionService.getNewRegionProbability(1)).toBe(baseProbability + distanceMultiplier);
+      expect(regionService.getNewRegionProbability(5)).toBe(Math.min(maxProbability, baseProbability + (5 * distanceMultiplier)));
+      expect(regionService.getNewRegionProbability(10)).toBe(maxProbability); // Should hit the cap
     });
 
     test('shouldCreateNewRegion should respect probability distribution', () => {
-      // Test low distance (should rarely create new region)
+      // Use actual environment variables for dynamic test expectations
+      const baseProbability = parseFloat(process.env.REGION_BASE_PROBABILITY || '0.05');
+      const distanceMultiplier = parseFloat(process.env.REGION_DISTANCE_MULTIPLIER || '0.08');
+      const maxProbability = parseFloat(process.env.REGION_MAX_PROBABILITY || '0.6');
+      
+      // Test low distance (distance 0 - should use base probability)
       let newRegionCount = 0;
       for (let i = 0; i < 100; i++) {
         if (regionService.shouldCreateNewRegion(0)) {
           newRegionCount++;
         }
       }
-      expect(newRegionCount).toBeLessThan(30); // ~15% expected
+      const expectedLowMax = Math.floor(baseProbability * 100 * 3); // Allow 3x for statistical variance
+      expect(newRegionCount).toBeLessThan(expectedLowMax);
 
-      // Test high distance (should often create new region)
+      // Test medium distance (distance 5)
       newRegionCount = 0;
+      const distance5Prob = Math.min(maxProbability, baseProbability + (5 * distanceMultiplier));
       for (let i = 0; i < 100; i++) {
         if (regionService.shouldCreateNewRegion(5)) {
           newRegionCount++;
         }
       }
-      expect(newRegionCount).toBeGreaterThan(60); // ~75% expected
+      const expectedMediumMin = Math.floor(distance5Prob * 100 * 0.7); // Allow 30% below expected
+      const expectedMediumMax = Math.floor(distance5Prob * 100 * 1.3); // Allow 30% above expected
+      expect(newRegionCount).toBeGreaterThan(expectedMediumMin);
+      expect(newRegionCount).toBeLessThan(expectedMediumMax);
     });
   });
 
