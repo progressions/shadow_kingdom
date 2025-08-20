@@ -341,3 +341,25 @@ Successfully implemented a modern Terminal UI using blessed.js with Claude Code-
 - Seamless backward compatibility
 
 The Terminal UI provides a significant upgrade in user experience while maintaining complete compatibility with existing automation systems and Claude's ability to play the game.
+
+## Input Duplication Fix (2025-08-20)
+
+**Issue**: Users experienced character duplication when typing (e.g., "quit" became "qquuiitt") due to blessed.js textbox input handling bug.
+
+**Root Cause**: The blessed.js `textbox.readInput()` method registers multiple input event handlers when called repeatedly, causing characters to be processed multiple times.
+
+**Solution**: Implemented manual keyboard input handling to completely bypass the buggy blessed.js textbox input system:
+
+1. **Replaced `blessed.textbox` with `blessed.box`** - eliminates built-in input handling
+2. **Added manual keypress event handling** - captures individual key events on the screen level
+3. **Implemented character-by-character input processing** - handles regular characters, backspace, and enter manually
+4. **Custom visual feedback** - displays input with underscore cursor
+5. **State tracking** - prevents duplicate event handlers through manual state management
+
+**Technical Implementation**:
+- `screen.on('keypress')` captures all keyboard input
+- Manual string building with `currentInput` and `cursorPosition`
+- Custom `updateInputDisplay()` method for visual feedback
+- Proper cleanup and state reset after input submission
+
+**Result**: Complete elimination of character duplication while maintaining all existing input functionality including command history, echoing, and TUI integration.
