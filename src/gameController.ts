@@ -806,6 +806,10 @@ export class GameController {
    */
   private async initializeTUI(): Promise<void> {
     await this.tui.initialize();
+    
+    // Configure database to use TUI for output
+    this.db.setTUI(this.tui);
+    
     this.updateStatusDisplay();
   }
 

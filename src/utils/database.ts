@@ -1,12 +1,16 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import { TUIManager } from '../ui/TUIManager';
+import { MessageType } from '../ui/MessageFormatter';
 
 export class Database {
   private db: sqlite3.Database | null = null;
   private dbPath: string;
+  private tui?: TUIManager;
 
-  constructor(dbName: string = 'data/db/shadow_kingdom.db') {
+  constructor(dbName: string = 'data/db/shadow_kingdom.db', tui?: TUIManager) {
     // Handle special :memory: database - don't treat as file path
+    this.tui = tui;
     if (dbName === ':memory:') {
       this.dbPath = ':memory:';
     } else {
@@ -18,10 +22,18 @@ export class Database {
     return new Promise((resolve, reject) => {
       this.db = new sqlite3.Database(this.dbPath, (err) => {
         if (err) {
-          console.error('Error opening database:', err.message);
+          if (this.tui) {
+            this.tui.display(`Error opening database: ${err.message}`, MessageType.ERROR);
+          } else {
+            console.error('Error opening database:', err.message);
+          }
           reject(err);
         } else {
-          console.log('Connected to SQLite database:', this.dbPath);
+          if (this.tui) {
+            this.tui.display(`Connected to SQLite database: ${this.dbPath}`, MessageType.SYSTEM);
+          } else {
+            console.log('Connected to SQLite database:', this.dbPath);
+          }
           resolve();
         }
       });
@@ -33,10 +45,18 @@ export class Database {
       if (this.db) {
         this.db.close((err) => {
           if (err) {
-            console.error('Error closing database:', err.message);
+            if (this.tui) {
+              this.tui.display(`Error closing database: ${err.message}`, MessageType.ERROR);
+            } else {
+              console.error('Error closing database:', err.message);
+            }
             reject(err);
           } else {
-            console.log('Database connection closed.');
+            if (this.tui) {
+              this.tui.display('Database connection closed.', MessageType.SYSTEM);
+            } else {
+              console.log('Database connection closed.');
+            }
             this.db = null;
             resolve();
           }
@@ -104,6 +124,13 @@ export class Database {
 
   getDbPath(): string {
     return this.dbPath;
+  }
+
+  /**
+   * Set TUI for displaying messages instead of console output
+   */
+  setTUI(tui: TUIManager): void {
+    this.tui = tui;
   }
 }
 

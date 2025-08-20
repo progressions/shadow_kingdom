@@ -1,5 +1,7 @@
 import Database from '../utils/database';
 import { GameContext } from '../nlp/types';
+import { TUIManager } from '../ui/TUIManager';
+import { MessageType } from '../ui/MessageFormatter';
 
 
 export interface GameState {
@@ -59,9 +61,11 @@ export class GameStateManager {
   private currentRoomId: number | null = null;
   private recentCommands: string[] = [];
   private options: GameStateManagerOptions;
+  private tui?: TUIManager;
 
-  constructor(db: Database, options: GameStateManagerOptions = {}) {
+  constructor(db: Database, options: GameStateManagerOptions = {}, tui?: TUIManager) {
     this.db = db;
+    this.tui = tui;
     this.options = {
       enableDebugLogging: false,
       ...options
@@ -104,7 +108,11 @@ export class GameStateManager {
       this.currentRoomId = gameState.current_room_id;
 
       if (this.isDebugEnabled()) {
-        console.log(`🎮 Started game session: Game ${gameId}, Room ${this.currentRoomId}`);
+        if (this.tui) {
+          this.tui.display(`🎮 Started game session: Game ${gameId}, Room ${this.currentRoomId}`, MessageType.SYSTEM);
+        } else {
+          console.log(`🎮 Started game session: Game ${gameId}, Room ${this.currentRoomId}`);
+        }
       }
     } catch (error) {
       console.error('Failed to start game session:', error);

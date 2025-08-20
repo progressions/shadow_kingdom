@@ -1,6 +1,8 @@
 import Database from './database';
+import { TUIManager } from '../ui/TUIManager';
+import { MessageType } from '../ui/MessageFormatter';
 
-export async function initializeDatabase(db: Database): Promise<void> {
+export async function initializeDatabase(db: Database, tui?: TUIManager): Promise<void> {
   try {
     // Create games table
     await db.run(`
@@ -104,25 +106,33 @@ export async function initializeDatabase(db: Database): Promise<void> {
 
     // Run migrations for all databases, but skip the complex table recreation for in-memory
     // Check if direction column exists in connections table, add it if not
-    await ensureConnectionDirectionColumn(db);
+    await ensureConnectionDirectionColumn(db, tui);
 
     // Check if region columns exist in rooms table, add them if not  
-    await ensureRegionColumns(db);
+    await ensureRegionColumns(db, tui);
 
     // Migrate connections table to support nullable to_room_id
-    await ensureNullableToRoomId(db);
+    await ensureNullableToRoomId(db, tui);
 
     // Add processing column to connections table for auto-generation
-    await ensureProcessingColumn(db);
+    await ensureProcessingColumn(db, tui);
 
-    console.log('Database tables initialized successfully');
+    if (tui) {
+      tui.display('Database tables initialized successfully', MessageType.SYSTEM);
+    } else {
+      console.log('Database tables initialized successfully');
+    }
   } catch (error) {
-    console.error('Error initializing database:', error);
+    if (tui) {
+      tui.display(`Error initializing database: ${error}`, MessageType.ERROR);
+    } else {
+      console.error('Error initializing database:', error);
+    }
     throw error;
   }
 }
 
-export async function migrateExistingData(db: Database): Promise<void> {
+export async function migrateExistingData(db: Database, tui?: TUIManager): Promise<void> {
   try {
     // Check if the old schema exists (rooms table without game_id column)
     const hasOldSchema = await db.get<{ count: number }>(
@@ -132,7 +142,11 @@ export async function migrateExistingData(db: Database): Promise<void> {
 
     // If game_id column doesn't exist, we need to migrate
     if (!hasOldSchema || hasOldSchema.count === 0) {
-      console.log('Migrating database from old schema...');
+      if (tui) {
+        tui.display('Migrating database from old schema...', MessageType.SYSTEM);
+      } else {
+        console.log('Migrating database from old schema...');
+      }
       
       // Check if there are existing rooms to migrate
       const existingRooms = await db.get<{ count: number }>(
@@ -140,7 +154,11 @@ export async function migrateExistingData(db: Database): Promise<void> {
       );
 
       if (!existingRooms || existingRooms.count === 0) {
-        console.log('No existing data to migrate');
+        if (tui) {
+          tui.display('No existing data to migrate', MessageType.SYSTEM);
+        } else {
+          console.log('No existing data to migrate');
+        }
         return;
       }
 
@@ -170,22 +188,38 @@ export async function migrateExistingData(db: Database): Promise<void> {
         [defaultGameId, 1]
       );
 
-      console.log('Data migration completed successfully');
+      if (tui) {
+        tui.display('Data migration completed successfully', MessageType.SYSTEM);
+      } else {
+        console.log('Data migration completed successfully');
+      }
     } else {
-      console.log('Database already has new schema, no migration needed');
+      if (tui) {
+        tui.display('Database already has new schema, no migration needed', MessageType.SYSTEM);
+      } else {
+        console.log('Database already has new schema, no migration needed');
+      }
     }
   } catch (error) {
-    console.error('Error migrating existing data:', error);
+    if (tui) {
+      tui.display(`Error migrating existing data: ${error}`, MessageType.ERROR);
+    } else {
+      console.error('Error migrating existing data:', error);
+    }
     throw error;
   }
 }
 
 
-async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
+async function ensureConnectionDirectionColumn(db: Database, tui?: TUIManager): Promise<void> {
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
-      console.log('Skipping direction column migration for in-memory database');
+      if (tui) {
+        tui.display('Skipping direction column migration for in-memory database', MessageType.SYSTEM);
+      } else {
+        console.log('Skipping direction column migration for in-memory database');
+      }
       return;
     }
 
@@ -196,7 +230,11 @@ async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
     );
 
     if (!columnExists || columnExists.count === 0) {
-      console.log('Adding direction column to connections table...');
+      if (tui) {
+        tui.display('Adding direction column to connections table...', MessageType.SYSTEM);
+      } else {
+        console.log('Adding direction column to connections table...');
+      }
       
       // Add the direction column
       await db.run('ALTER TABLE connections ADD COLUMN direction TEXT');
@@ -212,15 +250,23 @@ async function ensureConnectionDirectionColumn(db: Database): Promise<void> {
         ON connections(from_room_id, direction, name)
       `);
       
-      console.log('direction column added and existing connections migrated successfully');
+      if (tui) {
+        tui.display('direction column added and existing connections migrated successfully', MessageType.SYSTEM);
+      } else {
+        console.log('direction column added and existing connections migrated successfully');
+      }
     }
   } catch (error) {
-    console.error('Error ensuring direction column:', error);
+    if (tui) {
+      tui.display(`Error ensuring direction column: ${error}`, MessageType.ERROR);
+    } else {
+      console.error('Error ensuring direction column:', error);
+    }
     throw error;
   }
 }
 
-async function ensureRegionColumns(db: Database): Promise<void> {
+async function ensureRegionColumns(db: Database, tui?: TUIManager): Promise<void> {
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
@@ -275,7 +321,7 @@ async function ensureRegionColumns(db: Database): Promise<void> {
   }
 }
 
-async function ensureNullableToRoomId(db: Database): Promise<void> {
+async function ensureNullableToRoomId(db: Database, tui?: TUIManager): Promise<void> {
   try {
     // Skip complex table recreation for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
@@ -351,7 +397,7 @@ async function ensureNullableToRoomId(db: Database): Promise<void> {
   }
 }
 
-async function ensureProcessingColumn(db: Database): Promise<void> {
+async function ensureProcessingColumn(db: Database, tui?: TUIManager): Promise<void> {
   try {
     // Skip complex column additions for in-memory databases (they're already created with correct schema)
     if (db.getDbPath() === ':memory:') {
@@ -399,7 +445,7 @@ function generateTimestampGameName(): string {
 /**
  * Create a new game with rooms using timestamp-based name
  */
-export async function createGameWithRooms(db: Database, customName?: string): Promise<number> {
+export async function createGameWithRooms(db: Database, customName?: string, tui?: TUIManager): Promise<number> {
   const gameName = customName || generateTimestampGameName();
   try {
     // Create the new game
@@ -584,10 +630,18 @@ export async function createGameWithRooms(db: Database, customName?: string): Pr
       [gameId, entranceId]
     );
 
-    console.log(`Game "${gameName}" created successfully with ID ${gameId}`);
+    if (tui) {
+      tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);
+    } else {
+      console.log(`Game "${gameName}" created successfully with ID ${gameId}`);
+    }
     return gameId;
   } catch (error) {
-    console.error('Error creating game with rooms:', error);
+    if (tui) {
+      tui.display(`Error creating game with rooms: ${error}`, MessageType.ERROR);
+    } else {
+      console.error('Error creating game with rooms:', error);
+    }
     throw error;
   }
 }
@@ -595,11 +649,11 @@ export async function createGameWithRooms(db: Database, customName?: string): Pr
 /**
  * Create a new game automatically with timestamp name - no user input required
  */
-export async function createGameAutomatic(db: Database): Promise<number> {
+export async function createGameAutomatic(db: Database, tui?: TUIManager): Promise<number> {
   return await createGameWithRooms(db); // Uses timestamp name by default
 }
 
-export async function seedDatabase(db: Database): Promise<void> {
+export async function seedDatabase(db: Database, tui?: TUIManager): Promise<void> {
   try {
     // Check if any games already exist
     const existingGames = await db.get<{ count: number }>(

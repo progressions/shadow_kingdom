@@ -67,7 +67,7 @@ export class ServiceFactory {
     options: ServiceOptions
   ): ServiceInstances {
     // Create services with Database dependency
-    const gameStateManager = new GameStateManager(db, options);
+    const gameStateManager = new GameStateManager(db, options, tui);
     const gameManagementService = new GameManagementService(db, tui, options);
     const regionService = new RegionService(db, options);
     

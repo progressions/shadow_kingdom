@@ -1,4 +1,6 @@
 import { Room, Connection } from './gameStateManager';
+import { TUIManager } from '../ui/TUIManager';
+import { MessageType } from '../ui/MessageFormatter';
 
 export interface RoomDisplayOptions {
   enableDebugLogging?: boolean;
