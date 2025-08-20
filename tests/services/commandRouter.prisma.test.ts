@@ -44,7 +44,7 @@ describe('CommandRouter (Prisma Integration)', () => {
     });
     
     // Create command router
-    commandRouter = new CommandRouter(nlpEngine, {
+    commandRouter = new CommandRouter(nlpEngine, null, {
       enableDebugLogging: false
     });
   });
@@ -54,7 +54,20 @@ describe('CommandRouter (Prisma Integration)', () => {
   });
 
   describe('Command Registration', () => {
-    test('should register menu commands', () => {
+    test('should register commands', () => {
+      const testCommand: Command = {
+        name: 'test-command',
+        description: 'Test command',
+        handler: jest.fn()
+      };
+      
+      commandRouter.addCommand(testCommand);
+      
+      const commands = commandRouter.getCommands();
+      expect(commands.has('test-command')).toBe(true);
+    });
+
+    test('should register commands via legacy menu method', () => {
       const menuCommand: Command = {
         name: 'test-menu',
         description: 'Test menu command',
@@ -63,11 +76,11 @@ describe('CommandRouter (Prisma Integration)', () => {
       
       commandRouter.addMenuCommand(menuCommand);
       
-      const stats = commandRouter.getStats();
-      expect(stats.menuCommandCount).toBeGreaterThanOrEqual(1);
+      const commands = commandRouter.getCommands();
+      expect(commands.has('test-menu')).toBe(true);
     });
 
-    test('should register game commands', () => {
+    test('should register commands via legacy game method', () => {
       const gameCommand: Command = {
         name: 'test-game',
         description: 'Test game command',
@@ -76,28 +89,27 @@ describe('CommandRouter (Prisma Integration)', () => {
       
       commandRouter.addGameCommand(gameCommand);
       
-      const stats = commandRouter.getStats();
-      expect(stats.gameCommandCount).toBeGreaterThanOrEqual(1);
+      const commands = commandRouter.getCommands();
+      expect(commands.has('test-game')).toBe(true);
     });
 
     test('should count total commands correctly', () => {
-      const initialStats = commandRouter.getStats();
-      const initialTotal = initialStats.totalCommands;
+      const initialCommands = commandRouter.getCommands().size;
       
-      commandRouter.addMenuCommand({
-        name: 'menu-test',
-        description: 'Menu test',
+      commandRouter.addCommand({
+        name: 'test-1',
+        description: 'Test 1',
         handler: jest.fn()
       });
       
-      commandRouter.addGameCommand({
-        name: 'game-test',
-        description: 'Game test',
+      commandRouter.addCommand({
+        name: 'test-2',
+        description: 'Test 2',
         handler: jest.fn()
       });
       
-      const finalStats = commandRouter.getStats();
-      expect(finalStats.totalCommands).toBe(initialTotal + 2);
+      const finalCommands = commandRouter.getCommands().size;
+      expect(finalCommands).toBe(initialCommands + 2);
     });
   });
 
@@ -120,19 +132,17 @@ describe('CommandRouter (Prisma Integration)', () => {
         handler: jest.fn()
       };
       
-      commandRouter.addMenuCommand(testMenuCommand);
-      commandRouter.addGameCommand(testGameCommand);
+      commandRouter.addCommand(testMenuCommand);
+      commandRouter.addCommand(testGameCommand);
       
       menuContext = {
-        mode: 'menu',
         gameContext: {
-          mode: 'menu'
+          recentCommands: []
         },
         recentCommands: []
       };
       
       gameContext = {
-        mode: 'game',
         gameContext: {
           currentRoom: {
             id: 1,
@@ -142,24 +152,18 @@ describe('CommandRouter (Prisma Integration)', () => {
             thematicExits: []
           },
           gameId: 1,
-          mode: 'game'
+          recentCommands: []
         },
         recentCommands: []
       };
     });
 
-    test('should process menu commands in menu mode', async () => {
+    test('should process registered commands', async () => {
       await commandRouter.processCommand('test-menu', menuContext);
-      
       expect(testMenuCommand.handler).toHaveBeenCalled();
-      expect(testGameCommand.handler).not.toHaveBeenCalled();
-    });
-
-    test('should process game commands in game mode', async () => {
-      await commandRouter.processCommand('test-game', gameContext);
       
+      await commandRouter.processCommand('test-game', gameContext);
       expect(testGameCommand.handler).toHaveBeenCalled();
-      expect(testMenuCommand.handler).not.toHaveBeenCalled();
     });
 
     test('should handle commands with arguments', async () => {
@@ -169,7 +173,7 @@ describe('CommandRouter (Prisma Integration)', () => {
         handler: jest.fn()
       };
       
-      commandRouter.addGameCommand(commandWithArgs);
+      commandRouter.addCommand(commandWithArgs);
       
       await commandRouter.processCommand('test-args arg1 arg2', gameContext);
       
@@ -201,37 +205,27 @@ describe('CommandRouter (Prisma Integration)', () => {
 
   describe('Help System', () => {
     beforeEach(() => {
-      commandRouter.addMenuCommand({
-        name: 'menu-help-test',
-        description: 'Test menu help command',
+      commandRouter.addCommand({
+        name: 'help-test-1',
+        description: 'Test help command 1',
         handler: jest.fn()
       });
       
-      commandRouter.addGameCommand({
-        name: 'game-help-test',
-        description: 'Test game help command',
+      commandRouter.addCommand({
+        name: 'help-test-2',
+        description: 'Test help command 2',
         handler: jest.fn()
       });
     });
 
-    test('should show menu help', () => {
+    test('should show help for all commands', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       
-      commandRouter.showHelp('menu');
-      
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Main Menu Commands:'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('menu-help-test'));
-      
-      consoleSpy.mockRestore();
-    });
-
-    test('should show game help', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
-      commandRouter.showHelp('game');
+      commandRouter.showHelp();
       
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Available commands:'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('game-help-test'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('help-test-1'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('help-test-2'));
       
       consoleSpy.mockRestore();
     });
@@ -240,16 +234,15 @@ describe('CommandRouter (Prisma Integration)', () => {
   describe('Statistics and Performance', () => {
     test('should track processing statistics', async () => {
       const gameContext: CommandExecutionContext = {
-        mode: 'game',
         gameContext: { 
-          mode: 'game',
           currentRoom: {
             id: 1,
             name: 'Test Room',
             description: 'A test room',
             availableExits: ['north'],
             thematicExits: [{ direction: 'north', name: 'north passage' }]
-          }
+          },
+          recentCommands: []
         },
         recentCommands: []
       };
@@ -264,16 +257,15 @@ describe('CommandRouter (Prisma Integration)', () => {
 
     test('should measure processing time', async () => {
       const gameContext: CommandExecutionContext = {
-        mode: 'game',
         gameContext: { 
-          mode: 'game',
           currentRoom: {
             id: 1,
             name: 'Test Room',
             description: 'A test room',
             availableExits: ['north'],
             thematicExits: [{ direction: 'north', name: 'north passage' }]
-          }
+          },
+          recentCommands: []
         },
         recentCommands: []
       };
@@ -295,9 +287,8 @@ describe('CommandRouter (Prisma Integration)', () => {
 
     test('should track success and failure rates', async () => {
       const gameContext: CommandExecutionContext = {
-        mode: 'game',
         gameContext: { 
-          mode: 'game',
+          recentCommands: [],
           currentRoom: {
             id: 1,
             name: 'Test Room',
@@ -351,11 +342,10 @@ describe('CommandRouter (Prisma Integration)', () => {
         })
       };
       
-      commandRouter.addMenuCommand(errorCommand);
+      commandRouter.addCommand(errorCommand);
       
       const menuContext: CommandExecutionContext = {
-        mode: 'menu',
-        gameContext: { mode: 'menu' },
+        gameContext: { recentCommands: [] },
         recentCommands: []
       };
       
@@ -366,8 +356,7 @@ describe('CommandRouter (Prisma Integration)', () => {
 
     test('should handle malformed input gracefully', async () => {
       const menuContext: CommandExecutionContext = {
-        mode: 'menu',
-        gameContext: { mode: 'menu' },
+        gameContext: { recentCommands: [] },
         recentCommands: []
       };
       
@@ -395,7 +384,6 @@ describe('CommandRouter (Prisma Integration)', () => {
     test('should handle database-backed context properly', async () => {
       // Test with a realistic game context that would come from Prisma services
       const gameContext: CommandExecutionContext = {
-        mode: 'game',
         gameContext: {
           currentRoom: {
             id: 1,
@@ -407,7 +395,6 @@ describe('CommandRouter (Prisma Integration)', () => {
             ]
           },
           gameId: 1,
-          mode: 'game',
           recentCommands: ['look', 'go north']
         },
         recentCommands: ['look', 'go north']
@@ -419,7 +406,7 @@ describe('CommandRouter (Prisma Integration)', () => {
         handler: jest.fn()
       };
       
-      commandRouter.addGameCommand(testCommand);
+      commandRouter.addCommand(testCommand);
       
       // Should process without errors
       await commandRouter.processCommand('context-test', gameContext);

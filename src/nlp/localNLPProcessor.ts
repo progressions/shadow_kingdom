@@ -293,8 +293,8 @@ export class LocalNLPProcessor {
     if (match[0] === match.input) confidence += 0.05;
     
     // Context-based confidence adjustments
-    if (context.mode === 'game' && pattern.category === 'movement') {
-      confidence += 0.1; // Movement commands more likely in game mode
+    if (context.currentRoom && pattern.category === 'movement') {
+      confidence += 0.1; // Movement commands more likely when in a room
     }
     
     return Math.min(confidence, 0.98); // Cap at 98% to allow room for comparison

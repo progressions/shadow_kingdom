@@ -85,7 +85,6 @@ export interface CommandInterpretationContext {
   };
   inventory?: string[];
   recentCommands?: string[];
-  mode: 'menu' | 'game';
 }
 
 export interface InterpretedCommand {
@@ -392,7 +391,6 @@ Thematic exit descriptions: ${context.currentRoom.thematicExits.map(exit => `${e
     const prompt = `You are interpreting a natural language command for the text adventure game Shadow Kingdom.
 
 Player command: "${context.command}"
-Game mode: ${context.mode}
 ${roomInfo}
 ${inventoryInfo}
 ${recentInfo}

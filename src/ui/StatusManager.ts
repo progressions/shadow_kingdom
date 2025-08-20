@@ -17,7 +17,6 @@ export interface GameState {
   generationQueue?: number;
   tokenUsage?: number;
   cooldownRemaining?: number;
-  mode?: 'menu' | 'game';
 }
 
 export interface StatusInfo {
@@ -36,8 +35,8 @@ export class StatusManager {
     // Always show basic game info (line 1)
     lines.push(this.formatBasicInfo(gameState));
     
-    // Add region/connection info if in game mode (line 2)
-    if (gameState.mode === 'game' && this.shouldShowRegionInfo(gameState)) {
+    // Add region/connection info if available (line 2)
+    if (this.shouldShowRegionInfo(gameState)) {
       lines.push(this.formatRegionInfo(gameState));
     }
     
@@ -175,17 +174,6 @@ export class StatusManager {
     return this.generateStatus(gameState).height;
   }
 
-  /**
-   * Create a simple status for menu mode
-   */
-  public createMenuStatus(gameCount?: number): StatusInfo {
-    const gameInfo = gameCount !== undefined ? `${gameCount} games available` : 'Main Menu';
-    
-    return {
-      lines: [`Shadow Kingdom | ${gameInfo}`],
-      height: 3 // 1 line + 2 for borders
-    };
-  }
 
   /**
    * Create an error status display

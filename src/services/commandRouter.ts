@@ -9,10 +9,7 @@ export interface Command {
   handler: (args: string[]) => void | Promise<void>;
 }
 
-export type Mode = 'menu' | 'game';
-
 export interface CommandExecutionContext {
-  mode: Mode;
   gameContext: GameContext;
   recentCommands: string[];
 }
@@ -26,8 +23,7 @@ export interface CommandRouterOptions {
  * It supports both exact command matching and NLP-based command resolution.
  */
 export class CommandRouter {
-  private menuCommands: Map<string, Command> = new Map();
-  private gameCommands: Map<string, Command> = new Map();
+  private commands: Map<string, Command> = new Map();
   private nlpEngine: UnifiedNLPEngine;
   private options: CommandRouterOptions;
   private tui: TUIManager | null;
@@ -42,24 +38,33 @@ export class CommandRouter {
   }
 
   /**
-   * Register a command for menu mode
+   * Register a command
+   */
+  addCommand(command: Command): void {
+    this.commands.set(command.name.toLowerCase(), command);
+  }
+
+  /**
+   * Get all commands
+   */
+  getCommands(): Map<string, Command> {
+    return this.commands;
+  }
+
+  /**
+   * Register a command (legacy menu command method for backward compatibility)
+   * @deprecated Use addCommand() instead
    */
   addMenuCommand(command: Command): void {
-    this.menuCommands.set(command.name.toLowerCase(), command);
+    this.addCommand(command);
   }
 
   /**
-   * Register a command for game mode
+   * Register a command (legacy game command method for backward compatibility)
+   * @deprecated Use addCommand() instead
    */
   addGameCommand(command: Command): void {
-    this.gameCommands.set(command.name.toLowerCase(), command);
-  }
-
-  /**
-   * Get all commands for a specific mode
-   */
-  getCommands(mode: Mode): Map<string, Command> {
-    return mode === 'menu' ? this.menuCommands : this.gameCommands;
+    this.addCommand(command);
   }
 
   /**
@@ -73,7 +78,7 @@ export class CommandRouter {
     const commandName = parts[0].toLowerCase();
     const args = parts.slice(1);
 
-    const commands = this.getCommands(context.mode);
+    const commands = this.getCommands();
     const exactCommand = commands.get(commandName);
     
     if (exactCommand) {
@@ -108,9 +113,9 @@ export class CommandRouter {
     // In debug mode, show NLP analysis
     if (this.isDebugEnabled() && nlpResult) {
       if (this.tui) {
-        this.tui.display(`🧠 NLP attempted: "${nlpResult.action}" but command not found in ${context.mode} mode`, MessageType.SYSTEM);
+        this.tui.display(`🧠 NLP attempted: "${nlpResult.action}" but command not found`, MessageType.SYSTEM);
       } else {
-        console.log(`🧠 NLP attempted: "${nlpResult.action}" but command not found in ${context.mode} mode`);
+        console.log(`🧠 NLP attempted: "${nlpResult.action}" but command not found`);
       }
     }
     
@@ -160,11 +165,11 @@ export class CommandRouter {
   }
 
   /**
-   * Show help for the current mode
+   * Show help for all available commands
    */
-  showHelp(mode: Mode): void {
-    const commands = this.getCommands(mode);
-    const title = mode === 'menu' ? 'Main Menu Commands:' : 'Available commands:';
+  showHelp(): void {
+    const commands = this.getCommands();
+    const title = 'Available commands:';
     
     if (this.tui) {
       const tui = this.tui; // Store reference for forEach
@@ -198,9 +203,9 @@ export class CommandRouter {
     nlpStats: any;
   } {
     return {
-      menuCommandCount: this.menuCommands.size,
-      gameCommandCount: this.gameCommands.size,
-      totalCommands: this.menuCommands.size + this.gameCommands.size,
+      menuCommandCount: 0, // Legacy field for compatibility
+      gameCommandCount: this.commands.size,
+      totalCommands: this.commands.size,
       nlpStats: this.nlpEngine.getStats()
     };
   }
@@ -223,7 +228,6 @@ export class CommandRouter {
    * Clear all registered commands (useful for testing)
    */
   clearCommands(): void {
-    this.menuCommands.clear();
-    this.gameCommands.clear();
+    this.commands.clear();
   }
 }

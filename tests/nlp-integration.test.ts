@@ -29,9 +29,8 @@ describe('NLP Integration Tests', () => {
     await db.connect();
     await initializeDatabase(db);
     
-    // Create test game controller with mock TUI
-    const mockTUI = new MockTUI();
-    gameController = new GameController(db, mockTUI);
+    // Create test game controller without TUI (console mode)
+    gameController = new GameController(db);
     
     // Create a test game with unique name
     const uniqueGameName = `NLP Test Game ${Date.now()}-${Math.random()}`;

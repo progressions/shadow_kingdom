@@ -24,7 +24,6 @@ describe('EnhancedNLPEngine - Core Functionality', () => {
 
     // Test context
     gameContext = {
-      mode: 'game',
       gameId: 1,
       currentRoom: {
         id: 1,

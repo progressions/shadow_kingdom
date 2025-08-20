@@ -10,7 +10,7 @@ import { UnifiedNLPEngine } from './nlp/unifiedNLPEngine';
 import { GameContext } from './nlp/types';
 import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
 import { CommandRouter, Command, CommandExecutionContext } from './services/commandRouter';
-import { GameStateManager, Mode } from './services/gameStateManager';
+import { GameStateManager } from './services/gameStateManager';
 import { RoomDisplayService } from './services/roomDisplayService';
 import { RoomGenerationService } from './services/roomGenerationService';
 import { BackgroundGenerationService } from './services/backgroundGenerationService';
@@ -86,32 +86,32 @@ export class GameController {
     this.initializeServices();
   }
 
-  private setupMenuCommands() {
-    this.commandRouter.addMenuCommand({
+  private setupCommands() {
+    this.commandRouter.addCommand({
       name: 'help',
-      description: 'Show available menu commands',
-      handler: () => this.commandRouter.showHelp('menu')
+      description: 'Show available commands',
+      handler: () => this.commandRouter.showHelp()
     });
 
-    this.commandRouter.addMenuCommand({
+    this.commandRouter.addCommand({
       name: 'new',
-      description: 'Start a new game',
+      description: 'Start a new adventure',
       handler: async () => await this.startNewGame()
     });
 
-    this.commandRouter.addMenuCommand({
+    this.commandRouter.addCommand({
       name: 'load',
-      description: 'Load an existing game',
+      description: 'Load an existing adventure',
       handler: async () => await this.loadGame()
     });
 
-    this.commandRouter.addMenuCommand({
+    this.commandRouter.addCommand({
       name: 'delete',
-      description: 'Delete a saved game',
+      description: 'Delete a saved adventure',
       handler: async () => await this.deleteGame()
     });
 
-    this.commandRouter.addMenuCommand({
+    this.commandRouter.addCommand({
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
@@ -120,120 +120,118 @@ export class GameController {
       }
     });
 
-    this.commandRouter.addMenuCommand({
+    this.commandRouter.addCommand({
       name: 'nlp-stats',
       description: 'Show natural language processing statistics',
       handler: () => this.showNLPStats()
     });
 
-    this.commandRouter.addMenuCommand({
+    this.commandRouter.addCommand({
       name: 'exit',
       description: 'Exit Shadow Kingdom',
       handler: () => this.exit()
     });
 
-    this.commandRouter.addMenuCommand({
+    this.commandRouter.addCommand({
       name: 'quit',
       description: 'Quit Shadow Kingdom (alias for "exit")',
       handler: () => this.exit()
     });
 
-  }
-
-  private setupGameCommands() {
-    this.commandRouter.addGameCommand({
-      name: 'help',
-      description: 'Show available commands',
-      handler: () => this.commandRouter.showHelp('game')
+    this.commandRouter.addCommand({
+      name: 'games',
+      description: 'List all adventures',
+      handler: async () => await this.listGames()
     });
 
-    this.commandRouter.addGameCommand({
+    // Gameplay commands
+    this.commandRouter.addCommand({
       name: 'look',
       description: 'Look around the current room',
       handler: async () => await this.lookAround()
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'go',
       description: 'Move in a direction (e.g., "go north")',
       handler: async (args) => await this.move(args)
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'move',
       description: 'Move in a direction (alias for "go")',
       handler: async (args) => await this.move(args)
     });
 
     // Cardinal direction shortcuts
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'north',
       description: 'Move north',
       handler: async () => await this.move(['north'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'south',
       description: 'Move south',
       handler: async () => await this.move(['south'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'east',
       description: 'Move east',
       handler: async () => await this.move(['east'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'west',
       description: 'Move west',
       handler: async () => await this.move(['west'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'up',
       description: 'Move up',
       handler: async () => await this.move(['up'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'down',
       description: 'Move down',
       handler: async () => await this.move(['down'])
     });
 
     // Short aliases for cardinal directions
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'n',
       description: 'Move north (shortcut)',
       handler: async () => await this.move(['north'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 's',
       description: 'Move south (shortcut)',
       handler: async () => await this.move(['south'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'e',
       description: 'Move east (shortcut)',
       handler: async () => await this.move(['east'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'w',
       description: 'Move west (shortcut)',
       handler: async () => await this.move(['west'])
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'echo',
       description: 'Echo back the provided text',
       handler: (args) => this.tui.display(args.join(' '))
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'clear',
       description: 'Clear the screen',
       handler: () => {
@@ -242,39 +240,32 @@ export class GameController {
       }
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'exit',
-      description: 'Exit to main menu',
-      handler: async () => await this.returnToMenu()
+      description: 'Exit Shadow Kingdom',
+      handler: () => this.exit()
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'quit',
-      description: 'Quit to main menu (alias for "exit")',
-      handler: async () => await this.returnToMenu()
-    });
-
-
-    this.commandRouter.addGameCommand({
-      name: 'menu',
-      description: 'Return to main menu',
-      handler: async () => await this.returnToMenu()
+      description: 'Quit Shadow Kingdom (alias for "exit")',
+      handler: () => this.exit()
     });
 
     // Region debug commands
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'region',
       description: 'Show current room region information',
       handler: async () => await this.showRegionInfo()
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'regions',
       description: 'List all regions in current game',
       handler: async () => await this.listRegions()
     });
 
-    this.commandRouter.addGameCommand({
+    this.commandRouter.addCommand({
       name: 'region-stats',
       description: 'Show region statistics for current game',
       handler: async () => await this.showRegionStats()
@@ -316,24 +307,18 @@ export class GameController {
       const session = this.gameStateManager.getCurrentSession();
       
       if (!session.gameId) {
-        return {
-          mode: 'menu'
-        };
+        return {};
       }
       
       // Get basic game info (synchronously for now)
-      const gameState: TUIGameState = {
-        mode: 'game'
-      };
+      const gameState: TUIGameState = {};
       
       // Fetch game data asynchronously and update later
       this.updateGameStateAsync(session.gameId, gameState);
       
       return gameState;
     } catch (error) {
-      return {
-        mode: 'menu'
-      };
+      return {};
     }
   }
 
@@ -342,7 +327,7 @@ export class GameController {
       // Get game name
       const game = await this.gameManagementService.getGameById(gameId);
       if (game) {
-        gameState.gameName = game.name;
+        gameState.gameName = new Date(game.last_played_at).toLocaleString();
       }
       
       // Get room count
@@ -421,7 +406,6 @@ export class GameController {
 
       // Create execution context
       const executionContext: CommandExecutionContext = {
-        mode: this.gameStateManager.getCurrentSession().mode,
         gameContext: await this.gameStateManager.buildGameContext(),
         recentCommands: this.gameStateManager.getRecentCommands()
       };
@@ -442,7 +426,7 @@ export class GameController {
   private showWelcome() {
     this.tui.showWelcome('Welcome to Shadow Kingdom!');
     this.tui.display('A dynamic, AI-powered text adventure.');
-    this.tui.display('Type "help" for commands or "new" to start your first game.');
+    this.tui.display('Type "help" for commands or "new" to start a new adventure.');
   }
 
   private showNLPStats() {
@@ -454,7 +438,7 @@ export class GameController {
     const config = this.nlpEngine.getConfig();
     
     this.tui.display('🎮 Command Router Statistics:', MessageType.NORMAL);
-    this.tui.display(`  Menu commands registered: ${commandStats.menuCommandCount}`, MessageType.NORMAL);
+    this.tui.display(`  Commands registered: ${commandStats.totalCommands}`, MessageType.NORMAL);
     this.tui.display(`  Game commands registered: ${commandStats.gameCommandCount}`, MessageType.NORMAL);
     this.tui.display(`  Total commands registered: ${commandStats.totalCommands}`, MessageType.NORMAL);
     
@@ -503,7 +487,7 @@ export class GameController {
     const result = await this.gameManagementService.createGameWithName(gameName.trim());
     
     if (!result.success) {
-      this.tui.display(result.error || 'Failed to create new game. Returning to main menu.', MessageType.ERROR);
+      this.tui.display(result.error || 'Failed to create new adventure.', MessageType.ERROR);
       return;
     }
     
@@ -513,11 +497,11 @@ export class GameController {
       
       this.tui.clear();
       this.tui.showWelcome('Welcome to Shadow Kingdom!');
-      this.tui.display(`Game: ${result.game.name}`);
+      this.tui.display(`Adventure: ${new Date(result.game.created_at).toLocaleString()}`);
       this.tui.display('Initializing game world...');
       this.tui.display('Type "help" for available commands.');
       this.tui.display('Type "look" to see where you are.');
-      this.tui.display('Type "menu" to return to main menu.');
+      this.tui.display('Type "games" to manage adventures.');
       
       // Show initial room
       await this.lookAround();
@@ -545,7 +529,7 @@ export class GameController {
     
     if (game) {
       // Confirm deletion via TUI
-      this.tui.display(`Are you sure you want to delete "${game.name}"?`, MessageType.SYSTEM);
+      this.tui.display(`Are you sure you want to delete the adventure from ${new Date(game.last_played_at).toLocaleString()}?`, MessageType.SYSTEM);
       this.tui.display('This action cannot be undone.', MessageType.SYSTEM);
       this.tui.display('Type "yes" to confirm, or anything else to cancel:', MessageType.SYSTEM);
       
@@ -554,13 +538,38 @@ export class GameController {
       if (confirmation.toLowerCase() === 'yes') {
         const deleteResult = await this.gameManagementService.deleteGameById(game.id);
         if (deleteResult.success) {
-          this.tui.display(`Game "${game.name}" has been deleted.`, MessageType.SYSTEM);
+          this.tui.display(`Adventure from ${new Date(game.last_played_at).toLocaleString()} has been deleted.`, MessageType.SYSTEM);
         } else {
           this.tui.display(deleteResult.error || 'Deletion failed.', MessageType.ERROR);
         }
       } else {
         this.tui.display('Deletion cancelled.', MessageType.SYSTEM);
       }
+    }
+  }
+
+  private async listGames() {
+    try {
+      const games = await this.gameManagementService.getAllGames();
+      
+      if (games.length === 0) {
+        this.tui.display('No adventures found. Type "new" to start your first adventure!', MessageType.SYSTEM);
+        return;
+      }
+      
+      this.tui.display('Your adventures:', MessageType.SYSTEM);
+      this.tui.display('================', MessageType.SYSTEM);
+      
+      games.forEach((game, index) => {
+        const isCurrentGame = this.gameStateManager.getCurrentSession().gameId === game.id;
+        const status = isCurrentGame ? ' (current)' : '';
+        const lastPlayed = new Date(game.last_played_at).toLocaleString();
+        this.tui.display(`${index + 1}. Last played: ${lastPlayed}${status}`);
+      });
+      
+      this.tui.display('\nType "load [number]" to switch to an adventure, or "new" to start a new one.', MessageType.SYSTEM);
+    } catch (error) {
+      this.tui.display('Error listing adventures: ' + error, MessageType.ERROR);
     }
   }
 
@@ -579,7 +588,7 @@ export class GameController {
       
       games.forEach((game, index) => {
         const lastPlayed = new Date(game.last_played_at).toLocaleDateString();
-        this.tui.display(`${index + 1}. ${game.name} (Last played: ${lastPlayed})`, MessageType.SYSTEM);
+        this.tui.display(`${index + 1}. Last played: ${lastPlayed}`, MessageType.SYSTEM);
       });
       this.tui.display('0. Cancel', MessageType.SYSTEM);
 
@@ -603,19 +612,6 @@ export class GameController {
     }
   }
 
-  private async returnToMenu() {
-    this.tui.display('Returning to main menu...', MessageType.SYSTEM);
-    
-    // End game session (automatically saves state)
-    await this.gameStateManager.endGameSession();
-    
-    this.tui.clear();
-    this.showWelcome();
-    this.updateStatusDisplay();
-    
-    // Start input processing loop
-    this.processInput();
-  }
 
   private async lookAround() {
     if (!this.gameStateManager.isInGame()) {
@@ -773,11 +769,11 @@ export class GameController {
       
       this.tui.clear();
       this.tui.showWelcome('Welcome back to Shadow Kingdom!');
-      this.tui.display(`Game: ${game.name}`);
+      this.tui.display(`Adventure: ${new Date(game.last_played_at).toLocaleString()}`);
       this.tui.display('Loading your saved game...');
       this.tui.display('Type "help" for available commands.');
       this.tui.display('Type "look" to see where you are.');
-      this.tui.display('Type "menu" to return to main menu.');
+      this.tui.display('Type "games" to manage adventures.');
       
       // Show current room
       await this.lookAround();
@@ -811,8 +807,7 @@ export class GameController {
     this.backgroundGenerationService = services.backgroundGenerationService;
     
     // Set up commands
-    this.setupMenuCommands();
-    this.setupGameCommands();
+    this.setupCommands();
   }
 
   /**
@@ -833,8 +828,8 @@ export class GameController {
     if (mostRecentGame) {
       // Auto-load the most recent game
       this.tui.showWelcome('Welcome back to Shadow Kingdom!');
-      this.tui.display(`Continuing: "${mostRecentGame.name}"`);
-      this.tui.display('Type "menu" to manage games.');
+      this.tui.display(`Continuing adventure from: ${new Date(mostRecentGame.last_played_at).toLocaleString()}`);
+      this.tui.display('Type "games" to manage adventures or "help" for commands.');
       
       await this.loadSelectedGame(mostRecentGame);
     } else {
@@ -844,10 +839,10 @@ export class GameController {
       
       const result = await this.gameManagementService.createGameAutomatic();
       if (result.success && result.game) {
-        this.tui.display(`Created: "${result.game.name}"`);
+        this.tui.display(`Created new adventure: ${new Date(result.game.created_at).toLocaleString()}`);
         await this.loadSelectedGame(result.game);
       } else {
-        // Fallback to menu if auto-creation fails
+        // Fallback if auto-creation fails
         this.showWelcome();
         this.processInput(); // Start input processing loop
       }
@@ -870,6 +865,7 @@ export class GameController {
       display: () => {},
       displayLines: () => {},
       showWelcome: () => {},
+      showError: () => {},
       getInput: () => Promise.resolve(''),
       updateStatus: () => {},
       clear: () => {},
@@ -877,7 +873,8 @@ export class GameController {
       setPrompt: () => {},
       setStatus: () => {},
       showRoom: () => {},
-      showAIProgress: () => {}
+      showAIProgress: () => {},
+      displayRoom: () => {}
     };
   }
 

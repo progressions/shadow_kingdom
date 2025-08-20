@@ -40,7 +40,7 @@ async function testGrokIntegration() {
     if (roomResult.connections && roomResult.connections.length > 0) {
       console.log('   Connections:');
       roomResult.connections.forEach(conn => {
-        console.log(`     - ${conn.direction}: ${conn.hint || 'No hint'}`);
+        console.log(`     - ${conn.direction}: ${conn.name || 'No name'}`);
       });
     }
 

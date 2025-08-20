@@ -144,7 +144,6 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     
     // Create execution context for command processing
     const executionContext = {
-      mode: gameStateManager.getCurrentSession().mode,
       gameContext: await gameStateManager.buildGameContext(),
       recentCommands: gameStateManager.getRecentCommands()
     };

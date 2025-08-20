@@ -8,7 +8,6 @@ describe('ContextResolver - Core Functionality', () => {
     resolver = new ContextResolver();
     
     baseContext = {
-      mode: 'game',
       gameId: 1,
       currentRoom: {
         id: 1,

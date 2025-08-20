@@ -92,9 +92,8 @@ describe('GameController Automatic Loading', () => {
       // Start the controller
       await controller.start();
       
-      // Should auto-load the game and be in game mode
+      // Should auto-load the game
       const session = controller.getCurrentSession();
-      expect(session.mode).toBe('game');
       expect(session.gameId).toBe(gameId);
       
       // Verify auto-load welcome message was shown
@@ -112,7 +111,6 @@ describe('GameController Automatic Loading', () => {
       
       // Should auto-load the most recent game (gameId2)
       const session = controller.getCurrentSession();
-      expect(session.mode).toBe('game');
       expect(session.gameId).toBe(gameId2);
     });
   });
@@ -138,7 +136,6 @@ describe('GameController Automatic Loading', () => {
       
       // Verify new game session is active
       const session = controller.getCurrentSession();
-      expect(session.mode).toBe('game');
       expect(session.gameId).toBeDefined();
       expect(session.roomId).toBeDefined();
       
@@ -176,8 +173,8 @@ describe('GameController Automatic Loading', () => {
       await createGameWithRooms(db, uniqueGameName);
       await controller.start();
       
-      // Verify we're in game mode
-      expect(controller.getCurrentSession().mode).toBe('game');
+      // Verify we have an active session
+      expect(controller.getCurrentSession().gameId).not.toBeNull();
       
       // Execute menu command (need to make this public or use a different approach)
       // For now, let's skip this test since processCommand is private
@@ -188,8 +185,8 @@ describe('GameController Automatic Loading', () => {
       // expect(session.mode).toBe('menu');
       // expect(session.gameId).toBeNull();
       
-      // For now, just verify we started in game mode
-      expect(controller.getCurrentSession().mode).toBe('game');
+      // For now, just verify we have an active session
+      expect(controller.getCurrentSession().gameId).not.toBeNull();
     });
   });
 

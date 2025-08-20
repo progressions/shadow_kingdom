@@ -1,34 +1,41 @@
-import { TUIManager } from '../../src/ui/TUIManager';
 import { MessageType } from '../../src/ui/MessageFormatter';
 import { GameState } from '../../src/ui/StatusManager';
 
 /**
- * Mock TUI that implements the same interface as TUIManager but doesn't use blessed.js
+ * Mock TUI that provides the same interface as TUIManager but doesn't use blessed.js
  * This allows tests to run without requiring a TTY environment
+ * 
+ * Note: This is a standalone mock, not extending TUIManager, to avoid blessed.js initialization
  */
 export class MockTUI {
   private messages: Array<{ message: string; type: MessageType }> = [];
-  private currentStatus: string = '';
+  private mockStatus: string = '';
   
+  // Mock blessed.js components
+  screen = {
+    render: () => {},
+    destroy: () => {},
+    on: function() { return this; },
+    key: () => {}
+  };
+  
+  contentBox = { setContent: () => {}, focus: () => {} };
+  
+  inputBox = { 
+    setContent: () => {}, 
+    focus: () => {}, 
+    readInput: () => {},
+    on: function() { return this; },
+    removeAllListeners: function() { return this; }
+  };
+  
+  statusBox = { setContent: () => {} };
+
   constructor() {
-    // Don't call super() - we don't want to initialize blessed.js components
-    // @ts-ignore - bypass TypeScript checks for test mock
-    this.messageFormatter = {
-      format: (message: string, type: MessageType) => message,
-      formatWelcome: (message: string) => `=== ${message} ===`
-    };
-    // @ts-ignore
-    this.statusManager = {
-      generateStatus: (gameState: GameState) => `Status: ${gameState.mode}`
-    };
-    // @ts-ignore
-    this.historyManager = {
-      saveCommand: async () => {},
-      loadHistory: async () => []
-    };
+    // No super() call needed since we don't extend TUIManager
   }
 
-  // Override all public methods to avoid blessed.js calls
+  // Implement all TUIManager public methods
   async initialize(): Promise<void> {
     // No-op for tests
   }
@@ -51,7 +58,7 @@ export class MockTUI {
   }
 
   updateStatus(gameState: GameState): void {
-    this.currentStatus = `Status: ${gameState.mode}`;
+    this.mockStatus = `Status: Game Active`;
   }
 
   clear(): void {
@@ -67,7 +74,7 @@ export class MockTUI {
   }
 
   setStatus(status: string): void {
-    this.currentStatus = status;
+    this.mockStatus = status;
   }
 
   showRoom(roomName: string, description: string, exits: string[]): void {
@@ -96,6 +103,6 @@ export class MockTUI {
   }
 
   getCurrentStatus(): string {
-    return this.currentStatus;
+    return this.mockStatus;
   }
 }

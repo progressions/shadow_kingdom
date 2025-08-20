@@ -27,7 +27,6 @@ export interface GameContext {
     thematicExits?: Array<{direction: string; name: string}>;
   };
   gameId?: number;
-  mode: 'menu' | 'game';
   recentCommands?: string[];
 }
 

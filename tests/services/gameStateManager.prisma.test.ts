@@ -57,7 +57,7 @@ describe.skip('GameStateManager (Prisma)', () => {
       
       const session = gameStateManager.getCurrentSession();
       expect(session.gameId).toBe(testGameId);
-      expect(session.mode).toBe('game');
+      // Mode removed from single-mode refactor - session is always in game mode now
       expect(session.roomId).toBeDefined();
       expect(session.gameId).toBe(testGameId);
     });
@@ -67,7 +67,7 @@ describe.skip('GameStateManager (Prisma)', () => {
       await gameStateManager.endGameSession();
       
       const session = gameStateManager.getCurrentSession();
-      expect(session.mode).toBe('menu');
+      // Mode removed from single-mode refactor - session is always in game mode now
       expect(session.gameId).toBeNull();
       expect(session.roomId).toBeNull();
       expect(session.gameId).toBeNull();
@@ -178,7 +178,7 @@ describe.skip('GameStateManager (Prisma)', () => {
       expect(context).toBeDefined();
       expect(context.currentRoom).toBeDefined();
       expect(context.gameId).toBe(testGameId);
-      expect(context.mode).toBe('game');
+      // Mode removed from single-mode refactor - context is always in game mode now
     });
 
     test('should include room details in context', async () => {
@@ -254,12 +254,12 @@ describe.skip('GameStateManager (Prisma)', () => {
       
       // Should return context without current room (graceful degradation)
       const context = await gameStateManager.buildGameContext();
-      expect(context.mode).toBe('game');
+      // Mode removed from single-mode refactor - context is always in game mode now
       
       // With Prisma, it might still find a room, so let's just check that it handles the error gracefully
       // The important thing is that it doesn't crash
       expect(context).toBeDefined();
-      expect(context.mode).toBe('game');
+      // Mode removed from single-mode refactor - context is always in game mode now
     });
 
     test('should handle session without active game', async () => {

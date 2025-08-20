@@ -25,7 +25,6 @@ describe('EnhancedNLPEngine', () => {
 
     // Test context with rich room description
     gameContext = {
-      mode: 'game',
       gameId: 1,
       currentRoom: {
         id: 1,

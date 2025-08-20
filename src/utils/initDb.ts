@@ -388,7 +388,19 @@ async function ensureProcessingColumn(db: Database): Promise<void> {
   }
 }
 
-export async function createGameWithRooms(db: Database, gameName: string): Promise<number> {
+/**
+ * Generate a timestamp-based game name
+ */
+function generateTimestampGameName(): string {
+  const now = new Date();
+  return now.toISOString().replace('T', ' ').split('.')[0]; // Format: "2025-01-20 14:32:05"
+}
+
+/**
+ * Create a new game with rooms using timestamp-based name
+ */
+export async function createGameWithRooms(db: Database, customName?: string): Promise<number> {
+  const gameName = customName || generateTimestampGameName();
   try {
     // Create the new game
     const gameResult = await db.run(
@@ -578,6 +590,13 @@ export async function createGameWithRooms(db: Database, gameName: string): Promi
     console.error('Error creating game with rooms:', error);
     throw error;
   }
+}
+
+/**
+ * Create a new game automatically with timestamp name - no user input required
+ */
+export async function createGameAutomatic(db: Database): Promise<number> {
+  return await createGameWithRooms(db); // Uses timestamp name by default
 }
 
 export async function seedDatabase(db: Database): Promise<void> {
