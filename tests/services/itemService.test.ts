@@ -1010,4 +1010,603 @@ describe('ItemService', () => {
       expect(inventory[0].item.name).toBe('Inventory Test Sword');
     });
   });
+
+  // ============================================================================
+  // PHASE 6: DROP COMMAND TESTS
+  // ============================================================================
+
+  describe('Phase 6: Drop Command - transferItemToRoom', () => {
+    let testItemId: number;
+    let characterId: number;
+    let roomId: number;
+
+    beforeEach(async () => {
+      // Create test item
+      testItemId = await itemService.createItem({
+        name: 'Drop Test Sword',
+        description: 'A sword for testing drop functionality',
+        type: ItemType.WEAPON,
+        weight: 2.5,
+        value: 100,
+        stackable: false,
+        max_stack: 1,
+        weapon_damage: '1d8+1'
+      });
+
+      // Create test character and room
+      characterId = 123;
+      roomId = 456;
+
+      // Add room to database (minimal room for testing)
+      await db.run(`
+        INSERT INTO rooms (id, game_id, name, description)
+        VALUES (?, ?, ?, ?)
+      `, [roomId, 1, 'Drop Test Room', 'A room for testing drops']);
+
+      // Add item to character inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, testItemId, 1]);
+    });
+
+    test('should transfer single item from inventory to room', async () => {
+      // Transfer item from inventory to room
+      await itemService.transferItemToRoom(characterId, testItemId, roomId, 1);
+
+      // Verify item was removed from inventory
+      const inventory = await itemService.getCharacterInventory(characterId);
+      expect(inventory).toHaveLength(0);
+
+      // Verify item was added to room
+      const roomItems = await itemService.getRoomItems(roomId);
+      expect(roomItems).toHaveLength(1);
+      expect(roomItems[0].item.name).toBe('Drop Test Sword');
+      expect(roomItems[0].quantity).toBe(1);
+      expect(roomItems[0].room_id).toBe(roomId);
+    });
+
+    test('should reduce quantity when dropping part of a stack', async () => {
+      // Create a stackable item
+      const stackableItemId = await itemService.createItem({
+        name: 'Drop Test Potion',
+        description: 'A stackable potion for testing',
+        type: ItemType.CONSUMABLE,
+        weight: 0.5,
+        value: 25,
+        stackable: true,
+        max_stack: 10
+      });
+
+      // Add multiple potions to inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, stackableItemId, 5]);
+
+      // Drop 2 potions
+      await itemService.transferItemToRoom(characterId, stackableItemId, roomId, 2);
+
+      // Verify reduced quantity in inventory
+      const inventory = await itemService.getCharacterInventory(characterId);
+      const inventoryPotion = inventory.find(item => item.item_id === stackableItemId);
+      expect(inventoryPotion).toBeDefined();
+      expect(inventoryPotion!.quantity).toBe(3);
+
+      // Verify correct quantity in room
+      const roomItems = await itemService.getRoomItems(roomId);
+      const roomPotion = roomItems.find(item => item.item_id === stackableItemId);
+      expect(roomPotion).toBeDefined();
+      expect(roomPotion!.quantity).toBe(2);
+    });
+
+    test('should stack item with existing room item', async () => {
+      // Create stackable item
+      const stackableItemId = await itemService.createItem({
+        name: 'Drop Test Coin',
+        description: 'Stackable coins for testing',
+        type: ItemType.MISC,
+        weight: 0.025,
+        value: 1,
+        stackable: true,
+        max_stack: 1000
+      });
+
+      // Add coins to inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, stackableItemId, 50]);
+
+      // Place some coins already in the room
+      await itemService.placeItemInRoom(roomId, stackableItemId, 25);
+
+      // Drop 20 coins from inventory
+      await itemService.transferItemToRoom(characterId, stackableItemId, roomId, 20);
+
+      // Verify inventory has reduced quantity
+      const inventory = await itemService.getCharacterInventory(characterId);
+      const inventoryCoins = inventory.find(item => item.item_id === stackableItemId);
+      expect(inventoryCoins!.quantity).toBe(30);
+
+      // Verify room has combined quantity
+      const roomItems = await itemService.getRoomItems(roomId);
+      const roomCoins = roomItems.find(item => item.item_id === stackableItemId);
+      expect(roomCoins!.quantity).toBe(45); // 25 existing + 20 dropped
+    });
+
+    test('should throw error when item not in character inventory', async () => {
+      const nonExistentItemId = 99999;
+
+      await expect(
+        itemService.transferItemToRoom(characterId, nonExistentItemId, roomId, 1)
+      ).rejects.toThrow('Item not found in character inventory');
+    });
+
+    test('should throw error when insufficient quantity in inventory', async () => {
+      // Try to drop more than available
+      await expect(
+        itemService.transferItemToRoom(characterId, testItemId, roomId, 5)
+      ).rejects.toThrow('Not enough quantity available in inventory');
+    });
+
+    test('should handle dropping entire stack', async () => {
+      // Create stackable item with quantity in inventory
+      const stackableItemId = await itemService.createItem({
+        name: 'Drop Test Gem',
+        description: 'Stackable gems for testing',
+        type: ItemType.MISC,
+        weight: 0.1,
+        value: 50,
+        stackable: true,
+        max_stack: 100
+      });
+
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, stackableItemId, 7]);
+
+      // Drop all gems
+      await itemService.transferItemToRoom(characterId, stackableItemId, roomId, 7);
+
+      // Verify item completely removed from inventory
+      const inventory = await itemService.getCharacterInventory(characterId);
+      const inventoryGem = inventory.find(item => item.item_id === stackableItemId);
+      expect(inventoryGem).toBeUndefined();
+
+      // Verify all gems in room
+      const roomItems = await itemService.getRoomItems(roomId);
+      const roomGem = roomItems.find(item => item.item_id === stackableItemId);
+      expect(roomGem!.quantity).toBe(7);
+    });
+
+    test('should work with multiple different items in character and room', async () => {
+      // Create another item
+      const secondItemId = await itemService.createItem({
+        name: 'Drop Test Shield',
+        description: 'A shield for testing',
+        type: ItemType.ARMOR,
+        weight: 5.0,
+        value: 150,
+        stackable: false,
+        max_stack: 1,
+        armor_rating: 3
+      });
+
+      // Add second item to inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, secondItemId, 1]);
+
+      // Place an unrelated item in the room
+      await itemService.placeItemInRoom(roomId, testItemId, 1);
+
+      // Drop the shield from inventory
+      await itemService.transferItemToRoom(characterId, secondItemId, roomId, 1);
+
+      // Verify inventory only has the original sword
+      const inventory = await itemService.getCharacterInventory(characterId);
+      expect(inventory).toHaveLength(1);
+      expect(inventory[0].item.name).toBe('Drop Test Sword');
+
+      // Verify room has both items
+      const roomItems = await itemService.getRoomItems(roomId);
+      expect(roomItems).toHaveLength(2);
+      
+      const roomSword = roomItems.find(item => item.item.name === 'Drop Test Sword');
+      const roomShield = roomItems.find(item => item.item.name === 'Drop Test Shield');
+      
+      expect(roomSword).toBeDefined();
+      expect(roomShield).toBeDefined();
+      expect(roomSword!.quantity).toBe(1);
+      expect(roomShield!.quantity).toBe(1);
+    });
+  });
+
+  // ============================================================================
+  // PHASE 7: SIMPLE ITEM COUNT LIMIT SYSTEM TESTS
+  // ============================================================================
+
+  describe('Phase 7: Simple Item Count Limit System', () => {
+    let characterId: number;
+
+    beforeEach(async () => {
+      characterId = 789;
+    });
+
+    describe('Environment Configuration', () => {
+      test('should return default max inventory items when env var not set', () => {
+        delete process.env.MAX_INVENTORY_ITEMS;
+        const maxItems = itemService.getMaxInventoryItems();
+        expect(maxItems).toBe(10);
+      });
+
+      test('should use environment variable for max inventory items', () => {
+        process.env.MAX_INVENTORY_ITEMS = '15';
+        const maxItems = itemService.getMaxInventoryItems();
+        expect(maxItems).toBe(15);
+      });
+
+      test('should handle invalid environment variable gracefully', () => {
+        process.env.MAX_INVENTORY_ITEMS = 'invalid';
+        const maxItems = itemService.getMaxInventoryItems();
+        expect(maxItems).toBe(10); // Falls back to default when invalid
+      });
+
+      afterEach(() => {
+        // Reset to default for other tests
+        delete process.env.MAX_INVENTORY_ITEMS;
+      });
+    });
+
+    describe('Item Count Calculation', () => {
+      test('should return 0 for character with no items', async () => {
+        const count = await itemService.getInventoryItemCount(characterId);
+        expect(count).toBe(0);
+      });
+
+      test('should count distinct items correctly', async () => {
+        // Create test items
+        const sword = await itemService.createItem({
+          name: 'Count Test Sword',
+          description: 'A sword for counting',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        const potion = await itemService.createItem({
+          name: 'Count Test Potion',
+          description: 'A potion for counting',
+          type: ItemType.CONSUMABLE,
+          weight: 0.5,
+          value: 25,
+          stackable: true,
+          max_stack: 10
+        });
+
+        // Add items to inventory
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, sword, 1]);
+
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, potion, 5]); // 5 potions but counts as 1 distinct item
+
+        const count = await itemService.getInventoryItemCount(characterId);
+        expect(count).toBe(2); // 2 distinct items regardless of quantities
+      });
+
+      test('should count only items for specific character', async () => {
+        const anotherCharacterId = 999;
+        
+        const sword = await itemService.createItem({
+          name: 'Character Test Sword',
+          description: 'A sword for character testing',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        // Add item to first character
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, sword, 1]);
+
+        // Add item to second character
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [anotherCharacterId, sword, 1]);
+
+        const count1 = await itemService.getInventoryItemCount(characterId);
+        const count2 = await itemService.getInventoryItemCount(anotherCharacterId);
+        
+        expect(count1).toBe(1);
+        expect(count2).toBe(1);
+      });
+    });
+
+    describe('Inventory Capacity Validation', () => {
+      test('should allow adding item when under limit', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '3';
+        
+        // Add 2 items (under limit of 3)
+        const sword = await itemService.createItem({
+          name: 'Capacity Test Sword',
+          description: 'A sword for capacity testing',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, sword, 1]);
+
+        const canAdd = await itemService.canAddItemToInventory(characterId);
+        expect(canAdd).toBe(true);
+      });
+
+      test('should prevent adding item when at limit', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '2';
+        
+        // Add 2 items (at limit of 2)
+        const sword = await itemService.createItem({
+          name: 'Limit Test Sword',
+          description: 'A sword for limit testing',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        const shield = await itemService.createItem({
+          name: 'Limit Test Shield',
+          description: 'A shield for limit testing',
+          type: ItemType.ARMOR,
+          weight: 5.0,
+          value: 150,
+          stackable: false,
+          max_stack: 1
+        });
+
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, sword, 1]);
+
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, shield, 1]);
+
+        const canAdd = await itemService.canAddItemToInventory(characterId);
+        expect(canAdd).toBe(false);
+      });
+
+      test('should allow adding items up to exact limit', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '1';
+        
+        const canAddWhenEmpty = await itemService.canAddItemToInventory(characterId);
+        expect(canAddWhenEmpty).toBe(true);
+
+        // Add 1 item (at limit of 1)
+        const sword = await itemService.createItem({
+          name: 'Exact Limit Sword',
+          description: 'A sword for exact limit testing',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, sword, 1]);
+
+        const canAddWhenFull = await itemService.canAddItemToInventory(characterId);
+        expect(canAddWhenFull).toBe(false);
+      });
+
+      afterEach(() => {
+        delete process.env.MAX_INVENTORY_ITEMS;
+      });
+    });
+
+    describe('Inventory Status Display', () => {
+      test('should show correct status when inventory is empty', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '10';
+        
+        const status = await itemService.getInventoryStatus(characterId);
+        expect(status).toBe('Items: 0/10');
+      });
+
+      test('should show correct status when inventory is partially full', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '5';
+        
+        // Add 3 items
+        const sword = await itemService.createItem({
+          name: 'Status Test Sword',
+          description: 'A sword for status testing',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        const shield = await itemService.createItem({
+          name: 'Status Test Shield', 
+          description: 'A shield for status testing',
+          type: ItemType.ARMOR,
+          weight: 5.0,
+          value: 150,
+          stackable: false,
+          max_stack: 1
+        });
+
+        const potion = await itemService.createItem({
+          name: 'Status Test Potion',
+          description: 'A potion for status testing',
+          type: ItemType.CONSUMABLE,
+          weight: 0.5,
+          value: 25,
+          stackable: true,
+          max_stack: 10
+        });
+
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)
+        `, [characterId, sword, 1, characterId, shield, 1, characterId, potion, 3]);
+
+        const status = await itemService.getInventoryStatus(characterId);
+        expect(status).toBe('Items: 3/5');
+      });
+
+      test('should show correct status when inventory is full', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '2';
+        
+        // Add 2 items (full)
+        const sword = await itemService.createItem({
+          name: 'Full Status Sword',
+          description: 'A sword for full status testing',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        const shield = await itemService.createItem({
+          name: 'Full Status Shield',
+          description: 'A shield for full status testing', 
+          type: ItemType.ARMOR,
+          weight: 5.0,
+          value: 150,
+          stackable: false,
+          max_stack: 1
+        });
+
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?), (?, ?, ?)
+        `, [characterId, sword, 1, characterId, shield, 1]);
+
+        const status = await itemService.getInventoryStatus(characterId);
+        expect(status).toBe('Items: 2/2');
+      });
+
+      test('should handle different environment variable values', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '25';
+        
+        const status = await itemService.getInventoryStatus(characterId);
+        expect(status).toBe('Items: 0/25');
+      });
+
+      afterEach(() => {
+        delete process.env.MAX_INVENTORY_ITEMS;
+      });
+    });
+
+    describe('Integration with Existing System', () => {
+      test('should work correctly with stackable items', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '3';
+        
+        const potion = await itemService.createItem({
+          name: 'Integration Test Potion',
+          description: 'A stackable potion for integration testing',
+          type: ItemType.CONSUMABLE,
+          weight: 0.5,
+          value: 25,
+          stackable: true,
+          max_stack: 10
+        });
+
+        // Add 5 potions - should count as 1 distinct item
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?)
+        `, [characterId, potion, 5]);
+
+        const count = await itemService.getInventoryItemCount(characterId);
+        const canAdd = await itemService.canAddItemToInventory(characterId);
+        const status = await itemService.getInventoryStatus(characterId);
+
+        expect(count).toBe(1);
+        expect(canAdd).toBe(true); // Still room for 2 more distinct items
+        expect(status).toBe('Items: 1/3');
+      });
+
+      test('should work with mixed stackable and non-stackable items', async () => {
+        process.env.MAX_INVENTORY_ITEMS = '4';
+        
+        // Create different types of items
+        const sword = await itemService.createItem({
+          name: 'Mixed Test Sword',
+          description: 'Non-stackable sword',
+          type: ItemType.WEAPON,
+          weight: 2.5,
+          value: 100,
+          stackable: false,
+          max_stack: 1
+        });
+
+        const potion = await itemService.createItem({
+          name: 'Mixed Test Potion',
+          description: 'Stackable potion',
+          type: ItemType.CONSUMABLE,
+          weight: 0.5,
+          value: 25,
+          stackable: true,
+          max_stack: 10
+        });
+
+        const coins = await itemService.createItem({
+          name: 'Mixed Test Coins',
+          description: 'Stackable coins',
+          type: ItemType.MISC,
+          weight: 0.025,
+          value: 1,
+          stackable: true,
+          max_stack: 1000
+        });
+
+        // Add items with different quantities
+        await db.run(`
+          INSERT INTO character_inventory (character_id, item_id, quantity)
+          VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)
+        `, [characterId, sword, 1, characterId, potion, 3, characterId, coins, 50]);
+
+        const count = await itemService.getInventoryItemCount(characterId);
+        const canAdd = await itemService.canAddItemToInventory(characterId);
+        const status = await itemService.getInventoryStatus(characterId);
+
+        expect(count).toBe(3); // 3 distinct items
+        expect(canAdd).toBe(true); // Room for 1 more
+        expect(status).toBe('Items: 3/4');
+      });
+
+      afterEach(() => {
+        delete process.env.MAX_INVENTORY_ITEMS;
+      });
+    });
+  });
 });

@@ -233,49 +233,101 @@ export class ItemService {
     roomId: number,
     quantity: number = 1
   ): Promise<void> {
-    throw new Error('Not implemented - Phase 6');
+    // Check if the item exists in character inventory
+    const inventoryItem = await this.db.get<any>(`
+      SELECT * FROM character_inventory 
+      WHERE character_id = ? AND item_id = ?
+    `, [characterId, itemId]);
+
+    if (!inventoryItem) {
+      throw new Error('Item not found in character inventory');
+    }
+
+    if (inventoryItem.quantity < quantity) {
+      throw new Error('Not enough quantity available in inventory');
+    }
+
+    // Check if item already exists in the room (for stacking)
+    const existingRoomItem = await this.db.get<any>(`
+      SELECT * FROM room_items 
+      WHERE room_id = ? AND item_id = ?
+    `, [roomId, itemId]);
+
+    if (existingRoomItem) {
+      // Update existing room item quantity
+      await this.db.run(`
+        UPDATE room_items 
+        SET quantity = quantity + ?
+        WHERE room_id = ? AND item_id = ?
+      `, [quantity, roomId, itemId]);
+    } else {
+      // Add new room item
+      await this.db.run(`
+        INSERT INTO room_items (room_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [roomId, itemId, quantity]);
+    }
+
+    // Update or remove inventory item
+    if (inventoryItem.quantity === quantity) {
+      // Remove completely from inventory
+      await this.db.run(`
+        DELETE FROM character_inventory 
+        WHERE character_id = ? AND item_id = ?
+      `, [characterId, itemId]);
+    } else {
+      // Reduce quantity in inventory
+      await this.db.run(`
+        UPDATE character_inventory 
+        SET quantity = quantity - ?
+        WHERE character_id = ? AND item_id = ?
+      `, [quantity, characterId, itemId]);
+    }
   }
 
   // ============================================================================
-  // WEIGHT AND ENCUMBRANCE SYSTEM
+  // SIMPLE ITEM COUNT LIMIT SYSTEM
   // ============================================================================
 
   /**
-   * Calculate carrying capacity based on character strength
-   * @param strength Character's strength attribute
-   * @returns Maximum carrying capacity in pounds
+   * Get the maximum number of items a character can carry
+   * @returns Maximum item count from environment variable (default: 10)
    */
-  calculateCarryingCapacity(strength: number): number {
-    throw new Error('Not implemented - Phase 7');
+  getMaxInventoryItems(): number {
+    const envValue = process.env.MAX_INVENTORY_ITEMS || '10';
+    const parsed = parseInt(envValue);
+    return isNaN(parsed) ? 10 : parsed;
   }
 
   /**
-   * Get current weight of character's inventory
+   * Get current number of distinct items in character's inventory
    * @param characterId Character ID
-   * @returns Current weight in pounds
+   * @returns Number of distinct items (not quantities)
    */
-  async getCurrentWeight(characterId: number): Promise<number> {
-    throw new Error('Not implemented - Phase 7');
+  async getInventoryItemCount(characterId: number): Promise<number> {
+    const inventory = await this.getCharacterInventory(characterId);
+    return inventory.length; // Count distinct items, not quantities
   }
 
   /**
-   * Get encumbrance level based on current weight and max capacity
-   * @param currentWeight Current weight in pounds
-   * @param maxCapacity Maximum capacity in pounds
-   * @returns Encumbrance level
-   */
-  getEncumbranceLevel(currentWeight: number, maxCapacity: number): EncumbranceLevel {
-    throw new Error('Not implemented - Phase 7');
-  }
-
-  /**
-   * Get complete carrying capacity information for a character
+   * Check if character can add another item to their inventory
    * @param characterId Character ID
-   * @param strength Character's strength attribute
-   * @returns Carrying capacity information
+   * @returns True if character can carry more items
    */
-  async getCarryingCapacityInfo(characterId: number, strength: number): Promise<CarryingCapacityInfo> {
-    throw new Error('Not implemented - Phase 7');
+  async canAddItemToInventory(characterId: number): Promise<boolean> {
+    const currentCount = await this.getInventoryItemCount(characterId);
+    return currentCount < this.getMaxInventoryItems();
+  }
+
+  /**
+   * Get inventory status string showing current/max items
+   * @param characterId Character ID
+   * @returns Status string like "Items: 7/10"
+   */
+  async getInventoryStatus(characterId: number): Promise<string> {
+    const currentCount = await this.getInventoryItemCount(characterId);
+    const maxItems = this.getMaxInventoryItems();
+    return `Items: ${currentCount}/${maxItems}`;
   }
 
   // ============================================================================
@@ -317,18 +369,4 @@ export class ItemService {
     );
   }
 
-  /**
-   * Validate if a character can carry additional weight
-   * @param characterId Character ID
-   * @param additionalWeight Weight to add
-   * @param strength Character's strength attribute
-   * @returns True if character can carry the additional weight
-   */
-  async canCarryAdditionalWeight(
-    characterId: number, 
-    additionalWeight: number, 
-    strength: number
-  ): Promise<boolean> {
-    throw new Error('Not implemented - Phase 7');
-  }
 }
