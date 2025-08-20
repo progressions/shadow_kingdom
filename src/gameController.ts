@@ -306,7 +306,7 @@ export class GameController {
   private showWelcome() {
     console.log('Welcome to Shadow Kingdom!');
     console.log('A dynamic, AI-powered text adventure.');
-    console.log('\nType "help" for commands or "new" to start a new game.\n');
+    console.log('\nType "help" for commands or "new" to start your first game.\n');
   }
 
   private showNLPStats() {
@@ -556,6 +556,9 @@ export class GameController {
       
       // Show current room
       await this.lookAround();
+      
+      // Show the prompt
+      this.rl.prompt();
     } catch (error) {
       console.error('Failed to load selected game:', error);
     }
@@ -565,8 +568,39 @@ export class GameController {
 
   public async start() {
     console.clear();
-    this.showWelcome();
-    this.rl.prompt();
+    
+    // Try to automatically load the most recent game
+    const mostRecentGame = await this.gameManagementService.getMostRecentGame();
+    
+    if (mostRecentGame) {
+      // Auto-load the most recent game
+      console.log(`Welcome back to Shadow Kingdom!`);
+      console.log(`Continuing: "${mostRecentGame.name}"\n`);
+      console.log('Type "menu" to manage games.\n');
+      
+      await this.loadSelectedGame(mostRecentGame);
+    } else {
+      // No games exist, auto-create new game
+      console.log('Welcome to Shadow Kingdom!');
+      console.log('Starting your first adventure...\n');
+      
+      const result = await this.gameManagementService.createGameAutomatic();
+      if (result.success && result.game) {
+        console.log(`Created: "${result.game.name}"\n`);
+        await this.loadSelectedGame(result.game);
+      } else {
+        // Fallback to menu if auto-creation fails
+        this.showWelcome();
+        this.rl.prompt();
+      }
+    }
+  }
+
+  /**
+   * Get current session for testing purposes
+   */
+  public getCurrentSession() {
+    return this.gameStateManager.getCurrentSession();
   }
 
   /**

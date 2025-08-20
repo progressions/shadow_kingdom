@@ -351,4 +351,88 @@ describe('GameManagementService (Prisma)', () => {
       expect(typeof game!.last_played_at).toBe('string');
     });
   });
+
+  describe('Game Name Generation', () => {
+    test('should generate creative game names', () => {
+      const name = gameManagementService.generateGameName();
+      
+      expect(name).toBeTruthy();
+      expect(typeof name).toBe('string');
+      expect(name.split(' ').length).toBe(2); // "Adjective Noun" format
+      expect(name.length).toBeGreaterThan(5); // Reasonable minimum length
+    });
+
+    test('should generate different names on multiple calls', () => {
+      const names = new Set();
+      
+      // Generate multiple names
+      for (let i = 0; i < 10; i++) {
+        names.add(gameManagementService.generateGameName());
+      }
+      
+      // Should have some variety (at least 3 different names in 10 tries)
+      expect(names.size).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe('Automatic Game Creation', () => {
+    test('should create game without user input', async () => {
+      const result = await gameManagementService.createGameAutomatic();
+      
+      expect(result.success).toBe(true);
+      expect(result.game).toBeDefined();
+      expect(result.game!.name).toMatch(/\w+ \w+/); // Two words
+      expect(result.game!.id).toBeDefined();
+      expect(result.error).toBeUndefined();
+    });
+
+    test('should handle duplicate auto-generated names', async () => {
+      // Mock to always return same name
+      jest.spyOn(gameManagementService, 'generateGameName').mockReturnValue('Shadow Quest');
+      
+      const result1 = await gameManagementService.createGameAutomatic();
+      const result2 = await gameManagementService.createGameAutomatic();
+      
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+      expect(result2.game!.name).toContain('Shadow Quest');
+      expect(result2.game!.name).not.toBe(result1.game!.name);
+      
+      // Restore original implementation
+      jest.restoreAllMocks();
+    });
+  });
+
+  describe('Most Recent Game Retrieval', () => {
+    test('should get most recent game', async () => {
+      // Create two games with slight delay to ensure different timestamps
+      const result1 = await gameManagementService.createGameAutomatic();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const result2 = await gameManagementService.createGameAutomatic();
+      
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+      
+      const mostRecent = await gameManagementService.getMostRecentGame();
+      
+      expect(mostRecent).toBeDefined();
+      expect(mostRecent!.id).toBe(result2.game!.id);
+      expect(mostRecent!.name).toBe(result2.game!.name);
+    });
+
+    test('should return null when no games exist', async () => {
+      const mostRecent = await gameManagementService.getMostRecentGame();
+      expect(mostRecent).toBeNull();
+    });
+
+    test('should return only game when single game exists', async () => {
+      const result = await gameManagementService.createGameAutomatic();
+      expect(result.success).toBe(true);
+      
+      const mostRecent = await gameManagementService.getMostRecentGame();
+      
+      expect(mostRecent).toBeDefined();
+      expect(mostRecent!.id).toBe(result.game!.id);
+    });
+  });
 });

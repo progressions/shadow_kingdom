@@ -24,45 +24,45 @@ Game Start → Main Menu → "load" → Game List → Select Game → Gameplay
 
 **Desired Flow:**
 ```
-Game Start → Auto-load Most Recent Game → Gameplay
+Game Start → Auto-load Most Recent Game OR Auto-create New Game → Gameplay
 ```
 
-Users should be able to jump straight back into their most recent game session without menu navigation.
+Users should jump straight into gameplay - either continuing their adventure or starting fresh - with no menu navigation required.
 
 ## Proposed Solution
 
-Implement automatic loading of the most recently played game on startup:
+Implement automatic game startup with no menu navigation required:
 
 ### Core Changes
 
 1. **Auto-Load Most Recent Game**
    - On startup, check if any games exist
    - If games exist, automatically load the most recently played game
-   - Drop user directly into gameplay at their saved location
+   - Drop user directly into gameplay at their current room
 
-2. **Fallback to Menu**
-   - If no games exist, show the traditional main menu
-   - Add "menu" command during gameplay to access game management
-   - Preserve all existing menu functionality
+2. **Auto-Create New Game**
+   - If no games exist, automatically create a new game with auto-generated name
+   - Start player immediately in the game world
+   - No menu navigation or name input required
 
 3. **User Experience**
-   - Eliminate the need to type game names repeatedly  
-   - Provide seamless return to ongoing adventures
-   - Keep menu accessible via "menu" command when needed
+   - Eliminate all menu friction - straight to gameplay
+   - Generate meaningful game names automatically (e.g., "Shadow Adventure 1", "Epic Quest", etc.)
+   - Keep menu accessible via "menu" command for game management when needed
 
 ### Expected User Flow
 
 **Returning Player:**
 ```
-npm run dev → "Welcome back! Continuing: My Adventure" → [Current Room Display]
+npm run dev → "Welcome back! Continuing: [Game Name]" → [Current Room Display]
 ```
 
 **New Player:**
 ```
-npm run dev → Welcome Menu → "new" → Auto-generated game → Gameplay
+npm run dev → "Starting new adventure: [Auto-generated Name]" → [Starting Room]
 ```
 
-**Menu Access:**
+**Menu Access (when needed):**
 ```
 During Game → "menu" → Main Menu → Game Management Options
 ```
@@ -81,11 +81,32 @@ public async start() {
   
   if (recentGame) {
     // Auto-load and start gameplay
+    console.log(`Welcome back! Continuing: "${recentGame.name}"`);
     await this.loadSelectedGame(recentGame);
   } else {
-    // Show traditional menu for new users
-    this.showWelcome();
+    // Auto-create new game and start immediately
+    console.log('Starting your first Shadow Kingdom adventure...');
+    const newGameResult = await this.gameManagementService.createNewGameAutomatic();
+    await this.loadSelectedGame(newGameResult.game);
   }
+}
+```
+
+### Auto Game Name Generation
+```typescript
+// Add to GameManagementService
+async createNewGameAutomatic(): Promise<{success: boolean; game?: Game; error?: string}> {
+  const gameName = this.generateGameName();
+  // Create game without user interaction
+  return await this.createGameWithName(gameName);
+}
+
+private generateGameName(): string {
+  const adjectives = ['Shadow', 'Mystic', 'Ancient', 'Epic', 'Dark', 'Forgotten'];
+  const nouns = ['Adventure', 'Quest', 'Journey', 'Kingdom', 'Realm', 'Legacy'];
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  return `${adj} ${noun}`;
 }
 ```
 
@@ -109,64 +130,69 @@ public async start() {
 - I can access game management when needed via "menu" command
 
 **As a new player:**
-- I want clear guidance for creating my first game
-- I want the traditional menu when no games exist
+- I want to start playing immediately without any setup
+- I want an automatically generated game that gets me into the action
 
 **As a developer:**
 - I want to maintain all existing functionality
-- I want backward compatibility with current save system
+- I want backward compatibility with current game state system
 
 ## Implementation Requirements
 
 ### Must Have
 - [ ] Auto-load most recent game on startup
-- [ ] Fallback to menu when no games exist
+- [ ] Auto-create new game when no games exist
+- [ ] Automatic game name generation
 - [ ] "menu" command accessible during gameplay
 - [ ] Preserve all existing game management features
 
 ### Should Have
-- [ ] Welcome message indicating auto-loaded game name
-- [ ] Clear instructions for accessing menu
-- [ ] No breaking changes to existing save system
+- [ ] Welcome message indicating game status (continuing vs new)
+- [ ] Creative, randomized game names
+- [ ] No breaking changes to existing game state system
 
 ### Could Have
-- [ ] Option to disable auto-loading via environment variable
+- [ ] Option to disable auto-creation via environment variable
+- [ ] More sophisticated name generation algorithms
 - [ ] Display last played timestamp in welcome message
 
 ## Testing Strategy
 
-1. **Fresh Install**: Verify menu appears when no games exist
-2. **Single Game**: Verify auto-loading of only game
-3. **Multiple Games**: Verify most recent game is loaded
-4. **Menu Access**: Verify "menu" command works from gameplay
-5. **Game Creation**: Verify new games can still be created from menu
+1. **Fresh Install**: Verify auto-creation of new game when no games exist
+2. **Auto-Generated Names**: Verify names are creative and unique
+3. **Single Game**: Verify auto-loading of only game
+4. **Multiple Games**: Verify most recent game is loaded
+5. **Menu Access**: Verify "menu" command works from gameplay
+6. **Game Creation**: Verify new games can still be created from menu
 
 ## Acceptance Criteria
 
 - [ ] Game auto-loads most recent session without user input
-- [ ] New users still see welcome menu when no games exist
+- [ ] New users get auto-created game and start immediately
+- [ ] Auto-generated game names are creative and varied
 - [ ] "menu" command provides access to all game management features
 - [ ] All existing functionality remains intact
 - [ ] No performance regression in startup time
 
 ## Success Metrics
 
-- Reduced steps to start playing (5+ steps → 1 step)
-- Faster time to gameplay for returning players
-- Maintained accessibility for new players
+- Reduced steps to start playing (5+ steps → 0 steps)
+- Instant gameplay for both new and returning players
+- Zero friction game startup experience
 - No increase in support requests about menu navigation
+- Improved new player onboarding (immediate gameplay)
 
 ## Related Issues
 
-- Builds on existing game save system
+- Builds on existing game state persistence system
 - Enhances user experience from main menu implementation
 - Could integrate with future command history feature
 
 ## Future Enhancements
 
-- Remember last played character/save slot
-- Quick-switch between recent games
-- Auto-save more frequently during gameplay
-- Smart resume from last significant action
+- Quick-switch between recent games via command
+- Enhanced game name generation with themes
+- Smart continuation from last significant action
+- Game session statistics and playtime tracking
 
 This enhancement significantly improves the user experience while maintaining full backward compatibility and menu access when needed.

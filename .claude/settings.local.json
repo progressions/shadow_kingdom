@@ -65,7 +65,9 @@
       "Bash(npx prisma generate:*)",
       "Bash(USE_PRISMA=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"look\" --start-session)",
       "Bash(USE_PRISMA=true AI_DEBUG_LOGGING=true npm run dev -- --cmd \"new\" --start-session)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(echo $USE_PRISMA)",
+      "Bash(AI_DEBUG_LOGGING=true timeout 20s npm run dev -- --cmd \"look\")"
     ],
     "deny": [],
     "ask": []
