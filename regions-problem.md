@@ -1,0 +1,37 @@
+> regions
+
+Regions in current game:
+- Shadow Kingdom Manor (mansion): 16 rooms
+- Obsidian Rift (volcanic chasm): 1 rooms
+- Ebonspire Necropolis (burial citadel): 1 rooms
+- Obsidian Necropolis (underworld citadel): 1 rooms
+- Ebonspire Necropolis (necropolis): 2 rooms
+- Veilshadow Hollow (ethereal marsh): 1 rooms
+- Gloomtide Lagoon (coastal marshland): 1 rooms
+- Aetherforge Nexus (arcane foundry): 1 rooms
+- Crimsonforge Crucible (forge-realm): 1 rooms
+- Crimson Ember Hollow (volcanic sanctuary): 0 rooms
+- Luminaris Crucible (arcane foundry): 0 rooms
+- Frostwoven Citadel (glacial fortress): 0 rooms
+- Mirewoven Labyrinth (swamp labyrinth): 12 rooms
+- Sylvarine Conclave (ethereal arboretum): 5 rooms
+- Abyssal Crucible (volcanic abyss): 3 rooms
+- Ashen Crucible Wastes (volcanic wasteland): 2 rooms
+- Chronoshard Expanse (temporal riftscape): 4 rooms
+- Obsidian Choral Abyss (resonant chasm): 1 rooms
+- Verdant Abyss Hollow (subterranean jungle): 1 rooms
+- Shadowed Caverns (cave): 1 rooms
+- Eclipsed Lantern Hollow (lantern-lit abyss): 1 rooms
+- Ethereal Loom Sanctum (weavehaven): 1 rooms
+- Wanderer's Rest (town): 1 rooms
+- Ethereal Loomspire (arcane weaving nexus): 1 rooms
+- Spectral Hearthspire (Ethereal Hearthland): 1 rooms
+- Duskflame Foundry (industrial relic): 1 rooms
+- Mistwoven Chronogrove (temporal arboretum): 1 rooms
+- Glimmerforge Citadel (arcane foundry fortress): 1 rooms
+- Twilightspire Nexus (Skybound Citadel): 0 rooms
+- Shatterglass Citadel (crystalline fortress): 1 rooms
+- Mysterious Manor (mansion): 2 rooms
+- Starwoven Citadel (celestial fortress): 1 rooms
+- Shatterveil Citadel (fragmented fortress): 1 rooms
+- Crystalis Verge Spires (Aerial Crystaline Citadel): 0 rooms

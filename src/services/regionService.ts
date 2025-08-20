@@ -94,12 +94,14 @@ export class RegionService {
 
   /**
    * Calculate probability of creating new region based on distance
-   * Base 15% chance, increasing by 12% per distance unit, capped at 80%
+   * Configurable via environment: base 5% + 8% per distance, capped at 60%
+   * Lower thresholds promote region consolidation over fragmentation
    */
   getNewRegionProbability(currentDistance: number): number {
-    const baseProbability = 0.15;
-    const distanceMultiplier = 0.12;
-    return Math.min(0.8, baseProbability + (currentDistance * distanceMultiplier));
+    const baseProbability = parseFloat(process.env.REGION_BASE_PROBABILITY || '0.05'); // 5% default (down from 15%)
+    const distanceMultiplier = parseFloat(process.env.REGION_DISTANCE_MULTIPLIER || '0.08'); // 8% per distance (down from 12%)
+    const maxProbability = parseFloat(process.env.REGION_MAX_PROBABILITY || '0.6'); // 60% cap (down from 80%)
+    return Math.min(maxProbability, baseProbability + (currentDistance * distanceMultiplier));
   }
 
   /**
