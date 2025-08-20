@@ -34,6 +34,7 @@ export async function initializeDatabase(db: Database): Promise<void> {
         to_room_id INTEGER,
         direction TEXT,
         name TEXT NOT NULL,
+        processing BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
         FOREIGN KEY (from_room_id) REFERENCES rooms(id),
         FOREIGN KEY (to_room_id) REFERENCES rooms(id)
@@ -110,6 +111,9 @@ export async function initializeDatabase(db: Database): Promise<void> {
 
     // Migrate connections table to support nullable to_room_id
     await ensureNullableToRoomId(db);
+
+    // Add processing column to connections table for auto-generation
+    await ensureProcessingColumn(db);
 
     console.log('Database tables initialized successfully');
   } catch (error) {
@@ -291,7 +295,7 @@ async function ensureNullableToRoomId(db: Database): Promise<void> {
       // SQLite requires recreating the table to remove NOT NULL constraint
       await db.run('PRAGMA foreign_keys=off');
       
-      // Create new table with nullable to_room_id
+      // Create new table with nullable to_room_id and processing column
       await db.run(`
         CREATE TABLE connections_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -300,16 +304,17 @@ async function ensureNullableToRoomId(db: Database): Promise<void> {
           to_room_id INTEGER,
           direction TEXT,
           name TEXT NOT NULL,
+          processing BOOLEAN DEFAULT FALSE,
           FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
           FOREIGN KEY (from_room_id) REFERENCES rooms(id),
           FOREIGN KEY (to_room_id) REFERENCES rooms(id)
         )
       `);
       
-      // Copy existing data
+      // Copy existing data (processing defaults to FALSE for existing connections)
       await db.run(`
-        INSERT INTO connections_new (id, game_id, from_room_id, to_room_id, direction, name)
-        SELECT id, game_id, from_room_id, to_room_id, direction, name FROM connections
+        INSERT INTO connections_new (id, game_id, from_room_id, to_room_id, direction, name, processing)
+        SELECT id, game_id, from_room_id, to_room_id, direction, name, FALSE FROM connections
       `);
       
       // Drop old table and rename new one
@@ -342,6 +347,43 @@ async function ensureNullableToRoomId(db: Database): Promise<void> {
     console.log('Connection table migration and indexes ensured successfully');
   } catch (error) {
     console.error('Error ensuring nullable to_room_id:', error);
+    throw error;
+  }
+}
+
+async function ensureProcessingColumn(db: Database): Promise<void> {
+  try {
+    // Skip complex column additions for in-memory databases (they're already created with correct schema)
+    if (db.getDbPath() === ':memory:') {
+      console.log('Skipping processing column migration for in-memory database');
+      return;
+    }
+
+    // Check if processing column exists in connections table
+    const processingColumnExists = await db.get<{ count: number }>(`
+      SELECT COUNT(*) as count FROM pragma_table_info('connections') 
+      WHERE name = 'processing'
+    `);
+
+    if (!processingColumnExists || processingColumnExists.count === 0) {
+      console.log('Adding processing column to connections table...');
+      
+      // Add the processing column with default FALSE
+      await db.run('ALTER TABLE connections ADD COLUMN processing BOOLEAN DEFAULT FALSE');
+      
+      // Set all existing connections to processing = FALSE (they're not currently being processed)
+      await db.run('UPDATE connections SET processing = FALSE WHERE processing IS NULL');
+      
+      // Update indexes to optimize for processing queries
+      await db.run(`
+        CREATE INDEX IF NOT EXISTS idx_connections_processing 
+        ON connections(game_id, from_room_id, processing) WHERE to_room_id IS NULL
+      `);
+      
+      console.log('Processing column added and existing connections migrated successfully');
+    }
+  } catch (error) {
+    console.error('Error ensuring processing column:', error);
     throw error;
   }
 }
