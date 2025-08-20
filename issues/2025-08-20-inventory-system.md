@@ -1,7 +1,7 @@
 # Inventory System
 
 **Date**: 2025-08-20  
-**Status**: In Progress - Phase 7 Complete
+**Status**: Phase 9 Complete
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -28,12 +28,25 @@ Create an inventory system with the following features:
 - [x] `inventory` command to display all carried items (Phase 5 Complete)
 - [x] `pickup`/`get` commands to take items from environment (Phase 4 Complete)
 - [x] `drop` command to place items in current room (Phase 6 Complete)
-- [ ] `examine` command for detailed item inspection (Phase 9)
+- [ ] Item stacking system (Phase 8 - Skipped, not needed)
+- [x] `examine` command for detailed item inspection (Phase 9 Complete)
 - [ ] `use` command for consumable items (Future)
 - [ ] Item weight affects movement speed or other mechanics (Future)
 - [x] Clear feedback when inventory is full (Phase 7 Complete)
 
 ## Recent Updates
+
+**2025-08-20**: ✅ **Phase 9: Item Examination Complete**
+- Implemented `examine` command with aliases `ex` for detailed item inspection
+- Added comprehensive item detail display with formatted stats card showing type, weight, value, damage, armor rating, stackable info, and location
+- Enhanced ItemService with proper boolean conversion for all item methods (getItem, listItems)
+- Supports examining items in both inventory and current room with automatic location detection
+- Created 15 comprehensive tests covering item detail retrieval, inventory examination, room examination, and stat display
+- All 81 ItemService tests passing including new Phase 9 functionality
+
+**2025-08-20**: ⏭️ **Phase 8: Item Stacking System Skipped**
+- Phase 8 (item stacking) determined to be unnecessary for current gameplay
+- Next implementation will proceed directly to Phase 9 (examine command)
 
 **2025-08-20**: ✅ **Phase 7: Simple Item Count Limit System Complete**
 - Implemented configurable MAX_INVENTORY_ITEMS environment variable (default: 10)

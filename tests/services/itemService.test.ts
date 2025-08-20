@@ -1609,4 +1609,218 @@ describe('ItemService', () => {
       });
     });
   });
+
+  // ============================================================================
+  // PHASE 9: ITEM EXAMINATION TESTS
+  // ============================================================================
+
+  describe('Phase 9: Item Examination', () => {
+    let characterId: number;
+    let roomId: number;
+    let ironSwordId: number;
+    let healthPotionId: number;
+
+    beforeEach(async () => {
+      characterId = 999;
+      roomId = 888;
+
+      // Create test items
+      ironSwordId = await itemService.createItem({
+        name: 'Iron Sword',
+        description: 'A sturdy iron blade with a leather-wrapped hilt.',
+        type: ItemType.WEAPON,
+        weight: 2.5,
+        value: 150,
+        stackable: false,
+        max_stack: 1,
+        weapon_damage: '1d8+1',
+        armor_rating: 0
+      });
+
+      healthPotionId = await itemService.createItem({
+        name: 'Health Potion',
+        description: 'A small vial containing a red, glowing liquid.',
+        type: ItemType.CONSUMABLE,
+        weight: 0.5,
+        value: 50,
+        stackable: true,
+        max_stack: 10,
+        weapon_damage: undefined,
+        armor_rating: 0
+      });
+    });
+
+    describe('Item Detail Retrieval', () => {
+      test('should get item details by ID', async () => {
+        const item = await itemService.getItem(ironSwordId);
+        
+        expect(item).toBeDefined();
+        expect(item!.name).toBe('Iron Sword');
+        expect(item!.description).toBe('A sturdy iron blade with a leather-wrapped hilt.');
+        expect(item!.type).toBe(ItemType.WEAPON);
+        expect(item!.weight).toBe(2.5);
+        expect(item!.value).toBe(150);
+        expect(item!.stackable).toBe(false);
+        expect(item!.max_stack).toBe(1);
+        expect(item!.weapon_damage).toBe('1d8+1');
+        expect(item!.armor_rating).toBe(0);
+      });
+
+      test('should return null for non-existent item', async () => {
+        const item = await itemService.getItem(99999);
+        expect(item).toBeNull();
+      });
+
+      test('should handle boolean conversion for stackable property', async () => {
+        const stackableItem = await itemService.getItem(healthPotionId);
+        const nonStackableItem = await itemService.getItem(ironSwordId);
+        
+        expect(stackableItem!.stackable).toBe(true);
+        expect(nonStackableItem!.stackable).toBe(false);
+      });
+    });
+
+    describe('Inventory Item Examination', () => {
+      beforeEach(async () => {
+        // First place items in room, then transfer to inventory
+        await itemService.placeItemInRoom(roomId, ironSwordId, 1);
+        await itemService.placeItemInRoom(roomId, healthPotionId, 1);
+        
+        // Add items to character inventory
+        await itemService.transferItemToInventory(characterId, ironSwordId, roomId, 1);
+        await itemService.transferItemToInventory(characterId, healthPotionId, roomId, 1);
+      });
+
+      test('should find items in inventory for examination', async () => {
+        const inventory = await itemService.getCharacterInventory(characterId);
+        
+        expect(inventory).toHaveLength(2);
+        
+        const sword = itemService.findItemByName(inventory, 'iron');
+        const potion = itemService.findItemByName(inventory, 'health');
+        
+        expect(sword).toBeDefined();
+        expect(sword!.item.name).toBe('Iron Sword');
+        expect(sword!.item.weapon_damage).toBe('1d8+1');
+        
+        expect(potion).toBeDefined();
+        expect(potion!.item.name).toBe('Health Potion');
+        expect(potion!.item.stackable).toBe(true);
+      });
+
+      test('should support partial name matching for examination', async () => {
+        const inventory = await itemService.getCharacterInventory(characterId);
+        
+        const swordByPartial = itemService.findItemByName(inventory, 'sword');
+        const potionByPartial = itemService.findItemByName(inventory, 'potion');
+        
+        expect(swordByPartial).toBeDefined();
+        expect(swordByPartial!.item.name).toBe('Iron Sword');
+        
+        expect(potionByPartial).toBeDefined();
+        expect(potionByPartial!.item.name).toBe('Health Potion');
+      });
+
+      test('should handle case-insensitive item search', async () => {
+        const inventory = await itemService.getCharacterInventory(characterId);
+        
+        const swordUpperCase = itemService.findItemByName(inventory, 'IRON SWORD');
+        const potionMixedCase = itemService.findItemByName(inventory, 'Health');
+        
+        expect(swordUpperCase).toBeDefined();
+        expect(swordUpperCase!.item.name).toBe('Iron Sword');
+        
+        expect(potionMixedCase).toBeDefined();
+        expect(potionMixedCase!.item.name).toBe('Health Potion');
+      });
+
+      test('should return undefined for non-existent inventory items', async () => {
+        const inventory = await itemService.getCharacterInventory(characterId);
+        
+        const nonExistentItem = itemService.findItemByName(inventory, 'dragon scale');
+        expect(nonExistentItem).toBeUndefined();
+      });
+    });
+
+    describe('Room Item Examination', () => {
+      beforeEach(async () => {
+        // Place items in room
+        await itemService.placeItemInRoom(roomId, ironSwordId, 1);
+        await itemService.placeItemInRoom(roomId, healthPotionId, 3);
+      });
+
+      test('should find items in room for examination', async () => {
+        const roomItems = await itemService.getRoomItems(roomId);
+        
+        expect(roomItems).toHaveLength(2);
+        
+        const sword = itemService.findItemByName(roomItems, 'iron');
+        const potion = itemService.findItemByName(roomItems, 'health');
+        
+        expect(sword).toBeDefined();
+        expect(sword!.item.name).toBe('Iron Sword');
+        expect(sword!.quantity).toBe(1);
+        
+        expect(potion).toBeDefined();
+        expect(potion!.item.name).toBe('Health Potion');
+        expect(potion!.quantity).toBe(3);
+      });
+
+      test('should handle multiple quantities in room examination', async () => {
+        const roomItems = await itemService.getRoomItems(roomId);
+        const potion = itemService.findItemByName(roomItems, 'potion');
+        
+        expect(potion).toBeDefined();
+        expect(potion!.quantity).toBe(3);
+        expect(potion!.item.stackable).toBe(true);
+        expect(potion!.item.max_stack).toBe(10);
+      });
+
+      test('should return undefined for non-existent room items', async () => {
+        const roomItems = await itemService.getRoomItems(roomId);
+        
+        const nonExistentItem = itemService.findItemByName(roomItems, 'magic wand');
+        expect(nonExistentItem).toBeUndefined();
+      });
+
+      test('should handle empty room examination', async () => {
+        const emptyRoomId = 777;
+        const roomItems = await itemService.getRoomItems(emptyRoomId);
+        
+        expect(roomItems).toHaveLength(0);
+        
+        const anyItem = itemService.findItemByName(roomItems, 'anything');
+        expect(anyItem).toBeUndefined();
+      });
+    });
+
+    describe('Item Type and Stat Display', () => {
+      test('should provide weapon-specific stats for examination', async () => {
+        const weapon = await itemService.getItem(ironSwordId);
+        
+        expect(weapon!.type).toBe(ItemType.WEAPON);
+        expect(weapon!.weapon_damage).toBe('1d8+1');
+        expect(weapon!.armor_rating).toBe(0);
+        expect(weapon!.stackable).toBe(false);
+      });
+
+      test('should provide consumable-specific stats for examination', async () => {
+        const consumable = await itemService.getItem(healthPotionId);
+        
+        expect(consumable!.type).toBe(ItemType.CONSUMABLE);
+        expect(consumable!.weapon_damage).toBeNull();
+        expect(consumable!.armor_rating).toBe(0);
+        expect(consumable!.stackable).toBe(true);
+        expect(consumable!.max_stack).toBe(10);
+      });
+
+      test('should handle items with null weapon_damage for examination', async () => {
+        const consumable = await itemService.getItem(healthPotionId);
+        
+        expect(consumable!.weapon_damage).toBeNull();
+        // Ensure this doesn't break the examination display
+        expect(consumable!.name).toBe('Health Potion');
+      });
+    });
+  });
 });

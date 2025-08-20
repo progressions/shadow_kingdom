@@ -315,6 +315,18 @@ export class GameController {
       description: 'Drop an item from your inventory',
       handler: async (args) => await this.handleDrop(args[0])
     });
+
+    this.commandRouter.addCommand({
+      name: 'examine',
+      description: 'Examine an item in detail',
+      handler: async (args) => await this.handleExamine(args[0])
+    });
+
+    this.commandRouter.addCommand({
+      name: 'ex',
+      description: 'Examine an item in detail (alias for "examine")',
+      handler: async (args) => await this.handleExamine(args[0])
+    });
   }
 
   private async processInput(): Promise<void> {
@@ -1235,5 +1247,67 @@ export class GameController {
       console.error('Error dropping item:', error);
       this.tui.showError('Error dropping item', (error as Error)?.message);
     }
+  }
+
+  /**
+   * Handle examine command - examine items in detail
+   */
+  private async handleExamine(itemName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!itemName) {
+      this.tui.display('Examine what?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      // For this phase, use game ID as character ID (simple approach for single-player game)
+      const characterId = session.gameId!;
+
+      // Check inventory first
+      const inventory = await this.itemService.getCharacterInventory(characterId);
+      let targetInventoryItem = this.itemService.findItemByName(inventory, itemName);
+      let targetRoomItem = null;
+      let itemLocation = 'inventory';
+
+      // If not found in inventory, check current room
+      if (!targetInventoryItem) {
+        const roomItems = await this.itemService.getRoomItems(currentRoom.id);
+        targetRoomItem = this.itemService.findItemByName(roomItems, itemName);
+        itemLocation = 'room';
+      }
+
+      const foundItem = targetInventoryItem || targetRoomItem;
+      if (!foundItem) {
+        this.tui.display(`There is no ${itemName} here or in your inventory.`, MessageType.ERROR);
+        return;
+      }
+
+      // Display detailed item information
+      this.displayItemDetails(foundItem.item, itemLocation);
+
+    } catch (error) {
+      console.error('Error examining item:', error);
+      this.tui.showError('Error examining item', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Display detailed information about an item
+   */
+  private displayItemDetails(item: any, location: string): void {
+    this.tui.display(`${item.name}`, MessageType.NORMAL);
+    this.tui.display(`${item.description}`, MessageType.NORMAL);
   }
 }
