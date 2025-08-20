@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { TUIManager } from './ui/TUIManager';
+import { InkTUIBridge } from './ui/InkTUIBridge';
+import { TUIInterface } from './ui/TUIInterface';
 import { GameState as TUIGameState } from './ui/StatusManager';
 import { MessageType } from './ui/MessageFormatter';
 import Database from './utils/database';
@@ -29,7 +30,7 @@ interface CommandState {
 }
 
 export class GameController {
-  private tui: TUIManager;
+  private tui: TUIInterface;
   private db: Database;
   private historyManager: HistoryManager;
   private grokClient: GrokClient;
@@ -43,7 +44,7 @@ export class GameController {
   private regionService!: ServiceInstances['regionService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
-  constructor(db: Database, tui?: TUIManager) {
+  constructor(db: Database, tui?: TUIInterface) {
     this.db = db;
     this.grokClient = new GrokClient();
     
@@ -74,7 +75,7 @@ export class GameController {
       // Create a minimal mock TUI for tests
       this.tui = this.createMockTUI();
     } else {
-      this.tui = new TUIManager();
+      this.tui = new InkTUIBridge();
     }
     
     // Initialize command router (after TUI is available)
@@ -854,7 +855,7 @@ export class GameController {
   /**
    * Create a mock TUI for testing that doesn't use blessed.js
    */
-  private createMockTUI(): any {
+  private createMockTUI(): TUIInterface {
     return {
       initialize: async () => {},
       display: () => {},
@@ -867,7 +868,6 @@ export class GameController {
       destroy: () => {},
       setPrompt: () => {},
       setStatus: () => {},
-      showRoom: () => {},
       showAIProgress: () => {},
       displayRoom: () => {}
     };

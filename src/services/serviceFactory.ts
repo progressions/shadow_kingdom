@@ -1,6 +1,6 @@
 import Database from '../utils/database';
 import { GrokClient } from '../ai/grokClient';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 
 // Import old services
 import { GameStateManager } from './gameStateManager';
@@ -46,7 +46,7 @@ export class ServiceFactory {
    */
   static createServices(
     db: Database,
-    tui: TUIManager,
+    tui: TUIInterface,
     grokClient: GrokClient,
     options: ServiceOptions = {}
   ): ServiceInstances {
@@ -62,7 +62,7 @@ export class ServiceFactory {
    */
   private static createLegacyServices(
     db: Database,
-    tui: TUIManager,
+    tui: TUIInterface,
     grokClient: GrokClient,
     options: ServiceOptions
   ): ServiceInstances {
@@ -99,7 +99,7 @@ export class ServiceFactory {
    * Create Prisma-based services
    */
   private static createPrismaServices(
-    tui: TUIManager,
+    tui: TUIInterface,
     grokClient: GrokClient,
     options: ServiceOptions
   ): ServiceInstances {

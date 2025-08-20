@@ -1,5 +1,6 @@
 import { MessageType } from '../../src/ui/MessageFormatter';
 import { GameState } from '../../src/ui/StatusManager';
+import { TUIInterface } from '../../src/ui/TUIInterface';
 
 /**
  * Mock TUI that provides the same interface as TUIManager but doesn't use blessed.js
@@ -7,7 +8,7 @@ import { GameState } from '../../src/ui/StatusManager';
  * 
  * Note: This is a standalone mock, not extending TUIManager, to avoid blessed.js initialization
  */
-export class MockTUI {
+export class MockTUI implements TUIInterface {
   private messages: Array<{ message: string; type: MessageType }> = [];
   private mockStatus: string = '';
   

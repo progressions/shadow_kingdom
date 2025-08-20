@@ -3,7 +3,7 @@ import { getPrismaClient } from './prismaService';
 import { initializeDatabase, createGameWithRooms, createGameAutomatic } from '../utils/initDb';
 import { Game } from './gameStateManager';
 import { typeMappers } from '../types/database';
-import { TUIManager } from '../ui/TUIManager';
+import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
 export interface GameManagementOptions {
@@ -29,7 +29,7 @@ export class GameManagementServicePrisma {
   private prisma: PrismaClient;
 
   constructor(
-    private tui: TUIManager,
+    private tui: TUIInterface,
     options: GameManagementOptions = {}
   ) {
     this.options = {
