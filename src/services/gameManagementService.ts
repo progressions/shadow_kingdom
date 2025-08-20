@@ -141,7 +141,7 @@ export class GameManagementService {
   /**
    * Create game with specific name (internal helper)
    */
-  private async createGameWithName(gameName: string): Promise<{success: boolean; game?: Game; error?: string}> {
+  async createGameWithName(gameName: string): Promise<{success: boolean; game?: Game; error?: string}> {
     try {
       // Create new game with rooms
       const gameId = await createGameWithRooms(this.db, gameName.trim());
@@ -216,13 +216,28 @@ export class GameManagementService {
         return { success: false, error: 'Deletion cancelled' };
       }
 
+      return await this.deleteGameById(game.id);
+
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to delete game with confirmation:', error);
+      }
+      return { success: false, error: 'Failed to delete game' };
+    }
+  }
+
+  /**
+   * Delete game by ID (without confirmation prompt)
+   */
+  async deleteGameById(gameId: number): Promise<{ success: boolean; error?: string }> {
+    try {
       // Delete related data manually (since foreign keys might not be enabled)
-      await this.db.run('DELETE FROM connections WHERE game_id = ?', [game.id]);
-      await this.db.run('DELETE FROM game_state WHERE game_id = ?', [game.id]);
-      await this.db.run('DELETE FROM rooms WHERE game_id = ?', [game.id]);
+      await this.db.run('DELETE FROM connections WHERE game_id = ?', [gameId]);
+      await this.db.run('DELETE FROM game_state WHERE game_id = ?', [gameId]);
+      await this.db.run('DELETE FROM rooms WHERE game_id = ?', [gameId]);
       
       // Finally delete the game
-      await this.db.run('DELETE FROM games WHERE id = ?', [game.id]);
+      await this.db.run('DELETE FROM games WHERE id = ?', [gameId]);
       
       return { success: true };
 

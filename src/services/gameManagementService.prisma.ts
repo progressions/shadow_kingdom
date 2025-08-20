@@ -265,7 +265,7 @@ export class GameManagementServicePrisma {
   /**
    * Create game with specific name (internal helper)
    */
-  private async createGameWithName(gameName: string): Promise<{success: boolean; game?: Game; error?: string}> {
+  async createGameWithName(gameName: string): Promise<{success: boolean; game?: Game; error?: string}> {
     try {
       // Create new game with Prisma transaction
       const newGame = await this.prisma.$transaction(async (tx) => {
@@ -376,9 +376,24 @@ export class GameManagementServicePrisma {
         return { success: false, error: 'Deletion cancelled' };
       }
 
+      return await this.deleteGameById(game.id);
+
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to delete game with confirmation:', error);
+      }
+      return { success: false, error: 'Failed to delete game' };
+    }
+  }
+
+  /**
+   * Delete game by ID (without confirmation prompt)
+   */
+  async deleteGameById(gameId: number): Promise<{ success: boolean; error?: string }> {
+    try {
       // Delete game - Prisma will handle cascade deletion automatically
       await this.prisma.game.delete({
-        where: { id: game.id }
+        where: { id: gameId }
       });
       
       return { success: true };

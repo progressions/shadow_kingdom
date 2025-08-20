@@ -479,21 +479,31 @@ export class GameController {
 
   private async startNewGame() {
     this.tui.display('Starting a new game...', MessageType.SYSTEM);
+    this.tui.display('Enter a name for your new game:', MessageType.SYSTEM);
     
-    const result = await this.gameManagementService.createNewGame();
+    // Get game name from user via TUI
+    const gameName = await this.tui.getInput();
+    
+    if (!gameName.trim()) {
+      this.tui.display('Game name cannot be empty.', MessageType.ERROR);
+      return;
+    }
+    
+    // Create game with the provided name
+    const result = await this.gameManagementService.createGameWithName(gameName.trim());
     
     if (!result.success) {
       this.tui.display(result.error || 'Failed to create new game. Returning to main menu.', MessageType.ERROR);
       return;
     }
     
-    if (result.gameId && result.gameName) {
+    if (result.game) {
       // Start game session using game state manager
-      await this.gameStateManager.startGameSession(result.gameId);
+      await this.gameStateManager.startGameSession(result.game.id);
       
       this.tui.clear();
       this.tui.showWelcome('Welcome to Shadow Kingdom!');
-      this.tui.display(`Game: ${result.gameName}`);
+      this.tui.display(`Game: ${result.game.name}`);
       this.tui.display('Initializing game world...');
       this.tui.display('Type "help" for available commands.');
       this.tui.display('Type "look" to see where you are.');
@@ -501,52 +511,85 @@ export class GameController {
       
       // Show initial room
       await this.lookAround();
+      this.updateStatusDisplay();
+      
+      // Start input processing loop
+      this.processInput();
     }
   }
 
   private async loadGame() {
     this.tui.display('Loading existing games...', MessageType.SYSTEM);
     
-    const result = await this.gameManagementService.selectGameFromList('load');
+    const game = await this.selectGameFromTUI('load');
     
-    if (!result.success) {
-      this.tui.display(result.error || 'Failed to load game.', MessageType.ERROR);
-      return;
-    }
-    
-    if (result.cancelled) {
-      this.tui.display('Cancelled.', MessageType.SYSTEM);
-      return;
-    }
-    
-    if (result.game) {
-      await this.loadSelectedGame(result.game);
+    if (game) {
+      await this.loadSelectedGame(game);
     }
   }
 
   private async deleteGame() {
     this.tui.display('Deleting games...', MessageType.SYSTEM);
     
-    const result = await this.gameManagementService.selectGameFromList('delete');
+    const game = await this.selectGameFromTUI('delete');
     
-    if (!result.success) {
-      this.tui.display(result.error || 'Failed to delete game.', MessageType.ERROR);
-      return;
-    }
-    
-    if (result.cancelled) {
-      this.tui.display('Cancelled.', MessageType.SYSTEM);
-      return;
-    }
-    
-    if (result.game) {
-      const deleteResult = await this.gameManagementService.deleteGameWithConfirmation(result.game);
+    if (game) {
+      // Confirm deletion via TUI
+      this.tui.display(`Are you sure you want to delete "${game.name}"?`, MessageType.SYSTEM);
+      this.tui.display('This action cannot be undone.', MessageType.SYSTEM);
+      this.tui.display('Type "yes" to confirm, or anything else to cancel:', MessageType.SYSTEM);
       
-      if (deleteResult.success) {
-        this.tui.display(`Game "${result.game.name}" has been deleted.`, MessageType.SYSTEM);
+      const confirmation = await this.tui.getInput();
+      
+      if (confirmation.toLowerCase() === 'yes') {
+        const deleteResult = await this.gameManagementService.deleteGameById(game.id);
+        if (deleteResult.success) {
+          this.tui.display(`Game "${game.name}" has been deleted.`, MessageType.SYSTEM);
+        } else {
+          this.tui.display(deleteResult.error || 'Deletion failed.', MessageType.ERROR);
+        }
       } else {
-        this.tui.display(deleteResult.error || 'Deletion failed.', MessageType.ERROR);
+        this.tui.display('Deletion cancelled.', MessageType.SYSTEM);
       }
+    }
+  }
+
+  private async selectGameFromTUI(purpose: 'load' | 'delete'): Promise<Game | null> {
+    try {
+      const games = await this.gameManagementService.getAllGames();
+
+      if (!games || games.length === 0) {
+        const message = purpose === 'load' ? 'No saved games found. Create a new game first.' : 'No saved games found to delete.';
+        this.tui.display(message, MessageType.SYSTEM);
+        return null;
+      }
+
+      const actionText = purpose === 'load' ? 'load' : 'delete';
+      this.tui.display(`Select a game to ${actionText}:`, MessageType.SYSTEM);
+      
+      games.forEach((game, index) => {
+        const lastPlayed = new Date(game.last_played_at).toLocaleDateString();
+        this.tui.display(`${index + 1}. ${game.name} (Last played: ${lastPlayed})`, MessageType.SYSTEM);
+      });
+      this.tui.display('0. Cancel', MessageType.SYSTEM);
+
+      const choice = await this.tui.getInput();
+      const choiceNum = parseInt(choice.trim());
+
+      if (isNaN(choiceNum) || choiceNum === 0) {
+        this.tui.display('Cancelled.', MessageType.SYSTEM);
+        return null;
+      }
+
+      if (choiceNum < 1 || choiceNum > games.length) {
+        this.tui.display('Invalid choice. Please select a number from the list.', MessageType.ERROR);
+        return await this.selectGameFromTUI(purpose); // Recursively ask again
+      }
+
+      return games[choiceNum - 1];
+    } catch (error) {
+      this.tui.display('Error loading games list.', MessageType.ERROR);
+      return null;
     }
   }
 
@@ -558,6 +601,10 @@ export class GameController {
     
     this.tui.clear();
     this.showWelcome();
+    this.updateStatusDisplay();
+    
+    // Start input processing loop
+    this.processInput();
   }
 
   private async lookAround() {
@@ -622,9 +669,9 @@ export class GameController {
           if (nlpConnection) {
             if (process.env.AI_DEBUG_LOGGING === 'true') {
               const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
-              console.log(`${sourceIcon} NLP resolved "${userInput}" → "${resolvedDirection}"`);
+              this.tui.display(`${sourceIcon} NLP resolved "${userInput}" → "${resolvedDirection}"`, MessageType.SYSTEM);
               if (nlpResult.reasoning) {
-                console.log(`   Reasoning: ${nlpResult.reasoning}`);
+                this.tui.display(`   Reasoning: ${nlpResult.reasoning}`, MessageType.SYSTEM);
               }
             }
             
