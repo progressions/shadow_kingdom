@@ -1,7 +1,7 @@
 # Inventory System
 
 **Date**: 2025-08-20  
-**Status**: In Progress - Phase 1 Complete  
+**Status**: In Progress - Phase 5 Complete  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -24,14 +24,14 @@ Create an inventory system with the following features:
 
 **Acceptance criteria:**
 - [x] Database schema for player inventory items (Phase 1 Complete)
-- [ ] Weight calculation and carrying capacity limits
-- [ ] `inventory` command to display all carried items
-- [ ] `pickup`/`get` commands to take items from environment
-- [ ] `drop` command to place items in current room
-- [ ] `examine` command for detailed item inspection
-- [ ] `use` command for consumable items
-- [ ] Item weight affects movement speed or other mechanics
-- [ ] Clear feedback when inventory is full or overweight
+- [ ] Weight calculation and carrying capacity limits (Phase 7)
+- [x] `inventory` command to display all carried items (Phase 5 Complete)
+- [x] `pickup`/`get` commands to take items from environment (Phase 4 Complete)
+- [ ] `drop` command to place items in current room (Phase 6)
+- [ ] `examine` command for detailed item inspection (Phase 9)
+- [ ] `use` command for consumable items (Future)
+- [ ] Item weight affects movement speed or other mechanics (Future)
+- [ ] Clear feedback when inventory is full or overweight (Phase 7)
 
 ## Technical Notes
 

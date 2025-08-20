@@ -121,7 +121,38 @@ export class ItemService {
    * @returns Array of inventory items with item details
    */
   async getCharacterInventory(characterId: number): Promise<InventoryItem[]> {
-    throw new Error('Not implemented - Phase 5');
+    const rows = await this.db.all<any>(`
+      SELECT ci.id, ci.character_id, ci.item_id, ci.quantity, ci.equipped, ci.equipped_slot, ci.created_at,
+             i.id as item_id_full, i.name, i.description, i.type, i.weight, i.value, 
+             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.created_at as item_created_at
+      FROM character_inventory ci 
+      JOIN items i ON ci.item_id = i.id 
+      WHERE ci.character_id = ?
+      ORDER BY i.type, i.name
+    `, [characterId]);
+
+    return rows.map(row => ({
+      id: row.id,
+      character_id: row.character_id,
+      item_id: row.item_id,
+      quantity: row.quantity,
+      equipped: Boolean(row.equipped),
+      equipped_slot: row.equipped_slot,
+      created_at: row.created_at,
+      item: {
+        id: row.item_id_full,
+        name: row.name,
+        description: row.description,
+        type: row.type,
+        weight: row.weight,
+        value: row.value,
+        stackable: Boolean(row.stackable),
+        max_stack: row.max_stack,
+        weapon_damage: row.weapon_damage,
+        armor_rating: row.armor_rating,
+        created_at: row.item_created_at
+      }
+    }));
   }
 
   /**

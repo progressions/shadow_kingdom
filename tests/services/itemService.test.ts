@@ -881,4 +881,133 @@ describe('ItemService', () => {
       expect(foundItem).toBeUndefined();
     });
   });
+
+  describe('Character Inventory (Phase 5)', () => {
+    let characterId: number;
+    let testItemId1: number;
+    let testItemId2: number;
+
+    beforeEach(async () => {
+      // Set up character ID (using game ID as character ID)
+      characterId = 1;
+
+      // Create test items
+      testItemId1 = await itemService.createItem({
+        name: 'Inventory Test Sword',
+        description: 'A sword for testing inventory',
+        type: ItemType.WEAPON,
+        weight: 2.5,
+        value: 100,
+        stackable: false,
+        max_stack: 1
+      });
+
+      testItemId2 = await itemService.createItem({
+        name: 'Inventory Test Potion',
+        description: 'A potion for testing inventory',
+        type: ItemType.CONSUMABLE,
+        weight: 0.5,
+        value: 25,
+        stackable: true,
+        max_stack: 10
+      });
+    });
+
+    test('should return empty array when character has no items', async () => {
+      const inventory = await itemService.getCharacterInventory(characterId);
+      
+      expect(inventory).toEqual([]);
+    });
+
+    test('should retrieve character inventory with single item', async () => {
+      // Add item to character inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, testItemId1, 1]);
+
+      const inventory = await itemService.getCharacterInventory(characterId);
+      
+      expect(inventory).toHaveLength(1);
+      expect(inventory[0].character_id).toBe(characterId);
+      expect(inventory[0].item_id).toBe(testItemId1);
+      expect(inventory[0].quantity).toBe(1);
+      expect(inventory[0].equipped).toBe(false);
+      expect(inventory[0].item.name).toBe('Inventory Test Sword');
+      expect(inventory[0].item.type).toBe(ItemType.WEAPON);
+    });
+
+    test('should retrieve character inventory with multiple items', async () => {
+      // Add multiple items to character inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, testItemId1, 1]);
+
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, testItemId2, 5]);
+
+      const inventory = await itemService.getCharacterInventory(characterId);
+      
+      expect(inventory).toHaveLength(2);
+      
+      // Should be ordered by type, name (consumable comes before weapon alphabetically)
+      expect(inventory[0].item.name).toBe('Inventory Test Potion');
+      expect(inventory[0].quantity).toBe(5);
+      expect(inventory[1].item.name).toBe('Inventory Test Sword');
+      expect(inventory[1].quantity).toBe(1);
+    });
+
+    test('should handle equipped items correctly', async () => {
+      // Add equipped item to character inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity, equipped, equipped_slot)
+        VALUES (?, ?, ?, ?, ?)
+      `, [characterId, testItemId1, 1, true, 'weapon']);
+
+      const inventory = await itemService.getCharacterInventory(characterId);
+      
+      expect(inventory).toHaveLength(1);
+      expect(inventory[0].equipped).toBe(true);
+      expect(inventory[0].equipped_slot).toBe('weapon');
+    });
+
+    test('should properly convert SQLite boolean values', async () => {
+      // Add item with explicit false values (SQLite stores as 0)
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity, equipped)
+        VALUES (?, ?, ?, ?)
+      `, [characterId, testItemId2, 3, 0]);
+
+      const inventory = await itemService.getCharacterInventory(characterId);
+      
+      expect(inventory).toHaveLength(1);
+      expect(inventory[0].equipped).toBe(false);
+      expect(inventory[0].item.stackable).toBe(true);
+    });
+
+    test('should only return items for specific character', async () => {
+      const anotherCharacterId = 999;
+
+      // Add item to first character
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, testItemId1, 1]);
+
+      // Add item to another character
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [anotherCharacterId, testItemId2, 3]);
+
+      const inventory = await itemService.getCharacterInventory(characterId);
+      
+      expect(inventory).toHaveLength(1);
+      expect(inventory[0].character_id).toBe(characterId);
+      expect(inventory[0].item.name).toBe('Inventory Test Sword');
+    });
+  });
 });
