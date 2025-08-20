@@ -101,10 +101,12 @@ export class TUIManager {
           }
         }
       },
-      inputOnFocus: true,
+      inputOnFocus: false,  // Changed: disable inputOnFocus to prevent auto-echo
       keys: true,
       mouse: true,
-      tags: true
+      tags: true,
+      secret: false,  // Ensure input is visible
+      censor: false   // Don't censor input
     });
 
     // Status area (bottom, variable height)
