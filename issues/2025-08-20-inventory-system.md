@@ -1,7 +1,7 @@
 # Inventory System
 
 **Date**: 2025-08-20  
-**Status**: Open  
+**Status**: In Progress - Phase 1 Complete  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -23,7 +23,7 @@ Create an inventory system with the following features:
 - **Quick Access**: Shortcuts for commonly used items
 
 **Acceptance criteria:**
-- [ ] Database schema for player inventory items
+- [x] Database schema for player inventory items (Phase 1 Complete)
 - [ ] Weight calculation and carrying capacity limits
 - [ ] `inventory` command to display all carried items
 - [ ] `pickup`/`get` commands to take items from environment
