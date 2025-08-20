@@ -1,7 +1,7 @@
 # Inventory System
 
 **Date**: 2025-08-20  
-**Status**: In Progress - Phase 5 Complete  
+**Status**: In Progress - Phase 6 Complete  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -27,13 +27,21 @@ Create an inventory system with the following features:
 - [ ] Weight calculation and carrying capacity limits (Phase 7)
 - [x] `inventory` command to display all carried items (Phase 5 Complete)
 - [x] `pickup`/`get` commands to take items from environment (Phase 4 Complete)
-- [ ] `drop` command to place items in current room (Phase 6)
+- [x] `drop` command to place items in current room (Phase 6 Complete)
 - [ ] `examine` command for detailed item inspection (Phase 9)
 - [ ] `use` command for consumable items (Future)
 - [ ] Item weight affects movement speed or other mechanics (Future)
 - [ ] Clear feedback when inventory is full or overweight (Phase 7)
 
 ## Recent Updates
+
+**2025-08-20**: ✅ **Phase 6: Drop Command Complete**
+- Implemented `transferItemToRoom()` method in ItemService for moving items from inventory to room
+- Added drop command to GameController with proper error handling and feedback
+- Created comprehensive test coverage with 7 new tests covering all drop scenarios
+- Supports stacking with existing room items and partial quantity drops
+- Includes helpful error messages and item suggestions when commands fail
+- All 353 tests passing, including new Phase 6 functionality
 
 **2025-08-20**: ✅ **Iron Sword Seed Data Enhancement**
 - Iron Sword now automatically placed in every new game's Grand Entrance Hall

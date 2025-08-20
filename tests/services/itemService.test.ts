@@ -1010,4 +1010,218 @@ describe('ItemService', () => {
       expect(inventory[0].item.name).toBe('Inventory Test Sword');
     });
   });
+
+  // ============================================================================
+  // PHASE 6: DROP COMMAND TESTS
+  // ============================================================================
+
+  describe('Phase 6: Drop Command - transferItemToRoom', () => {
+    let testItemId: number;
+    let characterId: number;
+    let roomId: number;
+
+    beforeEach(async () => {
+      // Create test item
+      testItemId = await itemService.createItem({
+        name: 'Drop Test Sword',
+        description: 'A sword for testing drop functionality',
+        type: ItemType.WEAPON,
+        weight: 2.5,
+        value: 100,
+        stackable: false,
+        max_stack: 1,
+        weapon_damage: '1d8+1'
+      });
+
+      // Create test character and room
+      characterId = 123;
+      roomId = 456;
+
+      // Add room to database (minimal room for testing)
+      await db.run(`
+        INSERT INTO rooms (id, game_id, name, description)
+        VALUES (?, ?, ?, ?)
+      `, [roomId, 1, 'Drop Test Room', 'A room for testing drops']);
+
+      // Add item to character inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, testItemId, 1]);
+    });
+
+    test('should transfer single item from inventory to room', async () => {
+      // Transfer item from inventory to room
+      await itemService.transferItemToRoom(characterId, testItemId, roomId, 1);
+
+      // Verify item was removed from inventory
+      const inventory = await itemService.getCharacterInventory(characterId);
+      expect(inventory).toHaveLength(0);
+
+      // Verify item was added to room
+      const roomItems = await itemService.getRoomItems(roomId);
+      expect(roomItems).toHaveLength(1);
+      expect(roomItems[0].item.name).toBe('Drop Test Sword');
+      expect(roomItems[0].quantity).toBe(1);
+      expect(roomItems[0].room_id).toBe(roomId);
+    });
+
+    test('should reduce quantity when dropping part of a stack', async () => {
+      // Create a stackable item
+      const stackableItemId = await itemService.createItem({
+        name: 'Drop Test Potion',
+        description: 'A stackable potion for testing',
+        type: ItemType.CONSUMABLE,
+        weight: 0.5,
+        value: 25,
+        stackable: true,
+        max_stack: 10
+      });
+
+      // Add multiple potions to inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, stackableItemId, 5]);
+
+      // Drop 2 potions
+      await itemService.transferItemToRoom(characterId, stackableItemId, roomId, 2);
+
+      // Verify reduced quantity in inventory
+      const inventory = await itemService.getCharacterInventory(characterId);
+      const inventoryPotion = inventory.find(item => item.item_id === stackableItemId);
+      expect(inventoryPotion).toBeDefined();
+      expect(inventoryPotion!.quantity).toBe(3);
+
+      // Verify correct quantity in room
+      const roomItems = await itemService.getRoomItems(roomId);
+      const roomPotion = roomItems.find(item => item.item_id === stackableItemId);
+      expect(roomPotion).toBeDefined();
+      expect(roomPotion!.quantity).toBe(2);
+    });
+
+    test('should stack item with existing room item', async () => {
+      // Create stackable item
+      const stackableItemId = await itemService.createItem({
+        name: 'Drop Test Coin',
+        description: 'Stackable coins for testing',
+        type: ItemType.MISC,
+        weight: 0.025,
+        value: 1,
+        stackable: true,
+        max_stack: 1000
+      });
+
+      // Add coins to inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, stackableItemId, 50]);
+
+      // Place some coins already in the room
+      await itemService.placeItemInRoom(roomId, stackableItemId, 25);
+
+      // Drop 20 coins from inventory
+      await itemService.transferItemToRoom(characterId, stackableItemId, roomId, 20);
+
+      // Verify inventory has reduced quantity
+      const inventory = await itemService.getCharacterInventory(characterId);
+      const inventoryCoins = inventory.find(item => item.item_id === stackableItemId);
+      expect(inventoryCoins!.quantity).toBe(30);
+
+      // Verify room has combined quantity
+      const roomItems = await itemService.getRoomItems(roomId);
+      const roomCoins = roomItems.find(item => item.item_id === stackableItemId);
+      expect(roomCoins!.quantity).toBe(45); // 25 existing + 20 dropped
+    });
+
+    test('should throw error when item not in character inventory', async () => {
+      const nonExistentItemId = 99999;
+
+      await expect(
+        itemService.transferItemToRoom(characterId, nonExistentItemId, roomId, 1)
+      ).rejects.toThrow('Item not found in character inventory');
+    });
+
+    test('should throw error when insufficient quantity in inventory', async () => {
+      // Try to drop more than available
+      await expect(
+        itemService.transferItemToRoom(characterId, testItemId, roomId, 5)
+      ).rejects.toThrow('Not enough quantity available in inventory');
+    });
+
+    test('should handle dropping entire stack', async () => {
+      // Create stackable item with quantity in inventory
+      const stackableItemId = await itemService.createItem({
+        name: 'Drop Test Gem',
+        description: 'Stackable gems for testing',
+        type: ItemType.MISC,
+        weight: 0.1,
+        value: 50,
+        stackable: true,
+        max_stack: 100
+      });
+
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, stackableItemId, 7]);
+
+      // Drop all gems
+      await itemService.transferItemToRoom(characterId, stackableItemId, roomId, 7);
+
+      // Verify item completely removed from inventory
+      const inventory = await itemService.getCharacterInventory(characterId);
+      const inventoryGem = inventory.find(item => item.item_id === stackableItemId);
+      expect(inventoryGem).toBeUndefined();
+
+      // Verify all gems in room
+      const roomItems = await itemService.getRoomItems(roomId);
+      const roomGem = roomItems.find(item => item.item_id === stackableItemId);
+      expect(roomGem!.quantity).toBe(7);
+    });
+
+    test('should work with multiple different items in character and room', async () => {
+      // Create another item
+      const secondItemId = await itemService.createItem({
+        name: 'Drop Test Shield',
+        description: 'A shield for testing',
+        type: ItemType.ARMOR,
+        weight: 5.0,
+        value: 150,
+        stackable: false,
+        max_stack: 1,
+        armor_rating: 3
+      });
+
+      // Add second item to inventory
+      await db.run(`
+        INSERT INTO character_inventory (character_id, item_id, quantity)
+        VALUES (?, ?, ?)
+      `, [characterId, secondItemId, 1]);
+
+      // Place an unrelated item in the room
+      await itemService.placeItemInRoom(roomId, testItemId, 1);
+
+      // Drop the shield from inventory
+      await itemService.transferItemToRoom(characterId, secondItemId, roomId, 1);
+
+      // Verify inventory only has the original sword
+      const inventory = await itemService.getCharacterInventory(characterId);
+      expect(inventory).toHaveLength(1);
+      expect(inventory[0].item.name).toBe('Drop Test Sword');
+
+      // Verify room has both items
+      const roomItems = await itemService.getRoomItems(roomId);
+      expect(roomItems).toHaveLength(2);
+      
+      const roomSword = roomItems.find(item => item.item.name === 'Drop Test Sword');
+      const roomShield = roomItems.find(item => item.item.name === 'Drop Test Shield');
+      
+      expect(roomSword).toBeDefined();
+      expect(roomShield).toBeDefined();
+      expect(roomSword!.quantity).toBe(1);
+      expect(roomShield!.quantity).toBe(1);
+    });
+  });
 });

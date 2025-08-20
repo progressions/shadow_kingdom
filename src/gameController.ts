@@ -309,6 +309,12 @@ export class GameController {
       description: 'Show your inventory (alias for "inventory")',
       handler: async () => await this.handleInventory()
     });
+
+    this.commandRouter.addCommand({
+      name: 'drop',
+      description: 'Drop an item from your inventory',
+      handler: async (args) => await this.handleDrop(args[0])
+    });
   }
 
   private async processInput(): Promise<void> {
@@ -1146,6 +1152,74 @@ export class GameController {
     } catch (error) {
       console.error('Error displaying inventory:', error);
       this.tui.showError('Error displaying inventory', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Handle drop command - drop items from inventory to current room
+   */
+  private async handleDrop(itemName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!itemName) {
+      this.tui.display('Drop what?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      // For this phase, use game ID as character ID (simple approach for single-player game)
+      const characterId = session.gameId!;
+
+      // Get character's inventory
+      const inventory = await this.itemService.getCharacterInventory(characterId);
+      
+      if (inventory.length === 0) {
+        this.tui.display('Your inventory is empty.', MessageType.ERROR);
+        return;
+      }
+
+      // Find item by name (case-insensitive partial match)
+      const targetItem = this.itemService.findItemByName(inventory, itemName);
+
+      if (!targetItem) {
+        this.tui.display(`You don't have a ${itemName}.`, MessageType.ERROR);
+        
+        // Show available items as a suggestion
+        this.tui.display('You are carrying:', MessageType.SYSTEM);
+        inventory.forEach(invItem => {
+          const quantityText = invItem.quantity > 1 ? ` x${invItem.quantity}` : '';
+          this.tui.display(`• ${invItem.item.name}${quantityText}`, MessageType.NORMAL);
+        });
+        return;
+      }
+
+      // Transfer item from character inventory to room
+      await this.itemService.transferItemToRoom(
+        characterId,
+        targetItem.item_id,
+        currentRoom.id,
+        1
+      );
+
+      this.tui.display(`You drop the ${targetItem.item.name}.`, MessageType.NORMAL);
+      
+      // Refresh room display to show updated items
+      await this.lookAround();
+
+    } catch (error) {
+      console.error('Error dropping item:', error);
+      this.tui.showError('Error dropping item', (error as Error)?.message);
     }
   }
 }
