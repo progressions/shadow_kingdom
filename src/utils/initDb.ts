@@ -673,8 +673,16 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, entranceId]
     );
 
+    // Place starter item (Iron Sword) in the Grand Entrance Hall
+    // Iron Sword is always item ID 1 from the seed data
+    await db.run(
+      'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
+      [entranceId, 1, 1]
+    );
+
     if (tui) {
       tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);
+      tui.display('Iron Sword placed in Grand Entrance Hall', MessageType.SYSTEM);
     }
     return gameId;
   } catch (error) {
