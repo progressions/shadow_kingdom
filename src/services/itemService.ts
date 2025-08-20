@@ -30,7 +30,12 @@ export class ItemService {
    * @returns The ID of the created item
    */
   async createItem(item: CreateItemData): Promise<number> {
-    throw new Error('Not implemented - Phase 2');
+    const result = await this.db.run(`
+      INSERT INTO items (name, description, type, weight, value, stackable, max_stack, weapon_damage, armor_rating)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [item.name, item.description, item.type, item.weight, item.value, item.stackable, item.max_stack, item.weapon_damage, item.armor_rating]);
+    
+    return result.lastID!;
   }
 
   /**
@@ -39,7 +44,8 @@ export class ItemService {
    * @returns Item or null if not found
    */
   async getItem(id: number): Promise<Item | null> {
-    throw new Error('Not implemented - Phase 2');
+    const result = await this.db.get<Item>('SELECT * FROM items WHERE id = ?', [id]);
+    return result || null;
   }
 
   /**
@@ -47,7 +53,7 @@ export class ItemService {
    * @returns Array of all items
    */
   async listItems(): Promise<Item[]> {
-    throw new Error('Not implemented - Phase 2');
+    return await this.db.all<Item>('SELECT * FROM items ORDER BY name');
   }
 
   // ============================================================================

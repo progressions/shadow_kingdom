@@ -1,6 +1,7 @@
 import Database from './database';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
+import { seedItems } from './seedItems';
 
 export async function initializeDatabase(db: Database, tui?: TUIInterface): Promise<void> {
   try {
@@ -182,6 +183,9 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
 
     // Add processing column to connections table for auto-generation
     await ensureProcessingColumn(db, tui);
+
+    // Seed items table with initial items if empty
+    await seedItems(db, tui);
 
     if (tui) {
       tui.display('Database tables initialized successfully', MessageType.SYSTEM);
