@@ -209,6 +209,112 @@ export class GameManagementServicePrisma {
   }
 
   /**
+   * Get the most recently played game
+   */
+  async getMostRecentGame(): Promise<Game | null> {
+    try {
+      const games = await this.getAllGames();
+      return games.length > 0 ? games[0] : null;
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to get most recent game:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Generate a creative game name
+   */
+  generateGameName(): string {
+    const adjectives = ['Shadow', 'Mystic', 'Ancient', 'Epic', 'Dark', 'Forgotten'];
+    const nouns = ['Adventure', 'Quest', 'Journey', 'Kingdom', 'Realm', 'Legacy'];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adj} ${noun}`;
+  }
+
+  /**
+   * Create a new game automatically without user input
+   */
+  async createGameAutomatic(): Promise<{success: boolean; game?: Game; error?: string}> {
+    try {
+      let gameName = this.generateGameName();
+      
+      // Check if name exists and make it unique if needed
+      const exists = await this.gameNameExists(gameName);
+      if (exists) {
+        gameName = `${gameName} ${Date.now()}`;
+      }
+      
+      return await this.createGameWithName(gameName);
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to create automatic game:', error);
+      }
+      return { success: false, error: 'Failed to create new game automatically' };
+    }
+  }
+
+  /**
+   * Create game with specific name (internal helper)
+   */
+  private async createGameWithName(gameName: string): Promise<{success: boolean; game?: Game; error?: string}> {
+    try {
+      // Create new game with Prisma transaction
+      const newGame = await this.prisma.$transaction(async (tx) => {
+        // Create the game
+        const game = await tx.game.create({
+          data: {
+            name: gameName.trim()
+          }
+        });
+
+        // Create initial region
+        const region = await tx.region.create({
+          data: {
+            gameId: game.id,
+            name: 'Shadow Kingdom Manor',
+            type: 'mansion',
+            description: 'A grand manor estate shrouded in mystery, filled with elegant halls, ancient libraries, and moonlit gardens where forgotten secrets await discovery.'
+          }
+        });
+
+        // Create starter rooms (simplified for automatic creation)
+        const entranceHall = await tx.room.create({
+          data: {
+            gameId: game.id,
+            name: 'Grand Entrance Hall',
+            description: 'You stand in a magnificent entrance hall that speaks of forgotten grandeur. Towering marble columns stretch up to a vaulted ceiling painted with faded celestial murals.',
+            regionId: region.id,
+            regionDistance: 0
+          }
+        });
+
+        // Create initial game state
+        await tx.gameState.create({
+          data: {
+            gameId: game.id,
+            currentRoomId: entranceHall.id
+          }
+        });
+
+        return game;
+      });
+
+      // Convert Prisma game to legacy Game interface
+      const game: Game = typeMappers.fromPrismaGame(newGame);
+      return { success: true, game };
+
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to create game with name:', gameName, error);
+      }
+      return { success: false, error: 'Failed to create new game' };
+    }
+  }
+
+  /**
    * Present game selection UI and return selected game
    */
   async selectGameFromList(purpose: 'load' | 'delete'): Promise<{ success: boolean; game?: Game; cancelled?: boolean; error?: string }> {

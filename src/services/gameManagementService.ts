@@ -89,6 +89,78 @@ export class GameManagementService {
   }
 
   /**
+   * Get the most recently played game
+   */
+  async getMostRecentGame(): Promise<Game | null> {
+    try {
+      const games = await this.getAllGames();
+      return games.length > 0 ? games[0] : null;
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to get most recent game:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Generate a creative game name
+   */
+  generateGameName(): string {
+    const adjectives = ['Shadow', 'Mystic', 'Ancient', 'Epic', 'Dark', 'Forgotten'];
+    const nouns = ['Adventure', 'Quest', 'Journey', 'Kingdom', 'Realm', 'Legacy'];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adj} ${noun}`;
+  }
+
+  /**
+   * Create a new game automatically without user input
+   */
+  async createGameAutomatic(): Promise<{success: boolean; game?: Game; error?: string}> {
+    try {
+      await initializeDatabase(this.db);
+      
+      let gameName = this.generateGameName();
+      
+      // Check if name exists and make it unique if needed
+      const exists = await this.gameNameExists(gameName);
+      if (exists) {
+        gameName = `${gameName} ${Date.now()}`;
+      }
+      
+      return await this.createGameWithName(gameName);
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to create automatic game:', error);
+      }
+      return { success: false, error: 'Failed to create new game automatically' };
+    }
+  }
+
+  /**
+   * Create game with specific name (internal helper)
+   */
+  private async createGameWithName(gameName: string): Promise<{success: boolean; game?: Game; error?: string}> {
+    try {
+      // Create new game with rooms
+      const gameId = await createGameWithRooms(this.db, gameName.trim());
+      const game = await this.getGameById(gameId);
+      
+      if (!game) {
+        return { success: false, error: 'Failed to retrieve created game' };
+      }
+      
+      return { success: true, game };
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Failed to create game with name:', gameName, error);
+      }
+      return { success: false, error: 'Failed to create new game' };
+    }
+  }
+
+  /**
    * Present game selection UI and return selected game
    */
   async selectGameFromList(purpose: 'load' | 'delete'): Promise<{ success: boolean; game?: Game; cancelled?: boolean; error?: string }> {
