@@ -33,6 +33,14 @@ Create an inventory system with the following features:
 - [ ] Item weight affects movement speed or other mechanics (Future)
 - [ ] Clear feedback when inventory is full or overweight (Phase 7)
 
+## Recent Updates
+
+**2025-08-20**: ✅ **Iron Sword Seed Data Enhancement**
+- Iron Sword now automatically placed in every new game's Grand Entrance Hall
+- Players always have a starter item to test inventory system
+- No more manual database manipulation needed for testing
+- Enhanced player experience with consistent item availability
+
 ## Technical Notes
 
 ### Database Schema
