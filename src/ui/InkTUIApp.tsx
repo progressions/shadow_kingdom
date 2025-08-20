@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, useStdout } from 'ink';
 import { MessageType } from './MessageFormatter';
 import { GameState } from './StatusManager';
 
@@ -56,12 +56,12 @@ const getMessageColor = (type: MessageType): string => {
 };
 
 // Content area component - scrollable message list
-const ContentArea: React.FC<ContentAreaProps> = ({ messages, maxHeight = 20 }) => {
-  // Show only the last N messages that fit in the display area
-  const visibleMessages = messages.slice(-maxHeight);
+const ContentArea: React.FC<ContentAreaProps> = ({ messages, maxHeight }) => {
+  // Use calculated maxHeight or show all messages if not specified
+  const visibleMessages = maxHeight ? messages.slice(-maxHeight) : messages;
 
   return (
-    <Box flexDirection="column" flexGrow={1} paddingX={1}>
+    <Box flexDirection="column" flexGrow={1} paddingX={1} minHeight={maxHeight || 20}>
       {visibleMessages.map((message) => (
         <Box key={message.id}>
           <Text color={getMessageColor(message.type)} bold={message.type === MessageType.ROOM_TITLE}>
@@ -69,6 +69,8 @@ const ContentArea: React.FC<ContentAreaProps> = ({ messages, maxHeight = 20 }) =
           </Text>
         </Box>
       ))}
+      {/* Fill remaining space if content is shorter than available height */}
+      <Box flexGrow={1} />
     </Box>
   );
 };
@@ -150,7 +152,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ gameState }) => {
   const statusText = statusParts.join(' | ');
 
   return (
-    <Box borderStyle="single" paddingX={1}>
+    <Box paddingX={1}>
       <Text color="gray">{statusText}</Text>
     </Box>
   );
@@ -164,15 +166,26 @@ export const InkTUIApp: React.FC<InkTUIAppProps> = ({
   onKeyPress,
   waiting = false 
 }) => {
+  const { stdout } = useStdout();
+  
+  // Clear screen on component mount
+  useEffect(() => {
+    process.stdout.write('\x1b[2J\x1b[0f'); // Clear screen and move cursor to top
+  }, []);
+  
+  const terminalHeight = stdout?.rows || 24; // Default to 24 if unavailable
+  // Give content area nearly the full screen height, just leave 2 lines for status + input
+  const contentHeight = Math.max(20, terminalHeight - 2);
+  
   return (
-    <Box flexDirection="column" height="100%">
-      {/* Content Area */}
-      <ContentArea messages={messages} />
+    <Box flexDirection="column" height="100%" width="100%">
+      {/* Content Area - fills nearly entire screen */}
+      <ContentArea messages={messages} maxHeight={contentHeight} />
       
       {/* Input Bar */}
       <InputBar onSubmit={onInput} waiting={waiting} onKeyPress={onKeyPress} />
       
-      {/* Status Bar */}
+      {/* Status Bar - at very bottom, below input */}
       <StatusBar gameState={gameState} />
     </Box>
   );
