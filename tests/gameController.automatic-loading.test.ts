@@ -108,9 +108,18 @@ describe('GameController Automatic Loading', () => {
 
   describe('Auto-create New Game', () => {
     test('should auto-create game when none exist', async () => {
+      // Verify we're using a fresh in-memory database
+      const dbInfo = await db.get('PRAGMA database_list');
+      console.log('Database info:', dbInfo);
+      
+      // Double-check by deleting any existing games (shouldn't be any in :memory:)
+      await db.run('DELETE FROM games');
+      await db.run('DELETE FROM rooms');
+      await db.run('DELETE FROM connections');
+      
       // Verify no games exist initially in our test database
       const initialGames = await db.all('SELECT * FROM games');
-      console.log('Initial games in test db:', initialGames.length);
+      console.log('Initial games in test db after cleanup:', initialGames.length);
       expect(initialGames.length).toBe(0);
       
       // Start the controller

@@ -500,6 +500,23 @@ export class GameController {
               }
             }
             
+            // Check if NLP connection needs room generation
+            if (!nlpConnection.to_room_id) {
+              console.log('Generating room...');
+              
+              // Generate room synchronously for unfilled connection
+              const unfilledConnection = nlpConnection as any; // Cast to allow null to_room_id
+              const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
+              
+              if (!generationResult.success) {
+                console.log('Failed to generate room. You cannot go that way.');
+                return;
+              }
+              
+              // Update connection with newly generated room
+              nlpConnection.to_room_id = generationResult.roomId!;
+            }
+            
             // Move to the new room using game state manager
             await this.gameStateManager.moveToRoom(nlpConnection.to_room_id);
             
@@ -518,6 +535,23 @@ export class GameController {
         return;
       }
 
+      // Check if connection needs room generation
+      if (!connection.to_room_id) {
+        console.log('Generating room...');
+        
+        // Generate room synchronously for unfilled connection
+        const unfilledConnection = connection as any; // Cast to allow null to_room_id
+        const generationResult = await this.roomGenerationService.generateRoomForConnection(unfilledConnection);
+        
+        if (!generationResult.success) {
+          console.log('Failed to generate room. You cannot go that way.');
+          return;
+        }
+        
+        // Update connection with newly generated room
+        connection.to_room_id = generationResult.roomId!;
+      }
+      
       // Move to the new room using game state manager
       await this.gameStateManager.moveToRoom(connection.to_room_id);
       
