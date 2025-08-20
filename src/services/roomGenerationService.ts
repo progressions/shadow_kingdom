@@ -493,10 +493,34 @@ export class RoomGenerationService {
       const newRoomId = roomResult.lastID as number;
 
       // Update the connection to point to the new room (fill the connection)
-      await this.db.run(
-        'UPDATE connections SET to_room_id = ? WHERE id = ?',
+      // Use a conditional update to prevent race conditions - only update if still unfilled
+      const updateResult = await this.db.run(
+        'UPDATE connections SET to_room_id = ? WHERE id = ? AND to_room_id IS NULL',
         [newRoomId, connection.id]
       );
+      
+      // Check if the update succeeded (connection was still unfilled)
+      if (updateResult.changes === 0) {
+        // Connection was already filled by another process - this is a race condition
+        // Clean up the room we just created since it won't be used
+        await this.db.run('DELETE FROM rooms WHERE id = ?', [newRoomId]);
+        
+        // Get the existing connection to return the correct room ID
+        const existingConnection = await this.db.get<any>(
+          'SELECT to_room_id FROM connections WHERE id = ?',
+          [connection.id]
+        );
+        
+        if (this.options.enableDebugLogging) {
+          console.log(`🔄 Race condition detected: Connection ${connection.id} was already filled during generation. Using existing room ${existingConnection.to_room_id}.`);
+        }
+        
+        return {
+          success: true,
+          roomId: existingConnection.to_room_id,
+          connectionId: connection.id
+        };
+      }
 
       // Create return connection (filled immediately)
       const returnDirection = this.getReverseDirection(connection.direction);
