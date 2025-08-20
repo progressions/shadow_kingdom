@@ -144,17 +144,21 @@ describe('Movement Room Generation Integration', () => {
     const initialRoomId = initialSession.roomId;
     
     // Try to move in an invalid direction
-    const consoleSpy = jest.spyOn(console, 'log');
-    await (gameController as any).move(['invalid']);
+    const mockTui = (gameController as any).tui;
+    const displaySpy = jest.spyOn(mockTui, 'display');
+    await (gameController as any).move(['invalidDirection']);
     
     // Should stay in same room
     const finalSession = (gameController as any).gameStateManager.getCurrentSession();
     expect(finalSession.roomId).toBe(initialRoomId);
     
-    // Should show error message
-    expect(consoleSpy).toHaveBeenCalled();
+    // Should show error message via TUI display
+    expect(displaySpy).toHaveBeenCalledWith(
+      expect.stringContaining("You can't go invaliddirection from here."),
+      expect.anything()
+    );
     
-    consoleSpy.mockRestore();
+    displaySpy.mockRestore();
   });
 
   test('should create new regions when distance probability triggers', async () => {

@@ -1,6 +1,6 @@
 import { PrismaClient } from '../generated/prisma';
 import { getPrismaClient } from './prismaService';
-import { initializeDatabase, createGameWithRooms } from '../utils/initDb';
+import { initializeDatabase, createGameWithRooms, createGameAutomatic } from '../utils/initDb';
 import { Game } from './gameStateManager';
 import { typeMappers } from '../types/database';
 import { TUIManager } from '../ui/TUIManager';
@@ -40,33 +40,20 @@ export class GameManagementServicePrisma {
   }
 
   /**
-   * Create a new game with user input and validation
+   * Create a new game automatically with timestamp name - no user input required
    */
   async createNewGame(): Promise<{ success: boolean; gameId?: number; gameName?: string; error?: string }> {
     try {
-      // Get game name from user
-      this.tui.display('Enter a name for your new game:', MessageType.SYSTEM);
-      const gameName = await this.promptForInput('Game name: ');
-      
-      if (!gameName.trim()) {
-        return { success: false, error: 'Game name cannot be empty' };
-      }
-
-      // Check if game name already exists using Prisma
-      const existingGame = await this.prisma.game.findUnique({
-        where: { name: gameName.trim() }
-      });
-
-      if (existingGame) {
-        return { success: false, error: 'A game with that name already exists. Please choose a different name.' };
-      }
+      // Generate timestamp-based name
+      const now = new Date();
+      const gameName = now.toISOString().replace('T', ' ').split('.')[0]; // Format: "2025-01-20 14:32:05"
 
       // Create new game with Prisma transaction
       const newGame = await this.prisma.$transaction(async (tx) => {
         // Create the game
         const game = await tx.game.create({
           data: {
-            name: gameName.trim()
+            name: gameName
           }
         });
 
@@ -242,17 +229,13 @@ export class GameManagementServicePrisma {
   }
 
   /**
-   * Create a new game automatically without user input
+   * Create a new game automatically with timestamp name - no user input required
    */
   async createGameAutomatic(): Promise<{success: boolean; game?: Game; error?: string}> {
     try {
-      let gameName = this.generateGameName();
-      
-      // Check if name exists and make it unique if needed
-      const exists = await this.gameNameExists(gameName);
-      if (exists) {
-        gameName = `${gameName} ${Date.now()}`;
-      }
+      // Generate timestamp-based name
+      const now = new Date();
+      const gameName = now.toISOString().replace('T', ' ').split('.')[0]; // Format: "2025-01-20 14:32:05"
       
       return await this.createGameWithName(gameName);
     } catch (error) {

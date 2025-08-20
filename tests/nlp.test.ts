@@ -10,12 +10,10 @@ describe('LocalNLPProcessor', () => {
     processor = new LocalNLPProcessor();
     
     menuContext = {
-      mode: 'menu',
       recentCommands: []
     };
 
     gameContext = {
-      mode: 'game',
       gameId: 1,
       currentRoom: {
         id: 1,

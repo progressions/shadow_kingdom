@@ -21,7 +21,6 @@ async function testPhase2() {
   
   // Test context
   const gameContext: GameContext = {
-    mode: 'game',
     gameId: 1,
     currentRoom: {
       id: 1,
@@ -35,7 +34,7 @@ async function testPhase2() {
   console.log('\n📚 Testing Context:');
   console.log(`Current room: ${gameContext.currentRoom!.name}`);
   console.log(`Available exits: ${gameContext.currentRoom!.availableExits.join(', ')}`);
-  console.log(`Mode: ${gameContext.mode}`);
+  console.log(`Game ID: ${gameContext.gameId}`);
 
   console.log('\n⚙️  Engine Configuration:');
   const currentConfig = engine.getConfig();

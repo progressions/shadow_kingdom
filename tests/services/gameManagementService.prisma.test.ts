@@ -25,8 +25,8 @@ describe.skip('GameManagementService (Prisma)', () => {
     // Create mock readline interface
     mockRl = createMockReadline();
     
-    // Create Prisma-based service
-    gameManagementService = new GameManagementServicePrisma(mockRl, {
+    // Create Prisma-based service with null TUI (console mode)
+    gameManagementService = new GameManagementServicePrisma(null as any, {
       enableDebugLogging: false
     });
   });

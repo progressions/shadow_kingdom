@@ -1,5 +1,5 @@
 import Database from '../utils/database';
-import { initializeDatabase, createGameWithRooms } from '../utils/initDb';
+import { initializeDatabase, createGameWithRooms, createGameAutomatic } from '../utils/initDb';
 import { Game } from './gameStateManager';
 import { TUIManager } from '../ui/TUIManager';
 import { MessageType } from '../ui/MessageFormatter';
@@ -35,35 +35,17 @@ export class GameManagementService {
   }
 
   /**
-   * Create a new game with user input and validation
+   * Create a new game automatically - no user input required
    */
   async createNewGame(): Promise<{ success: boolean; gameId?: number; gameName?: string; error?: string }> {
     try {
-      // Initialize database tables if needed
       await initializeDatabase(this.db);
       
-      // Get game name from user
-      this.tui.display('Enter a name for your new game:', MessageType.SYSTEM);
-      const gameName = await this.promptForInput('Game name: ');
+      // Create game with automatic timestamp name
+      const gameId = await createGameAutomatic(this.db);
+      const game = await this.getGameById(gameId);
       
-      if (!gameName.trim()) {
-        return { success: false, error: 'Game name cannot be empty' };
-      }
-
-      // Check if game name already exists
-      const existingGame = await this.db.get<Game>(
-        'SELECT id FROM games WHERE name = ?',
-        [gameName.trim()]
-      );
-
-      if (existingGame) {
-        return { success: false, error: 'A game with that name already exists. Please choose a different name.' };
-      }
-
-      // Create new game with rooms
-      const gameId = await createGameWithRooms(this.db, gameName.trim());
-      
-      return { success: true, gameId, gameName: gameName.trim() };
+      return { success: true, gameId, gameName: game?.name };
     } catch (error) {
       if (this.isDebugEnabled()) {
         console.error('Failed to create new game:', error);
@@ -116,21 +98,17 @@ export class GameManagementService {
   }
 
   /**
-   * Create a new game automatically without user input
+   * Create a new game automatically with timestamp name - no user input required
    */
   async createGameAutomatic(): Promise<{success: boolean; game?: Game; error?: string}> {
     try {
       await initializeDatabase(this.db);
       
-      let gameName = this.generateGameName();
+      // Create game with automatic timestamp name
+      const gameId = await createGameAutomatic(this.db);
+      const game = await this.getGameById(gameId);
       
-      // Check if name exists and make it unique if needed
-      const exists = await this.gameNameExists(gameName);
-      if (exists) {
-        gameName = `${gameName} ${Date.now()}`;
-      }
-      
-      return await this.createGameWithName(gameName);
+      return { success: true, game: game || undefined };
     } catch (error) {
       if (this.isDebugEnabled()) {
         console.error('Failed to create automatic game:', error);

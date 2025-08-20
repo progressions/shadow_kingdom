@@ -84,8 +84,7 @@ export class UnifiedNLPEngine {
             thematicExits: context.currentRoom.thematicExits
           } : undefined,
           inventory: [], // TODO: Add inventory support
-          recentCommands: context.recentCommands,
-          mode: context.mode
+          recentCommands: context.recentCommands
         };
 
         // Create timeout promise with cleanup capability

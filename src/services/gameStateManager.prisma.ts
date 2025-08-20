@@ -3,7 +3,6 @@ import { getPrismaClient } from './prismaService';
 import { GameContext } from '../nlp/types';
 import { typeMappers } from '../types/database';
 
-export type Mode = 'menu' | 'game';
 
 export interface GameState {
   id: number;
@@ -46,7 +45,6 @@ export interface Game {
 export interface GameSession {
   gameId: number;
   roomId: number;
-  mode: Mode;
 }
 
 export interface GameStateManagerOptions {
@@ -55,7 +53,7 @@ export interface GameStateManagerOptions {
 
 /**
  * GameStateManager (Prisma version) - handles all game state persistence and session management.
- * Provides a clean interface for tracking current game, room, and mode.
+ * Provides a clean interface for tracking current game and room.
  * 
  * This is the migrated version using Prisma instead of raw SQL.
  * Provides type safety, better performance, and cleaner code.
@@ -64,7 +62,6 @@ export class GameStateManagerPrisma {
   private prisma: PrismaClient;
   private currentGameId: number | null = null;
   private currentRoomId: number | null = null;
-  private mode: Mode = 'menu';
   private recentCommands: string[] = [];
   private options: GameStateManagerOptions;
 
@@ -79,11 +76,10 @@ export class GameStateManagerPrisma {
   /**
    * Get current session information
    */
-  getCurrentSession(): { gameId: number | null; roomId: number | null; mode: Mode } {
+  getCurrentSession(): { gameId: number | null; roomId: number | null } {
     return {
       gameId: this.currentGameId,
-      roomId: this.currentRoomId,
-      mode: this.mode
+      roomId: this.currentRoomId
     };
   }
 
@@ -91,7 +87,7 @@ export class GameStateManagerPrisma {
    * Check if currently in a game session
    */
   isInGame(): boolean {
-    return this.mode === 'game' && this.currentGameId !== null && this.currentRoomId !== null;
+    return this.currentGameId !== null && this.currentRoomId !== null;
   }
 
   /**
@@ -111,7 +107,6 @@ export class GameStateManagerPrisma {
 
       this.currentGameId = gameId;
       this.currentRoomId = gameState.currentRoomId;
-      this.mode = 'game';
 
       if (this.isDebugEnabled()) {
         console.log(`🎮 Started game session: Game ${gameId}, Room ${this.currentRoomId}`);
@@ -123,7 +118,7 @@ export class GameStateManagerPrisma {
   }
 
   /**
-   * End current game session and return to menu
+   * End current game session
    */
   async endGameSession(): Promise<void> {
     if (this.currentGameId && this.currentRoomId) {
@@ -132,11 +127,10 @@ export class GameStateManagerPrisma {
 
     this.currentGameId = null;
     this.currentRoomId = null;
-    this.mode = 'menu';
     this.recentCommands = [];
 
     if (this.isDebugEnabled()) {
-      console.log('🏠 Returned to menu mode');
+      console.log('🏠 Ended game session');
     }
   }
 
@@ -317,11 +311,10 @@ export class GameStateManagerPrisma {
    */
   async buildGameContext(): Promise<GameContext> {
     const context: GameContext = {
-      mode: this.mode,
       recentCommands: [...this.recentCommands]
     };
 
-    // Add current room context if in game mode
+    // Add current room context if in a game session
     if (this.isInGame()) {
       try {
         const room = await this.getCurrentRoom();
@@ -402,14 +395,12 @@ export class GameStateManagerPrisma {
   getSessionStats(): {
     currentGameId: number | null;
     currentRoomId: number | null;
-    mode: Mode;
     recentCommandCount: number;
     isInActiveSession: boolean;
   } {
     return {
       currentGameId: this.currentGameId,
       currentRoomId: this.currentRoomId,
-      mode: this.mode,
       recentCommandCount: this.recentCommands.length,
       isInActiveSession: this.isInGame()
     };
@@ -435,7 +426,6 @@ export class GameStateManagerPrisma {
   resetSession(): void {
     this.currentGameId = null;
     this.currentRoomId = null;
-    this.mode = 'menu';
     this.recentCommands = [];
   }
 }

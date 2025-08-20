@@ -1,7 +1,6 @@
 import Database from '../utils/database';
 import { GameContext } from '../nlp/types';
 
-export type Mode = 'menu' | 'game';
 
 export interface GameState {
   id: number;
@@ -44,7 +43,6 @@ export interface Game {
 export interface GameSession {
   gameId: number;
   roomId: number;
-  mode: Mode;
 }
 
 export interface GameStateManagerOptions {
@@ -59,7 +57,6 @@ export class GameStateManager {
   private db: Database;
   private currentGameId: number | null = null;
   private currentRoomId: number | null = null;
-  private mode: Mode = 'menu';
   private recentCommands: string[] = [];
   private options: GameStateManagerOptions;
 
@@ -74,11 +71,10 @@ export class GameStateManager {
   /**
    * Get current session information
    */
-  getCurrentSession(): { gameId: number | null; roomId: number | null; mode: Mode } {
+  getCurrentSession(): { gameId: number | null; roomId: number | null } {
     return {
       gameId: this.currentGameId,
-      roomId: this.currentRoomId,
-      mode: this.mode
+      roomId: this.currentRoomId
     };
   }
 
@@ -86,7 +82,7 @@ export class GameStateManager {
    * Check if currently in a game session
    */
   isInGame(): boolean {
-    return this.mode === 'game' && this.currentGameId !== null && this.currentRoomId !== null;
+    return this.currentGameId !== null && this.currentRoomId !== null;
   }
 
   /**
@@ -106,7 +102,6 @@ export class GameStateManager {
 
       this.currentGameId = gameId;
       this.currentRoomId = gameState.current_room_id;
-      this.mode = 'game';
 
       if (this.isDebugEnabled()) {
         console.log(`🎮 Started game session: Game ${gameId}, Room ${this.currentRoomId}`);
@@ -118,7 +113,7 @@ export class GameStateManager {
   }
 
   /**
-   * End current game session and return to menu
+   * End current game session
    */
   async endGameSession(): Promise<void> {
     if (this.currentGameId && this.currentRoomId) {
@@ -127,11 +122,10 @@ export class GameStateManager {
 
     this.currentGameId = null;
     this.currentRoomId = null;
-    this.mode = 'menu';
     this.recentCommands = [];
 
     if (this.isDebugEnabled()) {
-      console.log('🏠 Returned to menu mode');
+      console.log('🏠 Ended game session');
     }
   }
 
@@ -270,11 +264,10 @@ export class GameStateManager {
    */
   async buildGameContext(): Promise<GameContext> {
     const context: GameContext = {
-      mode: this.mode,
       recentCommands: [...this.recentCommands]
     };
 
-    // Add current room context if in game mode
+    // Add current room context if in a game session
     if (this.isInGame()) {
       try {
         const room = await this.getCurrentRoom();
@@ -344,14 +337,12 @@ export class GameStateManager {
   getSessionStats(): {
     currentGameId: number | null;
     currentRoomId: number | null;
-    mode: Mode;
     recentCommandCount: number;
     isInActiveSession: boolean;
   } {
     return {
       currentGameId: this.currentGameId,
       currentRoomId: this.currentRoomId,
-      mode: this.mode,
       recentCommandCount: this.recentCommands.length,
       isInActiveSession: this.isInGame()
     };
@@ -377,7 +368,6 @@ export class GameStateManager {
   resetSession(): void {
     this.currentGameId = null;
     this.currentRoomId = null;
-    this.mode = 'menu';
     this.recentCommands = [];
   }
 }

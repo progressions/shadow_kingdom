@@ -16,12 +16,10 @@ function testNLPProcessor() {
   
   // Test contexts
   const menuContext: GameContext = {
-    mode: 'menu',
     recentCommands: []
   };
   
   const gameContext: GameContext = {
-    mode: 'game',
     gameId: 1,
     currentRoom: {
       id: 1,
