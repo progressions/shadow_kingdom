@@ -1,6 +1,6 @@
-import * as readline from 'readline';
 import Database from '../utils/database';
 import { GrokClient } from '../ai/grokClient';
+import { TUIManager } from '../ui/TUIManager';
 
 // Import old services
 import { GameStateManager } from './gameStateManager';
@@ -46,14 +46,14 @@ export class ServiceFactory {
    */
   static createServices(
     db: Database,
-    rl: readline.Interface,
+    tui: TUIManager,
     grokClient: GrokClient,
     options: ServiceOptions = {}
   ): ServiceInstances {
     if (ServiceFactory.shouldUsePrisma()) {
-      return ServiceFactory.createPrismaServices(rl, grokClient, options);
+      return ServiceFactory.createPrismaServices(tui, grokClient, options);
     } else {
-      return ServiceFactory.createLegacyServices(db, rl, grokClient, options);
+      return ServiceFactory.createLegacyServices(db, tui, grokClient, options);
     }
   }
 
@@ -62,13 +62,13 @@ export class ServiceFactory {
    */
   private static createLegacyServices(
     db: Database,
-    rl: readline.Interface,
+    tui: TUIManager,
     grokClient: GrokClient,
     options: ServiceOptions
   ): ServiceInstances {
     // Create services with Database dependency
     const gameStateManager = new GameStateManager(db, options);
-    const gameManagementService = new GameManagementService(db, rl, options);
+    const gameManagementService = new GameManagementService(db, tui, options);
     const regionService = new RegionService(db, options);
     
     // Room generation service depends on region service
@@ -99,13 +99,13 @@ export class ServiceFactory {
    * Create Prisma-based services
    */
   private static createPrismaServices(
-    rl: readline.Interface,
+    tui: TUIManager,
     grokClient: GrokClient,
     options: ServiceOptions
   ): ServiceInstances {
     // Create services without Database dependency (they use PrismaService internally)
     const gameStateManager = new GameStateManagerPrisma(options);
-    const gameManagementService = new GameManagementServicePrisma(rl, options);
+    const gameManagementService = new GameManagementServicePrisma(tui, options);
     const regionService = new RegionServicePrisma(options);
     
     // Room generation service depends on region service

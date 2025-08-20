@@ -1,6 +1,7 @@
 import Database from '../src/utils/database';
 import { GameController } from '../src/gameController';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
+import { MockTUI } from './mocks/mockTUI';
 
 // Mock readline to avoid actual I/O during testing
 jest.mock('readline', () => ({
@@ -28,8 +29,9 @@ describe('NLP Integration Tests', () => {
     await db.connect();
     await initializeDatabase(db);
     
-    // Create test game controller
-    gameController = new GameController(db);
+    // Create test game controller with mock TUI
+    const mockTUI = new MockTUI();
+    gameController = new GameController(db, mockTUI);
     
     // Create a test game with unique name
     const uniqueGameName = `NLP Test Game ${Date.now()}-${Math.random()}`;
