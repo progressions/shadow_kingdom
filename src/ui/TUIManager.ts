@@ -101,12 +101,18 @@ export class TUIManager {
           }
         }
       },
-      inputOnFocus: false,  // Changed: disable inputOnFocus to prevent auto-echo
+      inputOnFocus: false,  // Disable auto-echo but we'll manually start input
       keys: true,
       mouse: true,
       tags: true,
       secret: false,  // Ensure input is visible
-      censor: false   // Don't censor input
+      censor: false,  // Don't censor input
+      cursor: {
+        artificial: true,
+        shape: 'line',
+        blink: true,
+        color: null // Use default color
+      }
     });
 
     // Status area (bottom, variable height)
@@ -131,8 +137,9 @@ export class TUIManager {
     this.screen.append(this.inputBox);
     this.screen.append(this.statusBox);
     
-    // Focus the input box initially
+    // Focus the input box initially and start input mode
     this.inputBox.focus();
+    this.inputBox.readInput();  // Start input mode to show cursor immediately
   }
 
   /**
@@ -266,6 +273,7 @@ export class TUIManager {
       
       // Ensure input box is focused and ready
       this.inputBox.focus();
+      this.inputBox.readInput();  // Manually start input mode to show cursor
       this.screen.render();
     });
   }
