@@ -195,8 +195,8 @@ export class InkTUIBridge implements TUIInterface {
    * Display room information with proper formatting
    */
   displayRoom(roomName: string, description: string, exits: string[]): void {
-    // Add spacing with literal newline
-    this.display('\n', MessageType.NORMAL);
+    // Add single blank line before room name
+    this.display('', MessageType.NORMAL);
     
     // Room title
     this.display(roomName, MessageType.ROOM_TITLE);
