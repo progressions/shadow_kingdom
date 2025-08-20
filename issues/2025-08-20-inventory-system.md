@@ -1,7 +1,7 @@
 # Inventory System
 
 **Date**: 2025-08-20  
-**Status**: In Progress - Phase 6 Complete  
+**Status**: In Progress - Phase 7 Complete  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -24,16 +24,25 @@ Create an inventory system with the following features:
 
 **Acceptance criteria:**
 - [x] Database schema for player inventory items (Phase 1 Complete)
-- [ ] Simple item count limit system (Phase 7)
+- [x] Simple item count limit system (Phase 7 Complete)
 - [x] `inventory` command to display all carried items (Phase 5 Complete)
 - [x] `pickup`/`get` commands to take items from environment (Phase 4 Complete)
 - [x] `drop` command to place items in current room (Phase 6 Complete)
 - [ ] `examine` command for detailed item inspection (Phase 9)
 - [ ] `use` command for consumable items (Future)
 - [ ] Item weight affects movement speed or other mechanics (Future)
-- [ ] Clear feedback when inventory is full (Phase 7)
+- [x] Clear feedback when inventory is full (Phase 7 Complete)
 
 ## Recent Updates
+
+**2025-08-20**: ✅ **Phase 7: Simple Item Count Limit System Complete**
+- Implemented configurable MAX_INVENTORY_ITEMS environment variable (default: 10)
+- Added getMaxInventoryItems(), getInventoryItemCount(), canAddItemToInventory(), and getInventoryStatus() methods
+- Enhanced pickup command with item count validation and "inventory full" feedback
+- Updated inventory display to show "Items: 7/10" status counter
+- Comprehensive test coverage with 16 new tests covering all item count scenarios
+- Graceful handling of invalid environment variables with fallback to default
+- All 368 tests passing including new Phase 7 functionality
 
 **2025-08-20**: ✅ **Phase 6: Drop Command Complete**
 - Implemented `transferItemToRoom()` method in ItemService for moving items from inventory to room
