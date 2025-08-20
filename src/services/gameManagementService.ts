@@ -39,10 +39,10 @@ export class GameManagementService {
    */
   async createNewGame(): Promise<{ success: boolean; gameId?: number; gameName?: string; error?: string }> {
     try {
-      await initializeDatabase(this.db);
+      await initializeDatabase(this.db, this.tui);
       
       // Create game with automatic timestamp name
-      const gameId = await createGameAutomatic(this.db);
+      const gameId = await createGameAutomatic(this.db, this.tui);
       const game = await this.getGameById(gameId);
       
       return { success: true, gameId, gameName: game?.name };
@@ -102,10 +102,10 @@ export class GameManagementService {
    */
   async createGameAutomatic(): Promise<{success: boolean; game?: Game; error?: string}> {
     try {
-      await initializeDatabase(this.db);
+      await initializeDatabase(this.db, this.tui);
       
       // Create game with automatic timestamp name
-      const gameId = await createGameAutomatic(this.db);
+      const gameId = await createGameAutomatic(this.db, this.tui);
       const game = await this.getGameById(gameId);
       
       return { success: true, game: game || undefined };
@@ -123,7 +123,7 @@ export class GameManagementService {
   async createGameWithName(gameName: string): Promise<{success: boolean; game?: Game; error?: string}> {
     try {
       // Create new game with rooms
-      const gameId = await createGameWithRooms(this.db, gameName.trim());
+      const gameId = await createGameWithRooms(this.db, gameName.trim(), this.tui);
       const game = await this.getGameById(gameId);
       
       if (!game) {
