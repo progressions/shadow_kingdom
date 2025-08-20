@@ -291,6 +291,24 @@ export class GameController {
       description: 'Pick up an item from the current room (alias for "pickup")',
       handler: async (args) => await this.handlePickup(args[0])
     });
+
+    this.commandRouter.addCommand({
+      name: 'inventory',
+      description: 'Show your inventory',
+      handler: async () => await this.handleInventory()
+    });
+
+    this.commandRouter.addCommand({
+      name: 'inv',
+      description: 'Show your inventory (alias for "inventory")',
+      handler: async () => await this.handleInventory()
+    });
+
+    this.commandRouter.addCommand({
+      name: 'i',
+      description: 'Show your inventory (alias for "inventory")',
+      handler: async () => await this.handleInventory()
+    });
   }
 
   private async processInput(): Promise<void> {
@@ -1093,6 +1111,41 @@ export class GameController {
     } catch (error) {
       console.error('Error picking up item:', error);
       this.tui.showError('Error picking up item', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Handle inventory command - display character's carried items
+   */
+  private async handleInventory(): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      
+      // For this phase, use game ID as character ID (simple approach for single-player game)
+      const characterId = session.gameId!;
+
+      // Get character's inventory
+      const inventory = await this.itemService.getCharacterInventory(characterId);
+      
+      if (inventory.length === 0) {
+        this.tui.display('Your inventory is empty.', MessageType.NORMAL);
+        return;
+      }
+
+      this.tui.display('You are carrying:', MessageType.SYSTEM);
+      inventory.forEach(invItem => {
+        const quantityText = invItem.quantity > 1 ? ` x${invItem.quantity}` : '';
+        this.tui.display(`• ${invItem.item.name}${quantityText}`, MessageType.NORMAL);
+      });
+
+    } catch (error) {
+      console.error('Error displaying inventory:', error);
+      this.tui.showError('Error displaying inventory', (error as Error)?.message);
     }
   }
 }
