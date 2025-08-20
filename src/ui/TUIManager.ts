@@ -107,12 +107,7 @@ export class TUIManager {
       tags: true,
       secret: false,  // Ensure input is visible
       censor: false,  // Don't censor input
-      cursor: {
-        artificial: true,
-        shape: 'line',
-        blink: true,
-        color: null // Use default color
-      }
+      // Using manual visual cursor indicator instead
     });
 
     // Status area (bottom, variable height)
@@ -166,10 +161,10 @@ export class TUIManager {
       this.screen.render();
     });
     
-    // Input handling - we'll handle this manually in readInput callback
-    // this.inputBox.on('submit', (value: string) => {
-    //   this.handleInput(value);
-    // });
+    // Input handling
+    this.inputBox.on('submit', (value: string) => {
+      this.handleInput(value);
+    });
     
     // Handle terminal resize
     this.screen.on('resize', () => {
@@ -273,17 +268,16 @@ export class TUIManager {
       // Ensure input box is focused and ready
       this.inputBox.focus();
       
-      // Manually set a visual indicator for input readiness
-      this.inputBox.setValue(''); // Clear any existing value
-      
-      // Force the textbox into input mode for cursor visibility
-      this.inputBox.readInput(() => {
-        // This callback is called when input is submitted
-        const value = this.inputBox.getValue();
-        this.handleInput(value);
-      });
+      // Add a simple visual cursor indicator
+      this.inputBox.setValue('▌'); // Use a visual cursor character
       
       this.screen.render();
+      
+      // Remove the visual cursor after a short delay and clear the field
+      setTimeout(() => {
+        this.inputBox.setValue('');
+        this.screen.render();
+      }, 500);
     });
   }
 
