@@ -3,6 +3,7 @@ import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 import { seedItems } from './seedItems';
 import { seedEventTriggers } from './seedTriggers';
+import { seedGameTriggers } from './seedGameTriggers';
 
 export async function initializeDatabase(db: Database, tui?: TUIInterface): Promise<void> {
   try {
@@ -441,9 +442,6 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
 
     // Seed items table with initial items if empty
     await seedItems(db, tui);
-
-    // Seed event triggers for demonstration
-    await seedEventTriggers(db);
 
     if (tui) {
       tui.display('Database tables initialized successfully', MessageType.SYSTEM);
@@ -948,11 +946,11 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
 
     // Place starter items in all starter rooms
     const starterRoomItems = [
-      { roomId: entranceId, itemNames: ['Iron Sword', 'Ancient Stone Pedestal'], roomName: 'Grand Entrance Hall' },
-      { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs'], roomName: 'Scholar\'s Library' },
-      { roomId: gardenId, itemNames: ['Health Potion', 'Bread'], roomName: 'Moonlit Courtyard Garden' },
-      { roomId: towerStairsId, itemNames: ['Wooden Staff'], roomName: 'Winding Tower Stairs' },
-      { roomId: cryptEntranceId, itemNames: ['Iron Helmet', 'Gold Coins'], roomName: 'Ancient Crypt Entrance' },
+      { roomId: entranceId, itemNames: ['Iron Sword', 'Ancient Stone Pedestal', 'Blessed Silver Amulet'], roomName: 'Grand Entrance Hall' },
+      { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'], roomName: 'Scholar\'s Library' },
+      { roomId: gardenId, itemNames: ['Health Potion', 'Bread', 'Mysterious Glowing Orb'], roomName: 'Moonlit Courtyard Garden' },
+      { roomId: towerStairsId, itemNames: ['Wooden Staff', 'Cursed Ruby Ring'], roomName: 'Winding Tower Stairs' },
+      { roomId: cryptEntranceId, itemNames: ['Iron Helmet', 'Gold Coins', 'Poisoned Dagger'], roomName: 'Ancient Crypt Entrance' },
       { roomId: observatoryStepsId, itemNames: ['Leather Boots', 'Leather Armor'], roomName: 'Observatory Steps' }
     ];
 
@@ -984,6 +982,17 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
 
     // Add validations to specific starter items
     await addStarterItemValidations(db, gameId, entranceId, tui);
+
+    // Add event triggers for interactive gameplay
+    await seedGameTriggers(db, {
+      gameId,
+      entranceRoomId: entranceId,
+      libraryRoomId: libraryId,
+      gardenRoomId: gardenId,
+      towerStairsRoomId: towerStairsId,
+      cryptEntranceRoomId: cryptEntranceId,
+      observatoryStepsRoomId: observatoryStepsId
+    }, tui);
 
     if (tui) {
       tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);
