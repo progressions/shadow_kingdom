@@ -32,6 +32,7 @@ export interface Item {
   weapon_damage?: string;
   armor_rating?: number;
   equipment_slot?: EquipmentSlot;
+  is_fixed?: boolean;
   created_at: string;
 }
 

@@ -401,7 +401,13 @@ async function setupGameCommands(
           return;
         }
 
-        await itemService.pickupItem(characterId, item.item_id, currentRoom.id);
+        // Check if the item is fixed (scenery that cannot be picked up)
+        if (item.item.is_fixed) {
+          console.log(`The ${item.item.name} is fixed in place and cannot be taken.`);
+          return;
+        }
+
+        await itemService.transferItemToInventory(characterId, item.item_id, currentRoom.id, 1);
         console.log(`You picked up ${item.item.name}.`);
 
       } catch (error) {

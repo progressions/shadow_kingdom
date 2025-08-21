@@ -1130,6 +1130,12 @@ export class GameController {
         return;
       }
 
+      // Check if the item is fixed (scenery that cannot be picked up)
+      if (targetItem.item.is_fixed) {
+        this.tui.display(`The ${targetItem.item.name} is fixed in place and cannot be taken.`, MessageType.NORMAL);
+        return;
+      }
+
       // For this phase, use game ID as character ID (simple approach for single-player game)
       const characterId = session.gameId!;
 

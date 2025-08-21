@@ -31,9 +31,9 @@ export class ItemService {
    */
   async createItem(item: CreateItemData): Promise<number> {
     const result = await this.db.run(`
-      INSERT INTO items (name, description, type, weight, value, stackable, max_stack, weapon_damage, armor_rating, equipment_slot)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [item.name, item.description, item.type, item.weight, item.value, item.stackable, item.max_stack, item.weapon_damage, item.armor_rating, item.equipment_slot]);
+      INSERT INTO items (name, description, type, weight, value, stackable, max_stack, weapon_damage, armor_rating, equipment_slot, is_fixed)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [item.name, item.description, item.type, item.weight, item.value, item.stackable, item.max_stack, item.weapon_damage, item.armor_rating, item.equipment_slot, item.is_fixed || false]);
     
     return result.lastID!;
   }
@@ -49,7 +49,8 @@ export class ItemService {
     
     return {
       ...result,
-      stackable: Boolean(result.stackable)
+      stackable: Boolean(result.stackable),
+      is_fixed: Boolean(result.is_fixed)
     };
   }
 
@@ -61,7 +62,8 @@ export class ItemService {
     const results = await this.db.all<any>('SELECT * FROM items ORDER BY name');
     return results.map(result => ({
       ...result,
-      stackable: Boolean(result.stackable)
+      stackable: Boolean(result.stackable),
+      is_fixed: Boolean(result.is_fixed)
     }));
   }
 
@@ -91,7 +93,7 @@ export class ItemService {
     const rows = await this.db.all<any>(`
       SELECT ri.id, ri.room_id, ri.item_id, ri.quantity, ri.created_at,
              i.id as item_id_full, i.name, i.description, i.type, i.weight, i.value, 
-             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.created_at as item_created_at
+             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.equipment_slot, i.is_fixed, i.created_at as item_created_at
       FROM room_items ri 
       JOIN items i ON ri.item_id = i.id 
       WHERE ri.room_id = ?
@@ -115,6 +117,8 @@ export class ItemService {
         max_stack: row.max_stack,
         weapon_damage: row.weapon_damage,
         armor_rating: row.armor_rating,
+        equipment_slot: row.equipment_slot,
+        is_fixed: Boolean(row.is_fixed),
         created_at: row.item_created_at
       }
     }));
@@ -133,7 +137,7 @@ export class ItemService {
     const rows = await this.db.all<any>(`
       SELECT ci.id, ci.character_id, ci.item_id, ci.quantity, ci.equipped, ci.equipped_slot, ci.created_at,
              i.id as item_id_full, i.name, i.description, i.type, i.weight, i.value, 
-             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.equipment_slot, i.created_at as item_created_at
+             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.equipment_slot, i.is_fixed, i.created_at as item_created_at
       FROM character_inventory ci 
       JOIN items i ON ci.item_id = i.id 
       WHERE ci.character_id = ?
@@ -160,6 +164,7 @@ export class ItemService {
         weapon_damage: row.weapon_damage,
         armor_rating: row.armor_rating,
         equipment_slot: row.equipment_slot,
+        is_fixed: Boolean(row.is_fixed),
         created_at: row.item_created_at
       }
     }));

@@ -115,6 +115,16 @@ const SEED_ITEMS: CreateItemData[] = [
     max_stack: 1,
     armor_rating: 1,
     equipment_slot: EquipmentSlot.FOOT
+  },
+  {
+    name: 'Ancient Stone Pedestal',
+    description: 'A weathered stone pedestal carved with mysterious runes that seem to shift in the corner of your eye. It stands firmly rooted to the floor.',
+    type: ItemType.MISC,
+    weight: 999,
+    value: 0,
+    stackable: false,
+    max_stack: 1,
+    is_fixed: true
   }
 ];
 
