@@ -536,6 +536,67 @@ export async function seedGameTriggers(
     );
     triggersCreated++;
 
+    // 15. Cursed Skull Immediate Haunting - Found in Grand Entrance Hall
+    const cursedSkull = await db.get('SELECT id FROM items WHERE name = ?', ['Cursed Skull']);
+    if (cursedSkull) {
+      const cursedSkullTriggerId = await eventTriggerService.createTrigger(
+        'Cursed Skull\'s Immediate Haunting',
+        'item',
+        cursedSkull.id,
+        'pickup',
+        {
+          description: 'The cursed skull immediately affects anyone who touches it',
+          priority: 1
+          // No maxExecutions means unlimited
+        }
+      );
+
+      // Add immediate negative effect
+      await eventTriggerService.addTriggerEffect(
+        cursedSkullTriggerId,
+        'apply_status',
+        'self',
+        {
+          status_type: 'haunted',
+          wisdom_penalty: -3,
+          constitution_penalty: -2,
+          fear: true,
+          whispers: 'The dead whisper terrible secrets in your mind...'
+        },
+        {
+          message: '💀👻 The moment you touch the Cursed Skull, icy fingers seem to grasp your soul! Ghostly whispers fill your mind and you feel your life force drain away. The skull\'s curse weakens your body and clouds your judgment!',
+          durationSeconds: 180, // 3 minutes
+          order: 0
+        }
+      );
+
+      // Add immediate damage
+      await eventTriggerService.addTriggerEffect(
+        cursedSkullTriggerId,
+        'damage',
+        'self',
+        { amount: 8 },
+        {
+          message: '💀⚡ The skull\'s dark energy tears at your very essence, causing immediate harm!',
+          order: 1
+        }
+      );
+
+      // Add atmospheric message
+      await eventTriggerService.addTriggerEffect(
+        cursedSkullTriggerId,
+        'message',
+        'self',
+        {},
+        {
+          message: '🌫️💀 The air grows thick with malevolent energy. You hear the faint sound of chains rattling in the distance...',
+          order: 2
+        }
+      );
+      
+      triggersCreated++;
+    }
+
     if (tui) {
       tui.display(`✨ Created ${triggersCreated} event triggers for Shadow Kingdom`, MessageType.SYSTEM);
       tui.display(`🎮 Players will now experience reactive, consequence-driven gameplay!`, MessageType.SYSTEM);

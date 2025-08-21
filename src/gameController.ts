@@ -1140,13 +1140,16 @@ export class GameController {
       const eventType = eventTypeMap[actionType];
       if (!eventType) return;
 
+      // Generate unique action ID for deduplication
+      const actionId = `${Date.now()}-${Math.random()}`;
+      
       // Process item-specific triggers
       if (context.itemId) {
         await this.eventTriggerService.processTrigger(
           eventType,
           'item',
           context.itemId,
-          triggerContext
+          { ...triggerContext, actionId }
         );
       }
 
@@ -1156,7 +1159,7 @@ export class GameController {
           eventType,
           'room',
           room.id,
-          triggerContext
+          { ...triggerContext, actionId }
         );
       }
 
@@ -1165,7 +1168,7 @@ export class GameController {
         eventType,
         'global',
         null,
-        triggerContext
+        { ...triggerContext, actionId }
       );
 
     } catch (error) {
@@ -1636,7 +1639,13 @@ export class GameController {
     }
 
     try {
-      const character = await this.characterService.getPlayerCharacter(this.gameStateManager.getCurrentGameId());
+      const session = this.gameStateManager.getCurrentSession();
+      if (!session.gameId) {
+        this.tui.display('No active game session.', MessageType.ERROR);
+        return;
+      }
+      
+      const character = await this.characterService.getPlayerCharacter(session.gameId);
       
       if (!character) {
         this.tui.display('Error: Unable to find player character.', MessageType.ERROR);

@@ -172,6 +172,15 @@ const SEED_ITEMS: CreateItemData[] = [
     value: 120,
     stackable: false,
     max_stack: 1
+  },
+  {
+    name: 'Cursed Skull',
+    description: 'A weathered human skull with glowing red eye sockets. Dark energy emanates from its hollow gaze, and you can hear faint whispers when near it.',
+    type: ItemType.MISC,
+    weight: 2,
+    value: 50,
+    stackable: false,
+    max_stack: 1
   }
 ];
 

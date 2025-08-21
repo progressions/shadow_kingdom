@@ -17,6 +17,7 @@ export interface TriggerContext {
   item?: Item;
   targetEntity?: any;
   eventData?: Record<string, any>;
+  actionId?: string; // For deduplication across multiple processTrigger calls
 }
 
 export interface EventTrigger {
@@ -105,6 +106,7 @@ interface Item {
 
 export class EventTriggerService {
   private activeTriggers = new Set<number>(); // Prevent infinite loops
+  private actionExecutedTriggers = new Map<string, Set<number>>(); // Track triggers per action
 
   constructor(private db: Database, private tui?: TUIInterface) {}
 
@@ -132,6 +134,30 @@ export class EventTriggerService {
         if (this.activeTriggers.has(trigger.id)) {
           console.log(`Preventing infinite loop for trigger ${trigger.id}: ${trigger.name}`);
           continue;
+        }
+
+        // Prevent duplicate execution within the same action
+        if (context.actionId) {
+          if (!this.actionExecutedTriggers.has(context.actionId)) {
+            this.actionExecutedTriggers.set(context.actionId, new Set());
+          }
+          
+          const executedForAction = this.actionExecutedTriggers.get(context.actionId)!;
+          if (executedForAction.has(trigger.id)) {
+            console.log(`Skipping duplicate trigger ${trigger.id}: ${trigger.name} for action ${context.actionId}`);
+            continue;
+          }
+          
+          // Mark as executed for this action
+          executedForAction.add(trigger.id);
+          
+          // Clean up old action tracking (keep only last 10 actions)
+          if (this.actionExecutedTriggers.size > 10) {
+            const oldestAction = this.actionExecutedTriggers.keys().next().value;
+            if (oldestAction) {
+              this.actionExecutedTriggers.delete(oldestAction);
+            }
+          }
         }
 
         // Check execution limits
