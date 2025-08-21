@@ -9,25 +9,41 @@ import { RegionService } from './regionService';
 import { RoomGenerationService } from './roomGenerationService';
 import { BackgroundGenerationService } from './backgroundGenerationService';
 import { ItemService } from './itemService';
+import { EquipmentService } from './equipmentService';
 
-// Import Prisma services
-import { GameStateManagerPrisma } from './gameStateManager.prisma';
-import { GameManagementServicePrisma } from './gameManagementService.prisma';
-import { RegionServicePrisma } from './regionService.prisma';
-import { RoomGenerationServicePrisma } from './roomGenerationService.prisma';
-import { BackgroundGenerationServicePrisma } from './backgroundGenerationService.prisma';
+// Import Prisma services conditionally to avoid import errors when Prisma is not set up
+let GameStateManagerPrisma: any;
+let GameManagementServicePrisma: any;
+let RegionServicePrisma: any;
+let RoomGenerationServicePrisma: any;
+let BackgroundGenerationServicePrisma: any;
+
+// Only import Prisma services if Prisma is configured
+if (process.env.USE_PRISMA === 'true') {
+  try {
+    ({ GameStateManagerPrisma } = require('./gameStateManager.prisma'));
+    ({ GameManagementServicePrisma } = require('./gameManagementService.prisma'));
+    ({ RegionServicePrisma } = require('./regionService.prisma'));
+    ({ RoomGenerationServicePrisma } = require('./roomGenerationService.prisma'));
+    ({ BackgroundGenerationServicePrisma } = require('./backgroundGenerationService.prisma'));
+  } catch (error) {
+    console.error('Failed to load Prisma services:', error);
+    // Fall back to legacy services
+  }
+}
 
 export interface ServiceOptions {
   enableDebugLogging?: boolean;
 }
 
 export interface ServiceInstances {
-  gameStateManager: GameStateManager | GameStateManagerPrisma;
-  gameManagementService: GameManagementService | GameManagementServicePrisma;
-  regionService: RegionService | RegionServicePrisma;
-  roomGenerationService: RoomGenerationService | RoomGenerationServicePrisma;
-  backgroundGenerationService: BackgroundGenerationService | BackgroundGenerationServicePrisma;
+  gameStateManager: GameStateManager | any;
+  gameManagementService: GameManagementService | any;
+  regionService: RegionService | any;
+  roomGenerationService: RoomGenerationService | any;
+  backgroundGenerationService: BackgroundGenerationService | any;
   itemService: ItemService;
+  equipmentService: EquipmentService;
 }
 
 /**
@@ -73,6 +89,7 @@ export class ServiceFactory {
     const gameManagementService = new GameManagementService(db, tui, options);
     const regionService = new RegionService(db, options);
     const itemService = new ItemService(db);
+    const equipmentService = new EquipmentService(db);
     
     // Room generation service depends on region service
     const roomGenerationService = new RoomGenerationService(
@@ -95,7 +112,8 @@ export class ServiceFactory {
       regionService,
       roomGenerationService,
       backgroundGenerationService,
-      itemService
+      itemService,
+      equipmentService
     };
   }
 
@@ -107,12 +125,17 @@ export class ServiceFactory {
     grokClient: GrokClient,
     options: ServiceOptions
   ): ServiceInstances {
+    if (!GameStateManagerPrisma) {
+      throw new Error('Prisma services not available. Please ensure Prisma is properly configured.');
+    }
+    
     // Create services without Database dependency (they use PrismaService internally)
     const gameStateManager = new GameStateManagerPrisma(options);
     const gameManagementService = new GameManagementServicePrisma(tui, options);
     const regionService = new RegionServicePrisma(options);
     // Note: ItemService only has legacy implementation for now
     const itemService = new ItemService(new Database('placeholder')); // TODO: Create Prisma version
+    const equipmentService = new EquipmentService(new Database('placeholder')); // TODO: Create Prisma version
     
     // Room generation service depends on region service
     const roomGenerationService = new RoomGenerationServicePrisma(
@@ -133,7 +156,8 @@ export class ServiceFactory {
       regionService,
       roomGenerationService,
       backgroundGenerationService,
-      itemService
+      itemService,
+      equipmentService
     };
   }
 

@@ -75,6 +75,8 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { GrokClient } = await import('./ai/grokClient');
   const { UnifiedNLPEngine } = await import('./nlp/unifiedNLPEngine');
   const { getNLPConfig, applyEnvironmentOverrides } = await import('./nlp/config');
+  const { ItemService } = await import('./services/itemService');
+  const { EquipmentService } = await import('./services/equipmentService');
   
   // Use persistent database file for session commands
   const dbPath = 'data/db/shadow_kingdom_session.db';
@@ -133,8 +135,12 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
       disableBackgroundGeneration: true  // Force await mode to prevent database closure issues
     });
     
+    // Initialize item and equipment services
+    const itemService = new ItemService(db);
+    const equipmentService = new EquipmentService(db);
+    
     // Set up game commands with background generation support
-    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db);
+    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService);
     
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
@@ -163,7 +169,9 @@ async function setupGameCommands(
   roomDisplayService: any,
   regionService: any,
   backgroundGenerationService: any,
-  db: any
+  db: any,
+  itemService: any,
+  equipmentService: any
 ): Promise<void> {
   // Add the basic game commands for session interface
   commandRouter.addGameCommand({
@@ -360,6 +368,290 @@ async function setupGameCommands(
         console.log(output);
       } catch (error) {
         console.error('Error showing region stats:', error);
+      }
+    }
+  });
+
+  // Item system commands
+  commandRouter.addGameCommand({
+    name: 'pickup',
+    description: 'Pick up an item from the current room',
+    handler: async (args: string[]) => {
+      if (args.length === 0) {
+        console.log('Pickup what?');
+        return;
+      }
+
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const characterId = session.gameId!; // Use game ID as character ID for single-player
+        const currentRoom = await gameStateManager.getCurrentRoom();
+        
+        if (!currentRoom) {
+          console.log('Error: Unable to determine current room.');
+          return;
+        }
+
+        const itemName = args.join(' ');
+        const roomItems = await itemService.getRoomItems(currentRoom.id);
+        const item = itemService.findItemByName(roomItems, itemName);
+        
+        if (!item) {
+          console.log(`There is no ${itemName} here.`);
+          return;
+        }
+
+        await itemService.pickupItem(characterId, item.item_id, currentRoom.id);
+        console.log(`You picked up ${item.item.name}.`);
+
+      } catch (error) {
+        console.error('Error picking up item:', error);
+        console.log(`Error picking up item: ${(error as Error).message}`);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'get',
+    description: 'Pick up an item from the current room (alias for "pickup")',
+    handler: async (args: string[]) => {
+      // Delegate to pickup handler by calling the pickup implementation directly
+      const commands = commandRouter.getCommands();
+      const pickupCommand = commands.get('pickup');
+      if (pickupCommand) {
+        await pickupCommand.handler(args);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'take',
+    description: 'Pick up an item from the current room (alias for "pickup")',
+    handler: async (args: string[]) => {
+      // Delegate to pickup handler by calling the pickup implementation directly
+      const commands = commandRouter.getCommands();
+      const pickupCommand = commands.get('pickup');
+      if (pickupCommand) {
+        await pickupCommand.handler(args);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'inventory',
+    description: 'Show your inventory',
+    handler: async () => {
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const characterId = session.gameId!; // Use game ID as character ID for single-player
+
+        const inventory = await itemService.getCharacterInventory(characterId);
+        
+        if (inventory.length === 0) {
+          console.log('Your inventory is empty.');
+          return;
+        }
+
+        console.log('═══ INVENTORY ═══');
+        for (const invItem of inventory) {
+          const quantityText = invItem.quantity > 1 ? ` x${invItem.quantity}` : '';
+          const equippedText = invItem.equipped ? ' (equipped)' : '';
+          console.log(`• ${invItem.item.name}${quantityText}${equippedText}`);
+        }
+
+      } catch (error) {
+        console.error('Error showing inventory:', error);
+        console.log('Error displaying inventory.');
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'inv',
+    description: 'Show your inventory (alias for "inventory")',
+    handler: async () => {
+      const commands = commandRouter.getCommands();
+      const inventoryCommand = commands.get('inventory');
+      if (inventoryCommand) {
+        await inventoryCommand.handler([]);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'i',
+    description: 'Show your inventory (alias for "inventory")',
+    handler: async () => {
+      const commands = commandRouter.getCommands();
+      const inventoryCommand = commands.get('inventory');
+      if (inventoryCommand) {
+        await inventoryCommand.handler([]);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'examine',
+    description: 'Examine an item in detail',
+    handler: async (args: string[]) => {
+      if (args.length === 0) {
+        console.log('Examine what?');
+        return;
+      }
+
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const characterId = session.gameId!; // Use game ID as character ID for single-player
+        const currentRoom = await gameStateManager.getCurrentRoom();
+        
+        if (!currentRoom) {
+          console.log('Error: Unable to determine current room.');
+          return;
+        }
+
+        const itemName = args.join(' ');
+        
+        // Check inventory first
+        const inventory = await itemService.getCharacterInventory(characterId);
+        let targetInventoryItem = itemService.findItemByName(inventory, itemName);
+        let targetRoomItem = null;
+        let itemLocation = 'inventory';
+
+        // If not found in inventory, check current room
+        if (!targetInventoryItem) {
+          const roomItems = await itemService.getRoomItems(currentRoom.id);
+          targetRoomItem = itemService.findItemByName(roomItems, itemName);
+          itemLocation = 'room';
+        }
+
+        const foundItem = targetInventoryItem || targetRoomItem;
+        if (!foundItem) {
+          console.log(`There is no ${itemName} here or in your inventory.`);
+          return;
+        }
+
+        // Display detailed item information
+        console.log(foundItem.item.name);
+        console.log(foundItem.item.description);
+
+      } catch (error) {
+        console.error('Error examining item:', error);
+        console.log('Error examining item.');
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'ex',
+    description: 'Examine an item in detail (alias for "examine")',
+    handler: async (args: string[]) => {
+      const commands = commandRouter.getCommands();
+      const examineCommand = commands.get('examine');
+      if (examineCommand) {
+        await examineCommand.handler(args);
+      }
+    }
+  });
+
+  // Equipment commands
+  commandRouter.addGameCommand({
+    name: 'equip',
+    description: 'Equip an item from your inventory',
+    handler: async (args: string[]) => {
+      if (args.length === 0) {
+        console.log('Equip what?');
+        return;
+      }
+
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const characterId = session.gameId!; // Use game ID as character ID for single-player
+
+        const itemName = args.join(' ');
+
+        // Find the item in inventory that can be equipped
+        const item = await equipmentService.findEquippableItem(characterId, itemName);
+        if (!item) {
+          console.log(`You don't have an equippable item called "${itemName}" in your inventory.`);
+          return;
+        }
+
+        // Try to equip the item
+        await equipmentService.equipItem(characterId, item.item_id);
+        
+        console.log(`You equipped ${item.item.name}.`);
+
+      } catch (error) {
+        console.error('Error equipping item:', error);
+        console.log((error as Error).message);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'unequip',
+    description: 'Unequip an equipped item',
+    handler: async (args: string[]) => {
+      if (args.length === 0) {
+        console.log('Unequip what?');
+        return;
+      }
+
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const characterId = session.gameId!; // Use game ID as character ID for single-player
+
+        const itemName = args.join(' ');
+
+        // Get equipped items
+        const equippedItems = await equipmentService.getEquippedItems(characterId);
+        const item = itemService.findItemByName(equippedItems, itemName);
+        
+        if (!item) {
+          console.log(`You don't have "${itemName}" equipped.`);
+          return;
+        }
+
+        // Unequip the item
+        await equipmentService.unequipItem(characterId, item.item_id);
+        
+        console.log(`You unequipped ${item.item.name}.`);
+
+      } catch (error) {
+        console.error('Error unequipping item:', error);
+        console.log((error as Error).message);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'equipment',
+    description: 'Show your equipped items',
+    handler: async () => {
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const characterId = session.gameId!; // Use game ID as character ID for single-player
+
+        const equipmentSummary = await equipmentService.getEquipmentSummary(characterId);
+        
+        console.log('═══ EQUIPMENT ═══');
+        
+        // Show all 4 slots
+        const slots = ['hand', 'head', 'body', 'foot'] as const;
+        
+        for (const slot of slots) {
+          const item = equipmentSummary[slot];
+          const slotLabel = slot.toUpperCase();
+          if (item) {
+            console.log(`${slotLabel}: ${item.item.name}`);
+          } else {
+            console.log(`${slotLabel}: [Empty]`);
+          }
+        }
+
+      } catch (error) {
+        console.error('Error showing equipment:', error);
+        console.log('Error displaying equipment.');
       }
     }
   });

@@ -78,16 +78,18 @@ describe('SessionInterface Background Generation', () => {
         'RoomGenerationService',
         'BackgroundGenerationService',
         'GrokClient',
-        'UnifiedNLPEngine'
+        'UnifiedNLPEngine',
+        'ItemService',
+        'EquipmentService'
       ];
       
       requiredServices.forEach(service => {
         expect(sessionInterfaceCode).toContain(service);
       });
       
-      // Verify setupGameCommands receives backgroundGenerationService
+      // Verify setupGameCommands receives backgroundGenerationService and new item services
       expect(sessionInterfaceCode).toContain(
-        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db)'
+        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService)'
       );
     });
   });
