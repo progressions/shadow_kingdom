@@ -21,6 +21,7 @@ import { ServiceFactory, ServiceInstances } from './services/serviceFactory';
 import { ActionValidator } from './services/actionValidator';
 import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
+import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
 
 
 // Interfaces imported from GameStateManager
@@ -50,6 +51,7 @@ export class GameController {
   private characterService!: ServiceInstances['characterService']; // Initialized in initializeReadlineInterface()
   private actionValidator!: ServiceInstances['actionValidator']; // Initialized in initializeReadlineInterface()
   private healthService!: ServiceInstances['healthService']; // Initialized in initializeReadlineInterface()
+  private eventTriggerService!: ServiceInstances['eventTriggerService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
   constructor(db: Database, tui?: TUIInterface) {
@@ -917,6 +919,7 @@ export class GameController {
     this.characterService = services.characterService;
     this.actionValidator = services.actionValidator;
     this.healthService = services.healthService;
+    this.eventTriggerService = services.eventTriggerService;
     
     // Set up commands
     this.setupCommands();
@@ -1071,7 +1074,104 @@ export class GameController {
       return;
     }
 
+    // Execute the action
     await executeAction();
+    
+    // Process event triggers after successful action
+    await this.processTriggers(actionType, context);
+  }
+
+  /**
+   * Process event triggers for a completed action
+   */
+  private async processTriggers(actionType: string, context: Partial<ActionContext>): Promise<void> {
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      if (!session) return;
+
+      // Get current game state
+      const gameState = await this.gameStateManager.getGameState(session.gameId);
+      if (!gameState) return;
+
+      // Get player character - try character_id from game state first, then fall back to game ID as character ID
+      let character;
+      if (gameState.character_id) {
+        character = await this.characterService.getCharacter(gameState.character_id);
+      } else {
+        // Fallback: use gameId as characterId (legacy approach used throughout the codebase)
+        character = await this.characterService.getCharacter(session.gameId!);
+      }
+      
+      if (!character) {
+        return;
+      }
+
+      // Get current room
+      const room = await this.gameStateManager.getCurrentRoom();
+
+      // Build trigger context
+      const triggerContext: TriggerContext = {
+        character,
+        room: room || undefined,
+        eventData: { 
+          actionType,
+          ...context 
+        }
+      };
+
+      // Add item context if available
+      if (context.itemId) {
+        const item = await this.itemService.getItem(context.itemId);
+        if (item) {
+          triggerContext.item = item;
+        }
+      }
+
+      // Map action types to trigger events
+      const eventTypeMap: Record<string, string> = {
+        'equip': 'equip',
+        'unequip': 'unequip',
+        'pickup': 'pickup',
+        'drop': 'drop',
+        'use': 'use',
+        'examine': 'examine'
+      };
+
+      const eventType = eventTypeMap[actionType];
+      if (!eventType) return;
+
+      // Process item-specific triggers
+      if (context.itemId) {
+        await this.eventTriggerService.processTrigger(
+          eventType,
+          'item',
+          context.itemId,
+          triggerContext
+        );
+      }
+
+      // Process room-specific triggers for movement events
+      if (room && (actionType === 'enter' || actionType === 'exit')) {
+        await this.eventTriggerService.processTrigger(
+          eventType,
+          'room',
+          room.id,
+          triggerContext
+        );
+      }
+
+      // Process global triggers
+      await this.eventTriggerService.processTrigger(
+        eventType,
+        'global',
+        null,
+        triggerContext
+      );
+
+    } catch (error) {
+      console.error('Error processing triggers:', error);
+      // Don't throw - gameplay should continue even if triggers fail
+    }
   }
 
   /**
@@ -1270,6 +1370,15 @@ export class GameController {
       );
 
       this.tui.display(`You pick up the ${targetItem.item.name}.`, MessageType.NORMAL);
+      
+      // Process pickup triggers for the item
+      await this.executeValidatedAction(
+        'pickup',
+        { itemId: targetItem.item_id },
+        async () => {
+          // Action already executed above, this is just for trigger processing
+        }
+      );
       
       // Refresh room display to show updated items
       await this.lookAround();
@@ -1712,8 +1821,8 @@ export class GameController {
       // Get character health using new health service
       const healthStatus = await this.healthService.getHealthStatus(character.id);
 
-      // Get character modifiers
-      const modifiers = this.characterService.getCharacterModifiers(character);
+      // Get character modifiers including status effects
+      const modifiers = await this.characterService.getCharacterModifiersWithEffects(character.id);
 
       // Display character information
       this.tui.display(`\n=== ${character.name.toUpperCase()} ===`, MessageType.SYSTEM);

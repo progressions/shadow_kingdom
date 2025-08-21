@@ -2,6 +2,8 @@ import Database from './database';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 import { seedItems } from './seedItems';
+import { seedEventTriggers } from './seedTriggers';
+import { seedGameTriggers } from './seedGameTriggers';
 
 export async function initializeDatabase(db: Database, tui?: TUIInterface): Promise<void> {
   try {
@@ -282,6 +284,84 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       ON room_items(item_id)
     `);
 
+    // Create event trigger system tables
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS event_triggers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        entity_type TEXT NOT NULL,     -- 'item', 'room', 'connection', 'npc', 'global'
+        entity_id INTEGER,             -- ID of the entity (null for global)
+        event_type TEXT NOT NULL,      -- 'equip', 'unequip', 'pickup', 'drop', 'enter', 'exit', 'use', 'examine'
+        priority INTEGER DEFAULT 0,    -- Execution order (lower = first)
+        enabled BOOLEAN DEFAULT TRUE,
+        max_executions INTEGER,        -- Limit executions (null = unlimited)
+        execution_count INTEGER DEFAULT 0,
+        cooldown_seconds INTEGER,      -- Minimum time between executions
+        last_executed DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS trigger_conditions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trigger_id INTEGER NOT NULL,
+        condition_order INTEGER DEFAULT 0,
+        condition_type TEXT NOT NULL,  -- 'attribute_check', 'item_possessed', 'health_check', 'room_check', 'random_chance'
+        comparison_operator TEXT,      -- '>', '<', '=', '>=', '<=', '!=', 'contains'
+        condition_value TEXT NOT NULL, -- JSON-encoded value
+        logic_operator TEXT DEFAULT 'AND', -- 'AND' or 'OR' with next condition
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (trigger_id) REFERENCES event_triggers(id) ON DELETE CASCADE
+      )
+    `);
+
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS trigger_effects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trigger_id INTEGER NOT NULL,
+        effect_order INTEGER DEFAULT 0,
+        effect_type TEXT NOT NULL,     -- 'spawn_creature', 'damage', 'heal', 'add_item', 'remove_item', 'apply_status'
+        target_type TEXT NOT NULL,     -- 'self', 'character', 'room', 'item', 'connection'
+        target_specifier TEXT,         -- Additional targeting info
+        effect_data TEXT NOT NULL,     -- JSON-encoded effect parameters
+        delay_seconds INTEGER DEFAULT 0,
+        duration_seconds INTEGER,      -- For temporary effects
+        message TEXT,                  -- Message to display
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (trigger_id) REFERENCES event_triggers(id) ON DELETE CASCADE
+      )
+    `);
+
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS trigger_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trigger_id INTEGER NOT NULL,
+        character_id INTEGER,
+        room_id INTEGER,
+        event_type TEXT NOT NULL,
+        event_data TEXT,              -- JSON context
+        effects_applied TEXT,         -- JSON array of effects
+        execution_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (trigger_id) REFERENCES event_triggers(id) ON DELETE CASCADE
+      )
+    `);
+
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS character_status_effects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        character_id INTEGER NOT NULL,
+        status_type TEXT NOT NULL,     -- 'cursed', 'blessed', 'poisoned', 'strengthened'
+        source_trigger_id INTEGER,
+        effect_data TEXT,             -- JSON data for the effect
+        expires_at DATETIME,          -- When the effect expires
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+        FOREIGN KEY (source_trigger_id) REFERENCES event_triggers(id) ON DELETE SET NULL
+      )
+    `);
+
     // Create indexes for action validation tables
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_action_conditions_entity 
@@ -301,6 +381,47 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_item_curses_item 
       ON item_curses(item_id)
+    `);
+
+    // Create indexes for event trigger system
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_event_triggers_entity 
+      ON event_triggers(entity_type, entity_id, event_type)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_event_triggers_event_type 
+      ON event_triggers(event_type)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_trigger_conditions_trigger 
+      ON trigger_conditions(trigger_id, condition_order)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_trigger_effects_trigger 
+      ON trigger_effects(trigger_id, effect_order)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_trigger_history_trigger 
+      ON trigger_history(trigger_id, execution_time)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_trigger_history_character 
+      ON trigger_history(character_id, execution_time)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_character_status_effects_character 
+      ON character_status_effects(character_id, status_type)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_character_status_effects_expiry 
+      ON character_status_effects(expires_at)
     `);
 
     // Run migrations for all databases, but skip the complex table recreation for in-memory
@@ -802,34 +923,32 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, observatoryStepsId, null, 'east', 'through the starlit eastern corridor']
     );
 
-    // Create default player character
-    const playerResult = await db.run(`
+    // Create default player character with game ID as character ID for consistency
+    await db.run(`
       INSERT INTO characters (
-        game_id, name, type, current_room_id,
+        id, game_id, name, type, current_room_id,
         strength, dexterity, intelligence, constitution, wisdom, charisma,
         max_health, current_health
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      gameId, 'Hero', 'player', null, // current_room_id is null for player (uses game_state)
+      gameId, gameId, 'Hero', 'player', null, // id=gameId for consistency with existing code
       10, 10, 10, 10, 10, 10, // Default attributes
       10, 10 // max_health and current_health
     ]);
 
-    const playerId = playerResult.lastID;
-
     // Create initial game state (player starts in entrance hall)
     await db.run(
       'INSERT INTO game_state (game_id, current_room_id, character_id) VALUES (?, ?, ?)',
-      [gameId, entranceId, playerId]
+      [gameId, entranceId, gameId]
     );
 
     // Place starter items in all starter rooms
     const starterRoomItems = [
-      { roomId: entranceId, itemNames: ['Iron Sword', 'Ancient Stone Pedestal'], roomName: 'Grand Entrance Hall' },
-      { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs'], roomName: 'Scholar\'s Library' },
-      { roomId: gardenId, itemNames: ['Health Potion', 'Bread'], roomName: 'Moonlit Courtyard Garden' },
-      { roomId: towerStairsId, itemNames: ['Wooden Staff'], roomName: 'Winding Tower Stairs' },
-      { roomId: cryptEntranceId, itemNames: ['Iron Helmet', 'Gold Coins'], roomName: 'Ancient Crypt Entrance' },
+      { roomId: entranceId, itemNames: ['Iron Sword', 'Ancient Stone Pedestal', 'Blessed Silver Amulet'], roomName: 'Grand Entrance Hall' },
+      { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'], roomName: 'Scholar\'s Library' },
+      { roomId: gardenId, itemNames: ['Health Potion', 'Bread', 'Mysterious Glowing Orb'], roomName: 'Moonlit Courtyard Garden' },
+      { roomId: towerStairsId, itemNames: ['Wooden Staff', 'Cursed Ruby Ring'], roomName: 'Winding Tower Stairs' },
+      { roomId: cryptEntranceId, itemNames: ['Iron Helmet', 'Gold Coins', 'Poisoned Dagger'], roomName: 'Ancient Crypt Entrance' },
       { roomId: observatoryStepsId, itemNames: ['Leather Boots', 'Leather Armor'], roomName: 'Observatory Steps' }
     ];
 
@@ -861,6 +980,17 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
 
     // Add validations to specific starter items
     await addStarterItemValidations(db, gameId, entranceId, tui);
+
+    // Add event triggers for interactive gameplay
+    await seedGameTriggers(db, {
+      gameId,
+      entranceRoomId: entranceId,
+      libraryRoomId: libraryId,
+      gardenRoomId: gardenId,
+      towerStairsRoomId: towerStairsId,
+      cryptEntranceRoomId: cryptEntranceId,
+      observatoryStepsRoomId: observatoryStepsId
+    }, tui);
 
     if (tui) {
       tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);

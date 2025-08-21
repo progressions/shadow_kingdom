@@ -125,6 +125,53 @@ const SEED_ITEMS: CreateItemData[] = [
     stackable: false,
     max_stack: 1,
     is_fixed: true
+  },
+  {
+    name: 'Cursed Ruby Ring',
+    description: 'A beautiful ruby ring that glows with an ominous red light. The gem seems to pulse with malevolent energy.',
+    type: ItemType.MISC,
+    weight: 0.05,
+    value: 200,
+    stackable: false,
+    max_stack: 1
+  },
+  {
+    name: 'Blessed Silver Amulet',
+    description: 'A silver amulet inscribed with holy symbols. It radiates warmth and comfort, providing protection from dark forces.',
+    type: ItemType.MISC,
+    weight: 0.1,
+    value: 150,
+    stackable: false,
+    max_stack: 1
+  },
+  {
+    name: 'Mysterious Glowing Orb',
+    description: 'A smooth orb that glows with shifting colors. When you touch it, you feel a surge of magical energy coursing through your veins.',
+    type: ItemType.MISC,
+    weight: 0.5,
+    value: 300,
+    stackable: false,
+    max_stack: 1
+  },
+  {
+    name: 'Poisoned Dagger',
+    description: 'A wickedly sharp dagger with a blade coated in a greenish substance. The poison glistens ominously in the light.',
+    type: ItemType.WEAPON,
+    weight: 1.0,
+    value: 180,
+    stackable: false,
+    max_stack: 1,
+    weapon_damage: '1d4+2',
+    equipment_slot: EquipmentSlot.HAND
+  },
+  {
+    name: 'Scholar\'s Spectacles',
+    description: 'Delicate wire-rimmed spectacles that belonged to an ancient scholar. They seem to enhance mental acuity and perception.',
+    type: ItemType.MISC,
+    weight: 0.1,
+    value: 120,
+    stackable: false,
+    max_stack: 1
   }
 ];
 
