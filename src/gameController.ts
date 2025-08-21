@@ -20,6 +20,7 @@ import { RegionService } from './services/regionService';
 import { ServiceFactory, ServiceInstances } from './services/serviceFactory';
 import { ActionValidator } from './services/actionValidator';
 import { ValidationResult, ActionContext } from './types/validation';
+import { HealthService, HealthStatus } from './services/healthService';
 
 
 // Interfaces imported from GameStateManager
@@ -48,6 +49,7 @@ export class GameController {
   private equipmentService!: ServiceInstances['equipmentService']; // Initialized in initializeReadlineInterface()
   private characterService!: ServiceInstances['characterService']; // Initialized in initializeReadlineInterface()
   private actionValidator!: ServiceInstances['actionValidator']; // Initialized in initializeReadlineInterface()
+  private healthService!: ServiceInstances['healthService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
   constructor(db: Database, tui?: TUIInterface) {
@@ -337,6 +339,11 @@ export class GameController {
       name: 'rest',
       description: 'Rest to restore health and energy',
       handler: async () => await this.handleRest()
+    });
+    this.commandRouter.addCommand({
+      name: 'health',
+      description: 'Check your health status',
+      handler: async () => await this.showHealthStatus()
     });
 
     this.commandRouter.addCommand({
@@ -909,6 +916,7 @@ export class GameController {
     this.equipmentService = services.equipmentService;
     this.characterService = services.characterService;
     this.actionValidator = services.actionValidator;
+    this.healthService = services.healthService;
     
     // Set up commands
     this.setupCommands();
@@ -1473,16 +1481,84 @@ export class GameController {
         'rest',
         {},
         async () => {
-          // Rest logic - for now just show a message
-          // In the future this would restore health/energy
+          // Get player character for healing
+          const character = await this.characterService.getPlayerCharacter(session.gameId!);
+          
+          if (!character) {
+            this.tui.display('Error: Unable to find player character.', MessageType.ERROR);
+            return;
+          }
+
+          // Initialize health if needed
+          if (await this.healthService.needsHealthInitialization(character.id)) {
+            await this.healthService.initializeHealth(character.id);
+          }
+
+          // Check if character is dead
+          const currentHealth = await this.healthService.getHealthStatus(character.id);
+          if (currentHealth.isDead) {
+            this.tui.display('💀 You cannot rest while dead. Seek resurrection first.', MessageType.ERROR);
+            return;
+          }
+
+          // Restore to full health
+          const newHealth = await this.healthService.restoreToFull(character.id);
+          const healthDisplay = this.healthService.getHealthDisplay(newHealth);
+
           this.tui.display('You rest peacefully, feeling refreshed.', MessageType.NORMAL);
           this.tui.display('The mystical energy around you provides comfort and restoration.', MessageType.SYSTEM);
+          this.tui.display(`Your health has been restored: ${healthDisplay}`, MessageType.NORMAL);
         }
       );
 
     } catch (error) {
       console.error('Error resting:', error);
       this.tui.showError('Error resting', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Show current health status
+   */
+  private async showHealthStatus(): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    try {
+      const character = await this.characterService.getPlayerCharacter(this.gameStateManager.getCurrentGameId());
+      
+      if (!character) {
+        this.tui.display('Error: Unable to find player character.', MessageType.ERROR);
+        return;
+      }
+
+      // Initialize health if needed
+      if (await this.healthService.needsHealthInitialization(character.id)) {
+        await this.healthService.initializeHealth(character.id);
+      }
+
+      const healthStatus = await this.healthService.getHealthStatus(character.id);
+      const healthDisplay = this.healthService.getHealthDisplay(healthStatus);
+      
+      this.tui.display('=== HEALTH STATUS ===', MessageType.SYSTEM);
+      this.tui.display(healthDisplay, MessageType.NORMAL);
+      
+      // Additional status information
+      if (healthStatus.status === 'dead') {
+        this.tui.display('💀 You have fallen! Seek resurrection or start anew.', MessageType.ERROR);
+      } else if (healthStatus.status === 'critical') {
+        this.tui.display('⚠️ You are critically injured! Seek healing immediately!', MessageType.ERROR);
+      } else if (healthStatus.status === 'injured') {
+        this.tui.display('🩹 You have sustained some injuries. Rest or seek healing.', MessageType.NORMAL);
+      } else {
+        this.tui.display('✨ You are in good health.', MessageType.NORMAL);
+      }
+
+    } catch (error) {
+      console.error('Error showing health status:', error);
+      this.tui.showError('Error showing health status', (error as Error)?.message);
     }
   }
 
@@ -1628,12 +1704,13 @@ export class GameController {
         return;
       }
 
-      // Get character health
-      const health = await this.characterService.getCharacterHealth(character.id);
-      if (!health) {
-        this.tui.display('Could not retrieve character health.', MessageType.ERROR);
-        return;
+      // Initialize health if needed
+      if (await this.healthService.needsHealthInitialization(character.id)) {
+        await this.healthService.initializeHealth(character.id);
       }
+
+      // Get character health using new health service
+      const healthStatus = await this.healthService.getHealthStatus(character.id);
 
       // Get character modifiers
       const modifiers = this.characterService.getCharacterModifiers(character);
@@ -1651,7 +1728,8 @@ export class GameController {
       this.tui.display(`Charisma:     ${character.charisma.toString().padStart(2)} (${modifiers.charisma >= 0 ? '+' : ''}${modifiers.charisma})`, MessageType.NORMAL);
 
       this.tui.display('\n--- HEALTH ---', MessageType.SYSTEM);
-      this.tui.display(`Health: ${health.current}/${health.max} (${health.percentage}%)`, MessageType.NORMAL);
+      const healthDisplay = this.healthService.getHealthDisplay(healthStatus);
+      this.tui.display(healthDisplay, MessageType.NORMAL);
 
       // Show equipment summary
       this.tui.display('\n--- EQUIPMENT ---', MessageType.SYSTEM);
