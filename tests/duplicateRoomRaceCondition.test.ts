@@ -5,6 +5,8 @@ import { ItemService } from '../src/services/itemService';
 import { ItemGenerationService } from '../src/services/itemGenerationService';
 import { GrokClient } from '../src/ai/grokClient';
 import { RegionService } from '../src/services/regionService';
+import { CharacterService } from '../src/services/characterService';
+import { CharacterGenerationService } from '../src/services/characterGenerationService';
 describe('Duplicate Room Generation Race Condition Fix', () => {
   let db: Database;
   let roomGenerationService: RoomGenerationService;
@@ -26,11 +28,15 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
     itemService = new ItemService(db);
     itemGenerationService = new ItemGenerationService(db, itemService);
     
+    const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService, { enableDebugLogging: true });
+    
     roomGenerationService = new RoomGenerationService(
       db, 
       grokClient, 
       regionService,
       itemGenerationService,
+      characterGenerationService,
       { enableDebugLogging: true }
     );
   });

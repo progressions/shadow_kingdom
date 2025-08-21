@@ -284,6 +284,9 @@ ENABLE_REGION_CONSOLIDATION=true       # Enable consolidation features
 - Theme collision detection
 - Consolidation algorithm correctness
 
+### New Game Testing
+**Important**: Update `createGameWithRooms()` in `src/utils/initDb.ts` to create starting rooms across multiple test regions (mansion, forest, crypt, observatory) to immediately validate region consolidation behavior.
+
 ### Integration Tests  
 - End-to-end region generation with new parameters
 - Migration script validation

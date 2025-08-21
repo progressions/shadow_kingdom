@@ -22,6 +22,7 @@ export interface Character {
   id: number;
   game_id: number;
   name: string;
+  description?: string | null;   // Description for NPCs and enemies
   type: CharacterType;
   current_room_id: number | null;
   strength: number;
@@ -39,6 +40,7 @@ export interface Character {
 export interface CreateCharacterData {
   game_id: number;
   name: string;
+  description?: string;        // Description for NPCs and enemies
   type?: CharacterType;
   current_room_id?: number | null;
   strength?: number;

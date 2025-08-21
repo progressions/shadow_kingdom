@@ -4,6 +4,9 @@ import { MessageType } from '../ui/MessageFormatter';
 import { seedItems } from './seedItems';
 import { seedEventTriggers } from './seedTriggers';
 import { seedGameTriggers } from './seedGameTriggers';
+import { CharacterService } from '../services/characterService';
+import { CharacterGenerationService } from '../services/characterGenerationService';
+import type { CreateCharacterData } from '../types/character';
 
 export async function initializeDatabase(db: Database, tui?: TUIInterface): Promise<void> {
   try {
@@ -208,6 +211,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     // Migration: Add is_dead column to characters if it doesn't exist
     try {
       await db.run(`ALTER TABLE characters ADD COLUMN is_dead BOOLEAN DEFAULT FALSE`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
+    // Migration: Add description column to characters if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE characters ADD COLUMN description TEXT`);
     } catch (error) {
       // Column already exists, ignore error
     }
@@ -923,23 +933,25 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, observatoryStepsId, null, 'east', 'through the starlit eastern corridor']
     );
 
-    // Create default player character with game ID as character ID for consistency
-    await db.run(`
+    // Create default player character (auto-increment ID)
+    const playerResult = await db.run(`
       INSERT INTO characters (
-        id, game_id, name, type, current_room_id,
+        game_id, name, type, current_room_id,
         strength, dexterity, intelligence, constitution, wisdom, charisma,
         max_health, current_health
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      gameId, gameId, 'Hero', 'player', null, // id=gameId for consistency with existing code
+      gameId, 'Hero', 'player', null, // Let ID auto-increment
       10, 10, 10, 10, 10, 10, // Default attributes
       10, 10 // max_health and current_health
     ]);
 
+    const playerCharacterId = playerResult.lastID;
+
     // Create initial game state (player starts in entrance hall)
     await db.run(
       'INSERT INTO game_state (game_id, current_room_id, character_id) VALUES (?, ?, ?)',
-      [gameId, entranceId, gameId]
+      [gameId, entranceId, playerCharacterId]
     );
 
     // Place starter items in all starter rooms
@@ -978,6 +990,42 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       }
     }
 
+    // Create characters in starter rooms for easy testing
+    const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService, { enableDebugLogging: false });
+    
+    const starterRoomCharacters = [
+      { roomId: entranceId, character: { name: 'Ancient Guardian', description: 'A spectral guardian that watches over the entrance hall with eternal vigilance', type: 'npc' as const }, roomName: 'Grand Entrance Hall' },
+      { roomId: libraryId, character: { name: 'Scholar Wraith', description: 'A ghostly figure in scholarly robes, eternally tending to the ancient tomes', type: 'npc' as const }, roomName: 'Scholar\'s Library' },
+      { roomId: gardenId, character: { name: 'Garden Spirit', description: 'A benevolent nature spirit that tends to the moonlit garden with gentle care', type: 'npc' as const }, roomName: 'Moonlit Courtyard Garden' },
+      { roomId: towerStairsId, character: { name: 'Tower Sentinel', description: 'A mysterious figure that guards the winding stairs leading to higher mysteries', type: 'enemy' as const }, roomName: 'Winding Tower Stairs' },
+      { roomId: cryptEntranceId, character: { name: 'Crypt Keeper', description: 'A solemn undead guardian bound to protect the entrance to the ancient crypts', type: 'enemy' as const }, roomName: 'Ancient Crypt Entrance' },
+      { roomId: observatoryStepsId, character: { name: 'Star Watcher', description: 'An ethereal being dedicated to observing the celestial movements above', type: 'npc' as const }, roomName: 'Observatory Steps' }
+    ];
+
+    let totalCharactersPlaced = 0;
+    const placedCharacters: string[] = [];
+
+    for (const room of starterRoomCharacters) {
+      try {
+        await characterGenerationService.createCharactersFromRoomGeneration(
+          gameId, 
+          room.roomId, 
+          [room.character]
+        );
+        totalCharactersPlaced++;
+        placedCharacters.push(`${room.character.name} in ${room.roomName}`);
+        
+        if (tui) {
+          tui.display(`Placed ${room.character.name} in ${room.roomName}`, MessageType.SYSTEM);
+        }
+      } catch (error) {
+        if (tui) {
+          tui.display(`Warning: Failed to place character "${room.character.name}" in ${room.roomName}: ${error}`, MessageType.ERROR);
+        }
+      }
+    }
+
     // Add validations to specific starter items
     await addStarterItemValidations(db, gameId, entranceId, tui);
 
@@ -995,6 +1043,7 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
     if (tui) {
       tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);
       tui.display(`Placed ${totalItemsPlaced} items across ${starterRoomItems.length} starter rooms`, MessageType.SYSTEM);
+      tui.display(`Placed ${totalCharactersPlaced} characters across ${starterRoomCharacters.length} starter rooms`, MessageType.SYSTEM);
       tui.display('Added validations to 3 starter items', MessageType.SYSTEM);
     }
     return gameId;

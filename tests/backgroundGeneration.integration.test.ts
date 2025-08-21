@@ -4,6 +4,8 @@ import { RoomGenerationService } from '../src/services/roomGenerationService';
 import { RegionService } from '../src/services/regionService';
 import { ItemService } from '../src/services/itemService';
 import { ItemGenerationService } from '../src/services/itemGenerationService';
+import { CharacterService } from '../src/services/characterService';
+import { CharacterGenerationService } from '../src/services/characterGenerationService';
 import { GrokClient } from '../src/ai/grokClient';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
 import { Room, Connection, UnfilledConnection } from '../src/services/gameStateManager';
@@ -62,7 +64,10 @@ describe('Background Generation Integration', () => {
     itemService = new ItemService(db);
     itemGenerationService = new ItemGenerationService(db, itemService);
     
-    roomGenerationService = new RoomGenerationService(db, mockGrokClient as any, regionService, itemGenerationService, {
+    const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService, { enableDebugLogging: false });
+    
+    roomGenerationService = new RoomGenerationService(db, mockGrokClient as any, regionService, itemGenerationService, characterGenerationService, {
       enableDebugLogging: false
     });
     

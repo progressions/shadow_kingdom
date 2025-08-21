@@ -22,6 +22,7 @@ import { ActionValidator } from './services/actionValidator';
 import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
 import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
+import { CharacterType } from './types/character';
 
 
 // Interfaces imported from GameStateManager
@@ -745,6 +746,27 @@ export class GameController {
             const quantityText = roomItem.quantity > 1 ? ` x${roomItem.quantity}` : '';
             this.tui.display(`• ${roomItem.item.name}${quantityText}`, MessageType.NORMAL);
           });
+        }
+
+        console.log(`DEBUG: Items section completed, starting characters section`); // Debug line
+        // Display characters in the room
+        console.log(`DEBUG: About to get characters for room ${room.id}`); // Debug line
+        try {
+          const roomCharacters = await this.characterService.getRoomCharacters(room.id, CharacterType.PLAYER);
+          console.log(`DEBUG: Room ${room.id} characters:`, roomCharacters); // Debug line
+          if (roomCharacters.length > 0) {
+            this.tui.display('', MessageType.NORMAL); // Add spacing
+            this.tui.display('Characters present:', MessageType.SYSTEM);
+            roomCharacters.forEach(character => {
+              const typeText = character.type === 'enemy' ? ' (hostile)' : '';
+              this.tui.display(`• ${character.name}${typeText}`, MessageType.NORMAL);
+              if (character.description) {
+                this.tui.display(`  ${character.description}`, MessageType.NORMAL);
+              }
+            });
+          }
+        } catch (characterError) {
+          console.log(`DEBUG: Error getting characters:`, characterError);
         }
       } else {
         this.tui.display('You are in a void. Something went wrong!', MessageType.ERROR);

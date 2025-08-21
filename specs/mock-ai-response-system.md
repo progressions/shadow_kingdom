@@ -431,6 +431,9 @@ Each theme pool should include:
 
 ## Testing Strategy
 
+### New Game Setup
+**Important**: When implementing new mock content pools, update `createGameWithRooms()` in `src/utils/initDb.ts` to include representative content from each theme category for immediate validation.
+
 ### Unit Tests
 ```typescript
 describe('MockAIEngine', () => {

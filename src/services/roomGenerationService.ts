@@ -1,10 +1,11 @@
 import Database from '../utils/database';
-import { GrokClient, RegionGenerationContext } from '../ai/grokClient';
+import { GrokClient, RegionGenerationContext, GeneratedCharacter } from '../ai/grokClient';
 import { Room, Connection, UnfilledConnection } from './gameStateManager';
 import { RegionService } from './regionService';
 import { Region } from '../types/region';
 import { ItemGenerationService } from './itemGenerationService';
 import { ItemService } from './itemService';
+import { CharacterGenerationService } from './characterGenerationService';
 
 export interface RoomGenerationOptions {
   enableDebugLogging?: boolean;
@@ -44,6 +45,7 @@ export class RoomGenerationService {
     private grokClient: GrokClient,
     private regionService: RegionService,
     private itemGenerationService: ItemGenerationService,
+    private characterGenerationService: CharacterGenerationService,
     options: RoomGenerationOptions = {}
   ) {
     this.options = {
@@ -273,6 +275,33 @@ export class RoomGenerationService {
         );
       }
 
+      // Create characters in the database if AI provided them, or generate fallback characters
+      let charactersToCreate = newRoom.characters || [];
+      
+      // If no characters from AI and character generation is enabled, create some based on the description
+      if (charactersToCreate.length === 0 && process.env.AI_CHARACTER_GENERATION_ENABLED !== 'false') {
+        charactersToCreate = this.generateFallbackCharacters(newRoom.name, newRoom.description);
+      }
+      
+      if (this.isDebugEnabled()) {
+        console.log(`🧙 Room generation result has ${charactersToCreate.length} characters (${newRoom.characters?.length || 0} from AI, ${charactersToCreate.length - (newRoom.characters?.length || 0)} fallback)`);
+      }
+      
+      if (charactersToCreate.length > 0) {
+        try {
+          await this.characterGenerationService.createCharactersFromRoomGeneration(
+            context.gameId,
+            roomResult.lastID as number,
+            charactersToCreate
+          );
+        } catch (error) {
+          // Log but don't fail room generation if character creation fails
+          if (this.isDebugEnabled()) {
+            console.error('Failed to create characters for room:', error);
+          }
+        }
+      }
+
       // Find the AI-generated thematic name for the outgoing connection
       let outgoingThematicName = context.direction; // fallback to basic direction
       let returnThematicName = this.getReverseDirection(context.direction) || 'back';
@@ -353,6 +382,135 @@ export class RoomGenerationService {
         error: error as Error 
       };
     }
+  }
+
+  /**
+   * Generate fallback characters based on room name and description keywords
+   */
+  private generateFallbackCharacters(roomName: string, roomDescription: string): GeneratedCharacter[] {
+    const characters: GeneratedCharacter[] = [];
+    
+    // Check generation rate - don't generate fallback characters in every room
+    const generationRate = parseFloat(process.env.AI_CHARACTER_GENERATION_RATE || '0.3');
+    if (Math.random() > generationRate) {
+      return characters;
+    }
+    
+    const nameAndDesc = (roomName + ' ' + roomDescription).toLowerCase();
+    
+    // Library/Study themed rooms
+    if (nameAndDesc.match(/\b(library|study|archive|tome|book|scholar|manuscript)\b/)) {
+      characters.push({
+        name: 'Ancient Librarian',
+        description: 'A ghostly figure in scholarly robes, tending to ethereal tomes',
+        type: 'npc',
+        personality: 'Scholarly and mysterious',
+        initialDialogue: 'Seek you knowledge from ages past?',
+        attributes: { intelligence: 15, wisdom: 13 }
+      });
+    }
+    
+    // Garden/Nature themed rooms
+    else if (nameAndDesc.match(/\b(garden|grove|forest|tree|flower|vine|natural|bloom)\b/)) {
+      characters.push({
+        name: 'Garden Keeper',
+        description: 'A spectral groundskeeper who tends to otherworldly plants',
+        type: 'npc',
+        personality: 'Gentle and protective',
+        initialDialogue: 'These gardens hold secrets older than memory...',
+        attributes: { wisdom: 14, constitution: 12 }
+      });
+    }
+    
+    // Kitchen/Dining themed rooms
+    else if (nameAndDesc.match(/\b(kitchen|dining|cook|feast|meal|food|pantry|hearth)\b/)) {
+      characters.push({
+        name: 'Phantom Cook',
+        description: 'The spirit of a master chef, still preparing spectral meals',
+        type: 'npc',
+        personality: 'Passionate and welcoming',
+        initialDialogue: 'Welcome! You must try my latest creation!',
+        attributes: { dexterity: 13, charisma: 12 }
+      });
+    }
+    
+    // Armory/Weapon themed rooms
+    else if (nameAndDesc.match(/\b(armory|weapon|sword|shield|blade|guard|training|martial)\b/)) {
+      characters.push({
+        name: 'Weapons Master',
+        description: 'An ancient warrior spirit bound to protect these arms',
+        type: 'enemy',
+        level: 3,
+        isHostile: false,
+        attributes: { strength: 15, dexterity: 13 }
+      });
+    }
+    
+    // Hall/Throne/Grand rooms
+    else if (nameAndDesc.match(/\b(hall|throne|grand|royal|court|ceremonial|chamber|ballroom)\b/)) {
+      characters.push({
+        name: 'Spectral Courtier',
+        description: 'A ghostly noble in faded finery, eternally attending court',
+        type: 'npc',
+        personality: 'Formal and nostalgic',
+        initialDialogue: 'Ah, a visitor to our eternal court!',
+        attributes: { charisma: 14, intelligence: 12 }
+      });
+    }
+    
+    // Observatory/Tower/High places
+    else if (nameAndDesc.match(/\b(observatory|tower|high|peak|spire|watch|lookout|star)\b/)) {
+      characters.push({
+        name: 'Star Watcher',
+        description: 'A robed figure studying the movements of celestial bodies',
+        type: 'npc',
+        personality: 'Contemplative and wise',
+        initialDialogue: 'The stars tell of your coming...',
+        attributes: { intelligence: 16, wisdom: 14 }
+      });
+    }
+    
+    // Dungeon/Prison/Dark places
+    else if (nameAndDesc.match(/\b(dungeon|prison|cell|chain|captive|dark|shadow|crypt)\b/)) {
+      characters.push({
+        name: 'Tormented Spirit',
+        description: 'A restless soul trapped in this place of sorrow',
+        type: 'npc',
+        personality: 'Melancholic and warning',
+        initialDialogue: 'Turn back... this place holds only despair...',
+        attributes: { wisdom: 13, charisma: 8 }
+      });
+    }
+    
+    // Workshop/Craft rooms
+    else if (nameAndDesc.match(/\b(workshop|forge|craft|anvil|hammer|tool|smith|work)\b/)) {
+      characters.push({
+        name: 'Master Craftsman',
+        description: 'The ghost of a skilled artisan, forever working at their trade',
+        type: 'npc',
+        personality: 'Focused and proud',
+        initialDialogue: 'Behold the work of a true master!',
+        attributes: { strength: 13, dexterity: 15 }
+      });
+    }
+    
+    // Bedroom/Private quarters
+    else if (nameAndDesc.match(/\b(bedroom|chamber|private|personal|bed|sleep|rest|quarter)\b/)) {
+      characters.push({
+        name: 'Restless Occupant',
+        description: 'The former inhabitant of this room, unable to find peace',
+        type: 'npc',
+        personality: 'Tired and melancholic',
+        initialDialogue: 'So long since I\'ve had a visitor...',
+        attributes: { charisma: 11, wisdom: 12 }
+      });
+    }
+    
+    if (this.isDebugEnabled() && characters.length > 0) {
+      console.log(`🎲 Generated ${characters.length} fallback characters based on room keywords`);
+    }
+    
+    return characters;
   }
 
   /**
@@ -569,6 +727,33 @@ export class RoomGenerationService {
           newRoomId,
           newRoom.items
         );
+      }
+
+      // Create characters in the database if AI provided them, or generate fallback characters
+      let charactersToCreate = newRoom.characters || [];
+      
+      // If no characters from AI and character generation is enabled, create some based on the description
+      if (charactersToCreate.length === 0 && process.env.AI_CHARACTER_GENERATION_ENABLED !== 'false') {
+        charactersToCreate = this.generateFallbackCharacters(uniqueName, newRoom.description);
+      }
+      
+      if (this.isDebugEnabled()) {
+        console.log(`🧙 Unfilled connection room generation has ${charactersToCreate.length} characters (${newRoom.characters?.length || 0} from AI, ${charactersToCreate.length - (newRoom.characters?.length || 0)} fallback)`);
+      }
+      
+      if (charactersToCreate.length > 0) {
+        try {
+          await this.characterGenerationService.createCharactersFromRoomGeneration(
+            connection.game_id,
+            newRoomId,
+            charactersToCreate
+          );
+        } catch (error) {
+          // Log but don't fail room generation if character creation fails
+          if (this.isDebugEnabled()) {
+            console.error('Failed to create characters for unfilled connection room:', error);
+          }
+        }
       }
 
       // Update the connection to point to the new room (fill the connection)

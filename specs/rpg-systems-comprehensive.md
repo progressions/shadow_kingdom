@@ -145,15 +145,21 @@ Shadow Kingdom's RPG systems are designed around immersive text-based interactio
 - Simple combat mechanics
 - Essential inventory management
 
+**Testing Strategy**: Update `createGameWithRooms()` in `src/utils/initDb.ts` to include test characters and equipment in starting rooms for immediate validation of new mechanics.
+
 ### Phase 2: Enhanced Combat
 - Full tactical combat system
 - Status effects and special abilities
 - Equipment enhancement
 
+**Testing Strategy**: Add hostile NPCs with various combat abilities to starting rooms; include weapons with special effects for immediate combat testing.
+
 ### Phase 3: Advanced Systems
 - Crafting and enchantment
 - Complex quest mechanics
 - Faction interactions
+
+**Testing Strategy**: Place crafting materials, faction representatives, and quest-giving NPCs in starting rooms to enable immediate testing of advanced mechanics.
 
 ### Phase 4: Polish and Balance
 - Comprehensive testing

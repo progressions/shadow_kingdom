@@ -1,4 +1,4 @@
-import { GeneratedRoom, GeneratedRegion, GeneratedNPC, RoomContext, RegionGenerationContext, NPCContext } from './grokClient';
+import { GeneratedRoom, GeneratedRegion, GeneratedNPC, GeneratedCharacter, RoomContext, RegionGenerationContext, NPCContext } from './grokClient';
 
 // Enhanced mock content interfaces
 export interface MockRoom {
@@ -291,7 +291,10 @@ export class MockAIEngine {
     // Generate items for the room
     const items = this.generateRoomItems(room, themeProfile);
 
-    return { name, description, connections, items };
+    // Generate characters for the room
+    const characters = this.generateRoomCharacters(room, themeProfile);
+
+    return { name, description, connections, items, characters };
   }
 
   /**
@@ -352,6 +355,202 @@ export class MockAIEngine {
     }
 
     return items;
+  }
+
+  /**
+   * Generate characters for a room based on its theme
+   */
+  private generateRoomCharacters(room: MockRoom, themeProfile: ThemeProfile): GeneratedCharacter[] {
+    const characters: GeneratedCharacter[] = [];
+    
+    // Skip character generation if disabled
+    if (process.env.AI_CHARACTER_GENERATION_ENABLED === 'false') {
+      return characters;
+    }
+
+    // Check generation rate - don't generate characters in every room
+    const generationRate = parseFloat(process.env.AI_CHARACTER_GENERATION_RATE || '0.3');
+    if (this.random() > generationRate) {
+      return characters;
+    }
+
+    // Character data organized by themes
+    const themeCharacters: Record<string, GeneratedCharacter[]> = {
+      'library': [
+        {
+          name: 'Elder Librarian',
+          description: 'A wise keeper of ancient knowledge, surrounded by floating tomes',
+          type: 'npc',
+          personality: 'Scholarly and cryptic',
+          initialDialogue: 'The secrets of ages past rest within these halls...',
+          attributes: { intelligence: 16, wisdom: 14 }
+        },
+        {
+          name: 'Spectral Scholar',
+          description: 'The ghost of a long-dead researcher, still pursuing forgotten lore',
+          type: 'npc',
+          personality: 'Obsessive and distant',
+          initialDialogue: 'Have you come seeking the truth that cost me my life?'
+        }
+      ],
+      'garden': [
+        {
+          name: 'Garden Sprite',
+          description: 'A tiny fae creature tending to magical plants',
+          type: 'npc',
+          personality: 'Playful and mischievous',
+          initialDialogue: 'Welcome to my garden! Mind the thorns that bite back...',
+          attributes: { dexterity: 15, charisma: 12 }
+        },
+        {
+          name: 'Thorn Guardian',
+          description: 'A creature of living vines and thorns protecting the garden',
+          type: 'enemy',
+          level: 2,
+          isHostile: false,
+          attributes: { constitution: 14, strength: 12 }
+        }
+      ],
+      'chamber': [
+        {
+          name: 'Noble Phantom',
+          description: 'The ghostly remains of the chamber\'s former occupant',
+          type: 'npc',
+          personality: 'Melancholic and nostalgic',
+          initialDialogue: 'You dare disturb my eternal rest? State your purpose.',
+          attributes: { charisma: 13, wisdom: 11 }
+        }
+      ],
+      'hall': [
+        {
+          name: 'Palace Guard',
+          description: 'An armored sentinel standing eternally at their post',
+          type: 'enemy',
+          level: 3,
+          isHostile: false,
+          attributes: { strength: 15, constitution: 14 }
+        },
+        {
+          name: 'Court Herald',
+          description: 'A ghostly figure in elaborate robes, eternally announcing visitors',
+          type: 'npc',
+          personality: 'Formal and ceremonial',
+          initialDialogue: 'By royal decree, state your name and business in these halls!',
+          attributes: { charisma: 14, intelligence: 12 }
+        }
+      ],
+      'kitchen': [
+        {
+          name: 'Chef\'s Spirit',
+          description: 'The ghost of a master chef, still preparing ethereal meals',
+          type: 'npc',
+          personality: 'Passionate and temperamental',
+          initialDialogue: 'Perfect! A new taster for my spectral cuisine!',
+          attributes: { dexterity: 13, constitution: 12 }
+        }
+      ],
+      'armory': [
+        {
+          name: 'Weapon Master',
+          description: 'An ancient warrior spirit bound to guard the weapons',
+          type: 'enemy',
+          level: 4,
+          isHostile: false,
+          attributes: { strength: 16, dexterity: 13 }
+        }
+      ],
+      'mystical': [
+        {
+          name: 'Arcane Sentinel',
+          description: 'A being of pure magical energy guarding mystical secrets',
+          type: 'enemy',
+          level: 3,
+          isHostile: false,
+          attributes: { intelligence: 15, wisdom: 13 }
+        },
+        {
+          name: 'Crystal Oracle',
+          description: 'A mysterious figure whose form shifts like flowing crystal',
+          type: 'npc',
+          personality: 'Enigmatic and all-knowing',
+          initialDialogue: 'The threads of fate have brought you here, seeker.',
+          attributes: { intelligence: 17, wisdom: 16 }
+        }
+      ],
+      'natural': [
+        {
+          name: 'Forest Warden',
+          description: 'A guardian spirit of the natural world',
+          type: 'npc',
+          personality: 'Protective and wise',
+          initialDialogue: 'The forest speaks of your arrival, traveler.',
+          attributes: { wisdom: 15, constitution: 13 }
+        },
+        {
+          name: 'Wild Beast',
+          description: 'A creature of the wilderness, wary but not immediately hostile',
+          type: 'enemy',
+          level: 2,
+          isHostile: false,
+          attributes: { dexterity: 14, constitution: 13 }
+        }
+      ],
+      'mechanical': [
+        {
+          name: 'Clockwork Automaton',
+          description: 'A mechanical being of brass and steel, still following ancient commands',
+          type: 'npc',
+          personality: 'Logical and precise',
+          initialDialogue: 'QUERY: State your authorization to access this facility.',
+          attributes: { intelligence: 13, constitution: 15 }
+        }
+      ]
+    };
+
+    // Find matching characters based on room themes
+    let availableCharacters: GeneratedCharacter[] = [];
+    
+    for (const theme of room.themes) {
+      if (themeCharacters[theme]) {
+        availableCharacters.push(...themeCharacters[theme]);
+      }
+    }
+
+    // Fallback to generic characters if no theme matches
+    if (availableCharacters.length === 0) {
+      availableCharacters = [
+        {
+          name: 'Mysterious Figure',
+          description: 'A shadowy presence watching from the corners',
+          type: 'npc',
+          personality: 'Secretive and cautious',
+          initialDialogue: 'You shouldn\'t be here...'
+        },
+        {
+          name: 'Wandering Spirit',
+          description: 'A lost soul searching for something long forgotten',
+          type: 'npc',
+          personality: 'Melancholic and searching',
+          initialDialogue: 'Have you seen... no, you wouldn\'t have...'
+        }
+      ];
+    }
+
+    // Select 1-2 characters randomly, respecting max limit
+    const maxCharacters = parseInt(process.env.MAX_CHARACTERS_PER_ROOM || '2');
+    const characterCount = Math.min(
+      Math.floor(this.random() * 2) + 1, // 1-2 characters
+      maxCharacters,
+      availableCharacters.length
+    );
+    
+    const shuffled = [...availableCharacters].sort(() => this.random() - 0.5);
+    
+    for (let i = 0; i < characterCount; i++) {
+      characters.push({ ...shuffled[i] }); // Clone to avoid reference issues
+    }
+
+    return characters;
   }
 
   /**
