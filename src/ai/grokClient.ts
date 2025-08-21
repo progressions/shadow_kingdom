@@ -501,7 +501,7 @@ If the command cannot be interpreted as a valid game action, return null.`;
         if (axios.isAxiosError(error)) {
           console.error('Grok API Error:', error.response?.data || error.message);
         } else {
-          console.error('Unexpected error:', error);
+          console.error('Unexpected error:', error instanceof Error ? error.message : String(error));
         }
       }
       // Re-throw for handling in calling methods
