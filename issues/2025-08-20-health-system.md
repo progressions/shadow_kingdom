@@ -16,19 +16,17 @@ Create a health system with the following components:
 
 - **Hit Points (HP)**: Constitution-based health with level scaling
 - **Current/Maximum HP**: Track current health vs maximum capacity
-- **Natural Healing**: Gradual health recovery over time or through rest
-- **Death Mechanics**: Handle player death and respawn
-- **Healing Sources**: Support for potions, spells, and rest
+- **Death Mechanics**: Handle player death state
+- **Healing Sources**: Support for rest command and future potions/spells
 
 **Acceptance criteria:**
-- [ ] HP calculation based on Constitution attribute (base + CON modifier + level)
+- [ ] HP calculation based on Constitution attribute (base + CON modifier)
 - [ ] Current HP tracking that cannot exceed maximum
-- [ ] Natural healing over time (configurable rate)
 - [ ] Death state when HP reaches 0
-- [ ] Respawn mechanism with penalty (HP reduction, location reset)
 - [ ] HP display in game status/UI
 - [ ] Damage application function for future combat
 - [ ] Healing application function for recovery
+- [ ] Rest command for health recovery
 
 ## Technical Notes
 
@@ -43,27 +41,34 @@ ALTER TABLE characters ADD COLUMN is_dead BOOLEAN DEFAULT FALSE;
 
 ### HP Calculation Formula
 ```typescript
-// Base HP calculation
+// Base HP calculation (no levels yet)
 const baseHP = 10; // Starting HP
 const conModifier = Math.floor((constitution - 10) / 2);
-const maxHP = baseHP + conModifier + (level - 1) * (6 + conModifier);
+const maxHP = baseHP + conModifier;
 ```
 
 ### Healing Mechanics
-- **Natural Healing**: 1 HP per 10 minutes of real time (configurable)
-- **Rest Healing**: Full heal when using `rest` command (once per hour)
-- **Death Penalty**: Respawn with 50% max HP at starting location
+- **Rest Healing**: Restore health when using `rest` command
+- **Death State**: Character marked as dead at 0 HP (prevents actions)
 
 ### Implementation Areas
 - **Health Service**: Manage HP calculations, damage, healing
 - **Character System**: Integration with character attributes
-- **Game Loop**: Passive healing over time
 - **Commands**: `health`, `rest` commands
 - **Status Display**: Show HP in game UI
 
 ## Related
 
-- Dependencies: Character Attributes System
+- Dependencies: Character Attributes System, Action Validation System
 - Enables: Combat System, Item System (healing potions)
-- Related: Death mechanics, respawn system
+- Works WITH: Event Trigger System (damage/heal effects)
+- Related: Death mechanics
 - References: `specs/rpg-systems-comprehensive.md` Damage and Health section
+
+## Notes
+
+- Death state will use the Action Validation System to block most actions
+- Rest command will check for hostile presence via the validator
+- Low health could potentially restrict certain actions through validation
+- Event Triggers can apply damage/healing effects based on actions
+- Status effects from triggers (poison, regeneration) interact with health
