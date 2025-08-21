@@ -18,6 +18,8 @@ import { BackgroundGenerationService } from './services/backgroundGenerationServ
 import { GameManagementService } from './services/gameManagementService';
 import { RegionService } from './services/regionService';
 import { ServiceFactory, ServiceInstances } from './services/serviceFactory';
+import { ActionValidator } from './services/actionValidator';
+import { ValidationResult, ActionContext } from './types/validation';
 
 
 // Interfaces imported from GameStateManager
@@ -45,6 +47,7 @@ export class GameController {
   private itemService!: ServiceInstances['itemService']; // Initialized in initializeReadlineInterface()
   private equipmentService!: ServiceInstances['equipmentService']; // Initialized in initializeReadlineInterface()
   private characterService!: ServiceInstances['characterService']; // Initialized in initializeReadlineInterface()
+  private actionValidator!: ServiceInstances['actionValidator']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
   constructor(db: Database, tui?: TUIInterface) {
@@ -328,6 +331,12 @@ export class GameController {
       name: 'ex',
       description: 'Examine an item in detail (alias for "examine")',
       handler: async (args) => await this.handleExamine(args.join(' '))
+    });
+
+    this.commandRouter.addCommand({
+      name: 'rest',
+      description: 'Rest to restore health and energy',
+      handler: async () => await this.handleRest()
     });
 
     this.commandRouter.addCommand({
@@ -899,6 +908,7 @@ export class GameController {
     this.itemService = services.itemService;
     this.equipmentService = services.equipmentService;
     this.characterService = services.characterService;
+    this.actionValidator = services.actionValidator;
     
     // Set up commands
     this.setupCommands();
@@ -973,6 +983,87 @@ export class GameController {
       showAIProgress: () => {},
       displayRoom: () => {}
     };
+  }
+
+  /**
+   * Validate an action before executing it
+   * @param actionType The type of action to validate
+   * @param context Additional context for validation
+   * @returns ValidationResult indicating if action is allowed
+   */
+  private async validateAction(
+    actionType: string,
+    context: Partial<ActionContext> = {}
+  ): Promise<ValidationResult> {
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      if (!session.gameId || !session.roomId) {
+        return {
+          allowed: false,
+          reason: 'No active game session.',
+          hint: 'Start a new game or load an existing one.'
+        };
+      }
+
+      // Get current character
+      const character = await this.characterService.getPlayerCharacter(session.gameId);
+      if (!character) {
+        return {
+          allowed: false,
+          reason: 'Player character not found.',
+          hint: 'This may be a game data issue.'
+        };
+      }
+
+      // Build complete action context
+      const actionContext: ActionContext = {
+        roomId: session.roomId,
+        characterId: character.id,
+        itemId: context.itemId,
+        direction: context.direction,
+        targetId: context.targetId,
+        additionalData: context.additionalData
+      };
+
+      // Validate the action
+      return await this.actionValidator.canPerformAction(
+        actionType,
+        character,
+        actionContext
+      );
+
+    } catch (error) {
+      console.error('Error during action validation:', error);
+      return {
+        allowed: false,
+        reason: 'An error occurred while validating the action.',
+        hint: 'Please try again or report this issue.'
+      };
+    }
+  }
+
+  /**
+   * Execute an action with validation
+   * @param actionType The type of action to perform
+   * @param context Additional context for validation
+   * @param executeAction The function to execute if validation passes
+   */
+  private async executeValidatedAction(
+    actionType: string,
+    context: Partial<ActionContext>,
+    executeAction: () => Promise<void>
+  ): Promise<void> {
+    const validation = await this.validateAction(actionType, context);
+
+    if (!validation.allowed) {
+      this.tui.display(validation.reason || 'Action not allowed', MessageType.ERROR);
+      if (validation.hint) {
+        this.tui.display(`Hint: ${validation.hint}`, MessageType.SYSTEM);
+      }
+      return;
+    }
+
+    await executeAction();
   }
 
   /**
@@ -1271,18 +1362,25 @@ export class GameController {
         return;
       }
 
-      // Transfer item from character inventory to room
-      await this.itemService.transferItemToRoom(
-        characterId,
-        targetItem.item_id,
-        currentRoom.id,
-        1
-      );
+      // Validate the drop action with item context
+      await this.executeValidatedAction(
+        'drop',
+        { itemId: targetItem.item_id },
+        async () => {
+          // Transfer item from character inventory to room
+          await this.itemService.transferItemToRoom(
+            characterId,
+            targetItem.item_id,
+            currentRoom.id,
+            1
+          );
 
-      this.tui.display(`You drop the ${targetItem.item.name}.`, MessageType.NORMAL);
-      
-      // Refresh room display to show updated items
-      await this.lookAround();
+          this.tui.display(`You drop the ${targetItem.item.name}.`, MessageType.NORMAL);
+          
+          // Refresh room display to show updated items
+          await this.lookAround();
+        }
+      );
 
     } catch (error) {
       console.error('Error dropping item:', error);
@@ -1353,6 +1451,42 @@ export class GameController {
   }
 
   /**
+   * Handle rest command - rest to restore health and energy
+   */
+  private async handleRest(): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      // Validate the rest action
+      await this.executeValidatedAction(
+        'rest',
+        {},
+        async () => {
+          // Rest logic - for now just show a message
+          // In the future this would restore health/energy
+          this.tui.display('You rest peacefully, feeling refreshed.', MessageType.NORMAL);
+          this.tui.display('The mystical energy around you provides comfort and restoration.', MessageType.SYSTEM);
+        }
+      );
+
+    } catch (error) {
+      console.error('Error resting:', error);
+      this.tui.showError('Error resting', (error as Error)?.message);
+    }
+  }
+
+  /**
    * Handle equipping an item from inventory
    */
   private async handleEquip(itemName: string): Promise<void> {
@@ -1377,10 +1511,17 @@ export class GameController {
         return;
       }
 
-      // Try to equip the item
-      await this.equipmentService.equipItem(characterId, item.item_id);
-      
-      this.tui.display(`You equipped ${item.item.name}.`, MessageType.SYSTEM);
+      // Validate the equip action with item context
+      await this.executeValidatedAction(
+        'equip',
+        { itemId: item.item_id },
+        async () => {
+          // Try to equip the item
+          await this.equipmentService.equipItem(characterId, item.item_id);
+          
+          this.tui.display(`You equipped ${item.item.name}.`, MessageType.SYSTEM);
+        }
+      );
 
     } catch (error) {
       console.error('Error equipping item:', error);
