@@ -10,6 +10,7 @@ import { RoomGenerationService } from './roomGenerationService';
 import { BackgroundGenerationService } from './backgroundGenerationService';
 import { ItemService } from './itemService';
 import { EquipmentService } from './equipmentService';
+import { ItemGenerationService } from './itemGenerationService';
 
 // Import Prisma services conditionally to avoid import errors when Prisma is not set up
 let GameStateManagerPrisma: any;
@@ -44,6 +45,7 @@ export interface ServiceInstances {
   backgroundGenerationService: BackgroundGenerationService | any;
   itemService: ItemService;
   equipmentService: EquipmentService;
+  itemGenerationService: ItemGenerationService;
 }
 
 /**
@@ -90,12 +92,14 @@ export class ServiceFactory {
     const regionService = new RegionService(db, options);
     const itemService = new ItemService(db);
     const equipmentService = new EquipmentService(db);
+    const itemGenerationService = new ItemGenerationService(db, itemService);
     
-    // Room generation service depends on region service
+    // Room generation service depends on region service and item generation service
     const roomGenerationService = new RoomGenerationService(
       db, 
       grokClient, 
-      regionService, 
+      regionService,
+      itemGenerationService,
       options
     );
     
@@ -113,7 +117,8 @@ export class ServiceFactory {
       roomGenerationService,
       backgroundGenerationService,
       itemService,
-      equipmentService
+      equipmentService,
+      itemGenerationService
     };
   }
 
@@ -134,10 +139,13 @@ export class ServiceFactory {
     const gameManagementService = new GameManagementServicePrisma(tui, options);
     const regionService = new RegionServicePrisma(options);
     // Note: ItemService only has legacy implementation for now
-    const itemService = new ItemService(new Database('placeholder')); // TODO: Create Prisma version
-    const equipmentService = new EquipmentService(new Database('placeholder')); // TODO: Create Prisma version
+    const db = new Database('placeholder'); // TODO: Create Prisma version
+    const itemService = new ItemService(db);
+    const equipmentService = new EquipmentService(db);
+    const itemGenerationService = new ItemGenerationService(db, itemService);
     
     // Room generation service depends on region service
+    // TODO: Update Prisma version to support itemGenerationService
     const roomGenerationService = new RoomGenerationServicePrisma(
       grokClient, 
       regionService, 
@@ -157,7 +165,8 @@ export class ServiceFactory {
       roomGenerationService,
       backgroundGenerationService,
       itemService,
-      equipmentService
+      equipmentService,
+      itemGenerationService
     };
   }
 

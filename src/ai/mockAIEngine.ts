@@ -288,7 +288,70 @@ export class MockAIEngine {
     // Generate connections
     const connections = this.generateConnections(room, context, themeProfile);
 
-    return { name, description, connections };
+    // Generate items for the room
+    const items = this.generateRoomItems(room, themeProfile);
+
+    return { name, description, connections, items };
+  }
+
+  /**
+   * Generate items for a room based on its theme
+   */
+  private generateRoomItems(room: MockRoom, themeProfile: ThemeProfile): Array<{name: string, description: string, isFixed: boolean}> {
+    const items: Array<{name: string, description: string, isFixed: boolean}> = [];
+    
+    // Skip item generation if disabled
+    if (process.env.AI_ITEM_GENERATION_ENABLED === 'false') {
+      return items;
+    }
+
+    // Common items based on room themes
+    const themeItems: Record<string, Array<{name: string, description: string, isFixed: boolean}>> = {
+      'library': [
+        { name: 'Ancient Tome', description: 'A leather-bound book with yellowed pages and strange symbols.', isFixed: false },
+        { name: 'Oak Bookshelf', description: 'Towering shelves filled with countless volumes of forgotten lore.', isFixed: true },
+        { name: 'Reading Desk', description: 'A heavy wooden desk scarred by years of scholarly work.', isFixed: true }
+      ],
+      'garden': [
+        { name: 'Stone Bench', description: 'A weathered bench covered in creeping moss.', isFixed: true },
+        { name: 'Crystal Rose', description: 'A delicate flower that seems to glow with inner light.', isFixed: false },
+        { name: 'Fountain', description: 'An ornate fountain with water that sparkles like starlight.', isFixed: true }
+      ],
+      'chamber': [
+        { name: 'Four-Poster Bed', description: 'An elegant bed draped with faded velvet curtains.', isFixed: true },
+        { name: 'Silver Mirror', description: 'An antique mirror that reflects more than just your image.', isFixed: false },
+        { name: 'Wardrobe', description: 'A massive wardrobe of dark wood with intricate carvings.', isFixed: true }
+      ],
+      'hall': [
+        { name: 'Marble Columns', description: 'Towering pillars of white marble veined with gold.', isFixed: true },
+        { name: 'Tapestry', description: 'An ancient tapestry depicting scenes of a forgotten kingdom.', isFixed: true },
+        { name: 'Ceremonial Sword', description: 'A decorative blade mounted on the wall, its steel still sharp.', isFixed: false }
+      ],
+      'default': [
+        { name: 'Dusty Crate', description: 'A wooden crate covered in years of dust and cobwebs.', isFixed: true },
+        { name: 'Old Lantern', description: 'A brass lantern that might still hold oil.', isFixed: false },
+        { name: 'Stone Pedestal', description: 'A carved pedestal that once held something important.', isFixed: true }
+      ]
+    };
+
+    // Determine which theme items to use
+    let selectedItems = themeItems.default;
+    for (const theme of themeProfile.themes) {
+      if (themeItems[theme]) {
+        selectedItems = themeItems[theme];
+        break;
+      }
+    }
+
+    // Select 1-3 random items
+    const itemCount = Math.floor(this.random() * 3) + 1;
+    const shuffled = [...selectedItems].sort(() => this.random() - 0.5);
+    
+    for (let i = 0; i < Math.min(itemCount, shuffled.length); i++) {
+      items.push(shuffled[i]);
+    }
+
+    return items;
   }
 
   /**

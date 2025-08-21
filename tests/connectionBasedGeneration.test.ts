@@ -172,10 +172,14 @@ describe('Connection-Based Generation Schema', () => {
         buildRoomGenerationPrompt: jest.fn().mockResolvedValue('mansion themed prompt')
       };
 
+      const itemService = new (await import('../src/services/itemService')).ItemService(db);
+      const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+
       const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
+        itemGenerationService,
         { enableDebugLogging: false }
       );
 
@@ -247,10 +251,14 @@ describe('Connection-Based Generation Schema', () => {
         generateRegionDistance: jest.fn().mockReturnValue(1)
       };
 
+      const itemService = new (await import('../src/services/itemService')).ItemService(db);
+      const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+
       const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
+        itemGenerationService,
         { enableDebugLogging: false }
       );
 
@@ -319,10 +327,14 @@ describe('Connection-Based Generation Schema', () => {
         generateRegionDistance: jest.fn().mockReturnValue(1)
       };
 
+      const itemService = new (await import('../src/services/itemService')).ItemService(db);
+      const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+
       const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
+        itemGenerationService,
         { enableDebugLogging: false }
       );
 

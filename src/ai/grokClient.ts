@@ -32,6 +32,11 @@ export interface GeneratedRoom {
     direction: string;        // mechanical direction: "north", "south", etc.
     name: string;            // thematic description: "through the crystal archway"
   }[];
+  items?: {
+    name: string;            // short name: "Brass Lamp"
+    description: string;     // examine text: "An ornate lamp casting warm light"
+    isFixed: boolean;        // true for scenery, false for portable
+  }[];
 }
 
 export interface NPCContext {
@@ -179,10 +184,20 @@ export class GrokClient {
     }
 
     const prompt = this.buildPrompt(context);
+    
+    // Log the prompt being sent
+    const fs = require('fs');
+    fs.appendFileSync('grok_prompts.log', `\n\n========= ROOM GENERATION ${new Date().toISOString()} =========\n${prompt}\n`);
 
     try {
       const response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🤖 Raw Grok API response for room generation:', response);
+      }
       const result = JSON.parse(response);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('📦 Parsed room result:', JSON.stringify(result, null, 2));
+      }
       return result as GeneratedRoom;
     } catch (error) {
       if (process.env.AI_DEBUG_LOGGING === 'true') {
@@ -472,7 +487,15 @@ If the command cannot be interpreted as a valid game action, return null.`;
         this.tokenUsage.cost += inputCost + outputCost;
       }
 
-      return response.data.choices[0].message.content;
+      const content = response.data.choices[0].message.content;
+      
+      // Write Grok responses to a file for debugging
+      const fs = require('fs');
+      const timestamp = new Date().toISOString();
+      const logEntry = `\n\n========= ${timestamp} =========\n${content}\n`;
+      fs.appendFileSync('grok_responses.log', logEntry);
+      
+      return content;
     } catch (error) {
       if (process.env.AI_DEBUG_LOGGING === 'true') {
         if (axios.isAxiosError(error)) {
@@ -511,15 +534,25 @@ REQUIREMENTS:
 - Generate 2-4 total connections with thematic names
 - Make connection names immersive and descriptive
 
-RESPONSE FORMAT:
+RESPONSE FORMAT (ALL FIELDS REQUIRED):
 {
   "name": "Unique Room Name",
   "description": "Room description acknowledging arrival via '${context.connectionName}'",
   "connections": [
     {"direction": "${reverseDirection}", "name": "complementary return connection"},
     {"direction": "north", "name": "thematic connection"}
+  ],
+  "items": [
+    {"name": "Example Item", "description": "What you see when examining it", "isFixed": true}
   ]
-}`;
+}
+
+IMPORTANT: The "items" array is REQUIRED. Always include 1-3 items that fit the room.
+ITEM GUIDELINES:
+- Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
+- Portable items (isFixed: false): small objects, books, tools, treasures
+- Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
+- Items should be objects naturally found in or mentioned in your room description`;
     } else {
       // Standard generation
       return `You are creating a room for Shadow Kingdom text adventure game.
@@ -539,15 +572,25 @@ REQUIREMENTS:
 - CONNECTION COUNT: ${process.env.DEAD_END_CHANCE || '5'}% chance the room has only one connection back where you came from. Otherwise, roll ${process.env.CONNECTION_DICE || '2d4'} for total number of connections (including the return path).
 - DIRECTIONS: Choose cardinal directions (north, south, east, west, up, down) or thematic connections (bookshelf, tapestry, hidden door, etc.)
 
-RESPONSE FORMAT:
+RESPONSE FORMAT (ALL FIELDS REQUIRED):
 {
   "name": "Unique Room Name",
   "description": "Detailed atmospheric description",
   "connections": [
     {"direction": "${reverseDirection}", "name": "return connection"},
     {"direction": "north", "name": "thematic connection"}
+  ],
+  "items": [
+    {"name": "Example Item", "description": "What you see when examining it", "isFixed": true}
   ]
-}`;
+}
+
+IMPORTANT: The "items" array is REQUIRED. Always include 1-3 items that fit the room.
+ITEM GUIDELINES:
+- Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
+- Portable items (isFixed: false): small objects, books, tools, treasures
+- Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
+- Items should be objects naturally found in or mentioned in your room description`;
     }
   }
 

@@ -77,6 +77,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { getNLPConfig, applyEnvironmentOverrides } = await import('./nlp/config');
   const { ItemService } = await import('./services/itemService');
   const { EquipmentService } = await import('./services/equipmentService');
+  const { ItemGenerationService } = await import('./services/itemGenerationService');
   
   // Use persistent database file for session commands
   const dbPath = 'data/db/shadow_kingdom_session.db';
@@ -124,8 +125,12 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
 
-    // Initialize room generation service with region service
-    const roomGenerationService = new RoomGenerationService(db, grokClient, regionService, {
+    // Initialize item services for room generation
+    const itemService = new ItemService(db);
+    const itemGenerationService = new ItemGenerationService(db, itemService);
+
+    // Initialize room generation service with region service and item generation
+    const roomGenerationService = new RoomGenerationService(db, grokClient, regionService, itemGenerationService, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -135,8 +140,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
       disableBackgroundGeneration: true  // Force await mode to prevent database closure issues
     });
     
-    // Initialize item and equipment services
-    const itemService = new ItemService(db);
+    // Initialize equipment service (itemService already created above)
     const equipmentService = new EquipmentService(db);
     
     // Set up game commands with background generation support

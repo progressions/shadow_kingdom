@@ -1,11 +1,15 @@
 import Database from '../src/utils/database';
 import { initializeDatabase } from '../src/utils/initDb';
 import { RoomGenerationService } from '../src/services/roomGenerationService';
+import { ItemService } from '../src/services/itemService';
+import { ItemGenerationService } from '../src/services/itemGenerationService';
 import { GrokClient } from '../src/ai/grokClient';
 import { RegionService } from '../src/services/regionService';
 describe('Duplicate Room Generation Race Condition Fix', () => {
   let db: Database;
   let roomGenerationService: RoomGenerationService;
+  let itemService: ItemService;
+  let itemGenerationService: ItemGenerationService;
   let grokClient: GrokClient;
 
   beforeEach(async () => {
@@ -19,10 +23,14 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
       enableDebugLogging: true 
     });
     
+    itemService = new ItemService(db);
+    itemGenerationService = new ItemGenerationService(db, itemService);
+    
     roomGenerationService = new RoomGenerationService(
       db, 
       grokClient, 
       regionService,
+      itemGenerationService,
       { enableDebugLogging: true }
     );
   });

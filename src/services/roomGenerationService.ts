@@ -3,6 +3,8 @@ import { GrokClient, RegionGenerationContext } from '../ai/grokClient';
 import { Room, Connection, UnfilledConnection } from './gameStateManager';
 import { RegionService } from './regionService';
 import { Region } from '../types/region';
+import { ItemGenerationService } from './itemGenerationService';
+import { ItemService } from './itemService';
 
 export interface RoomGenerationOptions {
   enableDebugLogging?: boolean;
@@ -41,6 +43,7 @@ export class RoomGenerationService {
     private db: Database,
     private grokClient: GrokClient,
     private regionService: RegionService,
+    private itemGenerationService: ItemGenerationService,
     options: RoomGenerationOptions = {}
   ) {
     this.options = {
@@ -206,6 +209,69 @@ export class RoomGenerationService {
         'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
         [context.gameId, uniqueName, newRoom.description, regionId, regionDistance]
       );
+
+      // Generate items for the room if AI provided them
+      if (this.isDebugEnabled()) {
+        console.log(`🔍 Room generation result has ${newRoom.items?.length || 0} items`);
+      }
+      
+      // Always create some items based on the room, even if AI didn't provide them
+      let itemsToCreate = newRoom.items || [];
+      
+      // If no items from AI and item generation is enabled, create some based on the description
+      if (itemsToCreate.length === 0 && process.env.AI_ITEM_GENERATION_ENABLED !== 'false') {
+        // Simple keyword-based item generation
+        const description = newRoom.description.toLowerCase();
+        
+        // Look for common objects in the description
+        if (description.includes('forge') || description.includes('anvil')) {
+          itemsToCreate.push({
+            name: 'Ancient Hammer',
+            description: 'A heavy smithing hammer, worn from centuries of use.',
+            isFixed: false
+          });
+        }
+        if (description.includes('crystal') || description.includes('glow')) {
+          itemsToCreate.push({
+            name: 'Glowing Crystal',
+            description: 'A softly glowing crystal that pulses with inner light.',
+            isFixed: false
+          });
+        }
+        if (description.includes('altar') || description.includes('pedestal')) {
+          itemsToCreate.push({
+            name: 'Stone Altar',
+            description: 'An ancient altar carved from dark stone.',
+            isFixed: true
+          });
+        }
+        if (description.includes('chains') || description.includes('shackles')) {
+          itemsToCreate.push({
+            name: 'Iron Chains',
+            description: 'Heavy iron chains that rattle ominously.',
+            isFixed: true
+          });
+        }
+        if (description.includes('tome') || description.includes('book')) {
+          itemsToCreate.push({
+            name: 'Dusty Tome',
+            description: 'An ancient book filled with cryptic writings.',
+            isFixed: false
+          });
+        }
+        
+        if (this.isDebugEnabled() && itemsToCreate.length > 0) {
+          console.log(`🎲 Generated ${itemsToCreate.length} fallback items based on room description`);
+        }
+      }
+      
+      // Create the items in the database
+      if (itemsToCreate.length > 0) {
+        await this.itemGenerationService.createItemsFromRoomGeneration(
+          roomResult.lastID as number,
+          itemsToCreate
+        );
+      }
 
       // Find the AI-generated thematic name for the outgoing connection
       let outgoingThematicName = context.direction; // fallback to basic direction
@@ -491,6 +557,19 @@ export class RoomGenerationService {
       );
 
       const newRoomId = roomResult.lastID as number;
+
+      // Generate items for the room if AI provided them
+      if (this.isDebugEnabled()) {
+        console.log(`🔍 Room generation result has ${newRoom.items?.length || 0} items`);
+      }
+      
+      // Create items in the database
+      if (newRoom.items && newRoom.items.length > 0) {
+        await this.itemGenerationService.createItemsFromRoomGeneration(
+          newRoomId,
+          newRoom.items
+        );
+      }
 
       // Update the connection to point to the new room (fill the connection)
       // Use a conditional update to prevent race conditions - only update if still unfilled
