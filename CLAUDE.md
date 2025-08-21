@@ -40,6 +40,7 @@ npm run dev -- --cmd "regions" --game-id 1     # Show all regions in game
 - **Visit-to-Lock Mechanism**: Prevents phantom connections, maintains spatial consistency
 - **Connection-Based Generation**: Pre-creates unfilled connections that background generation fills
 - **Region-Based World**: Distance-based probability for thematic coherence (15% base + 12% per distance)
+- **AI Character Generation**: Automatically creates NPCs and enemies during room generation with fallback keyword matching
 
 ## Development Patterns
 

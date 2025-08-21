@@ -174,12 +174,16 @@ describe('Connection-Based Generation Schema', () => {
 
       const itemService = new (await import('../src/services/itemService')).ItemService(db);
       const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+      
+      const characterService = new (await import('../src/services/characterService')).CharacterService(db);
+      const characterGenerationService = new (await import('../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
 
       const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
         itemGenerationService,
+        characterGenerationService,
         { enableDebugLogging: false }
       );
 
@@ -253,12 +257,16 @@ describe('Connection-Based Generation Schema', () => {
 
       const itemService = new (await import('../src/services/itemService')).ItemService(db);
       const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+      
+      const characterService = new (await import('../src/services/characterService')).CharacterService(db);
+      const characterGenerationService = new (await import('../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
 
       const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
         itemGenerationService,
+        characterGenerationService,
         { enableDebugLogging: false }
       );
 
@@ -329,12 +337,16 @@ describe('Connection-Based Generation Schema', () => {
 
       const itemService = new (await import('../src/services/itemService')).ItemService(db);
       const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+      
+      const characterService = new (await import('../src/services/characterService')).CharacterService(db);
+      const characterGenerationService = new (await import('../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
 
       const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
         itemGenerationService,
+        characterGenerationService,
         { enableDebugLogging: false }
       );
 

@@ -7,6 +7,8 @@ import { ItemGenerationService } from '../src/services/itemGenerationService';
 import { ItemService } from '../src/services/itemService';
 import { RoomGenerationService } from '../src/services/roomGenerationService';
 import { RegionService } from '../src/services/regionService';
+import { CharacterService } from '../src/services/characterService';
+import { CharacterGenerationService } from '../src/services/characterGenerationService';
 import { GrokClient } from '../src/ai/grokClient';
 import { ItemType } from '../src/types/item';
 import { initializeDatabase } from '../src/utils/initDb';
@@ -29,11 +31,14 @@ describe('AI Item Generation', () => {
     itemGenerationService = new ItemGenerationService(db, itemService);
     regionService = new RegionService(db);
     grokClient = new GrokClient({ mockMode: true }); // Use mock mode for testing
+    const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService);
     roomGenerationService = new RoomGenerationService(
       db,
       grokClient,
       regionService,
-      itemGenerationService
+      itemGenerationService,
+      characterGenerationService
     );
     
     // Create a test game and initial room

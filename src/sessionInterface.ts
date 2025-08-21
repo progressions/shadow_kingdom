@@ -78,6 +78,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { ItemService } = await import('./services/itemService');
   const { EquipmentService } = await import('./services/equipmentService');
   const { ItemGenerationService } = await import('./services/itemGenerationService');
+  const { CharacterGenerationService } = await import('./services/characterGenerationService');
   
   // Use persistent database file for session commands
   const dbPath = 'data/db/shadow_kingdom_session.db';
@@ -129,8 +130,13 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     const itemService = new ItemService(db);
     const itemGenerationService = new ItemGenerationService(db, itemService);
 
-    // Initialize room generation service with region service and item generation
-    const roomGenerationService = new RoomGenerationService(db, grokClient, regionService, itemGenerationService, {
+    // Initialize character services for room generation
+    const { CharacterService } = await import('./services/characterService');
+    const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService);
+
+    // Initialize room generation service with region service and generation services
+    const roomGenerationService = new RoomGenerationService(db, grokClient, regionService, itemGenerationService, characterGenerationService, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -143,9 +149,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     // Initialize equipment service (itemService already created above)
     const equipmentService = new EquipmentService(db);
     
-    // Initialize character service
-    const { CharacterService } = await import('./services/characterService');
-    const characterService = new CharacterService(db);
+    // Character service already initialized above for room generation
     
     // Set up game commands with background generation support
     await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService);
@@ -205,6 +209,20 @@ async function setupGameCommands(
         await backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
 
         roomDisplayService.displayRoom(room, connections);
+        
+        // Display characters in the room
+        const roomCharacters = await characterService.getRoomCharacters(room.id, 'player');
+        if (roomCharacters.length > 0) {
+          console.log(''); // Add spacing
+          console.log('Characters present:');
+          roomCharacters.forEach((character: any) => {
+            const typeText = character.type === 'enemy' ? ' (hostile)' : '';
+            console.log(`• ${character.name}${typeText}`);
+            if (character.description) {
+              console.log(`  ${character.description}`);
+            }
+          });
+        }
       } else {
         console.log('You are nowhere to be found.');
       }
@@ -247,6 +265,20 @@ async function setupGameCommands(
           await backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
 
           roomDisplayService.displayRoom(room, connections);
+          
+          // Display characters in the room
+          const roomCharacters = await characterService.getRoomCharacters(room.id, 'player');
+          if (roomCharacters.length > 0) {
+            console.log(''); // Add spacing
+            console.log('Characters present:');
+            roomCharacters.forEach((character: any) => {
+              const typeText = character.type === 'enemy' ? ' (hostile)' : '';
+              console.log(`• ${character.name}${typeText}`);
+              if (character.description) {
+                console.log(`  ${character.description}`);
+              }
+            });
+          }
         }
       } catch (error) {
         console.error('Error moving:', error);

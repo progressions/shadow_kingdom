@@ -179,6 +179,9 @@ async createConnectionAtomic(fromRoomId: number, direction: string): Promise<num
 
 ## Testing Strategy
 
+### New Game Setup
+**Important**: When implementing this fix, ensure `createGameWithRooms()` in `src/utils/initDb.ts` creates several unfilled connections from starting rooms to enable immediate testing of duplicate generation prevention.
+
 ### Manual Testing
 1. Rapid movement commands in same direction
 2. Long AI generation with impatient user behavior

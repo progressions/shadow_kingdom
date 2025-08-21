@@ -37,6 +37,7 @@ export interface GeneratedRoom {
     description: string;     // examine text: "An ornate lamp casting warm light"
     isFixed: boolean;        // true for scenery, false for portable
   }[];
+  characters?: GeneratedCharacter[]; // NPCs and enemies that inhabit this room
 }
 
 export interface NPCContext {
@@ -51,6 +52,24 @@ export interface GeneratedNPC {
   description: string;
   personality: string;
   initialDialogue?: string;
+}
+
+export interface GeneratedCharacter {
+  name: string;
+  description: string;
+  type: 'npc' | 'enemy';           // Character type for database
+  personality?: string;             // NPC personality/behavior
+  level?: number;                   // Enemy level/difficulty
+  attributes?: {                    // Optional custom attributes
+    strength?: number;
+    dexterity?: number;
+    constitution?: number;
+    intelligence?: number;
+    wisdom?: number;
+    charisma?: number;
+  };
+  initialDialogue?: string;         // First thing NPC says
+  isHostile?: boolean;             // Whether enemy attacks on sight
 }
 
 export interface DialogueContext {
@@ -544,6 +563,9 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
   ],
   "items": [
     {"name": "Example Item", "description": "What you see when examining it", "isFixed": true}
+  ],
+  "characters": [
+    {"name": "Character Name", "description": "Character appearance and demeanor", "type": "npc", "personality": "How they act", "initialDialogue": "First thing they say"}
   ]
 }
 
@@ -552,7 +574,15 @@ ITEM GUIDELINES:
 - Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
 - Portable items (isFixed: false): small objects, books, tools, treasures
 - Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
-- Items should be objects naturally found in or mentioned in your room description`;
+- Items should be objects naturally found in or mentioned in your room description
+
+CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
+- "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
+- Characters should fit the room's theme and atmosphere naturally
+- NPCs can provide information, services, or atmospheric storytelling
+- "personality": short description like "Scholarly and cryptic" or "Gruff but helpful"
+- "initialDialogue": What they say when first met (one sentence)
+- Only include characters if they genuinely enhance the room experience`;
     } else {
       // Standard generation
       return `You are creating a room for Shadow Kingdom text adventure game.
@@ -582,6 +612,9 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
   ],
   "items": [
     {"name": "Example Item", "description": "What you see when examining it", "isFixed": true}
+  ],
+  "characters": [
+    {"name": "Character Name", "description": "Character appearance and demeanor", "type": "npc", "personality": "How they act", "initialDialogue": "First thing they say"}
   ]
 }
 
@@ -590,7 +623,15 @@ ITEM GUIDELINES:
 - Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
 - Portable items (isFixed: false): small objects, books, tools, treasures
 - Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
-- Items should be objects naturally found in or mentioned in your room description`;
+- Items should be objects naturally found in or mentioned in your room description
+
+CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
+- "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
+- Characters should fit the room's theme and atmosphere naturally
+- NPCs can provide information, services, or atmospheric storytelling
+- "personality": short description like "Scholarly and cryptic" or "Gruff but helpful"
+- "initialDialogue": What they say when first met (one sentence)
+- Only include characters if they genuinely enhance the room experience`;
     }
   }
 

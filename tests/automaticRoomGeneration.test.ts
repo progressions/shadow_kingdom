@@ -8,6 +8,8 @@ import { GrokClient } from '../src/ai/grokClient';
 import { UnfilledConnection } from '../src/services/gameStateManager';
 import { ItemService } from '../src/services/itemService';
 import { ItemGenerationService } from '../src/services/itemGenerationService';
+import { CharacterService } from '../src/services/characterService';
+import { CharacterGenerationService } from '../src/services/characterGenerationService';
 
 describe('Automatic Room Generation on Entry', () => {
   let db: Database;
@@ -31,11 +33,14 @@ describe('Automatic Room Generation on Entry', () => {
     gameStateManager = new GameStateManager(db, { enableDebugLogging: false });
     const itemService = new ItemService(db);
     const itemGenerationService = new ItemGenerationService(db, itemService);
+    const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService, { enableDebugLogging: false });
     roomGenerationService = new RoomGenerationService(
       db,
       grokClient,
       regionService,
       itemGenerationService,
+      characterGenerationService,
       { enableDebugLogging: false }
     );
     backgroundGenerationService = new BackgroundGenerationService(

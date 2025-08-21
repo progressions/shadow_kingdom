@@ -12,6 +12,7 @@ import { ItemService } from './itemService';
 import { EquipmentService } from './equipmentService';
 import { ItemGenerationService } from './itemGenerationService';
 import { CharacterService } from './characterService';
+import { CharacterGenerationService } from './characterGenerationService';
 import { ActionValidator } from './actionValidator';
 import { HealthService } from './healthService';
 import { EventTriggerService } from './eventTriggerService';
@@ -51,6 +52,7 @@ export interface ServiceInstances {
   equipmentService: EquipmentService;
   itemGenerationService: ItemGenerationService;
   characterService: CharacterService;
+  characterGenerationService: CharacterGenerationService;
   actionValidator: ActionValidator;
   healthService: HealthService;
   eventTriggerService: EventTriggerService;
@@ -102,6 +104,7 @@ export class ServiceFactory {
     const equipmentService = new EquipmentService(db);
     const itemGenerationService = new ItemGenerationService(db, itemService);
     const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService);
     const actionValidator = new ActionValidator(db, characterService);
     const healthService = new HealthService(db);
     const eventTriggerService = new EventTriggerService(db, tui);
@@ -112,6 +115,7 @@ export class ServiceFactory {
       grokClient, 
       regionService,
       itemGenerationService,
+      characterGenerationService,
       options
     );
     
@@ -132,6 +136,7 @@ export class ServiceFactory {
       equipmentService,
       itemGenerationService,
       characterService,
+      characterGenerationService,
       actionValidator,
       healthService,
       eventTriggerService
@@ -160,12 +165,13 @@ export class ServiceFactory {
     const equipmentService = new EquipmentService(db);
     const itemGenerationService = new ItemGenerationService(db, itemService);
     const characterService = new CharacterService(db);
+    const characterGenerationService = new CharacterGenerationService(db, characterService);
     const actionValidator = new ActionValidator(db, characterService);
     const healthService = new HealthService(db);
     const eventTriggerService = new EventTriggerService(db, tui);
     
     // Room generation service depends on region service
-    // TODO: Update Prisma version to support itemGenerationService
+    // TODO: Update Prisma version to support itemGenerationService and characterGenerationService
     const roomGenerationService = new RoomGenerationServicePrisma(
       grokClient, 
       regionService, 
@@ -188,6 +194,7 @@ export class ServiceFactory {
       equipmentService,
       itemGenerationService,
       characterService,
+      characterGenerationService,
       actionValidator,
       healthService,
       eventTriggerService

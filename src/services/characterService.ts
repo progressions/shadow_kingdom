@@ -46,13 +46,14 @@ export class CharacterService {
 
     const result = await this.db.run(`
       INSERT INTO characters (
-        game_id, name, type, current_room_id,
+        game_id, name, description, type, current_room_id,
         strength, dexterity, intelligence, constitution, wisdom, charisma,
         max_health, current_health
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       data.game_id,
       data.name,
+      data.description ?? null,
       data.type ?? CharacterType.PLAYER,
       data.current_room_id ?? null,
       attributes.strength,
