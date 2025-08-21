@@ -32,6 +32,7 @@ export interface Character {
   charisma: number;
   max_health: number | null;
   current_health: number | null;
+  is_dead?: boolean | null;  // Death state for action validation
   created_at: string;
 }
 

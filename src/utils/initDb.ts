@@ -141,6 +141,54 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       )
     `);
 
+    // Create action validation tables (for future phases)
+    
+    // Generic conditions table for flexible validation
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS action_conditions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL,      -- 'room', 'connection', 'item', 'character'
+        entity_id INTEGER NOT NULL,     -- ID of the entity
+        action_type TEXT NOT NULL,      -- 'move', 'rest', 'pickup', 'drop', 'use', 'equip'
+        condition_type TEXT NOT NULL,   -- 'hostile_present', 'item_required', 'item_forbidden', 'state_check'
+        condition_data TEXT,             -- JSON data for condition specifics
+        failure_message TEXT NOT NULL,  -- Message shown when condition blocks action
+        hint_message TEXT,               -- Optional hint for overcoming the blocker
+        priority INTEGER DEFAULT 0,      -- Order of checking (lower = checked first)
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Track hostile entities that block actions
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS room_hostiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id INTEGER NOT NULL,
+        character_id INTEGER NOT NULL,
+        blocks_rest BOOLEAN DEFAULT TRUE,
+        blocks_movement TEXT,            -- JSON array of blocked directions
+        threat_level INTEGER DEFAULT 1,  -- How threatening (affects what they block)
+        threat_message TEXT,              -- Custom message for this hostile
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Item curses and restrictions
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS item_curses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL UNIQUE,
+        curse_type TEXT NOT NULL,        -- 'sticky', 'heavy', 'disturbing', 'blocking'
+        prevents_actions TEXT NOT NULL,  -- JSON array ['drop', 'unequip', 'rest', etc.]
+        curse_message TEXT NOT NULL,     -- Message explaining the curse
+        removal_condition TEXT,           -- How to remove curse (future feature)
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    `);
+
     // Migration: Add equipment_slot column if it doesn't exist
     try {
       await db.run(`ALTER TABLE items ADD COLUMN equipment_slot TEXT`);
@@ -151,6 +199,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     // Migration: Add is_fixed column if it doesn't exist
     try {
       await db.run(`ALTER TABLE items ADD COLUMN is_fixed BOOLEAN DEFAULT FALSE`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
+    // Migration: Add is_dead column to characters if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE characters ADD COLUMN is_dead BOOLEAN DEFAULT FALSE`);
     } catch (error) {
       // Column already exists, ignore error
     }
@@ -225,6 +280,27 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_room_items_item 
       ON room_items(item_id)
+    `);
+
+    // Create indexes for action validation tables
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_action_conditions_entity 
+      ON action_conditions(entity_type, entity_id)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_action_conditions_action 
+      ON action_conditions(action_type)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_room_hostiles_room 
+      ON room_hostiles(room_id)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_item_curses_item 
+      ON item_curses(item_id)
     `);
 
     // Run migrations for all databases, but skip the complex table recreation for in-memory
@@ -747,35 +823,49 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, entranceId, playerId]
     );
 
-    // Place starter items in the Grand Entrance Hall
-    // Find the Iron Sword item ID
-    const ironSword = await db.get<any>(
-      'SELECT id FROM items WHERE name = ?',
-      ['Iron Sword']
-    );
-    if (ironSword) {
-      await db.run(
-        'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
-        [entranceId, ironSword.id, 1]
-      );
+    // Place starter items in all starter rooms
+    const starterRoomItems = [
+      { roomId: entranceId, itemNames: ['Iron Sword', 'Ancient Stone Pedestal'], roomName: 'Grand Entrance Hall' },
+      { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs'], roomName: 'Scholar\'s Library' },
+      { roomId: gardenId, itemNames: ['Health Potion', 'Bread'], roomName: 'Moonlit Courtyard Garden' },
+      { roomId: towerStairsId, itemNames: ['Wooden Staff'], roomName: 'Winding Tower Stairs' },
+      { roomId: cryptEntranceId, itemNames: ['Iron Helmet', 'Gold Coins'], roomName: 'Ancient Crypt Entrance' },
+      { roomId: observatoryStepsId, itemNames: ['Leather Boots', 'Leather Armor'], roomName: 'Observatory Steps' }
+    ];
+
+    let totalItemsPlaced = 0;
+    const placedItems: string[] = [];
+
+    for (const room of starterRoomItems) {
+      for (const itemName of room.itemNames) {
+        const item = await db.get<any>(
+          'SELECT id FROM items WHERE name = ?',
+          [itemName]
+        );
+        if (item) {
+          await db.run(
+            'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
+            [room.roomId, item.id, 1]
+          );
+          totalItemsPlaced++;
+          placedItems.push(`${itemName} in ${room.roomName}`);
+          
+          if (tui) {
+            tui.display(`Placed ${itemName} in ${room.roomName}`, MessageType.SYSTEM);
+          }
+        } else if (tui) {
+          tui.display(`Warning: Item "${itemName}" not found for placement`, MessageType.ERROR);
+        }
+      }
     }
 
-    // Place the Ancient Stone Pedestal (fixed item) in the Grand Entrance Hall
-    const pedestal = await db.get<any>(
-      'SELECT id FROM items WHERE name = ?',
-      ['Ancient Stone Pedestal']
-    );
-    if (pedestal) {
-      await db.run(
-        'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
-        [entranceId, pedestal.id, 1]
-      );
-    }
+    // Add validations to specific starter items
+    await addStarterItemValidations(db, gameId, entranceId, tui);
 
     if (tui) {
       tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);
-      tui.display('Iron Sword placed in Grand Entrance Hall', MessageType.SYSTEM);
-      tui.display('Ancient Stone Pedestal placed in Grand Entrance Hall', MessageType.SYSTEM);
+      tui.display(`Placed ${totalItemsPlaced} items across ${starterRoomItems.length} starter rooms`, MessageType.SYSTEM);
+      tui.display('Added validations to 3 starter items', MessageType.SYSTEM);
     }
     return gameId;
   } catch (error) {
@@ -783,6 +873,93 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       tui.display(`Error creating game with rooms: ${error}`, MessageType.ERROR);
     }
     throw error;
+  }
+}
+
+/**
+ * Add validations to specific starter items to demonstrate the validation system
+ * @param db Database instance
+ * @param gameId Game ID for context
+ * @param entranceId Grand Entrance Hall room ID
+ * @param tui Optional TUI interface for output
+ */
+async function addStarterItemValidations(db: Database, gameId: number, entranceId: number, tui?: TUIInterface): Promise<void> {
+  try {
+    // 1. Ancient Key - Add "sticky" curse (can't be dropped)
+    const ancientKey = await db.get<any>('SELECT id FROM items WHERE name = ?', ['Ancient Key']);
+    if (ancientKey) {
+      // Check if curse already exists
+      const existingCurse = await db.get<any>('SELECT id FROM item_curses WHERE item_id = ?', [ancientKey.id]);
+      if (!existingCurse) {
+        await db.run(`
+          INSERT INTO item_curses (item_id, curse_type, prevents_actions, curse_message)
+          VALUES (?, ?, ?, ?)
+        `, [
+          ancientKey.id,
+          'sticky',
+          '["drop"]',
+          'The Ancient Key seems bound to you by mysterious forces. You cannot drop it.'
+        ]);
+        
+        if (tui) {
+          tui.display('Added sticky curse to Ancient Key (prevents dropping)', MessageType.SYSTEM);
+        }
+      } else if (tui) {
+        tui.display('Ancient Key already has a curse', MessageType.SYSTEM);
+      }
+    }
+
+    // 2. Ancient Stone Pedestal - Add action condition (must be present to rest in Grand Entrance Hall)
+    const stonePedestal = await db.get<any>('SELECT id FROM items WHERE name = ?', ['Ancient Stone Pedestal']);
+    if (stonePedestal) {
+      await db.run(`
+        INSERT INTO action_conditions (entity_type, entity_id, action_type, condition_type, condition_data, failure_message, hint_message, priority)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        'room',
+        entranceId,
+        'rest',
+        'item_in_room',
+        `{"item_id": ${stonePedestal.id}, "required": true}`,
+        'The mystical energy from the Ancient Stone Pedestal is required for safe rest in this hall.',
+        'Find the Ancient Stone Pedestal to rest peacefully here.',
+        1
+      ]);
+      
+      if (tui) {
+        tui.display('Added rest requirement for Ancient Stone Pedestal in Grand Entrance Hall', MessageType.SYSTEM);
+      }
+    }
+
+    // 3. Iron Helmet - Add "heavy" curse (prevents rest when equipped)
+    const ironHelmet = await db.get<any>('SELECT id FROM items WHERE name = ?', ['Iron Helmet']);
+    if (ironHelmet) {
+      // Check if curse already exists
+      const existingCurse = await db.get<any>('SELECT id FROM item_curses WHERE item_id = ?', [ironHelmet.id]);
+      if (!existingCurse) {
+        await db.run(`
+          INSERT INTO item_curses (item_id, curse_type, prevents_actions, curse_message)
+          VALUES (?, ?, ?, ?)
+        `, [
+          ironHelmet.id,
+          'heavy',
+          '["rest"]',
+          'The Iron Helmet is too heavy and uncomfortable to rest while wearing. You must remove it first.'
+        ]);
+        
+        if (tui) {
+          tui.display('Added heavy curse to Iron Helmet (prevents rest when equipped)', MessageType.SYSTEM);
+        }
+      } else if (tui) {
+        tui.display('Iron Helmet already has a curse', MessageType.SYSTEM);
+      }
+    }
+
+  } catch (error) {
+    if (tui) {
+      tui.display(`Error adding starter item validations: ${error}`, MessageType.ERROR);
+    }
+    // Don't throw - validations are optional enhancements
   }
 }
 
