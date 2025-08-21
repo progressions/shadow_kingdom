@@ -8,7 +8,7 @@
 import Database from '../../src/utils/database';
 import { initializeDatabase } from '../../src/utils/initDb';
 import { ItemService } from '../../src/services/itemService';
-import { ItemType } from '../../src/types/item';
+import { ItemType, EquipmentSlot } from '../../src/types/item';
 
 describe('ItemService', () => {
   let db: Database;
@@ -1821,6 +1821,74 @@ describe('ItemService', () => {
         // Ensure this doesn't break the examination display
         expect(consumable!.name).toBe('Health Potion');
       });
+    });
+  });
+
+  // ============================================================================
+  // PHASE 10: EQUIPMENT SLOT SYSTEM TESTS
+  // ============================================================================
+
+  describe('Phase 10: Equipment Slot System', () => {
+    test('should create items with equipment slots', async () => {
+      const swordId = await itemService.createItem({
+        name: 'Test Sword',
+        description: 'A test sword',
+        type: ItemType.WEAPON,
+        weight: 2.0,
+        value: 100,
+        stackable: false,
+        max_stack: 1,
+        weapon_damage: '1d8',
+        armor_rating: 0,
+        equipment_slot: EquipmentSlot.HAND
+      });
+
+      const helmetId = await itemService.createItem({
+        name: 'Test Helmet',
+        description: 'A test helmet',
+        type: ItemType.ARMOR,
+        weight: 3.0,
+        value: 75,
+        stackable: false,
+        max_stack: 1,
+        armor_rating: 1,
+        equipment_slot: EquipmentSlot.HEAD
+      });
+
+      const sword = await itemService.getItem(swordId);
+      const helmet = await itemService.getItem(helmetId);
+
+      expect(sword!.equipment_slot).toBe(EquipmentSlot.HAND);
+      expect(helmet!.equipment_slot).toBe(EquipmentSlot.HEAD);
+    });
+
+    test('should handle items without equipment slots', async () => {
+      const potionId = await itemService.createItem({
+        name: 'Test Potion',
+        description: 'A test potion',
+        type: ItemType.CONSUMABLE,
+        weight: 0.5,
+        value: 25,
+        stackable: true,
+        max_stack: 10
+      });
+
+      const potion = await itemService.getItem(potionId);
+      expect(potion!.equipment_slot).toBeNull();
+    });
+
+    test('should have seed items with correct equipment slots', async () => {
+      const items = await itemService.listItems();
+      
+      const ironSword = items.find(item => item.name === 'Iron Sword');
+      const leatherArmor = items.find(item => item.name === 'Leather Armor');
+      const ironHelmet = items.find(item => item.name === 'Iron Helmet');
+      const leatherBoots = items.find(item => item.name === 'Leather Boots');
+      
+      expect(ironSword?.equipment_slot).toBe(EquipmentSlot.HAND);
+      expect(leatherArmor?.equipment_slot).toBe(EquipmentSlot.BODY);
+      expect(ironHelmet?.equipment_slot).toBe(EquipmentSlot.HEAD);
+      expect(leatherBoots?.equipment_slot).toBe(EquipmentSlot.FOOT);
     });
   });
 });

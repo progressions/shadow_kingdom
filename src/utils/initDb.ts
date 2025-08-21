@@ -83,6 +83,7 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         max_stack INTEGER DEFAULT 1,
         weapon_damage TEXT, -- e.g., '1d6+1'
         armor_rating INTEGER DEFAULT 0,
+        equipment_slot TEXT, -- hand, head, body, foot
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -114,6 +115,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
       )
     `);
+
+    // Migration: Add equipment_slot column if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE items ADD COLUMN equipment_slot TEXT`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
 
     // Create indexes for faster lookups
     await db.run(`
