@@ -31,9 +31,9 @@ export class ItemService {
    */
   async createItem(item: CreateItemData): Promise<number> {
     const result = await this.db.run(`
-      INSERT INTO items (name, description, type, weight, value, stackable, max_stack, weapon_damage, armor_rating)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [item.name, item.description, item.type, item.weight, item.value, item.stackable, item.max_stack, item.weapon_damage, item.armor_rating]);
+      INSERT INTO items (name, description, type, weight, value, stackable, max_stack, weapon_damage, armor_rating, equipment_slot)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [item.name, item.description, item.type, item.weight, item.value, item.stackable, item.max_stack, item.weapon_damage, item.armor_rating, item.equipment_slot]);
     
     return result.lastID!;
   }

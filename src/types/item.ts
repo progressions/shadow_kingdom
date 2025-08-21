@@ -13,6 +13,13 @@ export enum ItemType {
   QUEST = 'quest'
 }
 
+export enum EquipmentSlot {
+  HAND = 'hand',      // weapons, tools
+  HEAD = 'head',      // helmets, hats
+  BODY = 'body',      // armor, clothing
+  FOOT = 'foot'       // boots, shoes
+}
+
 export interface Item {
   id: number;
   name: string;
@@ -24,6 +31,7 @@ export interface Item {
   max_stack: number;
   weapon_damage?: string;
   armor_rating?: number;
+  equipment_slot?: EquipmentSlot;
   created_at: string;
 }
 
@@ -47,19 +55,6 @@ export interface RoomItem {
   created_at: string;
 }
 
-// Equipment slot types for future use
-export enum EquipmentSlot {
-  MAIN_HAND = 'main_hand',
-  OFF_HAND = 'off_hand', 
-  ARMOR = 'armor',
-  HELMET = 'helmet',
-  BOOTS = 'boots',
-  GLOVES = 'gloves',
-  RING_1 = 'ring_1',
-  RING_2 = 'ring_2',
-  AMULET = 'amulet',
-  CLOAK = 'cloak'
-}
 
 // Carrying capacity calculation types
 export interface CarryingCapacityInfo {

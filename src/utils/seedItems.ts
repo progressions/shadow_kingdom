@@ -8,7 +8,7 @@
 
 import Database from './database';
 import { ItemService } from '../services/itemService';
-import { ItemType, CreateItemData } from '../types/item';
+import { ItemType, EquipmentSlot, CreateItemData } from '../types/item';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 
@@ -24,7 +24,8 @@ const SEED_ITEMS: CreateItemData[] = [
     value: 100,
     stackable: false,
     max_stack: 1,
-    weapon_damage: '1d8+1'
+    weapon_damage: '1d8+1',
+    equipment_slot: EquipmentSlot.HAND
   },
   {
     name: 'Leather Armor',
@@ -34,7 +35,8 @@ const SEED_ITEMS: CreateItemData[] = [
     value: 150,
     stackable: false,
     max_stack: 1,
-    armor_rating: 2
+    armor_rating: 2,
+    equipment_slot: EquipmentSlot.BODY
   },
   {
     name: 'Health Potion',
@@ -80,7 +82,8 @@ const SEED_ITEMS: CreateItemData[] = [
     value: 50,
     stackable: false,
     max_stack: 1,
-    weapon_damage: '1d6'
+    weapon_damage: '1d6',
+    equipment_slot: EquipmentSlot.HAND
   },
   {
     name: 'Healing Herbs',
@@ -90,6 +93,28 @@ const SEED_ITEMS: CreateItemData[] = [
     value: 10,
     stackable: true,
     max_stack: 50
+  },
+  {
+    name: 'Iron Helmet',
+    description: 'A solid iron helmet that protects the head. The metal is dented from many battles.',
+    type: ItemType.ARMOR,
+    weight: 3.0,
+    value: 75,
+    stackable: false,
+    max_stack: 1,
+    armor_rating: 1,
+    equipment_slot: EquipmentSlot.HEAD
+  },
+  {
+    name: 'Leather Boots',
+    description: 'Sturdy leather boots with thick soles, perfect for long journeys.',
+    type: ItemType.ARMOR,
+    weight: 2.0,
+    value: 50,
+    stackable: false,
+    max_stack: 1,
+    armor_rating: 1,
+    equipment_slot: EquipmentSlot.FOOT
   }
 ];
 
