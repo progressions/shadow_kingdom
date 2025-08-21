@@ -50,9 +50,11 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         game_id INTEGER NOT NULL UNIQUE,
         current_room_id INTEGER NOT NULL,
-        player_name TEXT,
+        character_id INTEGER, -- reference to the player character
+        player_name TEXT, -- legacy field, will be replaced by character.name
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-        FOREIGN KEY (current_room_id) REFERENCES rooms(id)
+        FOREIGN KEY (current_room_id) REFERENCES rooms(id),
+        FOREIGN KEY (character_id) REFERENCES characters(id)
       )
     `);
 
@@ -67,6 +69,28 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         center_room_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create characters table (unified for players, NPCs, and enemies)
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS characters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        game_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT DEFAULT 'player', -- 'player', 'npc', 'enemy'
+        current_room_id INTEGER, -- where this character is located (NULL for player uses game_state)
+        strength INTEGER DEFAULT 10,
+        dexterity INTEGER DEFAULT 10,
+        intelligence INTEGER DEFAULT 10,
+        constitution INTEGER DEFAULT 10,
+        wisdom INTEGER DEFAULT 10,
+        charisma INTEGER DEFAULT 10,
+        max_health INTEGER, -- calculated from constitution, NULL = not calculated yet
+        current_health INTEGER, -- current HP, NULL = full health
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (current_room_id) REFERENCES rooms(id)
       )
     `);
 
@@ -166,6 +190,22 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       ON connections(game_id, from_room_id, to_room_id) WHERE to_room_id IS NOT NULL
     `);
 
+    // Create indexes for character tables
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_characters_game_id 
+      ON characters(game_id)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_characters_type 
+      ON characters(game_id, type)
+    `);
+
+    await db.run(`
+      CREATE INDEX IF NOT EXISTS idx_characters_room 
+      ON characters(current_room_id) WHERE current_room_id IS NOT NULL
+    `);
+
     // Create indexes for item tables
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_character_inventory_character 
@@ -199,6 +239,9 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
 
     // Add processing column to connections table for auto-generation
     await ensureProcessingColumn(db, tui);
+
+    // Ensure character_id column exists in game_state table
+    await ensureCharacterIdColumn(db, tui);
 
     // Seed items table with initial items if empty
     await seedItems(db, tui);
@@ -683,10 +726,25 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, observatoryStepsId, null, 'east', 'through the starlit eastern corridor']
     );
 
+    // Create default player character
+    const playerResult = await db.run(`
+      INSERT INTO characters (
+        game_id, name, type, current_room_id,
+        strength, dexterity, intelligence, constitution, wisdom, charisma,
+        max_health, current_health
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      gameId, 'Hero', 'player', null, // current_room_id is null for player (uses game_state)
+      10, 10, 10, 10, 10, 10, // Default attributes
+      10, 10 // max_health and current_health
+    ]);
+
+    const playerId = playerResult.lastID;
+
     // Create initial game state (player starts in entrance hall)
     await db.run(
-      'INSERT INTO game_state (game_id, current_room_id) VALUES (?, ?)',
-      [gameId, entranceId]
+      'INSERT INTO game_state (game_id, current_room_id, character_id) VALUES (?, ?, ?)',
+      [gameId, entranceId, playerId]
     );
 
     // Place starter items in the Grand Entrance Hall
@@ -749,6 +807,35 @@ export async function seedDatabase(db: Database, tui?: TUIInterface): Promise<vo
     // Create a default game with the initial world
     await createGameWithRooms(db, 'Demo Game');
   } catch (error) {
+    throw error;
+  }
+}
+
+async function ensureCharacterIdColumn(db: Database, tui?: TUIInterface): Promise<void> {
+  try {
+    // Skip complex column additions for in-memory databases (they're already created with correct schema)
+    if (db.getDbPath() === ':memory:') {
+      return;
+    }
+
+    // Check if character_id column exists in game_state table
+    const characterIdExists = await db.get<{ count: number }>(`
+      SELECT COUNT(*) as count FROM pragma_table_info('game_state') 
+      WHERE name = 'character_id'
+    `);
+
+    if (!characterIdExists || characterIdExists.count === 0) {
+      // Add the character_id column
+      await db.run('ALTER TABLE game_state ADD COLUMN character_id INTEGER');
+      
+      if (tui) {
+        tui.display('Added character_id column to game_state table', MessageType.SYSTEM);
+      }
+    }
+  } catch (error) {
+    if (tui) {
+      tui.display(`Error ensuring character_id column: ${error}`, MessageType.ERROR);
+    }
     throw error;
   }
 }

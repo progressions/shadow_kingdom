@@ -143,8 +143,12 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     // Initialize equipment service (itemService already created above)
     const equipmentService = new EquipmentService(db);
     
+    // Initialize character service
+    const { CharacterService } = await import('./services/characterService');
+    const characterService = new CharacterService(db);
+    
     // Set up game commands with background generation support
-    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService);
+    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService);
     
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
@@ -175,7 +179,8 @@ async function setupGameCommands(
   backgroundGenerationService: any,
   db: any,
   itemService: any,
-  equipmentService: any
+  equipmentService: any,
+  characterService: any
 ): Promise<void> {
   // Add the basic game commands for session interface
   commandRouter.addGameCommand({
@@ -496,6 +501,90 @@ async function setupGameCommands(
       const inventoryCommand = commands.get('inventory');
       if (inventoryCommand) {
         await inventoryCommand.handler([]);
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'stats',
+    description: 'Show your character attributes and status',
+    handler: async () => {
+      try {
+        const session = gameStateManager.getCurrentSession();
+        if (!session.gameId) {
+          console.log('No active game session.');
+          return;
+        }
+
+        // Get character ID from game state
+        const gameState = await gameStateManager.getGameState(session.gameId);
+        if (!gameState || !gameState.character_id) {
+          console.log('No character found for this game.');
+          return;
+        }
+
+        // Get character information
+        const character = await characterService.getCharacter(gameState.character_id);
+        if (!character) {
+          console.log('Character not found.');
+          return;
+        }
+
+        // Get character health
+        const health = await characterService.getCharacterHealth(character.id);
+        if (!health) {
+          console.log('Could not retrieve character health.');
+          return;
+        }
+
+        // Get character modifiers
+        const modifiers = characterService.getCharacterModifiers(character);
+
+        // Display character information
+        console.log(`\n=== ${character.name.toUpperCase()} ===`);
+        console.log(`Type: ${character.type.charAt(0).toUpperCase() + character.type.slice(1)}`);
+        
+        console.log('\n--- ATTRIBUTES ---');
+        console.log(`Strength:     ${character.strength.toString().padStart(2)} (${modifiers.strength >= 0 ? '+' : ''}${modifiers.strength})`);
+        console.log(`Dexterity:    ${character.dexterity.toString().padStart(2)} (${modifiers.dexterity >= 0 ? '+' : ''}${modifiers.dexterity})`);
+        console.log(`Intelligence: ${character.intelligence.toString().padStart(2)} (${modifiers.intelligence >= 0 ? '+' : ''}${modifiers.intelligence})`);
+        console.log(`Constitution: ${character.constitution.toString().padStart(2)} (${modifiers.constitution >= 0 ? '+' : ''}${modifiers.constitution})`);
+        console.log(`Wisdom:       ${character.wisdom.toString().padStart(2)} (${modifiers.wisdom >= 0 ? '+' : ''}${modifiers.wisdom})`);
+        console.log(`Charisma:     ${character.charisma.toString().padStart(2)} (${modifiers.charisma >= 0 ? '+' : ''}${modifiers.charisma})`);
+
+        console.log('\n--- HEALTH ---');
+        console.log(`Health: ${health.current}/${health.max} (${health.percentage}%)`);
+
+        // Show equipment summary
+        console.log('\n--- EQUIPMENT ---');
+        const equipmentSummary = await equipmentService.getEquipmentSummary(character.id);
+        const slots = ['hand', 'head', 'body', 'foot'] as const;
+        
+        for (const slot of slots) {
+          const item = equipmentSummary[slot];
+          const slotLabel = slot.charAt(0).toUpperCase() + slot.slice(1);
+          if (item) {
+            console.log(`${slotLabel}: ${item.item.name}`);
+          } else {
+            console.log(`${slotLabel}: [Empty]`);
+          }
+        }
+
+      } catch (error) {
+        console.error('Error displaying character stats:', error);
+        console.log('Error displaying character stats.');
+      }
+    }
+  });
+
+  commandRouter.addGameCommand({
+    name: 'character',
+    description: 'Show your character attributes and status (alias for "stats")',
+    handler: async () => {
+      const commands = commandRouter.getCommands();
+      const statsCommand = commands.get('stats');
+      if (statsCommand) {
+        await statsCommand.handler([]);
       }
     }
   });

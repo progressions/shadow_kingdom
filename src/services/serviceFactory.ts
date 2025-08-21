@@ -11,6 +11,7 @@ import { BackgroundGenerationService } from './backgroundGenerationService';
 import { ItemService } from './itemService';
 import { EquipmentService } from './equipmentService';
 import { ItemGenerationService } from './itemGenerationService';
+import { CharacterService } from './characterService';
 
 // Import Prisma services conditionally to avoid import errors when Prisma is not set up
 let GameStateManagerPrisma: any;
@@ -46,6 +47,7 @@ export interface ServiceInstances {
   itemService: ItemService;
   equipmentService: EquipmentService;
   itemGenerationService: ItemGenerationService;
+  characterService: CharacterService;
 }
 
 /**
@@ -93,6 +95,7 @@ export class ServiceFactory {
     const itemService = new ItemService(db);
     const equipmentService = new EquipmentService(db);
     const itemGenerationService = new ItemGenerationService(db, itemService);
+    const characterService = new CharacterService(db);
     
     // Room generation service depends on region service and item generation service
     const roomGenerationService = new RoomGenerationService(
@@ -118,7 +121,8 @@ export class ServiceFactory {
       backgroundGenerationService,
       itemService,
       equipmentService,
-      itemGenerationService
+      itemGenerationService,
+      characterService
     };
   }
 
@@ -143,6 +147,7 @@ export class ServiceFactory {
     const itemService = new ItemService(db);
     const equipmentService = new EquipmentService(db);
     const itemGenerationService = new ItemGenerationService(db, itemService);
+    const characterService = new CharacterService(db);
     
     // Room generation service depends on region service
     // TODO: Update Prisma version to support itemGenerationService
@@ -166,7 +171,8 @@ export class ServiceFactory {
       backgroundGenerationService,
       itemService,
       equipmentService,
-      itemGenerationService
+      itemGenerationService,
+      characterService
     };
   }
 

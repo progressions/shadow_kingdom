@@ -44,6 +44,7 @@ export class GameController {
   private regionService!: ServiceInstances['regionService']; // Initialized in initializeReadlineInterface()
   private itemService!: ServiceInstances['itemService']; // Initialized in initializeReadlineInterface()
   private equipmentService!: ServiceInstances['equipmentService']; // Initialized in initializeReadlineInterface()
+  private characterService!: ServiceInstances['characterService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
   constructor(db: Database, tui?: TUIInterface) {
@@ -339,6 +340,18 @@ export class GameController {
       name: 'unequip',
       description: 'Unequip an equipped item',
       handler: async (args) => await this.handleUnequip(args.join(' '))
+    });
+
+    this.commandRouter.addCommand({
+      name: 'stats',
+      description: 'Show your character attributes and status',
+      handler: async () => await this.handleStats()
+    });
+
+    this.commandRouter.addCommand({
+      name: 'character',
+      description: 'Show your character attributes and status (alias for "stats")',
+      handler: async () => await this.handleStats()
     });
 
     this.commandRouter.addCommand({
@@ -885,6 +898,7 @@ export class GameController {
     this.backgroundGenerationService = services.backgroundGenerationService;
     this.itemService = services.itemService;
     this.equipmentService = services.equipmentService;
+    this.characterService = services.characterService;
     
     // Set up commands
     this.setupCommands();
@@ -1445,6 +1459,77 @@ export class GameController {
     } catch (error) {
       console.error('Error showing equipment:', error);
       this.tui.display('Error displaying equipment.', MessageType.ERROR);
+    }
+  }
+
+  /**
+   * Handle stats command - display character attributes and status
+   */
+  private async handleStats(): Promise<void> {
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      if (!session) {
+        this.tui.display('No active game session.', MessageType.ERROR);
+        return;
+      }
+
+      // Get character ID from game state
+      const gameState = await this.gameStateManager.getGameState(session.gameId);
+      if (!gameState || !gameState.character_id) {
+        this.tui.display('No character found for this game.', MessageType.ERROR);
+        return;
+      }
+
+      // Get character information
+      const character = await this.characterService.getCharacter(gameState.character_id);
+      if (!character) {
+        this.tui.display('Character not found.', MessageType.ERROR);
+        return;
+      }
+
+      // Get character health
+      const health = await this.characterService.getCharacterHealth(character.id);
+      if (!health) {
+        this.tui.display('Could not retrieve character health.', MessageType.ERROR);
+        return;
+      }
+
+      // Get character modifiers
+      const modifiers = this.characterService.getCharacterModifiers(character);
+
+      // Display character information
+      this.tui.display(`\n=== ${character.name.toUpperCase()} ===`, MessageType.SYSTEM);
+      this.tui.display(`Type: ${character.type.charAt(0).toUpperCase() + character.type.slice(1)}`, MessageType.NORMAL);
+      
+      this.tui.display('\n--- ATTRIBUTES ---', MessageType.SYSTEM);
+      this.tui.display(`Strength:     ${character.strength.toString().padStart(2)} (${modifiers.strength >= 0 ? '+' : ''}${modifiers.strength})`, MessageType.NORMAL);
+      this.tui.display(`Dexterity:    ${character.dexterity.toString().padStart(2)} (${modifiers.dexterity >= 0 ? '+' : ''}${modifiers.dexterity})`, MessageType.NORMAL);
+      this.tui.display(`Intelligence: ${character.intelligence.toString().padStart(2)} (${modifiers.intelligence >= 0 ? '+' : ''}${modifiers.intelligence})`, MessageType.NORMAL);
+      this.tui.display(`Constitution: ${character.constitution.toString().padStart(2)} (${modifiers.constitution >= 0 ? '+' : ''}${modifiers.constitution})`, MessageType.NORMAL);
+      this.tui.display(`Wisdom:       ${character.wisdom.toString().padStart(2)} (${modifiers.wisdom >= 0 ? '+' : ''}${modifiers.wisdom})`, MessageType.NORMAL);
+      this.tui.display(`Charisma:     ${character.charisma.toString().padStart(2)} (${modifiers.charisma >= 0 ? '+' : ''}${modifiers.charisma})`, MessageType.NORMAL);
+
+      this.tui.display('\n--- HEALTH ---', MessageType.SYSTEM);
+      this.tui.display(`Health: ${health.current}/${health.max} (${health.percentage}%)`, MessageType.NORMAL);
+
+      // Show equipment summary
+      this.tui.display('\n--- EQUIPMENT ---', MessageType.SYSTEM);
+      const equipmentSummary = await this.equipmentService.getEquipmentSummary(character.id);
+      const slots = ['hand', 'head', 'body', 'foot'] as const;
+      
+      for (const slot of slots) {
+        const item = equipmentSummary[slot];
+        const slotLabel = slot.charAt(0).toUpperCase() + slot.slice(1);
+        if (item) {
+          this.tui.display(`${slotLabel}: ${item.item.name}`, MessageType.NORMAL);
+        } else {
+          this.tui.display(`${slotLabel}: [Empty]`, MessageType.NORMAL);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error displaying character stats:', error);
+      this.tui.display('Error displaying character stats.', MessageType.ERROR);
     }
   }
 }

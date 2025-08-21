@@ -8,7 +8,8 @@ export interface GameState {
   id: number;
   game_id: number;
   current_room_id: number;
-  player_name: string | null;
+  character_id: number | null;
+  player_name: string | null; // legacy field
 }
 
 export interface Room {
@@ -336,6 +337,23 @@ export class GameStateManager {
     } catch (error) {
       console.error('Failed to get games:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get game state from database
+   */
+  async getGameState(gameId: number): Promise<GameState | null> {
+    try {
+      const gameState = await this.db.get<GameState>(
+        'SELECT * FROM game_state WHERE game_id = ?',
+        [gameId]
+      );
+
+      return gameState || null;
+    } catch (error) {
+      console.error('Failed to get game state:', error);
+      return null;
     }
   }
 

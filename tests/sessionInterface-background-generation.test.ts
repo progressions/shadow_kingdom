@@ -89,7 +89,7 @@ describe('SessionInterface Background Generation', () => {
       
       // Verify setupGameCommands receives backgroundGenerationService and new item services
       expect(sessionInterfaceCode).toContain(
-        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService)'
+        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService)'
       );
     });
   });
