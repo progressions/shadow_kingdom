@@ -133,7 +133,7 @@ export class ItemService {
     const rows = await this.db.all<any>(`
       SELECT ci.id, ci.character_id, ci.item_id, ci.quantity, ci.equipped, ci.equipped_slot, ci.created_at,
              i.id as item_id_full, i.name, i.description, i.type, i.weight, i.value, 
-             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.created_at as item_created_at
+             i.stackable, i.max_stack, i.weapon_damage, i.armor_rating, i.equipment_slot, i.created_at as item_created_at
       FROM character_inventory ci 
       JOIN items i ON ci.item_id = i.id 
       WHERE ci.character_id = ?
@@ -159,6 +159,7 @@ export class ItemService {
         max_stack: row.max_stack,
         weapon_damage: row.weapon_damage,
         armor_rating: row.armor_rating,
+        equipment_slot: row.equipment_slot,
         created_at: row.item_created_at
       }
     }));

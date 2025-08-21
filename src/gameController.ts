@@ -43,6 +43,7 @@ export class GameController {
   private gameManagementService!: ServiceInstances['gameManagementService']; // Initialized in initializeReadlineInterface()
   private regionService!: ServiceInstances['regionService']; // Initialized in initializeReadlineInterface()
   private itemService!: ServiceInstances['itemService']; // Initialized in initializeReadlineInterface()
+  private equipmentService!: ServiceInstances['equipmentService']; // Initialized in initializeReadlineInterface()
   private commandState: CommandState;
 
   constructor(db: Database, tui?: TUIInterface) {
@@ -277,19 +278,19 @@ export class GameController {
     this.commandRouter.addCommand({
       name: 'pickup',
       description: 'Pick up an item from the current room',
-      handler: async (args) => await this.handlePickup(args[0])
+      handler: async (args) => await this.handlePickup(args.join(' '))
     });
 
     this.commandRouter.addCommand({
       name: 'get',
       description: 'Pick up an item from the current room (alias for "pickup")',
-      handler: async (args) => await this.handlePickup(args[0])
+      handler: async (args) => await this.handlePickup(args.join(' '))
     });
 
     this.commandRouter.addCommand({
       name: 'take',
       description: 'Pick up an item from the current room (alias for "pickup")',
-      handler: async (args) => await this.handlePickup(args[0])
+      handler: async (args) => await this.handlePickup(args.join(' '))
     });
 
     this.commandRouter.addCommand({
@@ -313,19 +314,37 @@ export class GameController {
     this.commandRouter.addCommand({
       name: 'drop',
       description: 'Drop an item from your inventory',
-      handler: async (args) => await this.handleDrop(args[0])
+      handler: async (args) => await this.handleDrop(args.join(' '))
     });
 
     this.commandRouter.addCommand({
       name: 'examine',
       description: 'Examine an item in detail',
-      handler: async (args) => await this.handleExamine(args[0])
+      handler: async (args) => await this.handleExamine(args.join(' '))
     });
 
     this.commandRouter.addCommand({
       name: 'ex',
       description: 'Examine an item in detail (alias for "examine")',
-      handler: async (args) => await this.handleExamine(args[0])
+      handler: async (args) => await this.handleExamine(args.join(' '))
+    });
+
+    this.commandRouter.addCommand({
+      name: 'equip',
+      description: 'Equip an item from your inventory',
+      handler: async (args) => await this.handleEquip(args.join(' '))
+    });
+
+    this.commandRouter.addCommand({
+      name: 'unequip',
+      description: 'Unequip an equipped item',
+      handler: async (args) => await this.handleUnequip(args.join(' '))
+    });
+
+    this.commandRouter.addCommand({
+      name: 'equipment',
+      description: 'Show your equipped items',
+      handler: async () => await this.handleEquipment()
     });
   }
 
@@ -608,7 +627,7 @@ export class GameController {
       this.tui.display('Your adventures:', MessageType.SYSTEM);
       this.tui.display('================', MessageType.SYSTEM);
       
-      games.forEach((game, index) => {
+      games.forEach((game: any, index: number) => {
         const isCurrentGame = this.gameStateManager.getCurrentSession().gameId === game.id;
         const status = isCurrentGame ? ' (current)' : '';
         const lastPlayed = new Date(game.last_played_at).toLocaleString();
@@ -634,7 +653,7 @@ export class GameController {
       const actionText = purpose === 'load' ? 'load' : 'delete';
       this.tui.display(`Select a game to ${actionText}:`, MessageType.SYSTEM);
       
-      games.forEach((game, index) => {
+      games.forEach((game: any, index: number) => {
         const lastPlayed = new Date(game.last_played_at).toLocaleDateString();
         this.tui.display(`${index + 1}. Last played: ${lastPlayed}`, MessageType.SYSTEM);
       });
@@ -683,7 +702,7 @@ export class GameController {
         const connections = await this.gameStateManager.getCurrentRoomConnections();
         
         // Use TUI to display the room
-        const exitNames = connections.map(c => c.name === c.direction ? c.direction : `${c.name} (${c.direction})`);
+        const exitNames = connections.map((c: any) => c.name === c.direction ? c.direction : `${c.name} (${c.direction})`);
         this.tui.displayRoom(room.name, room.description, exitNames);
         
         // Display items in the room
@@ -865,6 +884,7 @@ export class GameController {
     this.roomGenerationService = services.roomGenerationService;
     this.backgroundGenerationService = services.backgroundGenerationService;
     this.itemService = services.itemService;
+    this.equipmentService = services.equipmentService;
     
     // Set up commands
     this.setupCommands();
@@ -1172,7 +1192,8 @@ export class GameController {
       this.tui.display('You are carrying:', MessageType.SYSTEM);
       inventory.forEach(invItem => {
         const quantityText = invItem.quantity > 1 ? ` x${invItem.quantity}` : '';
-        this.tui.display(`• ${invItem.item.name}${quantityText}`, MessageType.NORMAL);
+        const equippedText = invItem.equipped ? ' (equipped)' : '';
+        this.tui.display(`• ${invItem.item.name}${quantityText}${equippedText}`, MessageType.NORMAL);
       });
 
     } catch (error) {
@@ -1309,5 +1330,115 @@ export class GameController {
   private displayItemDetails(item: any, location: string): void {
     this.tui.display(`${item.name}`, MessageType.NORMAL);
     this.tui.display(`${item.description}`, MessageType.NORMAL);
+  }
+
+  /**
+   * Handle equipping an item from inventory
+   */
+  private async handleEquip(itemName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!itemName) {
+      this.tui.display('Equip what?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const characterId = session.gameId!; // Use game ID as character ID for single-player
+
+      // Find the item in inventory that can be equipped
+      const item = await this.equipmentService.findEquippableItem(characterId, itemName);
+      if (!item) {
+        this.tui.display(`You don't have an equippable item called "${itemName}" in your inventory.`, MessageType.ERROR);
+        return;
+      }
+
+      // Try to equip the item
+      await this.equipmentService.equipItem(characterId, item.item_id);
+      
+      this.tui.display(`You equipped ${item.item.name}.`, MessageType.SYSTEM);
+
+    } catch (error) {
+      console.error('Error equipping item:', error);
+      this.tui.display((error as Error).message, MessageType.ERROR);
+    }
+  }
+
+  /**
+   * Handle unequipping an equipped item
+   */
+  private async handleUnequip(itemName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!itemName) {
+      this.tui.display('Unequip what?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const characterId = session.gameId!; // Use game ID as character ID for single-player
+
+      // Get equipped items
+      const equippedItems = await this.equipmentService.getEquippedItems(characterId);
+      const item = this.itemService.findItemByName(equippedItems, itemName);
+      
+      if (!item) {
+        this.tui.display(`You don't have "${itemName}" equipped.`, MessageType.ERROR);
+        return;
+      }
+
+      // Unequip the item
+      await this.equipmentService.unequipItem(characterId, item.item_id);
+      
+      this.tui.display(`You unequipped ${item.item.name}.`, MessageType.SYSTEM);
+
+    } catch (error) {
+      console.error('Error unequipping item:', error);
+      this.tui.display((error as Error).message, MessageType.ERROR);
+    }
+  }
+
+  /**
+   * Show all equipped items
+   */
+  private async handleEquipment(): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const characterId = session.gameId!; // Use game ID as character ID for single-player
+
+      const equipmentSummary = await this.equipmentService.getEquipmentSummary(characterId);
+      
+      this.tui.display('═══ EQUIPMENT ═══', MessageType.NORMAL);
+      
+      // Show all 4 slots
+      const slots = ['hand', 'head', 'body', 'foot'] as const;
+      
+      for (const slot of slots) {
+        const item = equipmentSummary[slot];
+        const slotLabel = slot.toUpperCase();
+        if (item) {
+          this.tui.display(`${slotLabel}: ${item.item.name}`, MessageType.NORMAL);
+        } else {
+          this.tui.display(`${slotLabel}: [Empty]`, MessageType.NORMAL);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error showing equipment:', error);
+      this.tui.display('Error displaying equipment.', MessageType.ERROR);
+    }
   }
 }
