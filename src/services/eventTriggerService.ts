@@ -8,6 +8,8 @@
 
 import Database from '../utils/database';
 import { Character } from '../types/character';
+import { TUIInterface } from '../ui/TUIInterface';
+import { MessageType } from '../ui/MessageFormatter';
 
 export interface TriggerContext {
   character: Character;
@@ -104,7 +106,7 @@ interface Item {
 export class EventTriggerService {
   private activeTriggers = new Set<number>(); // Prevent infinite loops
 
-  constructor(private db: Database) {}
+  constructor(private db: Database, private tui?: TUIInterface) {}
 
   /**
    * Main trigger processing method
@@ -256,7 +258,12 @@ export class EventTriggerService {
   private async executeEffect(effect: TriggerEffect, context: TriggerContext): Promise<void> {
     // Display message if provided
     if (effect.message) {
-      console.log(`[TRIGGER] ${effect.message}`);
+      if (this.tui) {
+        this.tui.display(effect.message, MessageType.NORMAL);
+      } else {
+        // Fallback for debugging - should not happen in normal gameplay
+        console.log(`[TRIGGER] ${effect.message}`);
+      }
     }
 
     // Parse effect data

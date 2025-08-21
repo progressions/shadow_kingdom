@@ -1091,11 +1091,20 @@ export class GameController {
 
       // Get current game state
       const gameState = await this.gameStateManager.getGameState(session.gameId);
-      if (!gameState || !gameState.character_id) return;
+      if (!gameState) return;
 
-      // Get player character
-      const character = await this.characterService.getCharacter(gameState.character_id);
-      if (!character) return;
+      // Get player character - try character_id from game state first, then fall back to game ID as character ID
+      let character;
+      if (gameState.character_id) {
+        character = await this.characterService.getCharacter(gameState.character_id);
+      } else {
+        // Fallback: use gameId as characterId (legacy approach used throughout the codebase)
+        character = await this.characterService.getCharacter(session.gameId!);
+      }
+      
+      if (!character) {
+        return;
+      }
 
       // Get current room
       const room = await this.gameStateManager.getCurrentRoom();
@@ -1361,6 +1370,15 @@ export class GameController {
       );
 
       this.tui.display(`You pick up the ${targetItem.item.name}.`, MessageType.NORMAL);
+      
+      // Process pickup triggers for the item
+      await this.executeValidatedAction(
+        'pickup',
+        { itemId: targetItem.item_id },
+        async () => {
+          // Action already executed above, this is just for trigger processing
+        }
+      );
       
       // Refresh room display to show updated items
       await this.lookAround();
@@ -1803,8 +1821,8 @@ export class GameController {
       // Get character health using new health service
       const healthStatus = await this.healthService.getHealthStatus(character.id);
 
-      // Get character modifiers
-      const modifiers = this.characterService.getCharacterModifiers(character);
+      // Get character modifiers including status effects
+      const modifiers = await this.characterService.getCharacterModifiersWithEffects(character.id);
 
       // Display character information
       this.tui.display(`\n=== ${character.name.toUpperCase()} ===`, MessageType.SYSTEM);

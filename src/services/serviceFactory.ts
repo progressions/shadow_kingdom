@@ -104,7 +104,7 @@ export class ServiceFactory {
     const characterService = new CharacterService(db);
     const actionValidator = new ActionValidator(db, characterService);
     const healthService = new HealthService(db);
-    const eventTriggerService = new EventTriggerService(db);
+    const eventTriggerService = new EventTriggerService(db, tui);
     
     // Room generation service depends on region service and item generation service
     const roomGenerationService = new RoomGenerationService(
@@ -162,7 +162,7 @@ export class ServiceFactory {
     const characterService = new CharacterService(db);
     const actionValidator = new ActionValidator(db, characterService);
     const healthService = new HealthService(db);
-    const eventTriggerService = new EventTriggerService(db);
+    const eventTriggerService = new EventTriggerService(db, tui);
     
     // Room generation service depends on region service
     // TODO: Update Prisma version to support itemGenerationService

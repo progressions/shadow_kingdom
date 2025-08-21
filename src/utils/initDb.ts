@@ -923,25 +923,23 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, observatoryStepsId, null, 'east', 'through the starlit eastern corridor']
     );
 
-    // Create default player character
-    const playerResult = await db.run(`
+    // Create default player character with game ID as character ID for consistency
+    await db.run(`
       INSERT INTO characters (
-        game_id, name, type, current_room_id,
+        id, game_id, name, type, current_room_id,
         strength, dexterity, intelligence, constitution, wisdom, charisma,
         max_health, current_health
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      gameId, 'Hero', 'player', null, // current_room_id is null for player (uses game_state)
+      gameId, gameId, 'Hero', 'player', null, // id=gameId for consistency with existing code
       10, 10, 10, 10, 10, 10, // Default attributes
       10, 10 // max_health and current_health
     ]);
 
-    const playerId = playerResult.lastID;
-
     // Create initial game state (player starts in entrance hall)
     await db.run(
       'INSERT INTO game_state (game_id, current_room_id, character_id) VALUES (?, ?, ?)',
-      [gameId, entranceId, playerId]
+      [gameId, entranceId, gameId]
     );
 
     // Place starter items in all starter rooms

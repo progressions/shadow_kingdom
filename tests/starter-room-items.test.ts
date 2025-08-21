@@ -31,13 +31,13 @@ describe('Starter Room Item Placement', () => {
     
     expect(rooms).toHaveLength(6); // Should have 6 starter rooms
 
-    // Expected items in each room
+    // Expected items in each room (updated with new triggered items)
     const expectedRoomItems = {
-      'Grand Entrance Hall': ['Iron Sword', 'Ancient Stone Pedestal'],
-      'Scholar\'s Library': ['Ancient Key', 'Healing Herbs'],
-      'Moonlit Courtyard Garden': ['Health Potion', 'Bread'],
-      'Winding Tower Stairs': ['Wooden Staff'],
-      'Ancient Crypt Entrance': ['Iron Helmet', 'Gold Coins'],
+      'Grand Entrance Hall': ['Iron Sword', 'Ancient Stone Pedestal', 'Blessed Silver Amulet'],
+      'Scholar\'s Library': ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'],
+      'Moonlit Courtyard Garden': ['Health Potion', 'Bread', 'Mysterious Glowing Orb'],
+      'Winding Tower Stairs': ['Wooden Staff', 'Cursed Ruby Ring'],
+      'Ancient Crypt Entrance': ['Iron Helmet', 'Gold Coins', 'Poisoned Dagger'],
       'Observatory Steps': ['Leather Boots', 'Leather Armor']
     };
 
@@ -70,15 +70,17 @@ describe('Starter Room Item Placement', () => {
     const gameId = await createGameWithRooms(db, 'Test Game Missing Items');
     expect(gameId).toBeGreaterThan(0);
     
-    // Scholar's Library should only have Healing Herbs (Ancient Key missing)
+    // Scholar's Library should have Healing Herbs and Scholar's Spectacles (Ancient Key missing)
     const libraryRoom = await db.get<any>(
       'SELECT id FROM rooms WHERE game_id = ? AND name = ?',
       [gameId, 'Scholar\'s Library']
     );
     
     const libraryItems = await itemService.getRoomItems(libraryRoom.id);
-    expect(libraryItems).toHaveLength(1);
-    expect(libraryItems[0].item.name).toBe('Healing Herbs');
+    expect(libraryItems).toHaveLength(2);
+    const itemNames = libraryItems.map(ri => ri.item.name);
+    expect(itemNames).toContain('Healing Herbs');
+    expect(itemNames).toContain('Scholar\'s Spectacles');
   });
 
   test('should place correct quantities of stackable items', async () => {
@@ -120,8 +122,8 @@ describe('Starter Room Item Placement', () => {
     const items1 = await itemService.getRoomItems(entranceRoom1.id);
     const items2 = await itemService.getRoomItems(entranceRoom2.id);
     
-    expect(items1).toHaveLength(2); // Iron Sword + Ancient Stone Pedestal
-    expect(items2).toHaveLength(2); // Iron Sword + Ancient Stone Pedestal
+    expect(items1).toHaveLength(3); // Iron Sword + Ancient Stone Pedestal + Blessed Silver Amulet
+    expect(items2).toHaveLength(3); // Iron Sword + Ancient Stone Pedestal + Blessed Silver Amulet
     
     // Items should be in different room instances
     expect(entranceRoom1.id).not.toBe(entranceRoom2.id);
@@ -153,8 +155,9 @@ describe('Starter Room Item Placement', () => {
           break;
           
         case 'Moonlit Courtyard Garden':
-          // Should have consumables (Health Potion, Bread)
-          expect(roomItems.every(ri => ri.item.type === 'consumable')).toBe(true);
+          // Should have consumables (Health Potion, Bread) and magic item (Mysterious Glowing Orb)
+          expect(roomItems.some(ri => ri.item.type === 'consumable')).toBe(true);
+          expect(roomItems.some(ri => ri.item.name === 'Mysterious Glowing Orb')).toBe(true);
           break;
           
         case 'Winding Tower Stairs':

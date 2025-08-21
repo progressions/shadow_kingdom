@@ -227,6 +227,72 @@ export class CharacterService {
   }
 
   /**
+   * Get character modifiers including status effects
+   */
+  async getCharacterModifiersWithEffects(characterId: number): Promise<Record<keyof CharacterAttributes, number>> {
+    // Get base character
+    const character = await this.getCharacter(characterId);
+    if (!character) {
+      throw new Error(`Character ${characterId} not found`);
+    }
+
+    // Start with base modifiers
+    const modifiers = this.getCharacterModifiers(character);
+
+    // Get active status effects
+    const statusEffects = await this.db.all(`
+      SELECT * FROM character_status_effects 
+      WHERE character_id = ? 
+        AND (expires_at IS NULL OR expires_at > datetime('now'))
+    `, [characterId]);
+
+    // Apply status effect bonuses
+    for (const effect of statusEffects) {
+      try {
+        const effectData = JSON.parse(effect.effect_data || '{}');
+        
+        // Apply attribute bonuses from status effects
+        if (effectData.strength_bonus) modifiers.strength += effectData.strength_bonus;
+        if (effectData.dexterity_bonus) modifiers.dexterity += effectData.dexterity_bonus;
+        if (effectData.intelligence_bonus) modifiers.intelligence += effectData.intelligence_bonus;
+        if (effectData.constitution_bonus) modifiers.constitution += effectData.constitution_bonus;
+        if (effectData.wisdom_bonus) modifiers.wisdom += effectData.wisdom_bonus;
+        if (effectData.charisma_bonus) modifiers.charisma += effectData.charisma_bonus;
+        
+        // Handle penalties
+        if (effectData.strength_penalty) modifiers.strength -= effectData.strength_penalty;
+        if (effectData.dexterity_penalty) modifiers.dexterity -= effectData.dexterity_penalty;
+        if (effectData.intelligence_penalty) modifiers.intelligence -= effectData.intelligence_penalty;
+        if (effectData.constitution_penalty) modifiers.constitution -= effectData.constitution_penalty;
+        if (effectData.wisdom_penalty) modifiers.wisdom -= effectData.wisdom_penalty;
+        if (effectData.charisma_penalty) modifiers.charisma -= effectData.charisma_penalty;
+        
+        // Handle all_stats bonuses/penalties
+        if (effectData.all_stats_bonus) {
+          modifiers.strength += effectData.all_stats_bonus;
+          modifiers.dexterity += effectData.all_stats_bonus;
+          modifiers.intelligence += effectData.all_stats_bonus;
+          modifiers.constitution += effectData.all_stats_bonus;
+          modifiers.wisdom += effectData.all_stats_bonus;
+          modifiers.charisma += effectData.all_stats_bonus;
+        }
+        if (effectData.all_stats_penalty) {
+          modifiers.strength -= effectData.all_stats_penalty;
+          modifiers.dexterity -= effectData.all_stats_penalty;
+          modifiers.intelligence -= effectData.all_stats_penalty;
+          modifiers.constitution -= effectData.all_stats_penalty;
+          modifiers.wisdom -= effectData.all_stats_penalty;
+          modifiers.charisma -= effectData.all_stats_penalty;
+        }
+      } catch (error) {
+        console.error('Error parsing status effect data:', effect.effect_data);
+      }
+    }
+
+    return modifiers;
+  }
+
+  /**
    * Delete a character
    */
   async deleteCharacter(characterId: number): Promise<void> {
