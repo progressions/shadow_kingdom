@@ -84,6 +84,7 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         weapon_damage TEXT, -- e.g., '1d6+1'
         armor_rating INTEGER DEFAULT 0,
         equipment_slot TEXT, -- hand, head, body, foot
+        is_fixed BOOLEAN DEFAULT FALSE, -- true for scenery items that cannot be picked up
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -119,6 +120,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     // Migration: Add equipment_slot column if it doesn't exist
     try {
       await db.run(`ALTER TABLE items ADD COLUMN equipment_slot TEXT`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
+    // Migration: Add is_fixed column if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE items ADD COLUMN is_fixed BOOLEAN DEFAULT FALSE`);
     } catch (error) {
       // Column already exists, ignore error
     }
@@ -681,16 +689,35 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, entranceId]
     );
 
-    // Place starter item (Iron Sword) in the Grand Entrance Hall
-    // Iron Sword is always item ID 1 from the seed data
-    await db.run(
-      'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
-      [entranceId, 1, 1]
+    // Place starter items in the Grand Entrance Hall
+    // Find the Iron Sword item ID
+    const ironSword = await db.get<any>(
+      'SELECT id FROM items WHERE name = ?',
+      ['Iron Sword']
     );
+    if (ironSword) {
+      await db.run(
+        'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
+        [entranceId, ironSword.id, 1]
+      );
+    }
+
+    // Place the Ancient Stone Pedestal (fixed item) in the Grand Entrance Hall
+    const pedestal = await db.get<any>(
+      'SELECT id FROM items WHERE name = ?',
+      ['Ancient Stone Pedestal']
+    );
+    if (pedestal) {
+      await db.run(
+        'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
+        [entranceId, pedestal.id, 1]
+      );
+    }
 
     if (tui) {
       tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);
       tui.display('Iron Sword placed in Grand Entrance Hall', MessageType.SYSTEM);
+      tui.display('Ancient Stone Pedestal placed in Grand Entrance Hall', MessageType.SYSTEM);
     }
     return gameId;
   } catch (error) {

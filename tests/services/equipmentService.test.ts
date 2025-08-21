@@ -333,6 +333,7 @@ async function initializeTestSchema(db: Database): Promise<void> {
       weapon_damage TEXT,
       armor_rating INTEGER,
       equipment_slot TEXT,
+      is_fixed BOOLEAN DEFAULT FALSE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
