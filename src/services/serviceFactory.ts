@@ -26,6 +26,14 @@ let GameManagementServicePrisma: any;
 let RegionServicePrisma: any;
 let RoomGenerationServicePrisma: any;
 let BackgroundGenerationServicePrisma: any;
+let HealthServicePrisma: any;
+let ItemServicePrisma: any;
+let CharacterServicePrisma: any;
+let EquipmentServicePrisma: any;
+let ItemGenerationServicePrisma: any;
+let CharacterGenerationServicePrisma: any;
+let ActionValidatorPrisma: any;
+let ExamineServicePrisma: any;
 
 // Only import Prisma services if Prisma is configured
 if (process.env.USE_PRISMA === 'true') {
@@ -35,6 +43,14 @@ if (process.env.USE_PRISMA === 'true') {
     ({ RegionServicePrisma } = require('./regionService.prisma'));
     ({ RoomGenerationServicePrisma } = require('./roomGenerationService.prisma'));
     ({ BackgroundGenerationServicePrisma } = require('./backgroundGenerationService.prisma'));
+    ({ HealthServicePrisma } = require('./healthService.prisma'));
+    ({ ItemServicePrisma } = require('./itemService.prisma'));
+    ({ CharacterServicePrisma } = require('./characterService.prisma'));
+    ({ EquipmentServicePrisma } = require('./equipmentService.prisma'));
+    ({ ItemGenerationServicePrisma } = require('./itemGenerationService.prisma'));
+    ({ CharacterGenerationServicePrisma } = require('./characterGenerationService.prisma'));
+    ({ ActionValidatorPrisma } = require('./actionValidator.prisma'));
+    ({ ExamineServicePrisma } = require('./examineService.prisma'));
   } catch (error) {
     console.error('Failed to load Prisma services:', error);
     // Fall back to legacy services
@@ -172,18 +188,18 @@ export class ServiceFactory {
     const gameStateManager = new GameStateManagerPrisma(options);
     const gameManagementService = new GameManagementServicePrisma(tui, options);
     const regionService = new RegionServicePrisma(options);
-    // Note: ItemService only has legacy implementation for now
-    const db = new Database('placeholder'); // TODO: Create Prisma version
-    const itemService = new ItemService(db);
-    const equipmentService = new EquipmentService(db);
-    const itemGenerationService = new ItemGenerationService(db, itemService);
-    const characterService = new CharacterService(db);
-    const characterGenerationService = new CharacterGenerationService(db, characterService);
-    const actionValidator = new ActionValidator(db, characterService);
-    const healthService = new HealthService(db);
+    const itemService = new ItemServicePrisma();
+    const characterService = new CharacterServicePrisma();
+    const equipmentService = new EquipmentServicePrisma();
+    const itemGenerationService = new ItemGenerationServicePrisma(itemService);
+    const characterGenerationService = new CharacterGenerationServicePrisma(characterService, options);
+    const actionValidator = new ActionValidatorPrisma(characterService);
+    const healthService = new HealthServicePrisma();
+    const examineService = new ExamineServicePrisma(characterService, itemService);
+    // Note: Some services still need legacy Database for now
+    const db = new Database('placeholder'); // TODO: Remove when all services migrated
     const eventTriggerService = new EventTriggerService(db, tui);
     const fantasyLevelService = new FantasyLevelService();
-    const examineService = new ExamineService(db, characterService, itemService);
     const loggerService = new LoggerService();
     
     // Room generation service depends on region service
