@@ -17,6 +17,7 @@ import { ActionValidator } from './actionValidator';
 import { HealthService } from './healthService';
 import { EventTriggerService } from './eventTriggerService';
 import { FantasyLevelService } from './fantasyLevelService';
+import { ExamineService } from './examineService';
 
 // Import Prisma services conditionally to avoid import errors when Prisma is not set up
 let GameStateManagerPrisma: any;
@@ -58,6 +59,7 @@ export interface ServiceInstances {
   healthService: HealthService;
   eventTriggerService: EventTriggerService;
   fantasyLevelService: FantasyLevelService;
+  examineService: ExamineService;
 }
 
 /**
@@ -111,6 +113,7 @@ export class ServiceFactory {
     const healthService = new HealthService(db);
     const eventTriggerService = new EventTriggerService(db, tui);
     const fantasyLevelService = new FantasyLevelService();
+    const examineService = new ExamineService(db, characterService, itemService);
     
     // Room generation service depends on region service and item generation service
     const roomGenerationService = new RoomGenerationService(
@@ -144,7 +147,8 @@ export class ServiceFactory {
       actionValidator,
       healthService,
       eventTriggerService,
-      fantasyLevelService
+      fantasyLevelService,
+      examineService
     };
   }
 
@@ -175,6 +179,7 @@ export class ServiceFactory {
     const healthService = new HealthService(db);
     const eventTriggerService = new EventTriggerService(db, tui);
     const fantasyLevelService = new FantasyLevelService();
+    const examineService = new ExamineService(db, characterService, itemService);
     
     // Room generation service depends on region service
     // TODO: Update Prisma version to support itemGenerationService and characterGenerationService
@@ -204,7 +209,8 @@ export class ServiceFactory {
       actionValidator,
       healthService,
       eventTriggerService,
-      fantasyLevelService
+      fantasyLevelService,
+      examineService
     };
   }
 
