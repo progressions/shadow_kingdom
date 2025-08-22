@@ -126,8 +126,25 @@ export class UnifiedRoomDisplayService {
         outputInterface.display('Characters present:', MessageType.SYSTEM);
         
         roomCharacters.forEach(character => {
-          const typeText = character.type === 'enemy' ? ' (hostile)' : '';
-          outputInterface.display(`• ${character.name}${typeText}`, MessageType.NORMAL);
+          // Show hostile indicator for characters that block movement
+          let statusIndicator = '';
+          if (character.is_dead) {
+            statusIndicator = ' 💀 (dead)';
+          } else if (character.is_hostile) {
+            statusIndicator = ' ⚔️ (hostile)';
+          }
+          
+          // Use appropriate icon based on character type and status
+          let icon = '•';
+          if (character.is_dead) {
+            icon = '💀';
+          } else if (character.is_hostile) {
+            icon = '⚔️';
+          } else if (character.type === CharacterType.NPC) {
+            icon = '👤';
+          }
+          
+          outputInterface.display(`${icon} ${character.name}${statusIndicator}`, MessageType.NORMAL);
           
           if (character.description) {
             outputInterface.display(`  ${character.description}`, MessageType.NORMAL);
