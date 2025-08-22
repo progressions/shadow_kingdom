@@ -423,6 +423,99 @@ async function setupGameCommands(
     }
   });
 
+  // Handler for "pickup all" functionality
+  async function handlePickupAll() {
+    try {
+      const session = gameStateManager.getCurrentSession();
+      const characterId = session.gameId!;
+      const currentRoom = await gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        console.log('Error: Unable to determine current room.');
+        return;
+      }
+
+      // Get all items in the current room
+      const roomItems = await itemService.getRoomItems(currentRoom.id);
+      
+      if (roomItems.length === 0) {
+        console.log('There are no items here to pick up.');
+        return;
+      }
+
+      // Filter out fixed items
+      const pickupableItems = roomItems.filter(item => !item.item.is_fixed);
+      
+      if (pickupableItems.length === 0) {
+        console.log('There are no items here that can be picked up.');
+        return;
+      }
+
+      const pickedUpItems: string[] = [];
+      const failedItems: { name: string; reason: string }[] = [];
+
+      // Process each item
+      for (const roomItem of pickupableItems) {
+        // Check if character can add another item to inventory
+        const canAddItem = await itemService.canAddItemToInventory(characterId);
+        
+        if (!canAddItem) {
+          // Inventory full - stop processing
+          failedItems.push({ 
+            name: roomItem.item.name, 
+            reason: 'inventory full' 
+          });
+          
+          if (pickedUpItems.length === 0) {
+            const inventoryStatus = await itemService.getInventoryStatus(characterId);
+            console.log('Your inventory is full!');
+            console.log(inventoryStatus);
+            return;
+          }
+          break;
+        }
+
+        try {
+          // Transfer item from room to character inventory
+          await itemService.transferItemToInventory(
+            characterId, 
+            roomItem.item_id, 
+            roomItem.room_id,
+            1
+          );
+
+          pickedUpItems.push(roomItem.item.name);
+
+        } catch (error) {
+          // Individual item failure - continue with others
+          failedItems.push({ 
+            name: roomItem.item.name, 
+            reason: 'error during pickup' 
+          });
+        }
+      }
+
+      // Report results
+      if (pickedUpItems.length > 0 && failedItems.length === 0) {
+        // Complete success
+        console.log(`You pick up: ${pickedUpItems.join(', ')}.`);
+      } else if (pickedUpItems.length > 0 && failedItems.length > 0) {
+        // Partial success
+        console.log(`You pick up: ${pickedUpItems.join(', ')}.`);
+        const failedReasons = failedItems.map(f => `${f.name} (${f.reason})`).join(', ');
+        console.log(`Could not pick up: ${failedReasons}.`);
+      } else if (pickedUpItems.length === 0 && failedItems.length > 0) {
+        // Complete failure
+        const failedReasons = failedItems.map(f => `${f.name} (${f.reason})`).join(', ');
+        console.log(`You cannot pick up any items: ${failedReasons}.`);
+      }
+
+    } catch (error) {
+      console.error('Error picking up all items:', error);
+      console.log('Error picking up items.');
+    }
+  }
+
   // Item system commands
   commandRouter.addGameCommand({
     name: 'pickup',
@@ -430,6 +523,12 @@ async function setupGameCommands(
     handler: async (args: string[]) => {
       if (args.length === 0) {
         console.log('Pickup what?');
+        return;
+      }
+
+      // Check for "pickup all" command
+      if (args.length === 1 && args[0].toLowerCase() === 'all') {
+        await handlePickupAll();
         return;
       }
 
