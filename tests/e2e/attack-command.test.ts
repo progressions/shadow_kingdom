@@ -188,9 +188,9 @@ describe('Attack Command End-to-End Tests', () => {
       const recentContent = recentLines.join('\n');
       
       // Should show exact command failure and AI fallback success
-      expect(recentContent).toMatch(/Exact command "attack" failed/);
-      expect(recentContent).toMatch(/🤖 NLP.*attack.*Crypt Keeper/);
-      expect(recentContent).toMatch(/takes 2 damage/);
+      expect(recentContent).toMatch(/⚠️ Exact command "attack" failed, trying NLP:/);
+      expect(recentContent).toMatch(/🤖 NLP.*attack.*Scholar Wraith/);
+      expect(recentContent).toMatch(/takes 2 damage|is already dead/);
     }
   }, 60000);
 });

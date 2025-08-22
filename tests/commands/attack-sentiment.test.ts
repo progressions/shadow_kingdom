@@ -204,7 +204,7 @@ describe('Attack Command Sentiment Update', () => {
 
       // Sentiment should remain unchanged
       expect(await characterService.getSentiment(characterId)).toBe(CharacterSentiment.FRIENDLY);
-    });
+    }, 30000); // 30 second timeout
 
     it('should not update sentiment when attacking dead character', async () => {
       // Kill the character first

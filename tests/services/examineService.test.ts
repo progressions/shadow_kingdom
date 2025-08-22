@@ -6,7 +6,7 @@ import Database from '../../src/utils/database';
 import { ExamineService } from '../../src/services/examineService';
 import { CharacterService } from '../../src/services/characterService';
 import { ItemService } from '../../src/services/itemService';
-import { Character, CharacterType } from '../../src/types/character';
+import { Character, CharacterType, CharacterSentiment } from '../../src/types/character';
 import { RoomItem, InventoryItem } from '../../src/types/item';
 import { Connection } from '../../src/services/gameStateManager';
 
@@ -208,6 +208,7 @@ describe('ExamineService', () => {
         constitution: 12,
         wisdom: 16,
         charisma: 13,
+        sentiment: CharacterSentiment.INDIFFERENT,
         created_at: new Date().toISOString()
       };
 
@@ -336,6 +337,7 @@ describe('ExamineService', () => {
         constitution: 10,
         wisdom: 10,
         charisma: 10,
+        sentiment: CharacterSentiment.INDIFFERENT,
         created_at: new Date().toISOString()
       };
 

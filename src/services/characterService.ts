@@ -375,6 +375,53 @@ export class CharacterService {
   }
 
   /**
+   * Get sentiment-based dialogue fallback response for a character
+   */
+  getSentimentDialogueResponse(sentiment: CharacterSentiment): string {
+    const responses = {
+      [CharacterSentiment.HOSTILE]: [
+        "Get away from me!",
+        "*growls menacingly*",
+        "*snarls and glares at you*",
+        "I'll destroy you!",
+        "*hisses with hatred*"
+      ],
+      [CharacterSentiment.AGGRESSIVE]: [
+        "What do you want?!",
+        "Get lost!",
+        "Leave me alone!",
+        "Back off!",
+        "*scowls darkly*"
+      ],
+      [CharacterSentiment.INDIFFERENT]: [
+        "Hmm.",
+        "Yes?",
+        "Perhaps.",
+        "I suppose.",
+        "Whatever."
+      ],
+      [CharacterSentiment.FRIENDLY]: [
+        "Hello there!",
+        "Greetings, friend!",
+        "Good day to you!",
+        "Welcome!",
+        "It's a pleasure to meet you!"
+      ],
+      [CharacterSentiment.ALLIED]: [
+        "My friend! How can I help?",
+        "At your service, as always!",
+        "How can I assist you?",
+        "Together we are strong!",
+        "What do you need, ally?"
+      ]
+    };
+
+    const sentimentResponses = responses[sentiment] || responses[CharacterSentiment.INDIFFERENT];
+    const randomIndex = Math.floor(Math.random() * sentimentResponses.length);
+    return sentimentResponses[randomIndex];
+  }
+
+  /**
    * Get all characters that block movement (hostile or aggressive sentiment)
    * Replaces getHostileCharacters for sentiment-aware blocking
    */

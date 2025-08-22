@@ -2147,7 +2147,22 @@ export class GameController {
         return;
       }
       
-      const response = character.dialogue_response || "Lovely day."
+      // Check if character is dead
+      if (character.is_dead) {
+        this.tui.display(`${character.name} is lifeless and does not respond.`, MessageType.NORMAL);
+        return;
+      }
+
+      // Use custom dialogue response if available, otherwise use sentiment-based response
+      let response: string;
+      if (character.dialogue_response && character.dialogue_response.trim() !== '') {
+        response = character.dialogue_response;
+      } else {
+        // Get character's current sentiment
+        const sentiment = await this.characterService.getSentiment(character.id);
+        response = this.characterService.getSentimentDialogueResponse(sentiment);
+      }
+
       this.tui.display(`${character.name} says: "${response}"`, MessageType.NORMAL);
 
     } catch (error) {

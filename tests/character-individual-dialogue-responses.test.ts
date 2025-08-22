@@ -136,9 +136,10 @@ describe('Character Individual Dialogue Responses', () => {
       // Talk to the character
       await (controller as any).processCommand('talk Silent Guardian');
 
-      // Verify fallback response is used
+      // Verify sentiment-based fallback response is used (should use indifferent response)
       const lastMessage = (controller as any).lastDisplayMessage;
-      expect(lastMessage).toBe('Silent Guardian says: "Lovely day."');
+      expect(lastMessage).toMatch(/Silent Guardian says:/);
+      expect(lastMessage).toMatch(/(hmm|yes|perhaps|i suppose|whatever)/i);
     });
 
     test('should fall back to default when dialogue_response is undefined', async () => {
@@ -155,9 +156,10 @@ describe('Character Individual Dialogue Responses', () => {
       // Talk to the character
       await (controller as any).processCommand('talk Generic Merchant');
 
-      // Verify fallback response is used
+      // Verify sentiment-based fallback response is used (should use indifferent response)
       const lastMessage = (controller as any).lastDisplayMessage;
-      expect(lastMessage).toBe('Generic Merchant says: "Lovely day."');
+      expect(lastMessage).toMatch(/Generic Merchant says:/);
+      expect(lastMessage).toMatch(/(hmm|yes|perhaps|i suppose|whatever)/i);
     });
 
     test('should handle empty string dialogue response', async () => {
@@ -174,9 +176,10 @@ describe('Character Individual Dialogue Responses', () => {
       // Talk to the character
       await (controller as any).processCommand('talk Speechless Monk');
 
-      // Verify fallback response is used (empty string should fall back)
+      // Verify sentiment-based fallback response is used (empty string should fall back to indifferent)
       const lastMessage = (controller as any).lastDisplayMessage;
-      expect(lastMessage).toBe('Speechless Monk says: "Lovely day."');
+      expect(lastMessage).toMatch(/Speechless Monk says:/);
+      expect(lastMessage).toMatch(/(hmm|yes|perhaps|i suppose|whatever)/i);
     });
   });
 
