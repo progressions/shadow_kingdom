@@ -71,7 +71,8 @@ export interface GeneratedCharacter {
     charisma?: number;
   };
   initialDialogue?: string;         // First thing NPC says
-  isHostile?: boolean;             // Whether enemy attacks on sight
+  sentiment?: string;              // Character sentiment toward player
+  isHostile?: boolean;             // @deprecated - use sentiment instead
 }
 
 export interface DialogueContext {
