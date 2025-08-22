@@ -71,7 +71,6 @@ describe('EnhancedNLPEngine - Core Functionality', () => {
       mockGrokClient.interpretCommand.mockResolvedValue({
         action: 'search',
         params: ['treasure'],
-        confidence: 0.7,
         reasoning: 'AI fallback'
       });
 

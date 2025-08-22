@@ -150,8 +150,7 @@ async function testPhase3() {
           details = ` | Compound: ${result.compoundCommands?.length} commands`;
         }
         
-        const confidence = (result.confidence * 100).toFixed(0);
-        console.log(`  ${statusIcon} "${command}" → ${result.action} (${confidence}%, ${processingTime}ms)${details}`);
+        console.log(`  ${statusIcon} "${command}" → ${result.action} (${result.source}, ${processingTime}ms)${details}`);
         
         if (result.reasoning) {
           console.log(`      💭 ${result.reasoning}`);

@@ -107,6 +107,8 @@ export interface CommandInterpretationContext {
     description: string;
     availableExits: string[];
     thematicExits?: Array<{direction: string; name: string}>;
+    characters?: string[];
+    items?: string[];
   };
   inventory?: string[];
   recentCommands?: string[];
@@ -115,7 +117,6 @@ export interface CommandInterpretationContext {
 export interface InterpretedCommand {
   action: string;
   params: string[];
-  confidence: number;
   reasoning: string;
 }
 
@@ -404,6 +405,20 @@ Respond in JSON format:
     }
   }
 
+  /**
+   * Check if client is in mock mode
+   */
+  get isMockMode(): boolean {
+    return this.config.mockMode || false;
+  }
+
+  /**
+   * Public method to call Grok API directly
+   */
+  async callAPI(prompt: string): Promise<string> {
+    return this.callGrokAPI(prompt);
+  }
+
   async interpretCommand(context: CommandInterpretationContext): Promise<InterpretedCommand | null> {
     if (this.config.mockMode) {
       return this.mockInterpretCommand(context);
@@ -412,7 +427,9 @@ Respond in JSON format:
     const roomInfo = context.currentRoom ? 
       `Current room: ${context.currentRoom.name} - ${context.currentRoom.description}
 Available exits: ${context.currentRoom.availableExits.join(', ')}${context.currentRoom.thematicExits ? `
-Thematic exit descriptions: ${context.currentRoom.thematicExits.map(exit => `${exit.direction}: "${exit.name}"`).join(', ')}` : ''}` : 
+Thematic exit descriptions: ${context.currentRoom.thematicExits.map(exit => `${exit.direction}: "${exit.name}"`).join(', ')}` : ''}${context.currentRoom.characters && context.currentRoom.characters.length > 0 ? `
+Characters in room: ${context.currentRoom.characters.join(', ')}` : ''}${context.currentRoom.items && context.currentRoom.items.length > 0 ? `
+Items in room: ${context.currentRoom.items.join(', ')}` : ''}` : 
       'No room context available';
 
     const inventoryInfo = context.inventory && context.inventory.length > 0 ? 
@@ -445,15 +462,24 @@ INTERPRETATION RULES:
 2. Consider the current room context and available exits
 3. IMPORTANT: If thematic exit descriptions are provided, match movement commands to them (e.g., "go down the steps" should map to "down" if thematic exit is "down: down the worn steps to the entrance hall")
 4. Handle pronouns and references (e.g., "it", "that", "him")
-5. Support compound commands like "take sword and examine it"
-6. Be flexible with phrasing and synonyms
-7. Assign confidence based on how certain you are about the interpretation
+5. IMPORTANT: Match generic terms like "guy", "person", "figure" to actual character names from the "Characters in room" list
+6. IMPORTANT: Match generic terms like "book", "weapon", "thing" to actual item names from the "Items in room" list
+7. IMPORTANT: For commands meaning "take everything" or "grab all items", use "all" as the target parameter
+8. Support compound commands like "take sword and examine it"
+9. Be flexible with phrasing and synonyms
+10. Use exact character and item names from the room context, not simplified versions
+11. Provide clear reasoning for your interpretation
+
+EXAMPLES:
+- "grab everything" → {"action": "get", "params": ["all"], "reasoning": "Take all available items"}
+- "take all items" → {"action": "get", "params": ["all"], "reasoning": "Take all available items"}  
+- "collect all the things" → {"action": "get", "params": ["all"], "reasoning": "Take all available items"}
+- "pick up everything here" → {"action": "get", "params": ["all"], "reasoning": "Take all available items"}
 
 Respond in JSON format:
 {
   "action": "primary action (go, look, take, talk, help, etc.)",
   "params": ["list", "of", "parameters"],
-  "confidence": 0.85,
   "reasoning": "Brief explanation of interpretation"
 }
 
@@ -788,7 +814,6 @@ ITEM GUIDELINES:
       return {
         action: 'look',
         params: [],
-        confidence: 0.75,
         reasoning: 'Interpreted wander/explore as looking around'
       };
     }
@@ -797,8 +822,18 @@ ITEM GUIDELINES:
       return {
         action: 'take',
         params: ['all'],
-        confidence: 0.85,
         reasoning: 'Interpreted as taking all available items'
+      };
+    }
+    
+    // Handle "show me" or "look at everything" type commands
+    if ((command.includes('show') && command.includes('everything')) || 
+        (command.includes('look') && command.includes('everything')) ||
+        command.includes('show me everything')) {
+      return {
+        action: 'look',
+        params: [],
+        reasoning: 'Interpreted as looking around to see everything'
       };
     }
     
@@ -806,7 +841,6 @@ ITEM GUIDELINES:
       return {
         action: 'examine',
         params: [command.split(' ').slice(-1)[0]], // Last word as object
-        confidence: 0.70,
         reasoning: 'Interpreted search/find as examining specific object'
       };
     }
@@ -815,8 +849,100 @@ ITEM GUIDELINES:
       return {
         action: 'talk',
         params: ['npc'],
-        confidence: 0.65,
         reasoning: 'Interpreted as talking to any available NPC'
+      };
+    }
+    
+    // Handle attack commands
+    if (command.includes('hit') || command.includes('attack') || command.includes('strike') || command.includes('fight') || command.includes('whack') || command.includes('smash') || command.includes('bash')) {
+      // Extract target from command
+      let target = 'enemy';
+      if (command.includes('guardian')) target = 'Ancient Guardian';
+      else if (command.includes('goblin')) target = 'goblin';
+      else if (command.includes('spirit')) target = 'Ancient Guardian';
+      else if (command.includes('baddie') || command.includes('bad guy')) target = 'Ancient Guardian';
+      else if (command.includes('enemy')) target = 'enemy';
+      else {
+        // Try to extract the last word as target
+        const words = command.split(' ');
+        const lastWord = words[words.length - 1];
+        if (lastWord && lastWord !== 'hit' && lastWord !== 'attack') {
+          target = lastWord;
+        }
+      }
+      
+      return {
+        action: 'attack',
+        params: [target],
+        reasoning: `Interpreted ${command} as attack command targeting ${target}`
+      };
+    }
+    
+    // Handle talk commands with specific targets and disambiguation  
+    if (command.includes('talk') || command.includes('speak') || command.includes('chat') || command.includes('holler') || command.includes('rap')) {
+      let target = 'npc';
+      
+      // Get available characters from current room context
+      const currentRoomCharacters = context.currentRoom?.characters || [];
+      
+      // Debug logging for character context
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🤖 Mock AI: Available characters:', currentRoomCharacters);
+        console.log('🤖 Mock AI: Processing command:', command);
+      }
+      
+      // Try to extract target after "to", "with", "at"  
+      const talkMatch = command.match(/(?:talk|speak|chat|holler|rap)\s+(?:to|with|at)\s+(?:the|that\s+)?(.+)/);
+      if (talkMatch) {
+        const extractedTarget = talkMatch[1].trim();
+        
+        // Enhanced disambiguation: match user terms to actual room characters
+        if (extractedTarget.includes('spirit') || extractedTarget.includes('ghost') || extractedTarget.includes('spectre')) {
+          // Find character in room that contains spirit/ghost/spectre
+          const spiritCharacter = currentRoomCharacters.find((char: string) => 
+            char.toLowerCase().includes('spirit') || char.toLowerCase().includes('ghost') || char.toLowerCase().includes('spectre')
+          );
+          target = spiritCharacter || extractedTarget;
+        } else if (extractedTarget === 'ghost' || extractedTarget === 'spirit' || extractedTarget === 'spectre') {
+          // Handle exact matches for ghost/spirit/spectre terms
+          const spiritCharacter = currentRoomCharacters.find((char: string) => 
+            char.toLowerCase().includes('spirit') || char.toLowerCase().includes('ghost') || char.toLowerCase().includes('spectre')
+          );
+          target = spiritCharacter || extractedTarget;
+        } else if (extractedTarget.includes('keeper') || extractedTarget.includes('guardian')) {
+          // Find character in room that contains keeper/guardian
+          const keeperCharacter = currentRoomCharacters.find((char: string) => 
+            char.toLowerCase().includes('keeper') || char.toLowerCase().includes('guardian')
+          );
+          target = keeperCharacter || extractedTarget; // Use actual room character or user input
+        } else {
+          // For other cases, try to find any character that contains words from the target
+          const words = extractedTarget.toLowerCase().split(/\s+/);
+          const matchingCharacter = currentRoomCharacters.find((char: string) => 
+            words.some(word => char.toLowerCase().includes(word))
+          );
+          target = matchingCharacter || extractedTarget;
+        }
+      } else {
+        // Direct reference disambiguation for commands without prepositions
+        if (command.includes('spirit') || command.includes('ghost') || command.includes('spectre')) {
+          const spiritMatch = currentRoomCharacters.find((char: string) => 
+            char.toLowerCase().includes('spirit') || char.toLowerCase().includes('ghost') || char.toLowerCase().includes('spectre')
+          );
+          target = spiritMatch || 'ghost';
+        }
+        else if (command.includes('keeper') || command.includes('guardian')) {
+          const keeperMatch = currentRoomCharacters.find((char: string) => 
+            char.toLowerCase().includes('keeper') || char.toLowerCase().includes('guardian')
+          );
+          target = keeperMatch || 'keeper';
+        }
+      }
+      
+      return {
+        action: 'talk',
+        params: [target],
+        reasoning: `Interpreted "${command}" as talking to ${target}`
       };
     }
     

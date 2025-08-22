@@ -1,7 +1,7 @@
 # AI Command Parsing Fallback Enhancement
 
 **Date**: 2025-08-22  
-**Status**: Open  
+**Status**: Completed  
 **Priority**: Medium  
 **Category**: Enhancement  
 
@@ -47,7 +47,6 @@ interface AICommandPrompt {
 interface AICommandResponse {
   command: string;           // Resolved command name (e.g., "attack", "get", "talk")
   target: string;           // Resolved target (e.g., "goblin", "sword", "merchant")
-  confidence: number;       // 0-1 confidence score
   reasoning?: string;       // Optional explanation for debugging
 }
 ```
@@ -70,7 +69,7 @@ if (!exactCommand && !nlpResult) {
     context.gameContext
   );
   
-  if (aiResult && aiResult.confidence > 0.7) {
+  if (aiResult && aiResult.command && aiResult.target) {
     return await this.executeResolvedCommand(aiResult, commands);
   }
 }
@@ -106,12 +105,14 @@ Available exits: ${availableExits.join(', ')}
 Available commands: ${availableCommands.join(', ')}
 
 Please determine what command the player intended and what target they want to interact with.
-Return a JSON object with: {"command": "...", "target": "...", "confidence": 0.0-1.0}
+Return a JSON object with: {"command": "...", "target": "..."}
 
 Examples:
-- "hit the goblin" → {"command": "attack", "target": "goblin", "confidence": 0.9}
-- "I want to pick up the sword" → {"command": "get", "target": "sword", "confidence": 0.8}
-- "examine that orb" → {"command": "examine", "target": "orb", "confidence": 0.7}
+- "hit the goblin" → {"command": "attack", "target": "goblin"}
+- "I want to pick up the sword" → {"command": "get", "target": "sword"}
+- "examine that orb" → {"command": "examine", "target": "orb"}
+- "speak with the merchant" → {"command": "talk", "target": "merchant"}
+- "walk north" → {"command": "go", "target": "north"}
 `;
 ```
 
@@ -135,15 +136,9 @@ Examples:
 
 ## Error Handling & Fallback
 
-### Confidence Thresholds
-- **High Confidence (0.8+)**: Execute command immediately
-- **Medium Confidence (0.6-0.7)**: Execute with confirmation message
-- **Low Confidence (0.4-0.5)**: Ask for clarification
-- **Very Low (<0.4)**: Fall back to original error message
-
-### Graceful Degradation
+### Simple Fallback Strategy
 ```typescript
-if (aiResult.confidence < 0.4) {
+if (!aiResult || !aiResult.command || !aiResult.target) {
   this.tui.display(
     `I'm not sure what you mean by "${input}". Type "help" for available commands.`,
     MessageType.ERROR
@@ -151,13 +146,8 @@ if (aiResult.confidence < 0.4) {
   return false;
 }
 
-if (aiResult.confidence < 0.6) {
-  this.tui.display(
-    `Did you mean: ${aiResult.command} ${aiResult.target}? (y/n)`,
-    MessageType.SYSTEM
-  );
-  // Handle confirmation flow
-}
+// If AI successfully parsed the command, execute it
+return await this.executeResolvedCommand(aiResult, commands);
 ```
 
 ## Performance Considerations
@@ -213,7 +203,15 @@ describe('AI Command Fallback', () => {
     );
     expect(result.command).toBe('attack');
     expect(result.target).toBe('goblin');
-    expect(result.confidence).toBeGreaterThan(0.8);
+  });
+  
+  it('should handle natural language commands', async () => {
+    const result = await aiCommandFallback.parseCommand(
+      'I want to pick up the sword',
+      mockGameContext
+    );
+    expect(result.command).toBe('get');
+    expect(result.target).toBe('sword');
   });
 });
 ```
@@ -221,8 +219,8 @@ describe('AI Command Fallback', () => {
 ## Success Metrics
 
 ### Functionality Metrics
-- Command resolution accuracy > 85%
-- False positive rate < 10%
+- Successful command resolution for common synonyms
+- Natural language patterns correctly interpreted
 - Response time < 2 seconds for AI parsing
 - Player satisfaction with natural language support
 

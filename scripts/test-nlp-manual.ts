@@ -134,8 +134,7 @@ function testNLPProcessor() {
       
       if (result) {
         const params = result.params.length > 0 ? ` [${result.params.join(', ')}]` : '';
-        const confidence = (result.confidence * 100).toFixed(0);
-        console.log(`  ✅ "${input}" → ${result.action}${params} (${confidence}% confidence, ${result.processingTime}ms)`);
+        console.log(`  ✅ "${input}" → ${result.action}${params} (${result.source}, ${result.processingTime}ms)`);
       } else {
         console.log(`  ❌ "${input}" → No match`);
       }
@@ -164,7 +163,7 @@ function testNLPProcessor() {
   console.log(`  Target: <50ms per command ✅`);
 
   // Context comparison
-  console.log('\n🎯 Context-Aware Confidence:');
+  console.log('\n🎯 Context-Aware Processing:');
   console.log('-'.repeat(30));
   
   const contextTestCommand = 'go north';
@@ -172,9 +171,9 @@ function testNLPProcessor() {
   const menuResult = processor.processCommand(contextTestCommand, menuContext);
   
   if (gameResult && menuResult) {
-    console.log(`  "${contextTestCommand}" in game mode: ${(gameResult.confidence * 100).toFixed(0)}% confidence`);
-    console.log(`  "${contextTestCommand}" in menu mode: ${(menuResult.confidence * 100).toFixed(0)}% confidence`);
-    console.log(`  Boost for game mode: ${gameResult.confidence > menuResult.confidence ? '✅' : '❌'}`);
+    console.log(`  "${contextTestCommand}" in game mode: ${gameResult.source} source`);
+    console.log(`  "${contextTestCommand}" in menu mode: ${menuResult.source} source`);
+    console.log(`  Both contexts work: ${gameResult.source === menuResult.source ? '✅' : '❌'}`);
   }
 
   // Statistics

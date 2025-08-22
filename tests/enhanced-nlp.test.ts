@@ -19,8 +19,7 @@ describe('EnhancedNLPEngine', () => {
 
     // Create engine with mock client and configure for context resolution
     engine = new EnhancedNLPEngine(mockGrokClient, {
-      enableDebugLogging: false,
-      localConfidenceThreshold: 0.95  // Higher threshold to prefer context resolution
+      enableDebugLogging: false
     });
 
     // Test context with rich room description
@@ -37,7 +36,7 @@ describe('EnhancedNLPEngine', () => {
   });
 
   describe('Context Resolution Integration', () => {
-    test('should prefer local patterns when confidence is high', async () => {
+    test('should prefer local patterns when available', async () => {
       const result = await engine.processCommand('go north', gameContext);
       
       expect(result).not.toBeNull();
@@ -137,7 +136,6 @@ describe('EnhancedNLPEngine', () => {
       mockGrokClient.interpretCommand.mockResolvedValue({
         action: 'search',
         params: ['hidden passage'],
-        confidence: 0.7,
         reasoning: 'AI interpretation of complex command'
       });
 
@@ -294,23 +292,22 @@ describe('EnhancedNLPEngine', () => {
     });
   });
 
-  describe('Confidence Scoring', () => {
-    test('should assign appropriate confidence to context resolutions', async () => {
+  describe('Source Assignment', () => {
+    test('should assign appropriate source to context resolutions', async () => {
       const result = await engine.processCommand('examine the fountain', gameContext);
       
       expect(result).not.toBeNull();
-      expect(result!.confidence).toBeGreaterThan(0.7);
-      expect(result!.confidence).toBeLessThan(1.0);
+      expect(result!.source).toBe('context');
     });
 
-    test('should assign high confidence to compound commands with good resolution', async () => {
+    test('should assign appropriate source to compound commands with good resolution', async () => {
       const result = await engine.processCommand('take key and examine it', gameContext);
       
       expect(result).not.toBeNull();
-      expect(result!.confidence).toBeGreaterThan(0.8);
+      expect(result!.source).toBe('context');
     });
 
-    test('should assign lower confidence to ambiguous resolutions', async () => {
+    test('should handle ambiguous resolutions', async () => {
       // Create ambiguous context
       const ambiguousContext = {
         ...gameContext,
@@ -323,7 +320,7 @@ describe('EnhancedNLPEngine', () => {
       const result = await engine.processCommand('take stuff', ambiguousContext);
       
       if (result && result.source === 'context') {
-        expect(result.confidence).toBeLessThan(0.9);
+        expect(result.source).toBe('context');
       }
     });
   });

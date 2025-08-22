@@ -13,6 +13,7 @@ import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
 import { CommandRouter, Command, CommandExecutionContext } from './services/commandRouter';
 import { GameStateManager } from './services/gameStateManager';
 import { RoomDisplayService } from './services/roomDisplayService';
+import { CommandParsingError } from './services/commandParsingError';
 import { RoomGenerationService } from './services/roomGenerationService';
 import { BackgroundGenerationService } from './services/backgroundGenerationService';
 import { GameManagementService } from './services/gameManagementService';
@@ -71,7 +72,7 @@ export class GameController {
     // Initialize unified NLP engine with configuration
     const baseConfig = getNLPConfig();
     const config = applyEnvironmentOverrides(baseConfig);
-    this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config);
+    this.nlpEngine = new UnifiedNLPEngine(this.grokClient, config, this.db);
     
     // Initialize room display service
     this.roomDisplayService = new RoomDisplayService({
@@ -97,7 +98,7 @@ export class GameController {
     }
     
     // Initialize command router (after TUI is available)
-    this.commandRouter = new CommandRouter(this.nlpEngine, this.tui, {
+    this.commandRouter = new CommandRouter(this.nlpEngine, this.grokClient, this.db, this.tui, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
@@ -602,8 +603,6 @@ export class GameController {
     this.tui.display(`  Average processing time: ${nlpStats.avgProcessingTime.toFixed(2)}ms`, MessageType.NORMAL);
     
     this.tui.display('⚙️  Configuration:', MessageType.NORMAL);
-    this.tui.display(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
-    this.tui.display(`  AI confidence threshold: ${(config.aiConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
     this.tui.display(`  AI fallback enabled: ${config.enableAIFallback ? 'Yes' : 'No'}`, MessageType.NORMAL);
     this.tui.display(`  Max processing time: ${config.maxProcessingTime}ms`, MessageType.NORMAL);
     this.tui.display(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`, MessageType.NORMAL);
@@ -2075,7 +2074,7 @@ export class GameController {
         return;
       }
       
-      const response = character.dialogue_response || "Lovely day.";
+      const response = character.dialogue_response || "Lovely day."
       this.tui.display(`${character.name} says: "${response}"`, MessageType.NORMAL);
 
     } catch (error) {

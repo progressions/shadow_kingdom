@@ -1,10 +1,10 @@
 import { LocalNLPProcessor } from './localNLPProcessor';
 import { GrokClient, CommandInterpretationContext, InterpretedCommand } from '../ai/grokClient';
 import { GameContext, NLPResult } from './types';
+import { EntityResolver } from './entityResolver';
+import Database from '../utils/database';
 
 export interface NLPConfig {
-  localConfidenceThreshold: number;   // Minimum confidence for local patterns
-  aiConfidenceThreshold: number;      // Minimum confidence for AI interpretation
   enableAIFallback: boolean;          // Whether to use AI when local fails
   maxProcessingTime: number;          // Max time to spend on processing (ms)
   enableDebugLogging: boolean;        // Debug output
@@ -13,6 +13,8 @@ export interface NLPConfig {
 export class UnifiedNLPEngine {
   private localProcessor: LocalNLPProcessor;
   private grokClient: GrokClient;
+  private entityResolver: EntityResolver | null = null;
+  private db?: Database;
   protected config: NLPConfig;
   private stats = {
     totalCommands: 0,
@@ -22,13 +24,15 @@ export class UnifiedNLPEngine {
     avgProcessingTime: 0
   };
 
-  constructor(grokClient?: GrokClient, config?: Partial<NLPConfig>) {
+  constructor(grokClient?: GrokClient, config?: Partial<NLPConfig>, db?: Database) {
     this.localProcessor = new LocalNLPProcessor();
     this.grokClient = grokClient || new GrokClient();
+    this.db = db;
+    if (db) {
+      this.entityResolver = new EntityResolver(db);
+    }
     
     this.config = {
-      localConfidenceThreshold: 0.7,
-      aiConfidenceThreshold: 0.6,
       enableAIFallback: true,
       maxProcessingTime: 5000, // 5 seconds max
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true',
@@ -52,36 +56,90 @@ export class UnifiedNLPEngine {
     const localResult = this.localProcessor.processCommand(input, context);
     
     if (localResult) {
-      // If we have a local regex match, use it
+      // If we have a local regex match, try entity resolution
       this.stats.localMatches++;
       
-      const result: NLPResult = {
-        action: localResult.action,
-        params: localResult.params,
-        confidence: localResult.confidence,
-        source: 'local',
-        processingTime: Date.now() - startTime
-      };
-      
-      this.updateAverageProcessingTime(result.processingTime);
-      
-      if (this.config.enableDebugLogging) {
-        console.log(`✅ Local match: ${result.action} (${(result.confidence * 100).toFixed(0)}%)`);
+      // Try to resolve entities if we have an entity resolver
+      if (this.entityResolver) {
+        const entityResult = await this.entityResolver.resolveEntities(
+          localResult.action, 
+          localResult.params, 
+          context
+        );
+        
+        if (!entityResult.resolved) {
+          if (this.config.enableDebugLogging) {
+            console.log(`❌ Entity resolution failed: ${entityResult.reason}`);
+          }
+          // Entity resolution failed, don't return local result - fall through to AI
+        } else {
+          // Entity resolution succeeded
+          const result: NLPResult = {
+            action: localResult.action,
+            params: entityResult.resolvedParams,
+            source: 'local',
+            processingTime: Date.now() - startTime
+          };
+          
+          this.updateAverageProcessingTime(result.processingTime);
+          
+          if (this.config.enableDebugLogging) {
+            console.log(`✅ Local match with entity resolution: ${result.action} ${result.params.join(' ')}`);
+          }
+          
+          return result;
+        }
+      } else {
+        // No entity resolver, use original params
+        const result: NLPResult = {
+          action: localResult.action,
+          params: localResult.params,
+          source: 'local',
+          processingTime: Date.now() - startTime
+        };
+        
+        this.updateAverageProcessingTime(result.processingTime);
+        
+        if (this.config.enableDebugLogging) {
+          console.log(`✅ Local match: ${result.action}`);
+        }
+        
+        return result;
       }
-      
-      return result;
     }
 
     // Phase 2: Always try AI fallback if no regex match
     if (this.config.enableAIFallback) {
       try {
+        // Get characters and items in current room for AI context
+        let roomCharacters: string[] = [];
+        let roomItems: string[] = [];
+        if (context.currentRoom && this.db) {
+          const { CharacterService } = await import('../services/characterService');
+          const { CharacterType } = await import('../types/character');
+          const { ItemService } = await import('../services/itemService');
+          
+          const characterService = new CharacterService(this.db);
+          const itemService = new ItemService(this.db);
+          
+          const [charactersInRoom, itemsInRoom] = await Promise.all([
+            characterService.getRoomCharacters(context.currentRoom.id, CharacterType.PLAYER),
+            itemService.getRoomItems(context.currentRoom.id)
+          ]);
+          
+          roomCharacters = charactersInRoom.map(char => char.name);
+          roomItems = itemsInRoom.map(roomItem => roomItem.item.name);
+        }
+
         const aiContext: CommandInterpretationContext = {
           command: input,
           currentRoom: context.currentRoom ? {
             name: context.currentRoom.name,
             description: context.currentRoom.description,
             availableExits: context.currentRoom.availableExits,
-            thematicExits: context.currentRoom.thematicExits
+            thematicExits: context.currentRoom.thematicExits,
+            characters: roomCharacters,
+            items: roomItems
           } : undefined,
           inventory: [], // TODO: Add inventory support
           recentCommands: context.recentCommands
@@ -109,7 +167,6 @@ export class UnifiedNLPEngine {
           const result: NLPResult = {
             action: aiResult.action,
             params: aiResult.params,
-            confidence: aiResult.confidence,
             source: 'ai',
             processingTime: Date.now() - startTime,
             reasoning: aiResult.reasoning
@@ -118,7 +175,7 @@ export class UnifiedNLPEngine {
           this.updateAverageProcessingTime(result.processingTime);
           
           if (this.config.enableDebugLogging) {
-            console.log(`🤖 AI match: ${result.action} (${(result.confidence * 100).toFixed(0)}%)`);
+            console.log(`🤖 AI match: ${result.action}`);
             if (result.reasoning) {
               console.log(`   Reasoning: ${result.reasoning}`);
             }

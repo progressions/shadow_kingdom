@@ -2,6 +2,10 @@ import { UnifiedNLPEngine } from '../nlp/unifiedNLPEngine';
 import { GameContext, NLPResult } from '../nlp/types';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
+import { AICommandFallback } from './aiCommandFallback';
+import { GrokClient } from '../ai/grokClient';
+import { CommandParsingError } from './commandParsingError';
+import Database from '../utils/database';
 
 export interface Command {
   name: string;
@@ -27,14 +31,18 @@ export class CommandRouter {
   private nlpEngine: UnifiedNLPEngine;
   private options: CommandRouterOptions;
   private tui: TUIInterface | null;
+  private aiCommandFallback: AICommandFallback | null = null;
 
-  constructor(nlpEngine: UnifiedNLPEngine, tui: TUIInterface | null = null, options: CommandRouterOptions = {}) {
+  constructor(nlpEngine: UnifiedNLPEngine, grokClient: GrokClient, db: Database, tui: TUIInterface | null = null, options: CommandRouterOptions = {}) {
     this.nlpEngine = nlpEngine;
     this.tui = tui;
     this.options = {
       enableDebugLogging: false,
       ...options
     };
+    this.aiCommandFallback = new AICommandFallback(grokClient, db, tui, {
+      enableDebugLogging: options.enableDebugLogging || false
+    });
   }
 
   /**
@@ -73,29 +81,29 @@ export class CommandRouter {
   async processCommand(input: string, context: CommandExecutionContext): Promise<boolean> {
     if (!input) return false;
 
-    // First try exact command matching
-    const parts = input.split(' ');
+    const commands = this.getCommands();
+    
+    // First, try exact command matching for simple commands
+    const parts = input.trim().split(' ');
     const commandName = parts[0].toLowerCase();
     const args = parts.slice(1);
-
-    const commands = this.getCommands();
-    const exactCommand = commands.get(commandName);
     
+    const exactCommand = commands.get(commandName);
     if (exactCommand) {
       try {
         await exactCommand.handler(args);
         return true;
       } catch (error) {
-        if (this.tui) {
-          this.tui.display(`Error executing command "${commandName}": ${error}`, MessageType.ERROR);
-        } else {
-          console.error(`Error executing command "${commandName}":`, error);
+        // If exact command fails, fall through to NLP processing
+        if (this.isDebugEnabled()) {
+          if (this.tui) {
+            this.tui.display(`⚠️ Exact command "${commandName}" failed, trying NLP: ${error}`, MessageType.SYSTEM);
+          }
         }
-        return false;
       }
     }
-
-    // If exact match fails, try unified NLP processing
+    
+    // If no exact match or exact command failed, try NLP for entity resolution
     const nlpResult = await this.nlpEngine.processCommand(input, context.gameContext);
 
     if (nlpResult) {
@@ -103,11 +111,33 @@ export class CommandRouter {
       if (success) return true;
     }
 
-    // If neither exact nor NLP matching worked, show error
+    // If neither exact nor NLP matching worked, try AI command fallback
+    if (this.aiCommandFallback) {
+      try {
+        const availableCommands = Array.from(commands.keys());
+        const aiResult = await this.aiCommandFallback.parseCommand(input, context.gameContext, availableCommands);
+        
+        if (aiResult) {
+          const success = await this.executeNLPResult(aiResult, commands, input);
+          if (success) return true;
+        }
+      } catch (error) {
+        if (this.isDebugEnabled()) {
+          if (this.tui) {
+            this.tui.display(`🤖 AI fallback error: ${error}`, MessageType.SYSTEM);
+          } else {
+            console.log(`🤖 AI fallback error: ${error}`);
+          }
+        }
+      }
+    }
+
+    // If all parsing methods failed, show error
+    const failedCommandName = input.split(' ')[0];
     if (this.tui) {
-      this.tui.display(`Unknown command: ${commandName}. Type "help" for available commands.`, MessageType.ERROR);
+      this.tui.display(`Unknown command: ${failedCommandName}. Type "help" for available commands.`, MessageType.ERROR);
     } else {
-      console.log(`Unknown command: ${commandName}. Type "help" for available commands.`);
+      console.log(`Unknown command: ${failedCommandName}. Type "help" for available commands.`);
     }
     
     // In debug mode, show NLP analysis
@@ -136,7 +166,7 @@ export class CommandRouter {
       try {
         if (this.isDebugEnabled()) {
           const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
-          const debugMessage = `${sourceIcon} NLP: "${originalInput}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)}, source: ${nlpResult.source})`;
+          const debugMessage = `${sourceIcon} NLP: "${originalInput}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (source: ${nlpResult.source})`;
           if (this.tui) {
             this.tui.display(debugMessage, MessageType.SYSTEM);
             if (nlpResult.reasoning) {
@@ -152,6 +182,12 @@ export class CommandRouter {
         await resolvedCommand.handler(nlpResult.params);
         return true;
       } catch (error) {
+        // If it's a CommandParsingError, don't show the error yet - let AI fallback try first
+        if (CommandParsingError.isCommandParsingError(error)) {
+          return false; // This will trigger AI fallback
+        }
+        
+        // For other errors, show them
         if (this.tui) {
           this.tui.display(`Error executing NLP-resolved command "${nlpResult.action}": ${error}`, MessageType.ERROR);
         } else {
