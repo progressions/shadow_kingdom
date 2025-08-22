@@ -2106,8 +2106,9 @@ export class GameController {
         return;
       }
       
-      // Character responds to attack
-      this.tui.display(`${character.name} says "Ow"`, MessageType.NORMAL);
+      // Kill the character
+      await this.characterService.setCharacterDead(character.id);
+      this.tui.display(`You killed the ${character.name}.`, MessageType.NORMAL);
 
     } catch (error) {
       console.error('Error attacking character:', error);
