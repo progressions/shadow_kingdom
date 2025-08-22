@@ -994,5 +994,84 @@ async function setupGameCommands(
       }
     }
   });
+
+  // Item interaction commands
+  commandRouter.addGameCommand({
+    name: 'give',
+    description: 'Give an item to a character',
+    handler: async (args: string[]) => {
+      if (args.length < 3) {
+        console.log('Give what to whom? Use: give [item] to [character]');
+        return;
+      }
+
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const currentRoom = await gameStateManager.getCurrentRoom();
+        
+        if (!currentRoom) {
+          console.log('Error: Unable to determine current room.');
+          return;
+        }
+
+        // Parse the command - find "to" separator
+        const toIndex = args.findIndex(arg => arg.toLowerCase() === 'to');
+        if (toIndex === -1 || toIndex === 0 || toIndex === args.length - 1) {
+          console.log('Use the format: give [item] to [character]');
+          return;
+        }
+
+        const itemName = args.slice(0, toIndex).join(' ');
+        const characterName = args.slice(toIndex + 1).join(' ');
+
+        // Get player inventory
+        const gameId = session.gameId!;
+        const inventory = await itemService.getCharacterInventory(gameId);
+        
+        // Find item in inventory
+        const item = itemService.findItemByName(inventory, itemName);
+        if (!item) {
+          console.log(`You don't have "${itemName}" in your inventory.`);
+          return;
+        }
+
+        // Find character in room
+        const characters = await db.all(
+          'SELECT * FROM characters WHERE current_room_id = ?',
+          [currentRoom.id]
+        );
+        
+        const character = characters.find((char: any) => 
+          char.name.toLowerCase().includes(characterName.toLowerCase())
+        );
+        
+        if (!character) {
+          console.log(`There is no one named "${characterName}" here.`);
+          return;
+        }
+
+        // Remove item from player inventory (reduce quantity or delete if quantity is 1)
+        if (item.quantity > 1) {
+          await db.run(
+            'UPDATE character_inventory SET quantity = quantity - 1 WHERE character_id = ? AND item_id = ?',
+            [gameId, item.item_id]
+          );
+        } else {
+          await db.run(
+            'DELETE FROM character_inventory WHERE character_id = ? AND item_id = ?',
+            [gameId, item.item_id]
+          );
+        }
+
+        // Display success messages
+        console.log(`You give the ${item.item.name} to the ${character.name}.`);
+        console.log(`${character.name} says, "Thank you."`);
+
+      } catch (error) {
+        console.error('Error giving item:', error);
+        console.log('Error giving item to character.');
+      }
+    }
+  });
 }
 
