@@ -375,6 +375,37 @@ export class CharacterService {
   }
 
   /**
+   * Get all characters that block movement (hostile or aggressive sentiment)
+   * Replaces getHostileCharacters for sentiment-aware blocking
+   */
+  async getBlockingCharacters(roomId: number): Promise<Character[]> {
+    return await this.db.all<Character>(
+      `SELECT * FROM characters 
+       WHERE current_room_id = ? 
+       AND sentiment IN ('hostile', 'aggressive') 
+       AND (is_dead IS NULL OR is_dead = 0) 
+       ORDER BY name`,
+      [roomId]
+    );
+  }
+
+  /**
+   * Check if room has any characters that block movement
+   * Uses sentiment system instead of is_hostile
+   */
+  async hasBlockingCharacters(roomId: number): Promise<boolean> {
+    const result = await this.db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM characters 
+       WHERE current_room_id = ? 
+       AND sentiment IN ('hostile', 'aggressive') 
+       AND (is_dead IS NULL OR is_dead = 0)`,
+      [roomId]
+    );
+    
+    return (result?.count || 0) > 0;
+  }
+
+  /**
    * Set character's sentiment to a specific value
    */
   async setSentiment(characterId: number, sentiment: CharacterSentiment): Promise<void> {

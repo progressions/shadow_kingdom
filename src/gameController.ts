@@ -911,18 +911,20 @@ export class GameController {
     // Check for hostile characters blocking movement
     const currentRoomId = this.gameStateManager.getCurrentRoomId();
     if (currentRoomId) {
-      const hostileCharacters = await this.characterService.getHostileCharacters(currentRoomId);
+      const blockingCharacters = await this.characterService.getBlockingCharacters(currentRoomId);
       
-      if (hostileCharacters.length > 0) {
-        const hostileName = hostileCharacters[0].name;
-        if (hostileCharacters.length === 1) {
+      if (blockingCharacters.length > 0) {
+        const blocker = blockingCharacters[0];
+        const sentimentType = blocker.sentiment === CharacterSentiment.HOSTILE ? 'hostile' : 'aggressive';
+        
+        if (blockingCharacters.length === 1) {
           this.tui.display(
-            `You cannot flee! The ${hostileName} blocks your path!`,
+            `${blocker.name} blocks your path! This ${sentimentType} character prevents movement.`,
             MessageType.ERROR
           );
         } else {
           this.tui.display(
-            `You cannot flee! Hostile enemies block your escape!`,
+            `${blockingCharacters.length} hostile characters prevent movement. Defeat them first!`,
             MessageType.ERROR
           );
         }
