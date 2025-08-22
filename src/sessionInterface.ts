@@ -780,5 +780,51 @@ async function setupGameCommands(
       }
     }
   });
+
+  // Character dialogue commands
+  commandRouter.addGameCommand({
+    name: 'talk',
+    description: 'Talk to a character in the current room',
+    handler: async (args: string[]) => {
+      if (args.length === 0) {
+        console.log('Who would you like to talk to?');
+        return;
+      }
+
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const currentRoom = await gameStateManager.getCurrentRoom();
+        
+        if (!currentRoom) {
+          console.log('Error: Unable to determine current room.');
+          return;
+        }
+
+        const characterName = args.join(' ');
+        
+        // Get all characters in the room
+        const characters = await db.all(
+          'SELECT * FROM characters WHERE current_room_id = ?',
+          [currentRoom.id]
+        );
+        
+        // Find character using partial name matching (similar to item service)
+        const character = characters.find((char: any) => 
+          char.name.toLowerCase().includes(characterName.toLowerCase())
+        );
+        
+        if (!character) {
+          console.log(`There is no one named "${characterName}" here.`);
+          return;
+        }
+        
+        console.log(`${character.name} says: "Lovely day."`);
+
+      } catch (error) {
+        console.error('Error talking to character:', error);
+        console.log('Error talking to character.');
+      }
+    }
+  });
 }
 

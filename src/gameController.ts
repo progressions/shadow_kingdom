@@ -22,7 +22,7 @@ import { ActionValidator } from './services/actionValidator';
 import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
 import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
-import { CharacterType } from './types/character';
+import { CharacterType, Character } from './types/character';
 import { UnifiedRoomDisplayService } from './services/unifiedRoomDisplayService';
 import { TUIOutputAdapter } from './adapters/tuiOutputAdapter';
 
@@ -383,6 +383,12 @@ export class GameController {
       name: 'equipment',
       description: 'Show your equipped items',
       handler: async () => await this.handleEquipment()
+    });
+
+    this.commandRouter.addCommand({
+      name: 'talk',
+      description: 'Talk to a character in the current room',
+      handler: async (args) => await this.handleTalkCommand(args.join(' '))
     });
   }
 
@@ -1862,5 +1868,61 @@ export class GameController {
       console.error('Error displaying character stats:', error);
       this.tui.display('Error displaying character stats.', MessageType.ERROR);
     }
+  }
+
+  /**
+   * Handle talk command - talk to a character in the current room
+   */
+  private async handleTalkCommand(characterName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!characterName) {
+      this.tui.display('Who would you like to talk to?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      const character = await this.findCharacterInRoom(characterName, currentRoom.id);
+      
+      if (!character) {
+        this.tui.display(`There is no one named "${characterName}" here.`, MessageType.ERROR);
+        return;
+      }
+      
+      this.tui.display(`${character.name} says: "Lovely day."`, MessageType.NORMAL);
+
+    } catch (error) {
+      console.error('Error talking to character:', error);
+      this.tui.showError('Error talking to character', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Find a character in the specified room by name (case-insensitive, supports partial matching)
+   */
+  private async findCharacterInRoom(characterName: string, roomId: number): Promise<Character | null> {
+    // Get all characters in the room
+    const characters = await this.db.all<Character>(
+      'SELECT * FROM characters WHERE current_room_id = ?',
+      [roomId]
+    );
+    
+    // Find character using partial name matching (similar to item service)
+    const foundCharacter = characters.find(character => 
+      character.name.toLowerCase().includes(characterName.toLowerCase())
+    );
+    
+    return foundCharacter || null;
   }
 }
