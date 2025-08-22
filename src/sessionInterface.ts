@@ -843,5 +843,57 @@ async function setupGameCommands(
       }
     }
   });
+
+  // Combat commands
+  commandRouter.addGameCommand({
+    name: 'attack',
+    description: 'Attack a character in the room',
+    handler: async (args: string[]) => {
+      if (args.length === 0) {
+        console.log('Attack who? Specify a target (e.g., "attack goblin")');
+        return;
+      }
+
+      try {
+        const session = gameStateManager.getCurrentSession();
+        const currentRoom = await gameStateManager.getCurrentRoom();
+        
+        if (!currentRoom) {
+          console.log('Error: Unable to determine current room.');
+          return;
+        }
+
+        const targetName = args.join(' ').toLowerCase();
+        
+        // Get all characters in the room
+        const characters = await db.all(
+          'SELECT * FROM characters WHERE current_room_id = ?',
+          [currentRoom.id]
+        );
+        
+        // Find character using partial name matching
+        const target = characters.find((char: any) => 
+          char.name.toLowerCase().includes(targetName)
+        );
+        
+        if (!target) {
+          console.log(`There is no ${targetName} here to attack.`);
+          return;
+        }
+        
+        if (target.is_dead) {
+          console.log(`The ${target.name} is already dead.`);
+          return;
+        }
+        
+        // Character responds to attack
+        console.log(`${target.name} says "Ow"`);
+
+      } catch (error) {
+        console.error('Error attacking character:', error);
+        console.log('Error attacking character.');
+      }
+    }
+  });
 }
 

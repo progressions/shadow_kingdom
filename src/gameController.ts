@@ -390,6 +390,12 @@ export class GameController {
       description: 'Talk to a character in the current room',
       handler: async (args) => await this.handleTalkCommand(args.join(' '))
     });
+
+    this.commandRouter.addCommand({
+      name: 'attack',
+      description: 'Attack a character in the room',
+      handler: async (args) => await this.handleAttackCommand(args.join(' '))
+    });
   }
 
   private async processInput(): Promise<void> {
@@ -1928,6 +1934,50 @@ export class GameController {
     } catch (error) {
       console.error('Error talking to character:', error);
       this.tui.showError('Error talking to character', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Handle attack command - attack a character in the current room
+   */
+  private async handleAttackCommand(targetName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!targetName) {
+      this.tui.display('Attack who? Specify a target (e.g., "attack goblin")', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      const character = await this.findCharacterInRoom(targetName, currentRoom.id);
+      
+      if (!character) {
+        this.tui.display(`There is no ${targetName} here to attack.`, MessageType.ERROR);
+        return;
+      }
+      
+      if (character.is_dead) {
+        this.tui.display(`The ${character.name} is already dead.`, MessageType.ERROR);
+        return;
+      }
+      
+      // Character responds to attack
+      this.tui.display(`${character.name} says "Ow"`, MessageType.NORMAL);
+
+    } catch (error) {
+      console.error('Error attacking character:', error);
+      this.tui.showError('Error attacking character', (error as Error)?.message);
     }
   }
 
