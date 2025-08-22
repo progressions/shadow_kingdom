@@ -1,6 +1,7 @@
 import { Room, Connection } from './gameStateManager';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
+import { sortDirections } from '../utils/directionSorter';
 
 export interface RoomDisplayOptions {
   enableDebugLogging?: boolean;
@@ -59,8 +60,16 @@ export class RoomDisplayService {
       return '\nThere are no obvious exits.';
     }
 
+    // Sort connections by direction priority (cardinals first, then alphabetical)
+    const directions = connections.map(c => c.direction);
+    const sortedDirections = sortDirections(directions);
+    
+    const sortedConnections = sortedDirections.map(direction => 
+      connections.find(c => c.direction === direction)!
+    );
+
     // Display thematic names with direction in parentheses
-    const exits = connections.map(c => {
+    const exits = sortedConnections.map(c => {
       // If name is same as direction, just show direction
       if (c.name === c.direction) {
         return c.direction;

@@ -5,6 +5,7 @@ import { ItemService } from './itemService';
 import { CharacterService } from './characterService';
 import { BackgroundGenerationService } from './backgroundGenerationService';
 import { CharacterType } from '../types/character';
+import { sortDirections } from '../utils/directionSorter';
 
 export interface RoomDisplayServices {
   itemService: ItemService;
@@ -59,7 +60,15 @@ export class UnifiedRoomDisplayService {
    * @returns Array of formatted exit names
    */
   private formatExitNames(connections: Connection[]): string[] {
-    return connections.map(c => {
+    // Sort connections by direction priority (cardinals first, then alphabetical)
+    const directions = connections.map(c => c.direction);
+    const sortedDirections = sortDirections(directions);
+    
+    const sortedConnections = sortedDirections.map(direction => 
+      connections.find(c => c.direction === direction)!
+    );
+
+    return sortedConnections.map(c => {
       // If name is same as direction, just show direction
       if (c.name === c.direction) {
         return c.direction;

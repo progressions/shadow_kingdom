@@ -207,7 +207,7 @@ export class InkTUIBridge implements TUIInterface {
     // Add spacing
     this.display('', MessageType.NORMAL);
     
-    // Exits
+    // Exits - already sorted by UnifiedRoomDisplayService.formatExitNames()
     if (exits.length > 0) {
       this.display(`Exits: ${exits.join(', ')}`, MessageType.EXITS);
     } else {

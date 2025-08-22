@@ -3,6 +3,8 @@
  * in the Terminal UI interface.
  */
 
+import { sortDirections } from '../utils/directionSorter';
+
 export enum MessageType {
   NORMAL = 'normal',
   ROOM_TITLE = 'room_title',
@@ -127,7 +129,9 @@ export class MessageFormatter {
       return this.format('There are no obvious exits.', MessageType.SYSTEM);
     }
     
-    const exitText = `Exits: ${exits.join(', ')}`;
+    // Sort exits using direction priority (cardinals first, then alphabetical)
+    const sortedExits = sortDirections(exits);
+    const exitText = `Exits: ${sortedExits.join(', ')}`;
     return this.format(exitText, MessageType.EXITS);
   }
 
