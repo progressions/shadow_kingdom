@@ -1,7 +1,7 @@
 # Get All Command
 
 **Date**: 2025-01-22  
-**Status**: Open  
+**Status**: Completed  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -56,7 +56,18 @@ AND i.is_fixed = FALSE;
 
 ## Resolution
 
-*To be filled when issue is resolved*
+**Completed**: 2025-01-22
+
+Implemented the "get all" command with the following features:
+- Added support for `get all`, `pickup all`, and `take all` commands
+- Filters out fixed items automatically
+- Processes items sequentially with proper validation
+- Respects inventory limits with clear feedback
+- Handles partial success scenarios gracefully
+- Performance optimized (<500ms for 10 items)
+- Full test coverage with 9 comprehensive tests
+
+Implementation in PR #48.
 
 ## Related
 
