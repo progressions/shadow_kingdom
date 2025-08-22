@@ -214,7 +214,7 @@ describe('Simple Character Dialogue', () => {
       for (const partialName of partialNames) {
         await (controller as any).processCommand(`talk ${partialName}`);
         const lastMessage = (controller as any).lastDisplayMessage;
-        expect(lastMessage).toBe('Ancient Guardian says: "Lovely day."');
+        expect(lastMessage).toBe('Ancient Guardian says: "These halls have stood for centuries, and I shall guard them for centuries more."');
       }
     });
   });

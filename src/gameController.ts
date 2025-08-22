@@ -1900,7 +1900,8 @@ export class GameController {
         return;
       }
       
-      this.tui.display(`${character.name} says: "Lovely day."`, MessageType.NORMAL);
+      const response = character.dialogue_response || "Lovely day.";
+      this.tui.display(`${character.name} says: "${response}"`, MessageType.NORMAL);
 
     } catch (error) {
       console.error('Error talking to character:', error);

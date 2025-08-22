@@ -48,8 +48,8 @@ export class CharacterService {
       INSERT INTO characters (
         game_id, name, description, type, current_room_id,
         strength, dexterity, intelligence, constitution, wisdom, charisma,
-        max_health, current_health
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        max_health, current_health, dialogue_response
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       data.game_id,
       data.name,
@@ -63,7 +63,8 @@ export class CharacterService {
       attributes.wisdom,
       attributes.charisma,
       maxHealth,
-      maxHealth // Start at full health
+      maxHealth, // Start at full health
+      data.dialogue_response ?? null
     ]);
 
     return result.lastID as number;

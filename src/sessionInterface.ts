@@ -818,7 +818,8 @@ async function setupGameCommands(
           return;
         }
         
-        console.log(`${character.name} says: "Lovely day."`);
+        const response = character.dialogue_response || "Lovely day.";
+        console.log(`${character.name} says: "${response}"`);
 
       } catch (error) {
         console.error('Error talking to character:', error);

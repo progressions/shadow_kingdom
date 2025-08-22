@@ -115,7 +115,8 @@ export class CharacterGenerationService {
       intelligence: character.attributes?.intelligence ?? 10,
       constitution: character.attributes?.constitution ?? 10,
       wisdom: character.attributes?.wisdom ?? 10,
-      charisma: character.attributes?.charisma ?? 10
+      charisma: character.attributes?.charisma ?? 10,
+      dialogue_response: character.initialDialogue
     });
 
     if (process.env.AI_DEBUG_LOGGING === 'true') {
