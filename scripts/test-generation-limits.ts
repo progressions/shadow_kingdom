@@ -239,9 +239,13 @@ async function testGenerationLimits() {
     console.log(`📊 Initial rooms: ${initialRooms.length}`);
     
     const entranceHall = await db.get(
-      'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-      [gameId, 'Entrance Hall']
+      'SELECT * FROM rooms WHERE game_id = ? AND name LIKE ?',
+      [gameId, '%Entrance Hall%']
     );
+    
+    if (!entranceHall) {
+      throw new Error('Could not find Entrance Hall (tried both "Entrance Hall" and "Grand Entrance Hall")');
+    }
     
     console.log('\n🚀 Running generation cycles until limit reached...');
     console.log(`📏 Limit: ${process.env.MAX_ROOMS_PER_GAME} rooms, Depth: ${process.env.MAX_GENERATION_DEPTH}`);

@@ -144,12 +144,12 @@ async function testBackgroundGeneration() {
     
     // Get the entrance hall to start from
     const entranceHall = await db.get(
-      'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
-      [gameId, 'Entrance Hall']
+      'SELECT * FROM rooms WHERE game_id = ? AND name LIKE ?',
+      [gameId, '%Entrance Hall%']
     );
     
     if (!entranceHall) {
-      throw new Error('Could not find Entrance Hall');
+      throw new Error('Could not find Entrance Hall (tried both "Entrance Hall" and "Grand Entrance Hall")');
     }
     
     console.log('\n🚀 Triggering background room generation...');
