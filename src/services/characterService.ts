@@ -9,12 +9,15 @@ import Database from '../utils/database';
 import { 
   Character, 
   CharacterType, 
+  CharacterSentiment,
   CreateCharacterData, 
   CharacterAttributes,
   getAttributeModifier,
   calculateMaxHealth,
   isValidAttributeValue,
-  getDefaultAttributes
+  getDefaultAttributes,
+  getSentimentValue,
+  isHostileToPlayer as checkHostileToPlayer
 } from '../types/character';
 
 export class CharacterService {
@@ -48,8 +51,8 @@ export class CharacterService {
       INSERT INTO characters (
         game_id, name, description, type, current_room_id,
         strength, dexterity, intelligence, constitution, wisdom, charisma,
-        max_health, current_health, is_hostile, dialogue_response
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        max_health, current_health, sentiment, is_hostile, dialogue_response
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       data.game_id,
       data.name,
@@ -64,6 +67,7 @@ export class CharacterService {
       attributes.charisma,
       maxHealth,
       maxHealth, // Start at full health
+      data.sentiment ?? (data.type === CharacterType.ENEMY ? CharacterSentiment.AGGRESSIVE : CharacterSentiment.INDIFFERENT), // Default sentiment based on type
       data.is_hostile ?? (data.type === CharacterType.ENEMY ? true : false), // Enemies are hostile by default
       data.dialogue_response ?? null
     ]);
@@ -355,5 +359,72 @@ export class CharacterService {
     const result = await this.db.get<{ count: number }>(query, params);
     
     return result?.count || 0;
+  }
+
+  // ========== SENTIMENT SYSTEM FUNCTIONS ==========
+
+  /**
+   * Get character's current sentiment
+   */
+  async getSentiment(characterId: number): Promise<CharacterSentiment> {
+    const character = await this.getCharacter(characterId);
+    if (!character) {
+      throw new Error(`Character ${characterId} not found`);
+    }
+    return character.sentiment;
+  }
+
+  /**
+   * Set character's sentiment to a specific value
+   */
+  async setSentiment(characterId: number, sentiment: CharacterSentiment): Promise<void> {
+    const character = await this.getCharacter(characterId);
+    if (!character) {
+      throw new Error(`Character ${characterId} not found`);
+    }
+
+    await this.db.run(
+      'UPDATE characters SET sentiment = ? WHERE id = ?',
+      [sentiment, characterId]
+    );
+  }
+
+  /**
+   * Change character's sentiment by a delta amount
+   * Clamps to valid sentiment bounds (-2 to +2)
+   */
+  async changeSentiment(characterId: number, delta: number): Promise<CharacterSentiment> {
+    const currentSentiment = await this.getSentiment(characterId);
+    const currentValue = getSentimentValue(currentSentiment);
+    const newValue = Math.max(-2, Math.min(2, currentValue + delta));
+
+    // Convert numeric value back to sentiment enum
+    const newSentiment = this.valueToSentiment(newValue);
+    
+    await this.setSentiment(characterId, newSentiment);
+    return newSentiment;
+  }
+
+  /**
+   * Check if a character is hostile to the player based on sentiment
+   */
+  async isHostileToPlayer(characterId: number): Promise<boolean> {
+    const sentiment = await this.getSentiment(characterId);
+    return checkHostileToPlayer(sentiment);
+  }
+
+  /**
+   * Convert numeric sentiment value back to CharacterSentiment enum
+   * Private helper function for sentiment calculations
+   */
+  private valueToSentiment(value: number): CharacterSentiment {
+    switch (value) {
+      case -2: return CharacterSentiment.HOSTILE;
+      case -1: return CharacterSentiment.AGGRESSIVE;
+      case 0: return CharacterSentiment.INDIFFERENT;
+      case 1: return CharacterSentiment.FRIENDLY;
+      case 2: return CharacterSentiment.ALLIED;
+      default: return CharacterSentiment.INDIFFERENT;
+    }
   }
 }
