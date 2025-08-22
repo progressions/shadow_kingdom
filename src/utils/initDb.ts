@@ -236,6 +236,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       // Column already exists, ignore error
     }
 
+    // Migration: Add sentiment column to characters if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE characters ADD COLUMN sentiment TEXT DEFAULT 'indifferent'`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
     // Migration: Add generation_processed column to rooms if it doesn't exist (for legacy test compatibility)
     try {
       await db.run(`ALTER TABLE rooms ADD COLUMN generation_processed BOOLEAN DEFAULT FALSE`);
