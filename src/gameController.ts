@@ -23,7 +23,7 @@ import { ActionValidator } from './services/actionValidator';
 import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
 import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
-import { CharacterType, Character } from './types/character';
+import { CharacterType, Character, CharacterSentiment } from './types/character';
 import { UnifiedRoomDisplayService } from './services/unifiedRoomDisplayService';
 import { TUIOutputAdapter } from './adapters/tuiOutputAdapter';
 import { stripArticles, parseTalkCommand, parseGiveCommand } from './utils/articleParser';
@@ -2206,6 +2206,9 @@ export class GameController {
       
       // Update character health
       await this.characterService.updateCharacterHealth(character.id, newHealth);
+
+      // Update character sentiment to hostile after successful attack
+      await this.characterService.setSentiment(character.id, CharacterSentiment.HOSTILE);
       
       this.tui.display(`You attack the ${character.name}. The ${character.name} takes ${damageAmount} damage.`, MessageType.NORMAL);
       
