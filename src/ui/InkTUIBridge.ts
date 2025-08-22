@@ -116,6 +116,7 @@ export class InkTUIBridge implements TUIInterface {
     }
   }
 
+
   /**
    * Set the logger service (can be called after construction)
    */

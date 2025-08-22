@@ -21,18 +21,14 @@ npm run test:watch      # Watch mode for tests
 npm run test:coverage   # Generate coverage report
 
 # Playing the Game
-npm run dev -- --cmd "look"                    # Start new game and look around
-AI_DEBUG_LOGGING=true npm run dev -- --cmd "look"  # Start with debug output
-npm run dev -- --cmd "go north" --game-id 1    # Move north in existing game
-npm run dev -- --cmd "regions" --game-id 1     # Show all regions in game
+npm run dev                # Start interactive game
 ```
 
 ## Architecture Overview
 
 **Core Services:**
-- **GameController** (`src/gameController.ts`): Main game logic, dual-mode operation (menu/game), region commands
+- **GameController** (`src/gameController.ts`): Main game logic and TUI interface
 - **RegionService** (`src/services/regionService.ts`): Region-based world generation with distance probability
-- **SessionInterface** (`src/sessionInterface.ts`): Programmatic command execution for automation
 - **GrokClient** (`src/ai/grokClient.ts`): AI integration with fallback systems and mock mode
 - **BackgroundGenerationService**: Proactive room generation triggered by player movement
 
@@ -132,7 +128,7 @@ CHARACTER_GENERATION_FREQUENCY=40   # Percentage (0-100) of rooms that get chara
 
 ## Common Development Tasks
 
-**Adding new commands**: Update GameController and SessionInterface with command handlers
+**Adding new commands**: Update GameController with command handlers
 **Database schema changes**: Update `initDb.ts` with migration logic and TypeScript interfaces
 **AI features**: Extend GrokClient with new generation methods and fallback handling
 **Testing**: Use Jest with isolated test databases (`:memory:`) for reliable testing

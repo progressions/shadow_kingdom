@@ -5,8 +5,8 @@ import { LoggerService } from '../services/loggerService';
 
 /**
  * ConsoleOutputAdapter adapts console.log output for use with UnifiedRoomDisplayService.
- * This allows the unified service to work with command-line output while maintaining
- * the exact same formatting as the existing SessionInterface implementation.
+ * This allows the unified service to work with command-line output for debugging
+ * and programmatic access.
  */
 export class ConsoleOutputAdapter implements OutputInterface {
   private loggerService?: LoggerService;

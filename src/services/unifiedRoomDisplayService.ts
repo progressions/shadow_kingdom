@@ -16,7 +16,7 @@ export interface RoomDisplayServices {
 /**
  * UnifiedRoomDisplayService provides a single implementation for displaying room information
  * across different output interfaces (TUI, console, etc.). This eliminates code duplication
- * between GameController and SessionInterface.
+ * for the GameController.
  */
 export class UnifiedRoomDisplayService {
   

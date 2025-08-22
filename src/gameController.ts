@@ -493,9 +493,7 @@ export class GameController {
           continue; // Skip empty commands
         }
         
-        // Log user input
-        this.loggerService.logUserInput(command);
-        
+        // User input logging is handled by TUI display echo
         await this.processCommand(command);
         this.updateStatusDisplay();
       } catch (error) {
