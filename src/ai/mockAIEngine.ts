@@ -298,13 +298,21 @@ export class MockAIEngine {
   }
 
   /**
-   * Generate items for a room based on its theme
+   * Generate items for a room based on its theme and dice roll logic
    */
   private generateRoomItems(room: MockRoom, themeProfile: ThemeProfile): Array<{name: string, description: string, isFixed: boolean}> {
     const items: Array<{name: string, description: string, isFixed: boolean}> = [];
     
     // Skip item generation if disabled
     if (process.env.AI_ITEM_GENERATION_ENABLED === 'false') {
+      return items;
+    }
+
+    // Use same dice logic as real AI: 1d6-3 for item count (0-3 items, 50% chance of 0)
+    const itemCount = Math.max(0, Math.floor(Math.random() * 6) + 1 - 3);
+    
+    // If dice roll results in 0 items, return empty array
+    if (itemCount === 0) {
       return items;
     }
 
@@ -346,8 +354,7 @@ export class MockAIEngine {
       }
     }
 
-    // Select 1-3 random items
-    const itemCount = Math.floor(this.random() * 3) + 1;
+    // Select exactly itemCount items (already determined by dice roll above)
     const shuffled = [...selectedItems].sort(() => this.random() - 0.5);
     
     for (let i = 0; i < Math.min(itemCount, shuffled.length); i++) {

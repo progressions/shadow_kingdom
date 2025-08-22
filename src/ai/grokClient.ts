@@ -534,6 +534,10 @@ If the command cannot be interpreted as a valid game action, return null.`;
     const themeNote = context.theme || 'mysterious fantasy kingdom';
     const reverseDirection = this.getReverseDirection(context.direction) || 'back';
     const fantasyGuidance = this.getFantasyGuidance(context.fantasyLevel);
+    
+    // Roll 1d6-3 for item count (0-3 items, 50% chance of 0)
+    const itemCount = Math.max(0, Math.floor(Math.random() * 6) + 1 - 3);
+    const itemPrompt = this.getItemPrompt(itemCount);
 
     if (context.connectionName) {
       // Connection-based generation - acknowledge the specific connection
@@ -573,12 +577,7 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
   ]
 }
 
-IMPORTANT: The "items" array is REQUIRED. Always include 1-3 items that fit the room.
-ITEM GUIDELINES:
-- Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
-- Portable items (isFixed: false): small objects, books, tools, treasures
-- Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
-- Items should be objects naturally found in or mentioned in your room description
+${itemPrompt}
 
 CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
 - "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
@@ -624,12 +623,7 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
   ]
 }
 
-IMPORTANT: The "items" array is REQUIRED. Always include 1-3 items that fit the room.
-ITEM GUIDELINES:
-- Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
-- Portable items (isFixed: false): small objects, books, tools, treasures
-- Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
-- Items should be objects naturally found in or mentioned in your room description
+${itemPrompt}
 
 CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
 - "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
@@ -638,6 +632,26 @@ CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
 - "personality": short description like "Scholarly and cryptic" or "Gruff but helpful"
 - "initialDialogue": What they say when first met (one sentence)
 - Only include characters if they genuinely enhance the room experience`;
+    }
+  }
+
+  /**
+   * Generate item prompt based on dice roll result
+   * @param itemCount Number of items to generate (0-3)
+   */
+  private getItemPrompt(itemCount: number): string {
+    if (itemCount === 0) {
+      return `IMPORTANT: The "items" array should be EMPTY for this room. Focus on atmospheric description without objects.
+
+ITEM GUIDELINES: This room should feel atmospheric and immersive without any interactive objects.`;
+    } else {
+      return `IMPORTANT: The "items" array is REQUIRED. Include exactly ${itemCount} item${itemCount > 1 ? 's' : ''} that fit the room.
+
+ITEM GUIDELINES:
+- Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
+- Portable items (isFixed: false): small objects, books, tools, treasures
+- Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
+- Items should be objects naturally found in or mentioned in your room description`;
     }
   }
 
