@@ -79,6 +79,8 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { EquipmentService } = await import('./services/equipmentService');
   const { ItemGenerationService } = await import('./services/itemGenerationService');
   const { CharacterGenerationService } = await import('./services/characterGenerationService');
+  const { UnifiedRoomDisplayService } = await import('./services/unifiedRoomDisplayService');
+  const { ConsoleOutputAdapter } = await import('./adapters/consoleOutputAdapter');
   
   // Use persistent database file for session commands
   const dbPath = 'data/db/shadow_kingdom_session.db';
@@ -151,8 +153,11 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     
     // Character service already initialized above for room generation
     
+    // Initialize unified room display service
+    const unifiedRoomDisplayService = new UnifiedRoomDisplayService();
+    
     // Set up game commands with background generation support
-    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService);
+    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService);
     
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
@@ -184,8 +189,11 @@ async function setupGameCommands(
   db: any,
   itemService: any,
   equipmentService: any,
-  characterService: any
+  characterService: any,
+  unifiedRoomDisplayService: any
 ): Promise<void> {
+  // Import adapter class for use in command handlers
+  const { ConsoleOutputAdapter } = await import('./adapters/consoleOutputAdapter');
   // Add the basic game commands for session interface
   commandRouter.addGameCommand({
     name: 'help',
@@ -197,32 +205,25 @@ async function setupGameCommands(
     name: 'look',
     description: 'Look around the current room',
     handler: async () => {
-      // Display current room and trigger background generation
+      // Display current room using unified service
       const session = gameStateManager.getCurrentSession();
       const room = await gameStateManager.getCurrentRoom();
       const connections = await gameStateManager.getCurrentRoomConnections();
       
       if (room) {
-        // Trigger background room generation to find connected unprocessed rooms and expand them
-        // Background generation will mark TARGET rooms as processed after expanding them
-        // DO NOT mark the current room as processed here - that's not how the system works!
-        await backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
-
-        roomDisplayService.displayRoom(room, connections);
-        
-        // Display characters in the room
-        const roomCharacters = await characterService.getRoomCharacters(room.id, 'player');
-        if (roomCharacters.length > 0) {
-          console.log(''); // Add spacing
-          console.log('Characters present:');
-          roomCharacters.forEach((character: any) => {
-            const typeText = character.type === 'enemy' ? ' (hostile)' : '';
-            console.log(`• ${character.name}${typeText}`);
-            if (character.description) {
-              console.log(`  ${character.description}`);
-            }
-          });
-        }
+        // Use unified room display service with console adapter
+        const consoleAdapter = new ConsoleOutputAdapter();
+        await unifiedRoomDisplayService.displayRoomComplete(
+          room,
+          connections,
+          session.gameId!,
+          consoleAdapter,
+          {
+            itemService: itemService,
+            characterService: characterService,
+            backgroundGenerationService: backgroundGenerationService
+          }
+        );
       } else {
         console.log('You are nowhere to be found.');
       }
@@ -259,26 +260,19 @@ async function setupGameCommands(
         const connections = await gameStateManager.getCurrentRoomConnections();
         
         if (room) {
-          // Trigger background room generation to find connected unprocessed rooms and expand them
-          // Background generation will mark TARGET rooms as processed after expanding them
-          // DO NOT mark the current room as processed here - that's not how the system works!
-          await backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
-
-          roomDisplayService.displayRoom(room, connections);
-          
-          // Display characters in the room
-          const roomCharacters = await characterService.getRoomCharacters(room.id, 'player');
-          if (roomCharacters.length > 0) {
-            console.log(''); // Add spacing
-            console.log('Characters present:');
-            roomCharacters.forEach((character: any) => {
-              const typeText = character.type === 'enemy' ? ' (hostile)' : '';
-              console.log(`• ${character.name}${typeText}`);
-              if (character.description) {
-                console.log(`  ${character.description}`);
-              }
-            });
-          }
+          // Use unified room display service with console adapter
+          const consoleAdapter = new ConsoleOutputAdapter();
+          await unifiedRoomDisplayService.displayRoomComplete(
+            room,
+            connections,
+            session.gameId!,
+            consoleAdapter,
+            {
+              itemService: itemService,
+              characterService: characterService,
+              backgroundGenerationService: backgroundGenerationService
+            }
+          );
         }
       } catch (error) {
         console.error('Error moving:', error);

@@ -40,25 +40,25 @@ describe('SessionInterface Background Generation', () => {
       // Verify background generation service is imported
       expect(sessionInterfaceCode).toContain('BackgroundGenerationService');
       
-      // Verify background generation is called in setupGameCommands
-      expect(sessionInterfaceCode).toContain('backgroundGenerationService.preGenerateAdjacentRooms');
+      // Verify unified room display service is used for room display
+      expect(sessionInterfaceCode).toContain('unifiedRoomDisplayService.displayRoomComplete');
       
-      // Verify both look and go commands trigger background generation
-      expect(sessionInterfaceCode).toContain('await backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!)');
+      // Verify background generation service is passed to unified service
+      expect(sessionInterfaceCode).toContain('backgroundGenerationService: backgroundGenerationService');
     });
 
-    test('should properly await background generation to prevent database closure issues', async () => {
+    test('should properly await unified room display service to prevent database closure issues', async () => {
       const sessionInterfaceCode = require('fs').readFileSync(
         './src/sessionInterface.ts', 
         'utf8'
       );
       
-      // Verify background generation is awaited (not fire-and-forget)
-      // Both look and go commands should await background generation
-      const awaitBackgroundCalls = sessionInterfaceCode.match(/await backgroundGenerationService\.preGenerateAdjacentRooms/g);
+      // Verify unified room display service is awaited (not fire-and-forget)
+      // Both look and go commands should await the unified service
+      const awaitUnifiedCalls = sessionInterfaceCode.match(/await unifiedRoomDisplayService\.displayRoomComplete/g);
       
-      expect(awaitBackgroundCalls).toBeTruthy();
-      expect(awaitBackgroundCalls!.length).toBeGreaterThanOrEqual(2); // At least 2 await calls (look and go)
+      expect(awaitUnifiedCalls).toBeTruthy();
+      expect(awaitUnifiedCalls!.length).toBeGreaterThanOrEqual(2); // At least 2 await calls (look and go)
     });
   });
 
@@ -89,7 +89,7 @@ describe('SessionInterface Background Generation', () => {
       
       // Verify setupGameCommands receives backgroundGenerationService and new item services
       expect(sessionInterfaceCode).toContain(
-        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService)'
+        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService)'
       );
     });
   });
