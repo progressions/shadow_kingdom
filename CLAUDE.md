@@ -94,6 +94,9 @@ AI_MOCK_MODE=true                    # Use mock responses for testing
 AI_DEBUG_LOGGING=true                # Enable debug output
 MAX_ROOMS_PER_GAME=100              # Maximum rooms per game
 GENERATION_COOLDOWN_MS=10000        # Cooldown between generations
+
+# Character Generation Control
+CHARACTER_GENERATION_FREQUENCY=40   # Percentage (0-100) of rooms that get character generation requests
 ```
 
 ## Key Files and Locations
