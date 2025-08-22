@@ -1462,7 +1462,7 @@ export class GameController {
       }
 
       // Filter out fixed items
-      const pickupableItems = roomItems.filter(item => !item.item.is_fixed);
+      const pickupableItems = roomItems.filter((item: any) => !item.item.is_fixed);
       
       if (pickupableItems.length === 0) {
         this.tui.display('There are no items here that can be picked up.', MessageType.ERROR);

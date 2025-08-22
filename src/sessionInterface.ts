@@ -444,7 +444,7 @@ async function setupGameCommands(
       }
 
       // Filter out fixed items
-      const pickupableItems = roomItems.filter(item => !item.item.is_fixed);
+      const pickupableItems = roomItems.filter((item: any) => !item.item.is_fixed);
       
       if (pickupableItems.length === 0) {
         console.log('There are no items here that can be picked up.');
