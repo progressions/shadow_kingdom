@@ -2,6 +2,8 @@ import { AICommandFallback } from '../../src/services/aiCommandFallback';
 import { GrokClient } from '../../src/ai/grokClient';
 import { GameContext } from '../../src/nlp/types';
 import { TUIInterface } from '../../src/ui/TUIInterface';
+import Database from '../../src/utils/database';
+import { initializeDatabase } from '../../src/utils/initDb';
 
 // Mock the GrokClient
 jest.mock('../../src/ai/grokClient');
@@ -11,11 +13,21 @@ describe('AICommandFallback', () => {
   let mockGrokClient: jest.Mocked<GrokClient>;
   let mockTui: jest.Mocked<TUIInterface>;
   let mockGameContext: GameContext;
+  let mockDb: Database;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Create in-memory database
+    mockDb = new Database(':memory:');
+    await mockDb.connect();
+    await initializeDatabase(mockDb);
+
     // Create mock GrokClient
     mockGrokClient = {
-      interpretCommand: jest.fn()
+      interpretCommand: jest.fn(),
+      callAPI: jest.fn(),
+      isMockMode: true,
+      getUsageStats: jest.fn().mockReturnValue({}),
+      setMockMode: jest.fn()
     } as any;
 
     // Create mock TUI
@@ -35,7 +47,11 @@ describe('AICommandFallback', () => {
       recentCommands: ['look', 'examine table']
     };
 
-    aiCommandFallback = new AICommandFallback(mockGrokClient, mockTui, { enableDebugLogging: false });
+    aiCommandFallback = new AICommandFallback(mockGrokClient, mockDb, mockTui, { enableDebugLogging: false });
+  });
+
+  afterEach(async () => {
+    await mockDb.close();
   });
 
   describe('parseCommand', () => {
@@ -275,7 +291,7 @@ describe('AICommandFallback', () => {
 
   describe('debug logging', () => {
     beforeEach(() => {
-      aiCommandFallback = new AICommandFallback(mockGrokClient, mockTui, { enableDebugLogging: true });
+      aiCommandFallback = new AICommandFallback(mockGrokClient, mockDb, mockTui, { enableDebugLogging: true });
     });
 
     it('should log debug information when enabled', async () => {
@@ -306,6 +322,87 @@ describe('AICommandFallback', () => {
         expect.stringContaining('🧠 AI Fallback Error:'),
         expect.any(String)
       );
+    });
+  });
+
+  describe('pronoun and demonstrative resolution', () => {
+    it('should resolve "that spirit" to actual character name via AI fallback', async () => {
+      const roomWithSpirit = {
+        ...mockGameContext,
+        currentRoom: {
+          id: 1,
+          name: 'Kitchen',
+          description: 'An old kitchen with ghostly presence',
+          availableExits: ['north', 'south']
+        }
+      };
+
+      // Mock AI to resolve "that spirit" to "Chef's Spirit"
+      mockGrokClient.interpretCommand.mockResolvedValue({
+        action: 'talk',
+        params: ['Chef\'s Spirit'],
+        reasoning: 'Resolved "that spirit" to Chef\'s Spirit based on room context'
+      });
+
+      const result = await aiCommandFallback.parseCommand(
+        'talk to that spirit', 
+        roomWithSpirit, 
+        ['talk', 'examine', 'get']
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.action).toBe('talk');
+      expect(result!.params).toEqual(['Chef\'s Spirit']);
+      expect(result!.reasoning).toContain('Resolved "that spirit" to Chef\'s Spirit');
+      
+      // Verify AI was called with the right context
+      expect(mockGrokClient.interpretCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'talk to that spirit',
+          currentRoom: expect.objectContaining({
+            name: 'Kitchen',
+            description: 'An old kitchen with ghostly presence'
+          })
+        })
+      );
+    });
+
+    it('should handle the case where local parsing fails for demonstratives', async () => {
+      // This test simulates what happens in the CommandRouter:
+      // 1. Local NLP tries "talk to that spirit" 
+      // 2. Local parsing fails to resolve "that spirit"
+      // 3. AI fallback gets called
+      // 4. AI resolves "that spirit" to actual character name
+      
+      const roomContext = {
+        ...mockGameContext,
+        currentRoom: {
+          id: 1,
+          name: 'Ethereal Kitchen',
+          description: 'A ghostly kitchen where Chef\'s Spirit still cooks',
+          availableExits: ['north']
+        }
+      };
+
+      // Mock AI to successfully resolve the demonstrative reference
+      mockGrokClient.interpretCommand.mockResolvedValue({
+        action: 'talk',
+        params: ['Chef\'s Spirit'],
+        reasoning: 'Interpreted "that spirit" as referring to Chef\'s Spirit in the kitchen'
+      });
+
+      const result = await aiCommandFallback.parseCommand(
+        'talk to that spirit',
+        roomContext,
+        ['talk', 'examine', 'get', 'go']
+      );
+
+      // Should successfully resolve to talk command with proper target
+      expect(result).not.toBeNull();
+      expect(result!.action).toBe('talk');
+      expect(result!.params).toEqual(['Chef\'s Spirit']);
+      expect(result!.source).toBe('ai');
+      expect(result!.reasoning).toContain('Chef\'s Spirit');
     });
   });
 });

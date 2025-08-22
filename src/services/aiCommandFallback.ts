@@ -2,6 +2,11 @@ import { GrokClient } from '../ai/grokClient';
 import { GameContext, NLPResult } from '../nlp/types';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
+import Database from '../utils/database';
+import { ItemService } from '../services/itemService';
+import { CharacterService } from '../services/characterService';
+import { RoomItem } from '../types/item';
+import { Character, CharacterType } from '../types/character';
 
 export interface AICommandPrompt {
   userInput: string;
@@ -33,14 +38,21 @@ export class AICommandFallback {
   private grokClient: GrokClient;
   private options: AICommandFallbackOptions;
   private tui: TUIInterface | null;
+  private db: Database;
+  private itemService: ItemService;
+  private characterService: CharacterService;
 
   constructor(
     grokClient: GrokClient,
+    db: Database,
     tui: TUIInterface | null = null,
     options: AICommandFallbackOptions = {}
   ) {
     this.grokClient = grokClient;
+    this.db = db;
     this.tui = tui;
+    this.itemService = new ItemService(db);
+    this.characterService = new CharacterService(db);
     this.options = {
       enableDebugLogging: false,
       ...options
@@ -76,7 +88,7 @@ export class AICommandFallback {
 
       // Map AI response to command and parameters
       const action = this.normalizeCommand(aiResponse.command);
-      const params = this.parseTarget(aiResponse.target);
+      const params = aiResponse.target ? [aiResponse.target] : [];
       
       const processingTime = Date.now() - startTime;
       
@@ -122,11 +134,14 @@ export class AICommandFallback {
       };
     }
 
-    // TODO: In a full implementation, we would query the database for items and characters
-    // For now, we'll use placeholder data based on room description
-    const availableItems = this.extractItemsFromDescription(room.description);
-    const availableCharacters = this.extractCharactersFromDescription(room.description);
+    // Get real items and characters from database
+    const roomItems = await this.itemService.getRoomItems(room.id);
+    const roomCharacters = await this.characterService.getRoomCharacters(room.id, CharacterType.PLAYER);
     const availableExits = room.availableExits || [];
+
+    // Extract names for AI context
+    const availableItems = roomItems.map(roomItem => roomItem.item.name);
+    const availableCharacters = roomCharacters.map(char => char.name);
 
     return {
       roomName: room.name,
@@ -145,41 +160,77 @@ export class AICommandFallback {
     roomContext: AICommandPrompt['roomContext'],
     availableCommands: string[]
   ): string {
-    return `You are a command parser for a text adventure game. The player said: "${userInput}"
+    return `You are interpreting a command for the text adventure game Shadow Kingdom.
 
-Current room: ${roomContext.roomName}
-${roomContext.roomDescription}
+ROOM CONTEXT:
+Room: "${roomContext.roomName}"
+Items in room: ${JSON.stringify(roomContext.availableItems)}
+Characters in room: ${JSON.stringify(roomContext.availableCharacters)}
+Available exits: ${JSON.stringify(roomContext.availableExits)}
+Available commands: ${JSON.stringify(availableCommands)}
 
-Available items: ${roomContext.availableItems.join(', ') || 'none'}
-Available characters: ${roomContext.availableCharacters.join(', ') || 'none'}
-Available exits: ${roomContext.availableExits.join(', ') || 'none'}
+USER COMMAND: "${userInput}"
 
-Available commands: ${availableCommands.join(', ')}
+CRITICAL DISAMBIGUATION RULES:
+1. COMMAND SELECTION: Choose the best matching command from the available commands list
+   - Consider the user's intent and select the most appropriate game command
+   - User verbs like "yell", "shout", "holler" should map to social interaction commands if available
+   - User verbs like "grab", "pick up" should map to collection commands if available
+   
+2. TARGET DISAMBIGUATION: Match user references to exact room entities:
+   - "ghost", "spirit", "spectre" → match ANY character containing these words
+   - "figure", "guy", "person", "someone" → match ANY character that could be a person/entity
+   - "keeper" → match "Garden Keeper"
+   - "book", "tome", "scroll" → match ANY item containing these words
+   - "sword", "weapon", "blade" → match ANY item containing these words
+   - "that X", "the X" → find character/item containing word X
+   - Generic terms like "guy", "person", "someone" should match the most likely character in the room
+   - Generic terms like "book", "thing", "object" should match the most likely item in the room
+   - "everything", "all items", "all the things" should return "all" for collection commands
+   
+3. ALWAYS use EXACT, FULL names from the room context lists
+4. Do NOT use shortened or simplified names
+5. ONLY use commands from the available commands list provided
 
-Please determine what command the player intended and what target they want to interact with.
-Handle synonyms and natural language patterns:
+EXAMPLES WITH ROOM CONTEXT:
+Available commands: ["talk", "get", "examine", "go", "help"]
+Room has character "Chef's Spirit":
+- "talk to that ghost" → {"command": "talk", "target": "Chef's Spirit"}
+- "yell at the ghost" → {"command": "talk", "target": "Chef's Spirit"} (best social command available)
+- "holler at that spirit" → {"command": "talk", "target": "Chef's Spirit"} (best social command available)
 
-- Movement: go, move, walk, travel, head → "go"
-- Examination: look at, inspect, check, view, study → "examine" 
-- Getting items: pick up, take, grab, collect, acquire → "get"
-- Talking: speak to, chat with, converse with, ask → "talk"
-- Attack: hit, strike, fight, kill, slay → "attack"
-- Give: hand, offer, present, deliver → "give"
-- Drop: put down, leave, discard, place → "drop"
+Available commands: ["talk", "get", "examine", "go", "attack"]  
+Room has character "Mysterious Figure":
+- "yell at the figure" → {"command": "talk", "target": "Mysterious Figure"} (best social command available)
+- "speak to that figure" → {"command": "talk", "target": "Mysterious Figure"}
+- "rap at that guy" → {"command": "talk", "target": "Mysterious Figure"} (generic "guy" matches available character)
 
-Examples:
-- "hit the goblin" → {"command": "attack", "target": "goblin"}
-- "I want to pick up the sword" → {"command": "get", "target": "sword"}
-- "examine that orb" → {"command": "examine", "target": "orb"}
-- "speak with the merchant" → {"command": "talk", "target": "merchant"}
-- "walk north" → {"command": "go", "target": "north"}
+Available commands: ["talk", "get", "examine", "go"]
+Room has item "Ancient Tome":
+- "grab the book" → {"command": "get", "target": "Ancient Tome"} (best collection command available)
+- "pick up that book" → {"command": "get", "target": "Ancient Tome"} (best collection command available)
+- "take that thing" → {"command": "get", "target": "Ancient Tome"} (generic "thing" matches available item)
 
-Return a JSON object with: {"command": "...", "target": "...", "reasoning": "..."}
-If you cannot determine a valid command, return null.`;
+Available commands: ["talk", "get", "examine", "go", "attack"]
+Room has item "Iron Sword":
+- "grab the weapon" → {"command": "get", "target": "Iron Sword"} (weapon matches sword)
+- "examine that blade" → {"command": "examine", "target": "Iron Sword"} (blade matches sword)
+
+Available commands: ["get", "examine", "go"]
+Room has items "Ancient Tome", "Iron Sword", "Health Potion":
+- "grab everything" → {"command": "get", "target": "all"} (take all available items)
+- "take all the things" → {"command": "get", "target": "all"} (take all available items)
+- "collect all items" → {"command": "get", "target": "all"} (take all available items)
+- "pick up everything here" → {"command": "get", "target": "all"} (take all available items)
+
+RESPONSE FORMAT:
+Return JSON: {"command": "action_name", "target": "EXACT_NAME_FROM_LISTS"}
+
+The target MUST be the exact, complete name from the room context lists above.`;
   }
 
   /**
-   * Call AI service for command parsing
+   * Call AI service for command parsing using the enhanced prompt format
    */
   private async callAIForCommandParsing(
     prompt: string, 
@@ -187,36 +238,66 @@ If you cannot determine a valid command, return null.`;
     roomContext: AICommandPrompt['roomContext']
   ): Promise<AICommandResponse | null> {
     try {
-      const interpretationContext = {
-        command: userInput,
-        currentRoom: {
-          name: roomContext.roomName,
-          description: roomContext.roomDescription,
-          availableExits: roomContext.availableExits,
-        },
-        inventory: roomContext.availableItems,
-        recentCommands: []
-      };
-
-      const result = await this.grokClient.interpretCommand(interpretationContext);
+      if (this.isDebugEnabled()) {
+        this.log(`🧠 AI Fallback: Calling AI with mock mode: ${this.grokClient.isMockMode}`, MessageType.SYSTEM);
+      }
       
-      if (result) {
-        // Log AI interpretation results for debugging
+      // Use the enhanced prompt directly with Grok API for better disambiguation
+      if (this.grokClient.isMockMode) {
+        // For mock mode, use the old interface
+        const interpretationContext = {
+          command: userInput,
+          currentRoom: {
+            name: roomContext.roomName,
+            description: roomContext.roomDescription,
+            availableExits: roomContext.availableExits,
+            characters: roomContext.availableCharacters,
+          },
+          inventory: roomContext.availableItems,
+          recentCommands: []
+        };
+        const result = await this.grokClient.interpretCommand(interpretationContext);
+        
+        if (result) {
+          return {
+            command: result.action,
+            target: result.params.join(' '),
+            reasoning: result.reasoning
+          };
+        }
+        return null;
+      } else {
+        // For real API, use the enhanced prompt directly
+        const response = await this.grokClient.callAPI(prompt);
+        
+        // Log the enhanced prompt response
         if (this.isDebugEnabled()) {
           const fs = require('fs');
           const timestamp = new Date().toISOString();
-          const logEntry = `\n\n========= COMMAND INTERPRETATION ${timestamp} =========\nInput: ${userInput}\nAI Response: ${JSON.stringify(result, null, 2)}\n`;
+          const logEntry = `\n\n========= ENHANCED COMMAND INTERPRETATION ${timestamp} =========\nInput: ${userInput}\nPrompt: ${prompt}\nAI Response: ${response}\n`;
           fs.appendFileSync('grok_responses.log', logEntry);
         }
         
-        return {
-          command: result.action,
-          target: result.params.join(' '),
-          reasoning: result.reasoning
-        };
+        const parsed = JSON.parse(response);
+        
+        if (this.isDebugEnabled()) {
+          this.log(`🧠 AI Fallback: Parsed response: ${JSON.stringify(parsed)}`, MessageType.SYSTEM);
+        }
+        
+        // Expected format: {"command": "talk", "target": "Chef's Spirit"}
+        if (parsed.command && parsed.target) {
+          return {
+            command: parsed.command,
+            target: parsed.target,
+            reasoning: `AI disambiguated "${userInput}" to "${parsed.command} ${parsed.target}"`
+          };
+        } else {
+          if (this.isDebugEnabled()) {
+            this.log(`🧠 AI Fallback: Invalid response format - missing command or target`, MessageType.SYSTEM);
+          }
+        }
+        return null;
       }
-      
-      return null;
     } catch (error) {
       if (this.isDebugEnabled()) {
         this.log(`🧠 AI Fallback Error: ${error instanceof Error ? error.message : String(error)}`, MessageType.ERROR);
@@ -265,53 +346,7 @@ If you cannot determine a valid command, return null.`;
     return commandMap[aiCommand.toLowerCase()] || aiCommand.toLowerCase();
   }
 
-  /**
-   * Parse target string into parameters array
-   */
-  private parseTarget(target: string): string[] {
-    if (!target) return [];
-    
-    // Remove common articles and prepositions
-    const cleaned = target
-      .toLowerCase()
-      .replace(/^(the|a|an)\s+/, '')
-      .replace(/\s+(to|with|at|on|in)\s+/, ' ')
-      .trim();
-    
-    return cleaned ? cleaned.split(/\s+/) : [];
-  }
 
-  /**
-   * Extract potential items from room description (placeholder implementation)
-   */
-  private extractItemsFromDescription(description: string): string[] {
-    const items: string[] = [];
-    const commonItems = ['sword', 'key', 'book', 'lamp', 'chest', 'table', 'chair', 'orb', 'crystal', 'gem'];
-    
-    for (const item of commonItems) {
-      if (description.toLowerCase().includes(item)) {
-        items.push(item);
-      }
-    }
-    
-    return items;
-  }
-
-  /**
-   * Extract potential characters from room description (placeholder implementation)
-   */
-  private extractCharactersFromDescription(description: string): string[] {
-    const characters: string[] = [];
-    const commonCharacters = ['goblin', 'merchant', 'guard', 'wizard', 'knight', 'thief', 'priest'];
-    
-    for (const character of commonCharacters) {
-      if (description.toLowerCase().includes(character)) {
-        characters.push(character);
-      }
-    }
-    
-    return characters;
-  }
 
   /**
    * Check if debug logging is enabled

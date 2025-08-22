@@ -110,13 +110,13 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     const grokClient = new GrokClient();
     const baseConfig = getNLPConfig();
     const config = applyEnvironmentOverrides(baseConfig);
-    const nlpEngine = new UnifiedNLPEngine(grokClient, config);
+    const nlpEngine = new UnifiedNLPEngine(grokClient, config, db);
     
     const gameStateManager = new GameStateManager(db, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     
-    const commandRouter = new CommandRouter(nlpEngine, null, {
+    const commandRouter = new CommandRouter(nlpEngine, grokClient, db, null, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     

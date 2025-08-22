@@ -9,6 +9,8 @@ import { UnifiedNLPEngine } from '../../src/nlp/unifiedNLPEngine';
 import { GrokClient } from '../../src/ai/grokClient';
 import { getNLPConfig } from '../../src/nlp/config';
 import { GameContext } from '../../src/nlp/types';
+import Database from '../../src/utils/database';
+import { initializeDatabase } from '../../src/utils/initDb';
 import { 
   setupTestDatabase, 
   cleanupTestDatabase 
@@ -18,10 +20,16 @@ describe('CommandRouter (Prisma Integration)', () => {
   let commandRouter: CommandRouter;
   let mockGrokClient: GrokClient;
   let nlpEngine: UnifiedNLPEngine;
+  let testDb: Database;
 
   beforeEach(async () => {
     // Setup clean Prisma test environment
     await setupTestDatabase();
+    
+    // Create in-memory database for CommandRouter/AICommandFallback
+    testDb = new Database(':memory:');
+    await testDb.connect();
+    await initializeDatabase(testDb);
     
     // Create mock Grok client
     mockGrokClient = {
@@ -41,15 +49,16 @@ describe('CommandRouter (Prisma Integration)', () => {
     nlpEngine = new UnifiedNLPEngine(mockGrokClient, {
       ...config,
       enableAIFallback: false // Disable AI to avoid external dependencies
-    });
+    }, testDb);
     
     // Create command router
-    commandRouter = new CommandRouter(nlpEngine, null, {
+    commandRouter = new CommandRouter(nlpEngine, mockGrokClient, testDb, null, {
       enableDebugLogging: false
     });
   });
 
   afterEach(async () => {
+    await testDb.close();
     await cleanupTestDatabase();
   });
 
