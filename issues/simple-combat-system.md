@@ -17,12 +17,16 @@ Implement an extremely simple combat system where players can attack any charact
 - Works on any type of character (NPCs, enemies, etc.)
 
 ## Acceptance Criteria
-- [ ] Player can use `attack` command to target characters in current room
-- [ ] Each attack reduces target health by exactly 2 points
-- [ ] Characters with health <= 0 are marked as dead
-- [ ] Dead characters cannot be attacked again
-- [ ] Appropriate feedback messages for successful attacks and deaths
-- [ ] Error handling for invalid targets or already dead characters
+- [x] Player can use `attack` command to target characters in current room
+- [x] Each attack reduces target health by exactly 2 points
+- [x] Characters with health <= 0 are marked as dead
+- [x] Dead characters cannot be attacked again
+- [x] Appropriate feedback messages for successful attacks and deaths
+- [x] Error handling for invalid targets or already dead characters
+
+## Status: ✅ COMPLETED
+
+All acceptance criteria have been met and the simple combat system is fully functional.
 
 ## Technical Notes
 - Modify existing character health field, no new database schema required
