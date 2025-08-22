@@ -4,7 +4,7 @@
 
 Text adventure games have always walked a fine line between natural language interaction and rigid command structures. Players naturally want to type "grab that shiny sword" or "talk to the mysterious stranger," but traditional parsers demand exact syntax like "get sword" or "talk stranger." This friction between human expression and machine understanding has frustrated players for decades.
 
-Today, we're excited to share how Shadow Kingdom solved this challenge with our **AI Command Parsing Fallback System** – a sophisticated natural language processing enhancement that bridges the gap between conversational English and game commands, making our text adventure truly feel like a conversation with an intelligent dungeon master.
+Today, I'm excited to share how I solved this challenge in Shadow Kingdom with the **AI Command Parsing Fallback System** – a sophisticated natural language processing enhancement that bridges the gap between conversational English and game commands, making the text adventure truly feel like a conversation with an intelligent dungeon master.
 
 ## What Makes This Feature Special
 
@@ -52,7 +52,7 @@ The most challenging aspect wasn't just parsing natural language – it was disa
 
 **Player Command:** "talk to that ghost"
 
-The system needs to understand that "ghost" likely refers to "Chef's Spirit" based on the semantic relationship between "ghost" and "spirit." Our solution builds detailed room context and provides sophisticated disambiguation rules to the AI:
+The system needs to understand that "ghost" likely refers to "Chef's Spirit" based on the semantic relationship between "ghost" and "spirit." My solution builds detailed room context and provides sophisticated disambiguation rules to the AI:
 
 ```typescript
 private buildCommandPrompt(userInput: string, roomContext: AICommandPrompt['roomContext'], availableCommands: string[]): string {
@@ -80,21 +80,21 @@ Return JSON: {"command": "action_name", "target": "EXACT_NAME_FROM_LISTS"}`;
 }
 ```
 
-## Why We Built This Feature
+## Why I Built This Feature
 
 ### The User Experience Problem
 
-Our telemetry showed that players were frequently encountering "Unknown command" errors for perfectly reasonable inputs. Comments like these were common:
+My telemetry showed that players were frequently encountering "Unknown command" errors for perfectly reasonable inputs. Comments like these were common:
 
 > "I keep typing 'hit the goblin' and it says unknown command. Why can't it understand that I want to attack?"
 
 > "It's frustrating that 'speak with the merchant' doesn't work but 'talk merchant' does. They mean the same thing!"
 
-This friction was breaking immersion and creating a learning curve that deterred new players from enjoying the rich world we'd built.
+This friction was breaking immersion and creating a learning curve that deterred new players from enjoying the rich world I'd built.
 
 ### The Technical Motivation
 
-Beyond user experience, we wanted to demonstrate how modern AI could enhance traditional game mechanics without replacing them. The challenge was integrating AI interpretation while maintaining:
+Beyond user experience, I wanted to demonstrate how modern AI could enhance traditional game mechanics without replacing them. The challenge was integrating AI interpretation while maintaining:
 
 - **Performance**: AI calls only when needed
 - **Reliability**: Graceful fallbacks when AI fails  
@@ -107,7 +107,7 @@ Beyond user experience, we wanted to demonstrate how modern AI could enhance tra
 
 **Problem**: AI calls are expensive and slow compared to local parsing.
 
-**Solution**: We implemented the three-tier system to ensure AI is only consulted as a last resort:
+**Solution**: I implemented the three-tier system to ensure AI is only consulted as a last resort:
 
 ```typescript
 async parseCommand(input: string, context: GameContext, availableCommands: string[]): Promise<AICommandResult | null> {
@@ -128,10 +128,10 @@ async parseCommand(input: string, context: GameContext, availableCommands: strin
 
 **Problem**: Players use vague references like "that guy" or "the thing" that could match multiple entities.
 
-**Solution**: We developed sophisticated context-aware matching rules. The AI receives complete room state and explicit disambiguation instructions:
+**Solution**: I developed sophisticated context-aware matching rules. The AI receives complete room state and explicit disambiguation instructions:
 
 ```typescript
-// Real example from our test suite
+// Real example from my test suite
 Room: "Ancient Crypt"
 Characters: ["Chef's Spirit", "Ancient Guardian"]
 Items: ["rusty sword", "mysterious orb"]
@@ -199,7 +199,7 @@ The merchant greets you warmly: "Welcome, traveler! What brings you to my shop?"
 
 ### Quantified Improvements
 
-Since implementing the system, we've seen:
+Since implementing the system, I've seen:
 - **73% reduction** in "Unknown command" errors
 - **45% increase** in successful command completion on first attempt
 - **89% of AI interpretations** correctly map to intended actions
@@ -234,7 +234,7 @@ Reasoning: AI understands "ghost" → "spirit" semantic relationship
 
 ## Comprehensive Testing Strategy
 
-We developed an extensive test suite to ensure reliability across diverse input patterns:
+I developed an extensive test suite to ensure reliability across diverse input patterns:
 
 ```typescript
 describe('AI Command Fallback System', () => {
@@ -272,7 +272,7 @@ describe('AI Command Fallback System', () => {
 
 ## Integration with Game Architecture
 
-The system integrates seamlessly with our existing command routing infrastructure:
+The system integrates seamlessly with my existing command routing infrastructure:
 
 ```typescript
 // CommandRouter.ts - Integration point
@@ -374,7 +374,7 @@ private async processAIResponse(response: string): Promise<AICommandResult | nul
 
 ## Community Response and Adoption
 
-The response from our player community has been overwhelmingly positive:
+The response from my player community has been overwhelmingly positive:
 
 > "This is a game-changer! I can finally play like I'm actually talking to a dungeon master instead of remembering cryptic commands." - Player feedback
 
@@ -384,11 +384,11 @@ The response from our player community has been overwhelmingly positive:
 
 ## Conclusion: The Future of Interactive Fiction
 
-The AI Command Parsing Fallback System represents more than just a quality-of-life improvement – it's a glimpse into the future of interactive fiction. By leveraging modern AI to enhance rather than replace traditional game mechanics, we've created an experience that feels both familiar and revolutionary.
+The AI Command Parsing Fallback System represents more than just a quality-of-life improvement – it's a glimpse into the future of interactive fiction. By leveraging modern AI to enhance rather than replace traditional game mechanics, I've created an experience that feels both familiar and revolutionary.
 
 The system demonstrates that AI integration doesn't have to mean sacrificing the precise, deterministic gameplay that makes text adventures special. Instead, it can remove barriers to entry while preserving the depth and complexity that veteran players love.
 
-As we continue to refine and expand this system, we're excited to see how it influences the broader interactive fiction community. The tools and techniques we've developed are designed to be reusable and adaptable, and we hope they inspire other developers to explore similar innovations.
+As I continue to refine and expand this system, I'm excited to see how it influences the broader interactive fiction community. The tools and techniques I've developed are designed to be reusable and adaptable, and I hope they inspire other developers to explore similar innovations.
 
 ### Want to Experience It Yourself?
 
@@ -409,9 +409,9 @@ The system works best when you forget about traditional command syntax and just 
 
 ### Contributing to the Project
 
-We welcome contributions from developers interested in natural language processing, game development, or AI integration. The codebase includes comprehensive tests and documentation to help new contributors get started.
+I welcome contributions from developers interested in natural language processing, game development, or AI integration. The codebase includes comprehensive tests and documentation to help new contributors get started.
 
-Key areas where we'd love community input:
+Key areas where I'd love community input:
 - Additional synonym patterns and phrasings
 - Performance optimizations for the AI integration
 - New disambiguation strategies for complex scenarios
@@ -419,6 +419,6 @@ Key areas where we'd love community input:
 
 ---
 
-*The AI Command Parsing Fallback System was implemented by the Shadow Kingdom development team in August 2025. Special thanks to our beta testers who provided invaluable feedback during development, and to the broader interactive fiction community for inspiring us to push the boundaries of what's possible in text adventures.*
+*The AI Command Parsing Fallback System was implemented for Shadow Kingdom in August 2025. Special thanks to my beta testers who provided invaluable feedback during development, and to the broader interactive fiction community for inspiring me to push the boundaries of what's possible in text adventures.*
 
-*For more technical details, check out the [implementation documentation](../specs/ai-command-parsing-fallback.md) in our repository, or explore the source code in [`src/services/aiCommandFallback.ts`](../src/services/aiCommandFallback.ts).*
+*For more technical details, check out the [implementation documentation](../specs/ai-command-parsing-fallback.md) in the repository, or explore the source code in [`src/services/aiCommandFallback.ts`](../src/services/aiCommandFallback.ts).*
