@@ -170,7 +170,6 @@ interface ResolvedTarget {
   type: 'character' | 'inventory_item' | 'room_item' | 'room_feature' | 'environmental';
   entity: Character | InventoryItem | RoomItem | RoomFeature | EnvironmentalObject;
   name: string;         // Canonical name for display
-  confidence: number;   // Match confidence (0.0 - 1.0)
 }
 
 interface ActionResult {
@@ -214,7 +213,6 @@ async handleExamine(target: ResolvedTarget, context: GameContext): Promise<Actio
 interface AICommandResult {
   verb: string;           // "examine", "attack", "take"
   target: string;         // "pedestal", "rusty key", "north exit"  
-  confidence: number;     // AI's confidence in interpretation
   context?: string;       // Additional context for disambiguation
 }
 
@@ -223,7 +221,6 @@ interface AICommandResult {
 // AI OUTPUT: { 
 //   verb: "examine", 
 //   target: "glowing orb",
-//   confidence: 0.85,
 //   context: "magical artifact on stone altar"
 // }
 ```

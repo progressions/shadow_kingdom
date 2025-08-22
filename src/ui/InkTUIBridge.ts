@@ -10,6 +10,7 @@ import { InkTUIApp, Message } from './InkTUIApp';
 import { MessageType } from './MessageFormatter';
 import { GameState } from './StatusManager';
 import { TUIInterface } from './TUIInterface';
+import { LoggerService } from '../services/loggerService';
 
 // Bridge state interface
 interface BridgeState {
@@ -60,11 +61,13 @@ export class InkTUIBridge implements TUIInterface {
   private waiting: boolean = false;
   private unmount?: () => void;
   private messageCounter: number = 0;
+  private loggerService?: LoggerService;
 
   // Configuration
   private readonly maxScrollback: number = 2000;
 
-  constructor() {
+  constructor(loggerService?: LoggerService) {
+    this.loggerService = loggerService;
     this.eventEmitter = new EventEmitter();
     
     // Bind methods to preserve 'this' context
@@ -105,6 +108,37 @@ export class InkTUIBridge implements TUIInterface {
     this.messages.push(newMessage);
     this.trimScrollback();
     this.emitStateUpdate();
+    
+    // Log to LoggerService if available
+    if (this.loggerService) {
+      const logType = this.mapMessageTypeToLogType(type);
+      this.loggerService.logSystemOutput(message, logType);
+    }
+  }
+
+  /**
+   * Set the logger service (can be called after construction)
+   */
+  setLoggerService(loggerService: LoggerService): void {
+    this.loggerService = loggerService;
+  }
+
+  /**
+   * Map MessageType to log categories
+   */
+  private mapMessageTypeToLogType(type: MessageType): 'room' | 'dialogue' | 'combat' | 'system' {
+    switch (type) {
+      case MessageType.NORMAL:
+        return 'room';
+      case MessageType.ERROR:
+        return 'system';
+      case MessageType.SYSTEM:
+        return 'system';
+      case MessageType.AI_GENERATION:
+        return 'system';
+      default:
+        return 'system';
+    }
   }
 
   /**

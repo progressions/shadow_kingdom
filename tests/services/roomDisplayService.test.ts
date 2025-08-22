@@ -258,12 +258,21 @@ describe('RoomDisplayService', () => {
     });
 
     test('should display error message without debug logging', () => {
+      // Store original environment variable and disable debug logging
+      const originalDebugLogging = process.env.AI_DEBUG_LOGGING;
+      delete process.env.AI_DEBUG_LOGGING;
+      
       const error = new Error('Test error');
       
       roomDisplayService.displayError('Something went wrong', error);
       
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error looking around: Something went wrong');
+      
+      // Restore environment
+      if (originalDebugLogging) {
+        process.env.AI_DEBUG_LOGGING = originalDebugLogging;
+      }
     });
 
     test('should display error message with debug logging enabled', () => {
