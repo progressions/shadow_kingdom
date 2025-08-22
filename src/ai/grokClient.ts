@@ -930,11 +930,13 @@ CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
     if (fantasyLevel === 'mundane') {
       return `FANTASY LEVEL GUIDANCE:
 Generate a practical, realistic room that serves a clear purpose in a medieval fantasy castle. Focus on:
+- Simple, descriptive room names (Storage Room, Guard Post, Kitchen, Hallway, Chamber)
 - Standard architectural features and functional spaces
 - Basic furnishings and practical items
+- NO magical, mystical, or fantastical naming (avoid words like Celestial, Obsidian, Ethereal, Ancient, Mystical)
 - Minimal magical elements
 - Grounded, believable descriptions
-- Clear purpose (guard rooms, storage, hallways, chambers, kitchens, etc.)`;
+- Clear purpose (guard rooms, storage, hallways, chambers, sleeping quarters)`;
     } else {
       return `FANTASY LEVEL GUIDANCE:
 Generate a magical, mysterious, or uniquely fantastical room that stands out. Include:
