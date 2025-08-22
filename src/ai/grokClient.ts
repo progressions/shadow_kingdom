@@ -115,7 +115,6 @@ export interface CommandInterpretationContext {
 export interface InterpretedCommand {
   action: string;
   params: string[];
-  confidence: number;
   reasoning: string;
 }
 
@@ -447,13 +446,12 @@ INTERPRETATION RULES:
 4. Handle pronouns and references (e.g., "it", "that", "him")
 5. Support compound commands like "take sword and examine it"
 6. Be flexible with phrasing and synonyms
-7. Assign confidence based on how certain you are about the interpretation
+7. Provide clear reasoning for your interpretation
 
 Respond in JSON format:
 {
   "action": "primary action (go, look, take, talk, help, etc.)",
   "params": ["list", "of", "parameters"],
-  "confidence": 0.85,
   "reasoning": "Brief explanation of interpretation"
 }
 
@@ -788,7 +786,6 @@ ITEM GUIDELINES:
       return {
         action: 'look',
         params: [],
-        confidence: 0.75,
         reasoning: 'Interpreted wander/explore as looking around'
       };
     }
@@ -797,7 +794,6 @@ ITEM GUIDELINES:
       return {
         action: 'take',
         params: ['all'],
-        confidence: 0.85,
         reasoning: 'Interpreted as taking all available items'
       };
     }
@@ -806,7 +802,6 @@ ITEM GUIDELINES:
       return {
         action: 'examine',
         params: [command.split(' ').slice(-1)[0]], // Last word as object
-        confidence: 0.70,
         reasoning: 'Interpreted search/find as examining specific object'
       };
     }
@@ -815,7 +810,6 @@ ITEM GUIDELINES:
       return {
         action: 'talk',
         params: ['npc'],
-        confidence: 0.65,
         reasoning: 'Interpreted as talking to any available NPC'
       };
     }

@@ -265,7 +265,6 @@ export class LocalNLPProcessor {
           return {
             action: pattern.action,
             params,
-            confidence: this.calculateConfidence(pattern, match, context),
             source: 'pattern',
             pattern: pattern.pattern.source,
             processingTime: 0 // Will be set by caller
@@ -281,24 +280,6 @@ export class LocalNLPProcessor {
     return null;
   }
 
-  private calculateConfidence(pattern: CommandPattern, match: RegExpMatchArray, context: GameContext): number {
-    let confidence = 0.75; // Base confidence for pattern matches
-    
-    // Increase confidence for higher priority patterns
-    if (pattern.priority >= 90) confidence += 0.15;
-    else if (pattern.priority >= 70) confidence += 0.1;
-    else if (pattern.priority >= 50) confidence += 0.05;
-    
-    // Increase confidence for exact matches
-    if (match[0] === match.input) confidence += 0.05;
-    
-    // Context-based confidence adjustments
-    if (context.currentRoom && pattern.category === 'movement') {
-      confidence += 0.1; // Movement commands more likely when in a room
-    }
-    
-    return Math.min(confidence, 0.98); // Cap at 98% to allow room for comparison
-  }
 
   private expandDirection(direction: string): string {
     const expansions: { [key: string]: string } = {

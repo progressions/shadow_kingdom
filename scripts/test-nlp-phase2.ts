@@ -38,8 +38,8 @@ async function testPhase2() {
 
   console.log('\n⚙️  Engine Configuration:');
   const currentConfig = engine.getConfig();
-  console.log(`Local confidence threshold: ${(currentConfig.localConfidenceThreshold * 100).toFixed(0)}%`);
-  console.log(`AI confidence threshold: ${(currentConfig.aiConfidenceThreshold * 100).toFixed(0)}%`);
+  console.log(`AI fallback enabled: ${currentConfig.enableAIFallback}`);
+  console.log(`Max processing time: ${currentConfig.maxProcessingTime}ms`);
   console.log(`AI fallback enabled: ${currentConfig.enableAIFallback ? 'Yes' : 'No'}`);
   console.log(`Max processing time: ${currentConfig.maxProcessingTime}ms`);
 
@@ -99,7 +99,7 @@ async function testPhase2() {
       if (result) {
         const sourceIcon = result.source === 'local' ? '🎯' : '🤖';
         const params = result.params.length > 0 ? ` [${result.params.join(', ')}]` : '';
-        console.log(`  ${sourceIcon} "${command}" → ${result.action}${params} (${(result.confidence * 100).toFixed(0)}% confidence, ${processingTime}ms)`);
+        console.log(`  ${sourceIcon} "${command}" → ${result.action}${params} (${result.source}, ${processingTime}ms)`);
         if (result.reasoning) {
           console.log(`      Reasoning: ${result.reasoning}`);
         }
@@ -133,18 +133,14 @@ async function testPhase2() {
   console.log('\n🔧 Configuration Impact Testing:');
   console.log('-'.repeat(33));
   
-  // Test with different thresholds
-  console.log('\nTesting with high local threshold (forces AI fallback):');
-  engine.updateConfig({ localConfidenceThreshold: 0.99 });
+  // Test with different configurations
+  console.log('\nTesting command processing:');
   
-  const highThresholdCommand = 'look around';
-  const highThresholdResult = await engine.processCommand(highThresholdCommand, gameContext);
-  if (highThresholdResult) {
-    console.log(`  "${highThresholdCommand}" → ${highThresholdResult.source} processing (confidence: ${(highThresholdResult.confidence * 100).toFixed(0)}%)`);
+  const normalCommand = 'look around';
+  const normalResult = await engine.processCommand(normalCommand, gameContext);
+  if (normalResult) {
+    console.log(`  "${normalCommand}" → ${normalResult.source} processing`);
   }
-  
-  // Reset to normal threshold
-  engine.updateConfig({ localConfidenceThreshold: 0.6 });
   
   console.log('\nTesting with AI disabled:');
   engine.updateConfig({ enableAIFallback: false });
@@ -171,7 +167,7 @@ async function testPhase2() {
   console.log('\n✅ Key Features Demonstrated:');
   console.log('  - Local pattern matching with high performance');
   console.log('  - AI fallback for complex natural language');
-  console.log('  - Configurable confidence thresholds');
+  console.log('  - Configurable AI processing settings');
   console.log('  - Processing timeout protection');
   console.log('  - Comprehensive statistics tracking');
   console.log('  - Mock mode for testing without API costs');

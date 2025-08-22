@@ -40,7 +40,7 @@ Create an intelligent command interpreter that allows players to use natural lan
 - [ ] Item disambiguation using AI and room/inventory context
 - [ ] Fallback to exact command matching when AI fails
 - [ ] Configurable AI processing (can be disabled for performance)
-- [ ] Command confidence scoring and ambiguity handling
+- [ ] Command ambiguity handling and resolution
 - [ ] Integration with existing command router system
 - [ ] Comprehensive test coverage for various input patterns
 - [ ] Performance optimization for real-time gameplay
@@ -69,14 +69,13 @@ class AICommandInterpreter {
 interface InterpretedCommand {
   command: string;
   args: string[];
-  confidence: number;
   alternatives?: InterpretedCommand[];
   itemMatches?: ItemMatch[];
+  reasoning: string;
 }
 
 interface ItemMatch {
   itemName: string;
-  confidence: number;
   location: 'inventory' | 'room';
   reasoning: string;
 }
@@ -142,7 +141,7 @@ class CommandRouter {
     
     // 2. Try AI interpretation (new behavior)
     const interpreted = await this.aiInterpreter.interpretCommand(input, context);
-    if (interpreted.confidence > threshold) {
+    if (interpreted) {
       return await this.executeCommand(interpreted);
     }
     
@@ -154,8 +153,8 @@ class CommandRouter {
 
 **Error Handling & Fallback:**
 - AI service unavailable → fall back to exact matching
-- Low confidence interpretations → ask for clarification
-- Multiple high-confidence matches → present options to player
+- Ambiguous interpretations → ask for clarification
+- Multiple possible matches → present options to player
 - Invalid AI responses → graceful degradation
 
 ## Example Use Cases
@@ -210,7 +209,7 @@ Result: examine sword
 - Context-aware item matching
 - Attribute-based item identification
 - Multi-item ambiguity resolution
-- Confidence scoring system
+- Reasoning and explanation system
 
 ### Phase 3: Advanced Features
 - Pronoun and context resolution
@@ -242,7 +241,6 @@ Result: examine sword
 ```typescript
 interface AICommandConfig {
   enabled: boolean;
-  confidenceThreshold: number;
   maxContextSize: number;
   timeoutMs: number;
   fallbackToExact: boolean;

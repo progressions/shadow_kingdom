@@ -12,7 +12,6 @@ export interface CommandPattern {
 export interface LocalCommandResult {
   action: string;
   params: string[];
-  confidence: number;
   source: 'pattern' | 'exact';
   pattern?: string;
   processingTime: number;
@@ -33,7 +32,6 @@ export interface GameContext {
 export interface NLPResult {
   action: string;
   params: string[];
-  confidence: number;
   source: 'local' | 'ai' | 'exact' | 'context';
   processingTime: number;
   reasoning?: string;
@@ -45,7 +43,6 @@ export interface NLPResult {
 export interface ResolvedObject {
   originalRef: string;
   resolvedName: string; 
-  confidence: number;
   resolutionType: 'exact' | 'pronoun' | 'spatial' | 'contextual';
   reasoning?: string;
 }

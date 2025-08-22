@@ -3,8 +3,6 @@ import { GrokClient, CommandInterpretationContext, InterpretedCommand } from '..
 import { GameContext, NLPResult } from './types';
 
 export interface NLPConfig {
-  localConfidenceThreshold: number;   // Minimum confidence for local patterns
-  aiConfidenceThreshold: number;      // Minimum confidence for AI interpretation
   enableAIFallback: boolean;          // Whether to use AI when local fails
   maxProcessingTime: number;          // Max time to spend on processing (ms)
   enableDebugLogging: boolean;        // Debug output
@@ -27,8 +25,6 @@ export class UnifiedNLPEngine {
     this.grokClient = grokClient || new GrokClient();
     
     this.config = {
-      localConfidenceThreshold: 0.7,
-      aiConfidenceThreshold: 0.6,
       enableAIFallback: true,
       maxProcessingTime: 5000, // 5 seconds max
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true',
@@ -58,7 +54,6 @@ export class UnifiedNLPEngine {
       const result: NLPResult = {
         action: localResult.action,
         params: localResult.params,
-        confidence: localResult.confidence,
         source: 'local',
         processingTime: Date.now() - startTime
       };
@@ -66,7 +61,7 @@ export class UnifiedNLPEngine {
       this.updateAverageProcessingTime(result.processingTime);
       
       if (this.config.enableDebugLogging) {
-        console.log(`✅ Local match: ${result.action} (${(result.confidence * 100).toFixed(0)}%)`);
+        console.log(`✅ Local match: ${result.action}`);
       }
       
       return result;
@@ -109,7 +104,6 @@ export class UnifiedNLPEngine {
           const result: NLPResult = {
             action: aiResult.action,
             params: aiResult.params,
-            confidence: aiResult.confidence,
             source: 'ai',
             processingTime: Date.now() - startTime,
             reasoning: aiResult.reasoning
@@ -118,7 +112,7 @@ export class UnifiedNLPEngine {
           this.updateAverageProcessingTime(result.processingTime);
           
           if (this.config.enableDebugLogging) {
-            console.log(`🤖 AI match: ${result.action} (${(result.confidence * 100).toFixed(0)}%)`);
+            console.log(`🤖 AI match: ${result.action}`);
             if (result.reasoning) {
               console.log(`   Reasoning: ${result.reasoning}`);
             }

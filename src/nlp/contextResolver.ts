@@ -74,7 +74,6 @@ export interface ResolvedCommand {
 export interface ResolvedObject {
   originalRef: string;  // What user typed: "it", "the door", "sword"
   resolvedName: string; // What it resolves to: "rusty sword", "oak door"
-  confidence: number;
   resolutionType: 'exact' | 'pronoun' | 'spatial' | 'contextual';
   reasoning?: string;
 }
@@ -284,7 +283,6 @@ export class ContextResolver {
           return {
             originalRef: pronoun,
             resolvedName: referent,
-            confidence: 0.9,
             resolutionType: 'pronoun',
             reasoning: `Pronoun "${pronoun}" refers to "${referent}"`
           };
@@ -310,7 +308,6 @@ export class ContextResolver {
         return {
           originalRef: ref,
           resolvedName: feature.name,
-          confidence: 0.85,
           resolutionType: 'spatial',
           reasoning: `Spatial reference "${ref}" matches room feature "${feature.name}"`
         };
@@ -332,7 +329,6 @@ export class ContextResolver {
         return {
           originalRef: ref,
           resolvedName: obj.name,
-          confidence: 1.0,
           resolutionType: 'exact',
           reasoning: `Exact match for "${ref}"`
         };
@@ -356,7 +352,6 @@ export class ContextResolver {
         return {
           originalRef: ref,
           resolvedName: obj.name,
-          confidence: 0.8,
           resolutionType: 'contextual',
           reasoning: `Contextual match: "${ref}" partially matches "${obj.name}"`
         };

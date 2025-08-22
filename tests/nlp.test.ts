@@ -41,7 +41,7 @@ describe('LocalNLPProcessor', () => {
         expect(result).not.toBeNull();
         expect(result!.action).toBe(expected.action);
         expect(result!.params).toEqual(expected.params);
-        expect(result!.confidence).toBeGreaterThan(0.8);
+        expect(result!.source).toBe('pattern');
         expect(result!.source).toBe('pattern');
       });
     });
@@ -262,29 +262,10 @@ describe('LocalNLPProcessor', () => {
       const result = processor.processCommand('go north', gameContext);
       expect(result).not.toBeNull();
       expect(result!.action).toBe('go');
-      expect(result!.confidence).toBeGreaterThan(0.9);
+      expect(result!.source).toBe('pattern');
     });
   });
 
-  describe('Confidence Scoring', () => {
-    test('should assign higher confidence to high-priority patterns', () => {
-      const movementResult = processor.processCommand('go north', gameContext);
-      const systemResult = processor.processCommand('help', gameContext);
-
-      expect(movementResult).not.toBeNull();
-      expect(systemResult).not.toBeNull();
-      expect(movementResult!.confidence).toBeGreaterThan(systemResult!.confidence);
-    });
-
-    test('should boost confidence for game mode movement commands', () => {
-      const gameResult = processor.processCommand('go north', gameContext);
-      const menuResult = processor.processCommand('go north', menuContext);
-
-      expect(gameResult).not.toBeNull();
-      expect(menuResult).not.toBeNull();
-      expect(gameResult!.confidence).toBeGreaterThan(menuResult!.confidence);
-    });
-  });
 
   describe('Edge Cases', () => {
     test('should handle empty input', () => {

@@ -68,7 +68,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
           return {
             action: 'compound',
             params: [],
-            confidence: contextResult.confidence,
             source: 'context',
             processingTime,
             reasoning: 'Compound command resolved with context',
@@ -79,7 +78,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
           return {
             action: contextResult.action,
             params: contextResult.params,
-            confidence: contextResult.confidence,
             source: 'context',
             processingTime,
             reasoning: contextResult.reasoning || 'Context resolution successful',
@@ -92,8 +90,8 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
     // Try the base unified engine (local patterns + AI fallback)
     const baseResult = await super.processCommand(input, context);
     
-    // If base processing succeeded with high confidence, use it
-    if (baseResult && baseResult.confidence >= this.config.localConfidenceThreshold) {
+    // If base processing succeeded, use it
+    if (baseResult) {
       return baseResult;
     }
 
@@ -109,7 +107,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
           return {
             action: 'compound',
             params: [],
-            confidence: contextResult.confidence,
             source: 'context',
             processingTime,
             reasoning: 'Compound command resolved with context',
@@ -120,7 +117,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
           return {
             action: contextResult.action,
             params: contextResult.params,
-            confidence: contextResult.confidence,
             source: 'context',
             processingTime,
             reasoning: contextResult.reasoning,
@@ -130,7 +126,7 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
       }
     }
 
-    // Return base result even if low confidence, or null if nothing worked
+    // Return base result or null if nothing worked
     return baseResult;
   }
 
@@ -143,7 +139,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
   ): Promise<{
     action: string;
     params: string[];
-    confidence: number;
     reasoning?: string;
     resolvedObjects?: any[];
     isCompound?: boolean;
@@ -161,7 +156,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
         return {
           action: 'compound',
           params: [],
-          confidence: this.calculateCompoundConfidence(resolved),
           reasoning: `Compound command with ${resolved.commands.length} parts`,
           isCompound: true,
           compoundCommands: resolved.commands
@@ -183,7 +177,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
       return {
         action: resolved.action,
         params: resolved.params,
-        confidence: this.calculateContextConfidence(resolved),
         reasoning: this.buildReasoningString(resolved),
         resolvedObjects: resolved.resolvedObjects
       };
@@ -290,36 +283,6 @@ export class EnhancedNLPEngine extends UnifiedNLPEngine {
     return features;
   }
 
-  /**
-   * Calculate confidence for compound commands
-   */
-  private calculateCompoundConfidence(compound: CompoundCommand): number {
-    if (compound.commands.length === 0) return 0;
-    
-    const avgConfidence = compound.commands.reduce((sum, cmd) => {
-      return sum + (cmd.resolvedObjects.reduce((objSum, obj) => objSum + obj.confidence, 0) / cmd.resolvedObjects.length || 0.5);
-    }, 0) / compound.commands.length;
-
-    return Math.min(avgConfidence, 0.95);
-  }
-
-  /**
-   * Calculate confidence for context-resolved commands
-   */
-  private calculateContextConfidence(resolved: ResolvedCommand): number {
-    if (resolved.resolvedObjects.length === 0) return 0.6;
-    
-    const avgObjectConfidence = resolved.resolvedObjects.reduce((sum, obj) => sum + obj.confidence, 0) / resolved.resolvedObjects.length;
-    
-    // Boost confidence if we resolved pronouns or spatial references
-    let boost = 0;
-    for (const obj of resolved.resolvedObjects) {
-      if (obj.resolutionType === 'pronoun') boost += 0.1;
-      if (obj.resolutionType === 'spatial') boost += 0.05;
-    }
-
-    return Math.min(avgObjectConfidence + boost, 0.95);
-  }
 
   /**
    * Build reasoning string for context resolution

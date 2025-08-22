@@ -602,8 +602,6 @@ export class GameController {
     this.tui.display(`  Average processing time: ${nlpStats.avgProcessingTime.toFixed(2)}ms`, MessageType.NORMAL);
     
     this.tui.display('⚙️  Configuration:', MessageType.NORMAL);
-    this.tui.display(`  Local confidence threshold: ${(config.localConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
-    this.tui.display(`  AI confidence threshold: ${(config.aiConfidenceThreshold * 100).toFixed(0)}%`, MessageType.NORMAL);
     this.tui.display(`  AI fallback enabled: ${config.enableAIFallback ? 'Yes' : 'No'}`, MessageType.NORMAL);
     this.tui.display(`  Max processing time: ${config.maxProcessingTime}ms`, MessageType.NORMAL);
     this.tui.display(`  Debug logging: ${config.enableDebugLogging ? 'Enabled' : 'Disabled'}`, MessageType.NORMAL);

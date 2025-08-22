@@ -136,7 +136,7 @@ export class CommandRouter {
       try {
         if (this.isDebugEnabled()) {
           const sourceIcon = nlpResult.source === 'local' ? '🎯' : '🤖';
-          const debugMessage = `${sourceIcon} NLP: "${originalInput}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (confidence: ${nlpResult.confidence.toFixed(2)}, source: ${nlpResult.source})`;
+          const debugMessage = `${sourceIcon} NLP: "${originalInput}" → "${nlpResult.action} ${nlpResult.params.join(' ')}" (source: ${nlpResult.source})`;
           if (this.tui) {
             this.tui.display(debugMessage, MessageType.SYSTEM);
             if (nlpResult.reasoning) {
