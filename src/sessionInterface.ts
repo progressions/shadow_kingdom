@@ -160,8 +160,12 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     // Initialize unified room display service
     const unifiedRoomDisplayService = new UnifiedRoomDisplayService();
     
+    // Initialize examine service
+    const { ExamineService } = await import('./services/examineService');
+    const examineService = new ExamineService(db, characterService, itemService);
+    
     // Set up game commands with background generation support
-    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService);
+    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService, examineService);
     
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
@@ -194,7 +198,8 @@ async function setupGameCommands(
   itemService: any,
   equipmentService: any,
   characterService: any,
-  unifiedRoomDisplayService: any
+  unifiedRoomDisplayService: any,
+  examineService: any
 ): Promise<void> {
   // Import adapter class for use in command handlers
   const { ConsoleOutputAdapter } = await import('./adapters/consoleOutputAdapter');
@@ -207,29 +212,68 @@ async function setupGameCommands(
 
   commandRouter.addGameCommand({
     name: 'look',
-    description: 'Look around the current room',
-    handler: async () => {
-      // Display current room using unified service
+    aliases: ['examine', 'l'],
+    description: 'Look around the current room or examine something specific',
+    handler: async (args: string[]) => {
       const session = gameStateManager.getCurrentSession();
-      const room = await gameStateManager.getCurrentRoom();
-      const connections = await gameStateManager.getCurrentRoomConnections();
       
-      if (room) {
-        // Use unified room display service with console adapter
-        const consoleAdapter = new ConsoleOutputAdapter();
-        await unifiedRoomDisplayService.displayRoomComplete(
-          room,
-          connections,
-          session.gameId!,
-          consoleAdapter,
-          {
-            itemService: itemService,
-            characterService: characterService,
-            backgroundGenerationService: backgroundGenerationService
+      if (args && args.length > 0) {
+        // Handle examine functionality
+        const { stripArticles } = await import('./utils/articleParser');
+        const targetName = stripArticles(args.join(' '));
+
+        if (!targetName) {
+          console.log('Examine what? Please specify something to examine.');
+          return;
+        }
+
+        try {
+          // Find the examinable target
+          const target = await examineService.findExaminableTarget(
+            session.roomId!,
+            session.gameId!,
+            session.characterId!,
+            targetName
+          );
+
+          if (!target) {
+            // Target not found, let AI handle it by throwing error
+            throw new Error(`Target "${args.join(' ')}" not found, falling back to AI`);
           }
-        );
+
+          // Get and display examination text
+          const examinationText = examineService.getExaminationText(target);
+          console.log(examinationText);
+
+        } catch (error) {
+          // Re-throw errors related to fallback, but log other errors
+          if (error instanceof Error && error.message.includes('falling back to AI')) {
+            throw error; // Let command router handle AI fallback
+          }
+          console.error('Error examining target:', error);
+        }
       } else {
-        console.log('You are nowhere to be found.');
+        // Display current room using unified service
+        const room = await gameStateManager.getCurrentRoom();
+        const connections = await gameStateManager.getCurrentRoomConnections();
+        
+        if (room) {
+          // Use unified room display service with console adapter
+          const consoleAdapter = new ConsoleOutputAdapter();
+          await unifiedRoomDisplayService.displayRoomComplete(
+            room,
+            connections,
+            session.gameId!,
+            consoleAdapter,
+            {
+              itemService: itemService,
+              characterService: characterService,
+              backgroundGenerationService: backgroundGenerationService
+            }
+          );
+        } else {
+          console.log('You are nowhere to be found.');
+        }
       }
     }
   });

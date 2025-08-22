@@ -57,6 +57,7 @@ export class GameController {
   private actionValidator!: ServiceInstances['actionValidator']; // Initialized in initializeReadlineInterface()
   private healthService!: ServiceInstances['healthService']; // Initialized in initializeReadlineInterface()
   private eventTriggerService!: ServiceInstances['eventTriggerService']; // Initialized in initializeReadlineInterface()
+  private examineService!: ServiceInstances['examineService']; // Initialized in initializeReadlineInterface()
   private unifiedRoomDisplayService: UnifiedRoomDisplayService;
   private commandState: CommandState;
 
@@ -167,8 +168,48 @@ export class GameController {
     // Gameplay commands
     this.commandRouter.addCommand({
       name: 'look',
-      description: 'Look around the current room',
-      handler: async () => await this.lookAround()
+      description: 'Look around the current room or examine something specific',
+      handler: async (args: string[]) => {
+        if (args.length === 0) {
+          await this.lookAround();
+        } else {
+          const handled = await this.handleExamine(args);
+          if (!handled) {
+            // Target not found, let NLP handle the full command
+            throw new Error(`Target "${args.join(' ')}" not found, falling back to AI`);
+          }
+        }
+      }
+    });
+
+    // Add examine alias
+    this.commandRouter.addCommand({
+      name: 'examine',
+      description: 'Examine something specific (alias for "look <target>")',
+      handler: async (args: string[]) => {
+        const handled = await this.handleExamine(args);
+        if (!handled) {
+          // Target not found, let NLP handle the full command
+          throw new Error(`Target "${args.join(' ')}" not found, falling back to AI`);
+        }
+      }
+    });
+
+    // Add short alias
+    this.commandRouter.addCommand({
+      name: 'l',
+      description: 'Look around or examine something (short alias)',
+      handler: async (args: string[]) => {
+        if (args.length === 0) {
+          await this.lookAround();
+        } else {
+          const handled = await this.handleExamine(args);
+          if (!handled) {
+            // Target not found, let NLP handle the full command
+            throw new Error(`Target "${args.join(' ')}" not found, falling back to AI`);
+          }
+        }
+      }
     });
 
     this.commandRouter.addCommand({
@@ -352,17 +393,6 @@ export class GameController {
       handler: async (args) => await this.handleDrop(args.join(' '))
     });
 
-    this.commandRouter.addCommand({
-      name: 'examine',
-      description: 'Examine an item in detail',
-      handler: async (args) => await this.handleExamine(args.join(' '))
-    });
-
-    this.commandRouter.addCommand({
-      name: 'ex',
-      description: 'Examine an item in detail (alias for "examine")',
-      handler: async (args) => await this.handleExamine(args.join(' '))
-    });
 
     this.commandRouter.addCommand({
       name: 'rest',
@@ -790,6 +820,50 @@ export class GameController {
     }
   }
 
+  /**
+   * Handle examine command for specific targets
+   * Returns true if handled, false if should fall back to AI
+   */
+  private async handleExamine(args: string[]): Promise<boolean> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return true; // Handled (error case)
+    }
+
+    const session = this.gameStateManager.getCurrentSession();
+    const targetName = stripArticles(args.join(' '));
+
+    if (!targetName) {
+      this.tui.display('Examine what? Please specify something to examine.', MessageType.SYSTEM);
+      return true; // Handled (error case)
+    }
+
+    try {
+      // Find the examinable target
+      const target = await this.examineService.findExaminableTarget(
+        session.roomId!,
+        session.gameId!,
+        session.characterId!,
+        targetName
+      );
+
+      if (!target) {
+        // Target not found - let AI handle it
+        return false;
+      }
+
+      // Get and display examination text
+      const examinationText = this.examineService.getExaminationText(target);
+      this.tui.display(examinationText, MessageType.NORMAL);
+      return true; // Successfully handled
+
+    } catch (error) {
+      console.error('Error examining target:', error);
+      this.tui.showError('Error examining target', (error as Error)?.message);
+      return true; // Handled (error case)
+    }
+  }
+
   private async move(args: string[]) {
     if (!this.gameStateManager.isInGame()) {
       this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
@@ -978,6 +1052,7 @@ export class GameController {
     this.actionValidator = services.actionValidator;
     this.healthService = services.healthService;
     this.eventTriggerService = services.eventTriggerService;
+    this.examineService = services.examineService;
     
     // Set up commands
     this.setupCommands();
@@ -1676,70 +1751,6 @@ export class GameController {
     }
   }
 
-  /**
-   * Handle examine command - examine items in detail
-   */
-  private async handleExamine(itemName: string): Promise<void> {
-    if (!this.gameStateManager.isInGame()) {
-      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
-      return;
-    }
-
-    if (!itemName) {
-      this.tui.display('Examine what?', MessageType.ERROR);
-      return;
-    }
-
-    // Strip articles from item name for more natural language processing
-    const cleanItemName = stripArticles(itemName);
-
-    try {
-      const session = this.gameStateManager.getCurrentSession();
-      const currentRoom = await this.gameStateManager.getCurrentRoom();
-      
-      if (!currentRoom) {
-        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
-        return;
-      }
-
-      // For this phase, use game ID as character ID (simple approach for single-player game)
-      const characterId = session.gameId!;
-
-      // Check inventory first
-      const inventory = await this.itemService.getCharacterInventory(characterId);
-      let targetInventoryItem = this.itemService.findItemByName(inventory, cleanItemName);
-      let targetRoomItem = null;
-      let itemLocation = 'inventory';
-
-      // If not found in inventory, check current room
-      if (!targetInventoryItem) {
-        const roomItems = await this.itemService.getRoomItems(currentRoom.id);
-        targetRoomItem = this.itemService.findItemByName(roomItems, cleanItemName);
-        itemLocation = 'room';
-      }
-
-      const foundItem = targetInventoryItem || targetRoomItem;
-      if (!foundItem) {
-        this.tui.display(`There is no ${cleanItemName} here or in your inventory.`, MessageType.ERROR);
-        return;
-      }
-
-      // Display detailed item information
-      this.displayItemDetails(foundItem.item, itemLocation);
-
-    } catch (error) {
-      console.error('Error examining item:', error);
-      this.tui.showError('Error examining item', (error as Error)?.message);
-    }
-  }
-
-  /**
-   * Display detailed information about an item
-   */
-  private displayItemDetails(item: any, location: string): void {
-    this.tui.display(`${item.name}`, MessageType.NORMAL);
-    this.tui.display(`${item.description}`, MessageType.NORMAL);
-  }
 
   /**
    * Handle rest command - rest to restore health and energy
