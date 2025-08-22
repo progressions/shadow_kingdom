@@ -91,6 +91,13 @@ export class GameStateManager {
   }
 
   /**
+   * Get current room ID
+   */
+  getCurrentRoomId(): number | null {
+    return this.currentRoomId;
+  }
+
+  /**
    * Start a new game session
    */
   async startGameSession(gameId: number): Promise<void> {

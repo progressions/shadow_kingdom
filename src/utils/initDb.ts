@@ -229,6 +229,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       // Column already exists, ignore error
     }
 
+    // Migration: Add is_hostile column to characters if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE characters ADD COLUMN is_hostile BOOLEAN DEFAULT FALSE`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
     // Create indexes for faster lookups
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_connections_from_room 

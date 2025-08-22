@@ -240,6 +240,22 @@ async function setupGameCommands(
         return;
       }
 
+      // Check for hostile characters blocking movement
+      const currentRoomId = gameStateManager.getCurrentRoomId();
+      if (currentRoomId) {
+        const hostileCharacters = await characterService.getHostileCharacters(currentRoomId);
+        
+        if (hostileCharacters.length > 0) {
+          const hostileName = hostileCharacters[0].name;
+          if (hostileCharacters.length === 1) {
+            console.log(`You cannot flee! The ${hostileName} blocks your path!`);
+          } else {
+            console.log(`You cannot flee! Hostile enemies block your escape!`);
+          }
+          return;
+        }
+      }
+
       const userInput = args.join(' ').toLowerCase();
 
       try {

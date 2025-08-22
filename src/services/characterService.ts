@@ -48,8 +48,8 @@ export class CharacterService {
       INSERT INTO characters (
         game_id, name, description, type, current_room_id,
         strength, dexterity, intelligence, constitution, wisdom, charisma,
-        max_health, current_health, dialogue_response
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        max_health, current_health, is_hostile, dialogue_response
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       data.game_id,
       data.name,
@@ -64,6 +64,7 @@ export class CharacterService {
       attributes.charisma,
       maxHealth,
       maxHealth, // Start at full health
+      data.is_hostile ?? (data.type === CharacterType.ENEMY ? true : false), // Enemies are hostile by default
       data.dialogue_response ?? null
     ]);
 
@@ -172,6 +173,37 @@ export class CharacterService {
     await this.db.run(
       'UPDATE characters SET current_room_id = ? WHERE id = ?',
       [roomId, characterId]
+    );
+  }
+
+  /**
+   * Get all hostile characters in a room (alive only)
+   */
+  async getHostileCharacters(roomId: number): Promise<Character[]> {
+    return await this.db.all<Character>(
+      'SELECT * FROM characters WHERE current_room_id = ? AND is_hostile = 1 AND (is_dead IS NULL OR is_dead = 0) ORDER BY name',
+      [roomId]
+    );
+  }
+
+  /**
+   * Check if room has any hostile characters
+   */
+  async hasHostileCharacters(roomId: number): Promise<boolean> {
+    const result = await this.db.get<{ count: number }>(
+      'SELECT COUNT(*) as count FROM characters WHERE current_room_id = ? AND is_hostile = 1 AND (is_dead IS NULL OR is_dead = 0)',
+      [roomId]
+    );
+    return (result?.count ?? 0) > 0;
+  }
+
+  /**
+   * Update character hostility
+   */
+  async setCharacterHostility(characterId: number, isHostile: boolean): Promise<void> {
+    await this.db.run(
+      'UPDATE characters SET is_hostile = ? WHERE id = ?',
+      [isHostile ? 1 : 0, characterId]
     );
   }
 

@@ -116,6 +116,7 @@ export class CharacterGenerationService {
       constitution: character.attributes?.constitution ?? 10,
       wisdom: character.attributes?.wisdom ?? 10,
       charisma: character.attributes?.charisma ?? 10,
+      is_hostile: characterType === CharacterType.ENEMY, // Enemies are hostile by default
       dialogue_response: character.initialDialogue
     });
 

@@ -231,9 +231,9 @@ describe('UnifiedRoomDisplayService', () => {
       
       expect(displayCalls).toContainEqual({ message: '', type: MessageType.NORMAL });
       expect(displayCalls).toContainEqual({ message: 'Characters present:', type: MessageType.SYSTEM });
-      expect(displayCalls).toContainEqual({ message: '• Friendly Merchant', type: MessageType.NORMAL });
+      expect(displayCalls).toContainEqual({ message: '👤 Friendly Merchant', type: MessageType.NORMAL });
       expect(displayCalls).toContainEqual({ message: '  A jovial merchant with a wide smile', type: MessageType.NORMAL });
-      expect(displayCalls).toContainEqual({ message: '• Goblin Warrior (hostile)', type: MessageType.NORMAL });
+      expect(displayCalls).toContainEqual({ message: '• Goblin Warrior', type: MessageType.NORMAL });
       expect(displayCalls).toContainEqual({ message: '  A snarling goblin with rusty weapons', type: MessageType.NORMAL });
     });
 
