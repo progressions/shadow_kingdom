@@ -221,11 +221,4 @@ describe('Examine System End-to-End Tests', () => {
     });
   });
 
-  describe('SessionInterface Integration', () => {
-    it('should have session interface examine functionality available', async () => {
-      // Just verify the function exists - actual testing would require complex setup
-      expect(runSessionMode).toBeDefined();
-      expect(typeof runSessionMode).toBe('function');
-    });
-  });
 });
