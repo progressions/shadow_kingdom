@@ -1382,9 +1382,6 @@ export class GameController {
           // Action already executed above, this is just for trigger processing
         }
       );
-      
-      // Refresh room display to show updated items
-      await this.lookAround();
 
     } catch (error) {
       console.error('Error picking up item:', error);
@@ -1496,9 +1493,6 @@ export class GameController {
           );
 
           this.tui.display(`You drop the ${targetItem.item.name}.`, MessageType.NORMAL);
-          
-          // Refresh room display to show updated items
-          await this.lookAround();
         }
       );
 
