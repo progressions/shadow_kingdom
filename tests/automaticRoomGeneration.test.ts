@@ -546,12 +546,16 @@ describe('Automatic Room Generation on Entry', () => {
 
       process.env.AUTO_GENERATE_ON_ENTRY = 'true';
 
-      // Mock generation to succeed
+      // Mock generation to succeed with a small delay to test race conditions properly
       const mockGenerateRoom = jest.spyOn(roomGenerationService, 'generateRoomForConnection');
-      mockGenerateRoom.mockResolvedValue({
-        success: true,
-        roomId: 999,
-        error: undefined
+      mockGenerateRoom.mockImplementation(async () => {
+        // Add a small delay to make race condition testing more realistic
+        await new Promise(resolve => setTimeout(resolve, 10));
+        return {
+          success: true,
+          roomId: 999,
+          error: undefined
+        };
       });
 
       // Trigger generation twice concurrently
