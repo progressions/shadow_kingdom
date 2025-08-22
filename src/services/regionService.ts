@@ -48,6 +48,29 @@ export class RegionService {
   }
 
   /**
+   * Get all existing region names for a game (for AI prompting)
+   */
+  async getExistingRegionNames(gameId: number): Promise<string[]> {
+    const regions = await this.db.all<{name: string}>(
+      'SELECT name FROM regions WHERE game_id = ? AND name IS NOT NULL',
+      [gameId]
+    );
+    return regions.map(r => r.name);
+  }
+
+  /**
+   * Find region by name within a game
+   */
+  async findRegionByName(gameId: number, name: string): Promise<Region | null> {
+    const result = await this.db.get<Region>(
+      'SELECT * FROM regions WHERE game_id = ? AND name = ?',
+      [gameId, name]
+    );
+    return result || null;
+  }
+
+
+  /**
    * Get region by ID
    */
   async getRegion(regionId: number): Promise<Region | null> {

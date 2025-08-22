@@ -350,8 +350,8 @@ Respond in JSON format:
     }
 
     if (context.existingRegions && context.existingRegions.length > 0) {
-      prompt += `Existing regions in this game: ${context.existingRegions.join(', ')}. `;
-      prompt += `Make sure the new region is distinct from these. `;
+      prompt += `EXISTING REGIONS IN THIS GAME: ${context.existingRegions.join(', ')}. `;
+      prompt += `IMPORTANT: You MUST NOT use any of these existing region names. Choose a completely different name that is unique and distinct. `;
     }
 
     prompt += `Create a cohesive region that would contain multiple related rooms. `;
@@ -374,7 +374,7 @@ Respond in JSON format:
 
 REQUIREMENTS:
 - Create your own region type that fits the fantasy setting (can be from examples or original)
-- Create a unique, evocative name
+- Create a UNIQUE, evocative name that is different from all existing regions
 - Write a rich description that will guide future room generation
 - Ensure thematic coherence with potential room variety
 - Make it feel like a real place with history and purpose

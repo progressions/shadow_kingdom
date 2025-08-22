@@ -280,4 +280,73 @@ describe('RegionService', () => {
       expect(stats[0].hasCenter).toBe(false);
     });
   });
+
+  describe('region name uniqueness', () => {
+    test('should get existing region names for game', async () => {
+      // Create regions with names
+      await regionService.createRegion(testGameId, 'mansion', 'A grand mansion', 'Blackwood Manor');
+      await regionService.createRegion(testGameId, 'forest', 'Dense woods', 'Whispering Woods');
+      await regionService.createRegion(testGameId, 'cave', 'Underground caves'); // No name
+      
+      // Create region in different game
+      const otherGameResult = await db.run(
+        'INSERT INTO games (name, created_at, last_played_at) VALUES (?, ?, ?)',
+        [`Other Game ${Date.now()}`, new Date().toISOString(), new Date().toISOString()]
+      );
+      const otherGameId = otherGameResult.lastID!;
+      await regionService.createRegion(otherGameId, 'tower', 'A tall tower', 'Ivory Tower');
+
+      const existingNames = await regionService.getExistingRegionNames(testGameId);
+      
+      expect(existingNames).toHaveLength(2);
+      expect(existingNames).toContain('Blackwood Manor');
+      expect(existingNames).toContain('Whispering Woods');
+      expect(existingNames).not.toContain('Ivory Tower'); // From other game
+    });
+
+    test('should find region by name within game', async () => {
+      const region = await regionService.createRegion(testGameId, 'mansion', 'A grand mansion', 'Shadowmere Estate');
+      
+      // Create region with same name in different game
+      const otherGameResult = await db.run(
+        'INSERT INTO games (name, created_at, last_played_at) VALUES (?, ?, ?)',
+        [`Other Game ${Date.now()}`, new Date().toISOString(), new Date().toISOString()]
+      );
+      const otherGameId = otherGameResult.lastID!;
+      await regionService.createRegion(otherGameId, 'mansion', 'Another mansion', 'Shadowmere Estate');
+
+      const foundRegion = await regionService.findRegionByName(testGameId, 'Shadowmere Estate');
+      
+      expect(foundRegion).not.toBeNull();
+      expect(foundRegion?.id).toBe(region.id);
+      expect(foundRegion?.game_id).toBe(testGameId);
+      expect(foundRegion?.name).toBe('Shadowmere Estate');
+    });
+
+    test('should return null when region name not found', async () => {
+      await regionService.createRegion(testGameId, 'mansion', 'A grand mansion', 'Blackwood Manor');
+      
+      const foundRegion = await regionService.findRegionByName(testGameId, 'Nonexistent Manor');
+      
+      expect(foundRegion).toBeNull();
+    });
+
+    test('should handle empty region names list', async () => {
+      // No regions created yet
+      const existingNames = await regionService.getExistingRegionNames(testGameId);
+      
+      expect(existingNames).toHaveLength(0);
+      expect(existingNames).toEqual([]);
+    });
+
+    test('should handle regions without names', async () => {
+      await regionService.createRegion(testGameId, 'cave', 'Dark caves'); // No name
+      await regionService.createRegion(testGameId, 'forest', 'Dense woods', 'Named Forest');
+      
+      const existingNames = await regionService.getExistingRegionNames(testGameId);
+      
+      expect(existingNames).toHaveLength(1);
+      expect(existingNames).toContain('Named Forest');
+    });
+  });
 });
