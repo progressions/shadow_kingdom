@@ -537,6 +537,9 @@ async function setupGameCommands(
       }
 
       try {
+        // Import article parser utility
+        const { stripArticles } = require('./utils/articleParser');
+        
         const session = gameStateManager.getCurrentSession();
         const characterId = session.gameId!; // Use game ID as character ID for single-player
         const currentRoom = await gameStateManager.getCurrentRoom();
@@ -546,7 +549,8 @@ async function setupGameCommands(
           return;
         }
 
-        const itemName = args.join(' ');
+        const rawItemName = args.join(' ');
+        const itemName = stripArticles(rawItemName);
         const roomItems = await itemService.getRoomItems(currentRoom.id);
         const item = itemService.findItemByName(roomItems, itemName);
         
@@ -958,6 +962,9 @@ async function setupGameCommands(
       }
 
       try {
+        // Import article parser utility
+        const { stripArticles } = require('./utils/articleParser');
+        
         const session = gameStateManager.getCurrentSession();
         const currentRoom = await gameStateManager.getCurrentRoom();
         
@@ -966,7 +973,8 @@ async function setupGameCommands(
           return;
         }
 
-        const targetName = args.join(' ').toLowerCase();
+        const rawTargetName = args.join(' ');
+        const targetName = stripArticles(rawTargetName).toLowerCase();
         
         // Get all characters in the room
         const characters = await db.all(
