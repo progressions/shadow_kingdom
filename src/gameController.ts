@@ -293,19 +293,37 @@ export class GameController {
     this.commandRouter.addCommand({
       name: 'pickup',
       description: 'Pick up an item from the current room',
-      handler: async (args) => await this.handlePickup(args.join(' '))
+      handler: async (args) => {
+        if (args.length === 1 && args[0].toLowerCase() === 'all') {
+          await this.handlePickupAll();
+        } else {
+          await this.handlePickup(args.join(' '));
+        }
+      }
     });
 
     this.commandRouter.addCommand({
       name: 'get',
       description: 'Pick up an item from the current room (alias for "pickup")',
-      handler: async (args) => await this.handlePickup(args.join(' '))
+      handler: async (args) => {
+        if (args.length === 1 && args[0].toLowerCase() === 'all') {
+          await this.handlePickupAll();
+        } else {
+          await this.handlePickup(args.join(' '));
+        }
+      }
     });
 
     this.commandRouter.addCommand({
       name: 'take',
       description: 'Pick up an item from the current room (alias for "pickup")',
-      handler: async (args) => await this.handlePickup(args.join(' '))
+      handler: async (args) => {
+        if (args.length === 1 && args[0].toLowerCase() === 'all') {
+          await this.handlePickupAll();
+        } else {
+          await this.handlePickup(args.join(' '));
+        }
+      }
     });
 
     this.commandRouter.addCommand({
@@ -1414,6 +1432,116 @@ export class GameController {
     } catch (error) {
       console.error('Error picking up item:', error);
       this.tui.showError('Error picking up item', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Handle pickup all command - pick up all non-fixed items from current room
+   */
+  private async handlePickupAll(): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      // Get all items in the current room
+      const roomItems = await this.itemService.getRoomItems(currentRoom.id);
+      
+      if (roomItems.length === 0) {
+        this.tui.display('There are no items here to pick up.', MessageType.ERROR);
+        return;
+      }
+
+      // Filter out fixed items
+      const pickupableItems = roomItems.filter((item: any) => !item.item.is_fixed);
+      
+      if (pickupableItems.length === 0) {
+        this.tui.display('There are no items here that can be picked up.', MessageType.ERROR);
+        return;
+      }
+
+      const characterId = session.gameId!;
+      const pickedUpItems: string[] = [];
+      const failedItems: { name: string; reason: string }[] = [];
+
+      // Process each item
+      for (const roomItem of pickupableItems) {
+        // Check if character can add another item to inventory
+        const canAddItem = await this.itemService.canAddItemToInventory(characterId);
+        
+        if (!canAddItem) {
+          // Inventory full - stop processing and report what we got
+          const inventoryStatus = await this.itemService.getInventoryStatus(characterId);
+          failedItems.push({ 
+            name: roomItem.item.name, 
+            reason: 'inventory full' 
+          });
+          
+          // Stop processing if inventory is full
+          if (pickedUpItems.length === 0) {
+            this.tui.display('Your inventory is full!', MessageType.ERROR);
+            this.tui.display(inventoryStatus, MessageType.SYSTEM);
+            return;
+          }
+          break;
+        }
+
+        try {
+          // Transfer item from room to character inventory
+          await this.itemService.transferItemToInventory(
+            characterId, 
+            roomItem.item_id, 
+            roomItem.room_id,
+            1
+          );
+
+          pickedUpItems.push(roomItem.item.name);
+
+          // Process pickup triggers for the item
+          await this.executeValidatedAction(
+            'pickup',
+            { itemId: roomItem.item_id },
+            async () => {
+              // Action already executed above, this is just for trigger processing
+            }
+          );
+
+        } catch (error) {
+          // Individual item failure - continue with others
+          failedItems.push({ 
+            name: roomItem.item.name, 
+            reason: 'error during pickup' 
+          });
+        }
+      }
+
+      // Report results
+      if (pickedUpItems.length > 0 && failedItems.length === 0) {
+        // Complete success
+        this.tui.display(`You pick up: ${pickedUpItems.join(', ')}.`, MessageType.NORMAL);
+      } else if (pickedUpItems.length > 0 && failedItems.length > 0) {
+        // Partial success
+        this.tui.display(`You pick up: ${pickedUpItems.join(', ')}.`, MessageType.NORMAL);
+        const failedReasons = failedItems.map(f => `${f.name} (${f.reason})`).join(', ');
+        this.tui.display(`Could not pick up: ${failedReasons}.`, MessageType.SYSTEM);
+      } else if (pickedUpItems.length === 0 && failedItems.length > 0) {
+        // Complete failure
+        const failedReasons = failedItems.map(f => `${f.name} (${f.reason})`).join(', ');
+        this.tui.display(`You cannot pick up any items: ${failedReasons}.`, MessageType.ERROR);
+      }
+
+    } catch (error) {
+      console.error('Error picking up all items:', error);
+      this.tui.showError('Error picking up items', (error as Error)?.message);
     }
   }
 
