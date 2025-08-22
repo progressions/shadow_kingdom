@@ -1,5 +1,10 @@
 # Give Item to Character
 
+**Date**: 2025-08-22  
+**Status**: Open  
+**Priority**: Medium  
+**Category**: Feature  
+
 ## Feature Request
 Implement a "give" command that allows players to give items from their inventory to NPCs in the game.
 
