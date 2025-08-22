@@ -126,8 +126,9 @@ CHARACTER_GENERATION_FREQUENCY=40   # Percentage (0-100) of rooms that get chara
 
 - **specs/world-generation-comprehensive.md** - Complete world generation system documentation
 - **specs/rpg-systems-comprehensive.md** - Future RPG systems design
-- **archive/** - Resolved issues and deprecated documentation
 - **docs/BACKGROUND_GENERATION_SYSTEM.md** - Detailed background generation guide
+- **archive/completed-issues/** - Completed feature implementations and resolved issues
+- **archive/documentation/** - Comprehensive specs and detailed technical documentation
 
 ## Common Development Tasks
 
@@ -144,7 +145,7 @@ CHARACTER_GENERATION_FREQUENCY=40   # Percentage (0-100) of rooms that get chara
 - Visit-to-lock mechanism ensuring spatial consistency
 - Background generation with 4+ rooms per trigger
 - Session interface for programmatic access
-- Comprehensive test suite (443/443 tests passing)
+- Comprehensive test suite (802/802 tests passing)
 
 🚧 **Future Development:**
 - Character progression system
