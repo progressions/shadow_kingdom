@@ -7,25 +7,26 @@
 
 ## Description
 
-Implement a basic "attack" command that allows players to target and attack characters in the current room. When a character is attacked, they respond with "Ow" to provide immediate feedback that the attack was successful.
+Implement the most basic attack command that allows players to type "attack [character]" to instantly kill the target character. No combat mechanics, randomness, or damage calculations - just immediate death.
 
 ## Details
 
 **What is the requirement?**
-Create an attack command with the following features:
+Create a simple attack command with the following features:
 
 - **Attack Command**: `attack [character name]` targets a character in the room
 - **Character Finding**: Support partial name matching (e.g., "attack goblin" finds "Goblin Warrior")
-- **Attack Response**: Attacked character says "Ow" to confirm the hit
+- **Instant Death**: Attacked character immediately dies (is_dead = true)
 - **Case Insensitive**: Command works regardless of character name case
-- **Clear Feedback**: Show who was attacked and their response
+- **Clear Feedback**: Show that the character has been killed
 
 **Acceptance criteria:**
 - [ ] Attack command registered in GameController and SessionInterface
 - [ ] Command finds characters by partial name match
-- [ ] Attack displays: `[Character Name] says "Ow"`
+- [ ] Attack sets character's is_dead status to true
+- [ ] Attack displays: "You killed the [Character Name]"
 - [ ] Error message if character not found: "There is no [name] here to attack"
-- [ ] Cannot attack dead characters
+- [ ] Cannot attack already dead characters
 - [ ] Works with NPCs, enemies, and other players
 - [ ] Case-insensitive character name matching
 - [ ] Test coverage for attack command
@@ -35,13 +36,13 @@ Create an attack command with the following features:
 ### Successful Attack
 ```
 > attack goblin
-Goblin Warrior says "Ow"
+You killed the Goblin Warrior.
 
 > attack crypt keeper
-Crypt Keeper says "Ow"
+You killed the Crypt Keeper.
 
 > attack spider
-Giant Spider says "Ow"
+You killed the Giant Spider.
 ```
 
 ### Failed Attack (Character Not Found)
@@ -89,23 +90,25 @@ commandRouter.addGameCommand({
       return;
     }
     
-    // Character responds to attack
-    console.log(`${target.name} says "Ow"`);
+    // Kill the character
+    await characterService.setCharacterDead(target.id);
+    console.log(`You killed the ${target.name}.`);
   }
 });
 ```
 
 ### Character Service Extension
 - Use existing `getRoomCharacters()` method
+- Add `setCharacterDead(characterId)` method to update character status
 - Add character name matching logic similar to item service
 
 ## Future Enhancements
 
-This basic attack command lays the foundation for a full combat system:
+This basic instant-kill attack command lays the foundation for a full combat system:
 
-1. **Damage Calculation**: Apply actual damage based on player stats
-2. **Combat Feedback**: Show damage numbers and health remaining
-3. **Death Handling**: Mark characters as dead when health reaches 0
+1. **Health System**: Add health points instead of instant death
+2. **Damage Calculation**: Apply actual damage based on player stats
+3. **Combat Feedback**: Show damage numbers and health remaining
 4. **Hostile Response**: Attacked NPCs become hostile
 5. **Counter-attacks**: Enemies fight back
 6. **Weapons & Armor**: Equipment affects damage

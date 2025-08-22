@@ -23,6 +23,7 @@ export interface RoomContext {
   theme?: string;
   // Simple: Just add connection name for connection-based generation
   connectionName?: string; // "through the crystal archway" - used when filling specific connections
+  fantasyLevel?: 'mundane' | 'fantastical'; // Fantasy level for balanced room generation
 }
 
 export interface GeneratedRoom {
@@ -532,6 +533,7 @@ If the command cannot be interpreted as a valid game action, return null.`;
     const existingRooms = context.gameHistory?.join(', ') || 'none';
     const themeNote = context.theme || 'mysterious fantasy kingdom';
     const reverseDirection = this.getReverseDirection(context.direction) || 'back';
+    const fantasyGuidance = this.getFantasyGuidance(context.fantasyLevel);
 
     if (context.connectionName) {
       // Connection-based generation - acknowledge the specific connection
@@ -545,6 +547,8 @@ Existing rooms: ${existingRooms}
 Generate a room that makes sense when accessed via "${context.connectionName}". 
 The room description should acknowledge this specific entrance method.
 Theme: ${themeNote}
+
+${fantasyGuidance}
 
 REQUIREMENTS:
 - Room name must be UNIQUE (different from existing rooms)
@@ -594,6 +598,8 @@ Existing rooms: ${existingRooms}
 
 Generate a NEW and UNIQUE room that the player discovers when going ${context.direction}. 
 Make it thematically consistent with a ${themeNote} setting.
+
+${fantasyGuidance}
 
 REQUIREMENTS:
 - Create a room name that is DIFFERENT from all existing rooms
@@ -911,6 +917,33 @@ CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
     };
     
     return directionMap[direction.toLowerCase()] || null;
+  }
+
+  /**
+   * Get fantasy level guidance for room generation prompts
+   */
+  private getFantasyGuidance(fantasyLevel?: 'mundane' | 'fantastical'): string {
+    if (!fantasyLevel) {
+      return ''; // No specific guidance if fantasy level not specified
+    }
+
+    if (fantasyLevel === 'mundane') {
+      return `FANTASY LEVEL GUIDANCE:
+Generate a practical, realistic room that serves a clear purpose in a medieval fantasy castle. Focus on:
+- Standard architectural features and functional spaces
+- Basic furnishings and practical items
+- Minimal magical elements
+- Grounded, believable descriptions
+- Clear purpose (guard rooms, storage, hallways, chambers, kitchens, etc.)`;
+    } else {
+      return `FANTASY LEVEL GUIDANCE:
+Generate a magical, mysterious, or uniquely fantastical room that stands out. Include:
+- Magical elements, enchantments, or mystical features
+- Unusual architectural details
+- Mysterious artifacts or phenomena
+- Memorable and atmospheric descriptions
+- Elements that inspire wonder or intrigue`;
+    }
   }
 
   /**

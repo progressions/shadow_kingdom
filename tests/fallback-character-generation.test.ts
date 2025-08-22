@@ -10,6 +10,7 @@ import { ItemGenerationService } from '../src/services/itemGenerationService';
 import { CharacterGenerationService } from '../src/services/characterGenerationService';
 import { ItemService } from '../src/services/itemService';
 import { CharacterService } from '../src/services/characterService';
+import { FantasyLevelService } from '../src/services/fantasyLevelService';
 import { GrokClient } from '../src/ai/grokClient';
 import { initializeDatabase } from '../src/utils/initDb';
 
@@ -35,6 +36,7 @@ describe('Fallback Character Generation', () => {
     const itemGenerationService = new ItemGenerationService(db, itemService);
     characterService = new CharacterService(db);
     const characterGenerationService = new CharacterGenerationService(db, characterService);
+    const fantasyLevelService = new FantasyLevelService();
     
     roomGenerationService = new RoomGenerationService(
       db,
@@ -42,6 +44,7 @@ describe('Fallback Character Generation', () => {
       regionService,
       itemGenerationService,
       characterGenerationService,
+      fantasyLevelService,
       { enableDebugLogging: true }
     );
   });

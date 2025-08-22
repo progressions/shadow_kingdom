@@ -137,8 +137,12 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     const characterService = new CharacterService(db);
     const characterGenerationService = new CharacterGenerationService(db, characterService);
 
+    // Initialize fantasy level service
+    const { FantasyLevelService } = require('./services/fantasyLevelService');
+    const fantasyLevelService = new FantasyLevelService();
+
     // Initialize room generation service with region service and generation services
-    const roomGenerationService = new RoomGenerationService(db, grokClient, regionService, itemGenerationService, characterGenerationService, {
+    const roomGenerationService = new RoomGenerationService(db, grokClient, regionService, itemGenerationService, characterGenerationService, fantasyLevelService, {
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
     

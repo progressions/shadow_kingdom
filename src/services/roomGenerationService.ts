@@ -6,6 +6,8 @@ import { Region } from '../types/region';
 import { ItemGenerationService } from './itemGenerationService';
 import { ItemService } from './itemService';
 import { CharacterGenerationService } from './characterGenerationService';
+import { FantasyLevelService } from './fantasyLevelService';
+import { FantasyLevel } from '../types/fantasy';
 
 export interface RoomGenerationOptions {
   enableDebugLogging?: boolean;
@@ -46,6 +48,7 @@ export class RoomGenerationService {
     private regionService: RegionService,
     private itemGenerationService: ItemGenerationService,
     private characterGenerationService: CharacterGenerationService,
+    private fantasyLevelService: FantasyLevelService,
     options: RoomGenerationOptions = {}
   ) {
     this.options = {
@@ -173,12 +176,20 @@ export class RoomGenerationService {
       );
       const roomNames = existingRooms.map(room => room.name);
 
-      // Generate room with enhanced regional context
+      // Select fantasy level for balanced room generation
+      const fantasyLevelContext = this.fantasyLevelService.getFantasyLevelContext(region.type);
+      
+      if (this.isDebugEnabled()) {
+        console.log(`🎭 Selected fantasy level: ${fantasyLevelContext.level} for region type: ${region.type}`);
+      }
+
+      // Generate room with enhanced regional context and fantasy level
       const newRoom = await this.grokClient.generateRoom({
         currentRoom: { name: fromRoom.name, description: fromRoom.description },
         direction: context.direction,
         gameHistory: roomNames,
-        theme: enhancedPrompt // Use the regional prompt as theme
+        theme: enhancedPrompt, // Use the regional prompt as theme
+        fantasyLevel: fantasyLevelContext.level
       });
 
       // Check for duplicate room names and make unique if needed
@@ -674,13 +685,21 @@ export class RoomGenerationService {
       );
       const roomNames = existingRooms.map(room => room.name);
 
-      // Generate room with connection context for better AI prompting
+      // Select fantasy level for balanced room generation
+      const fantasyLevelContext = this.fantasyLevelService.getFantasyLevelContext(region.type);
+      
+      if (this.isDebugEnabled()) {
+        console.log(`🎭 Selected fantasy level: ${fantasyLevelContext.level} for connection generation in region: ${region.type}`);
+      }
+
+      // Generate room with connection context for better AI prompting and fantasy level
       const newRoom = await this.grokClient.generateRoom({
         currentRoom: { name: fromRoom.name, description: fromRoom.description },
         direction: connection.direction,
         gameHistory: roomNames,
         theme: enhancedPrompt, // Use the regional prompt as theme
-        connectionName: connection.name // Pass the connection name for context-aware generation
+        connectionName: connection.name, // Pass the connection name for context-aware generation
+        fantasyLevel: fantasyLevelContext.level
       });
 
       // Check for duplicate room names and make unique if needed

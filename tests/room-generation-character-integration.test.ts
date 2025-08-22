@@ -10,6 +10,7 @@ import { ItemGenerationService } from '../src/services/itemGenerationService';
 import { CharacterGenerationService } from '../src/services/characterGenerationService';
 import { ItemService } from '../src/services/itemService';
 import { CharacterService } from '../src/services/characterService';
+import { FantasyLevelService } from '../src/services/fantasyLevelService';
 import { GrokClient } from '../src/ai/grokClient';
 import { initializeDatabase } from '../src/utils/initDb';
 
@@ -35,6 +36,7 @@ describe('Room Generation Character Integration', () => {
     const itemGenerationService = new ItemGenerationService(db, itemService);
     characterService = new CharacterService(db);
     const characterGenerationService = new CharacterGenerationService(db, characterService);
+    const fantasyLevelService = new FantasyLevelService();
     
     // Create room generation service with character support
     roomGenerationService = new RoomGenerationService(
@@ -43,6 +45,7 @@ describe('Room Generation Character Integration', () => {
       regionService,
       itemGenerationService,
       characterGenerationService,
+      fantasyLevelService,
       { enableDebugLogging: true }
     );
   });

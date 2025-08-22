@@ -16,6 +16,7 @@ import { CharacterGenerationService } from './characterGenerationService';
 import { ActionValidator } from './actionValidator';
 import { HealthService } from './healthService';
 import { EventTriggerService } from './eventTriggerService';
+import { FantasyLevelService } from './fantasyLevelService';
 
 // Import Prisma services conditionally to avoid import errors when Prisma is not set up
 let GameStateManagerPrisma: any;
@@ -56,6 +57,7 @@ export interface ServiceInstances {
   actionValidator: ActionValidator;
   healthService: HealthService;
   eventTriggerService: EventTriggerService;
+  fantasyLevelService: FantasyLevelService;
 }
 
 /**
@@ -108,6 +110,7 @@ export class ServiceFactory {
     const actionValidator = new ActionValidator(db, characterService);
     const healthService = new HealthService(db);
     const eventTriggerService = new EventTriggerService(db, tui);
+    const fantasyLevelService = new FantasyLevelService();
     
     // Room generation service depends on region service and item generation service
     const roomGenerationService = new RoomGenerationService(
@@ -116,6 +119,7 @@ export class ServiceFactory {
       regionService,
       itemGenerationService,
       characterGenerationService,
+      fantasyLevelService,
       options
     );
     
@@ -139,7 +143,8 @@ export class ServiceFactory {
       characterGenerationService,
       actionValidator,
       healthService,
-      eventTriggerService
+      eventTriggerService,
+      fantasyLevelService
     };
   }
 
@@ -169,6 +174,7 @@ export class ServiceFactory {
     const actionValidator = new ActionValidator(db, characterService);
     const healthService = new HealthService(db);
     const eventTriggerService = new EventTriggerService(db, tui);
+    const fantasyLevelService = new FantasyLevelService();
     
     // Room generation service depends on region service
     // TODO: Update Prisma version to support itemGenerationService and characterGenerationService
@@ -197,7 +203,8 @@ export class ServiceFactory {
       characterGenerationService,
       actionValidator,
       healthService,
-      eventTriggerService
+      eventTriggerService,
+      fantasyLevelService
     };
   }
 
