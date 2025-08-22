@@ -61,9 +61,11 @@ export class GameController {
   private loggerService!: ServiceInstances['loggerService']; // Initialized in initializeReadlineInterface()
   private unifiedRoomDisplayService: UnifiedRoomDisplayService;
   private commandState: CommandState;
+  private commandToExecute?: string;
 
-  constructor(db: Database, tui?: TUIInterface) {
+  constructor(db: Database, command?: string, tui?: TUIInterface) {
     this.db = db;
+    this.commandToExecute = command;
     this.grokClient = new GrokClient();
     
     // Initialize command state
@@ -1034,7 +1036,7 @@ export class GameController {
 
 
 
-  private async loadSelectedGame(game: Game) {
+  private async loadSelectedGame(game: Game, suppressRoomDisplay: boolean = false) {
     try {
       // Start game session using game state manager
       await this.gameStateManager.startGameSession(game.id);
@@ -1047,12 +1049,16 @@ export class GameController {
       this.tui.display('Type "look" to see where you are.');
       this.tui.display('Type "games" to manage adventures.');
       
-      // Show current room
-      await this.lookAround();
+      // Show current room only if not suppressed
+      if (!suppressRoomDisplay) {
+        await this.lookAround();
+      }
       this.updateStatusDisplay();
       
-      // Start input processing loop
-      this.processInput();
+      // Start input processing loop (only in interactive mode)
+      if (!this.commandToExecute) {
+        this.processInput();
+      }
     } catch (error) {
       console.error('Failed to load selected game:', error);
     }
@@ -1123,7 +1129,7 @@ export class GameController {
       this.tui.display(`Continuing adventure from: ${new Date(mostRecentGame.last_played_at).toLocaleString()}`);
       this.tui.display('Type "games" to manage adventures or "help" for commands.');
       
-      await this.loadSelectedGame(mostRecentGame);
+      await this.loadSelectedGame(mostRecentGame, !!this.commandToExecute);
     } else {
       // No games exist, auto-create new game
       this.tui.showWelcome('Welcome to Shadow Kingdom!');
@@ -1132,12 +1138,26 @@ export class GameController {
       const result = await this.gameManagementService.createGameAutomatic();
       if (result.success && result.game) {
         this.tui.display(`Created new adventure: ${new Date(result.game.created_at).toLocaleString()}`);
-        await this.loadSelectedGame(result.game);
+        await this.loadSelectedGame(result.game, !!this.commandToExecute);
       } else {
         // Fallback if auto-creation fails
         this.showWelcome();
         this.processInput(); // Start input processing loop
+        return;
       }
+    }
+
+    // Execute command if provided, then exit
+    if (this.commandToExecute) {
+      // Log the command being executed
+      this.tui.display(`> ${this.commandToExecute}`);
+      await this.processCommand(this.commandToExecute);
+      await this.cleanup();
+      this.tui.destroy();
+      process.exit(0);
+    } else {
+      // Start input processing loop for interactive mode
+      this.processInput();
     }
   }
 

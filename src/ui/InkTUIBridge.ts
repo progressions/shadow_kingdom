@@ -112,7 +112,15 @@ export class InkTUIBridge implements TUIInterface {
     // Log to LoggerService if available
     if (this.loggerService) {
       const logType = this.mapMessageTypeToLogType(type);
-      this.loggerService.logSystemOutput(message, logType);
+      
+      // Handle messages with leading newlines properly for logging
+      if (message.startsWith('\n')) {
+        // Log blank line first, then the content
+        this.loggerService.logSystemOutput('', logType);
+        this.loggerService.logSystemOutput(message.substring(1), logType);
+      } else {
+        this.loggerService.logSystemOutput(message, logType);
+      }
     }
   }
 
@@ -230,7 +238,7 @@ export class InkTUIBridge implements TUIInterface {
    * Display room information with proper formatting
    */
   displayRoom(roomName: string, description: string, exits: string[]): void {
-    // Room title with leading newline for spacing
+    // Add spacing before room display - use newline prefix for proper TUI spacing
     this.display('\n' + roomName, MessageType.ROOM_TITLE);
     
     // Room title underline

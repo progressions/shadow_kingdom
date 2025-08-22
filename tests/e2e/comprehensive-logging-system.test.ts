@@ -20,7 +20,7 @@ import { LoggerService } from '../../src/services/loggerService';
 import { FileLogger } from '../../src/utils/fileLogger';
 import { LogFormatter } from '../../src/utils/logFormatter';
 import { LogLevel } from '../../src/types/logging';
-import { runSessionMode } from '../../src/sessionInterface';
+// SessionInterface has been replaced with command interface
 import { GrokClient } from '../../src/ai/grokClient';
 
 describe('Comprehensive Logging System End-to-End Tests', () => {

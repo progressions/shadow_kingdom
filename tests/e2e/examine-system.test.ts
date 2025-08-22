@@ -12,7 +12,7 @@ import { ItemService } from '../../src/services/itemService';
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterType } from '../../src/types/character';
 import { ItemType, EquipmentSlot } from '../../src/types/item';
-import { runSessionMode } from '../../src/sessionInterface';
+// SessionInterface has been replaced with command interface
 
 describe('Examine System End-to-End Tests', () => {
   let db: Database;

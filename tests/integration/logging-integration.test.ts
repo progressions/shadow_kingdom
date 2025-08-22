@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { LoggerService } from '../../src/services/loggerService';
-import { runSessionMode } from '../../src/sessionInterface';
+// SessionInterface has been replaced with command interface
 import Database from '../../src/utils/database';
 import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
 
