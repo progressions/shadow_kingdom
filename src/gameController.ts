@@ -23,6 +23,8 @@ import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
 import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
 import { CharacterType } from './types/character';
+import { UnifiedRoomDisplayService } from './services/unifiedRoomDisplayService';
+import { TUIOutputAdapter } from './adapters/tuiOutputAdapter';
 
 
 // Interfaces imported from GameStateManager
@@ -53,6 +55,7 @@ export class GameController {
   private actionValidator!: ServiceInstances['actionValidator']; // Initialized in initializeReadlineInterface()
   private healthService!: ServiceInstances['healthService']; // Initialized in initializeReadlineInterface()
   private eventTriggerService!: ServiceInstances['eventTriggerService']; // Initialized in initializeReadlineInterface()
+  private unifiedRoomDisplayService: UnifiedRoomDisplayService;
   private commandState: CommandState;
 
   constructor(db: Database, tui?: TUIInterface) {
@@ -73,6 +76,9 @@ export class GameController {
     this.roomDisplayService = new RoomDisplayService({
       enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
     });
+    
+    // Initialize unified room display service
+    this.unifiedRoomDisplayService = new UnifiedRoomDisplayService();
     
     // Initialize history manager
     const maxHistorySize = parseInt(process.env.COMMAND_HISTORY_SIZE || '100');
@@ -724,50 +730,22 @@ export class GameController {
       const room = await this.gameStateManager.getCurrentRoom();
 
       if (room) {
-        // Trigger automatic room generation on entry (new auto-generation feature)
-        this.backgroundGenerationService.generateForRoomEntry(session.roomId!, session.gameId!);
-        
-        // Trigger background generation for unfilled connections (existing system)
-        this.backgroundGenerationService.preGenerateAdjacentRooms(session.roomId!, session.gameId!);
-
         // Get available connections from this room within this game
         const connections = await this.gameStateManager.getCurrentRoomConnections();
         
-        // Use TUI to display the room
-        const exitNames = connections.map((c: any) => c.name === c.direction ? c.direction : `${c.name} (${c.direction})`);
-        this.tui.displayRoom(room.name, room.description, exitNames);
-        
-        // Display items in the room
-        const roomItems = await this.itemService.getRoomItems(room.id);
-        if (roomItems.length > 0) {
-          this.tui.display('', MessageType.NORMAL); // Add spacing
-          this.tui.display('You see:', MessageType.SYSTEM);
-          roomItems.forEach(roomItem => {
-            const quantityText = roomItem.quantity > 1 ? ` x${roomItem.quantity}` : '';
-            this.tui.display(`• ${roomItem.item.name}${quantityText}`, MessageType.NORMAL);
-          });
-        }
-
-        console.log(`DEBUG: Items section completed, starting characters section`); // Debug line
-        // Display characters in the room
-        console.log(`DEBUG: About to get characters for room ${room.id}`); // Debug line
-        try {
-          const roomCharacters = await this.characterService.getRoomCharacters(room.id, CharacterType.PLAYER);
-          console.log(`DEBUG: Room ${room.id} characters:`, roomCharacters); // Debug line
-          if (roomCharacters.length > 0) {
-            this.tui.display('', MessageType.NORMAL); // Add spacing
-            this.tui.display('Characters present:', MessageType.SYSTEM);
-            roomCharacters.forEach(character => {
-              const typeText = character.type === 'enemy' ? ' (hostile)' : '';
-              this.tui.display(`• ${character.name}${typeText}`, MessageType.NORMAL);
-              if (character.description) {
-                this.tui.display(`  ${character.description}`, MessageType.NORMAL);
-              }
-            });
+        // Use unified room display service with TUI adapter
+        const tuiAdapter = new TUIOutputAdapter(this.tui);
+        await this.unifiedRoomDisplayService.displayRoomComplete(
+          room,
+          connections,
+          session.gameId!,
+          tuiAdapter,
+          {
+            itemService: this.itemService,
+            characterService: this.characterService,
+            backgroundGenerationService: this.backgroundGenerationService
           }
-        } catch (characterError) {
-          console.log(`DEBUG: Error getting characters:`, characterError);
-        }
+        );
       } else {
         this.tui.display('You are in a void. Something went wrong!', MessageType.ERROR);
       }
