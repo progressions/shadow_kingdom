@@ -414,6 +414,12 @@ export class GameController {
       description: 'Attack a character in the room',
       handler: async (args) => await this.handleAttackCommand(args.join(' '))
     });
+
+    this.commandRouter.addCommand({
+      name: 'give',
+      description: 'Give an item to a character',
+      handler: async (args) => await this.handleGiveCommand(args)
+    });
   }
 
   private async processInput(): Promise<void> {
@@ -2106,6 +2112,81 @@ export class GameController {
     } catch (error) {
       console.error('Error attacking character:', error);
       this.tui.showError('Error attacking character', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Handle give command - give an item to a character
+   */
+  private async handleGiveCommand(args: string[]): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (args.length < 3) {
+      this.tui.display('Give what to whom? Use: give [item] to [character]', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      // Parse the command - find "to" separator
+      const toIndex = args.findIndex(arg => arg.toLowerCase() === 'to');
+      if (toIndex === -1 || toIndex === 0 || toIndex === args.length - 1) {
+        this.tui.display('Use the format: give [item] to [character]', MessageType.ERROR);
+        return;
+      }
+
+      const itemName = args.slice(0, toIndex).join(' ');
+      const characterName = args.slice(toIndex + 1).join(' ');
+
+      // Get player inventory
+      const gameId = session.gameId!;
+      const inventory = await this.itemService.getCharacterInventory(gameId);
+      
+      // Find item in inventory
+      const item = this.itemService.findItemByName(inventory, itemName);
+      if (!item) {
+        this.tui.display(`You don't have "${itemName}" in your inventory.`, MessageType.ERROR);
+        return;
+      }
+
+      // Find character in room
+      const character = await this.findCharacterInRoom(characterName, currentRoom.id);
+      
+      if (!character) {
+        this.tui.display(`There is no one named "${characterName}" here.`, MessageType.ERROR);
+        return;
+      }
+
+      // Remove item from player inventory (reduce quantity or delete if quantity is 1)
+      if (item.quantity > 1) {
+        await this.db.run(
+          'UPDATE character_inventory SET quantity = quantity - 1 WHERE character_id = ? AND item_id = ?',
+          [gameId, item.item_id]
+        );
+      } else {
+        await this.db.run(
+          'DELETE FROM character_inventory WHERE character_id = ? AND item_id = ?',
+          [gameId, item.item_id]
+        );
+      }
+
+      // Display success messages
+      this.tui.display(`You give the ${item.item.name} to the ${character.name}.`, MessageType.NORMAL);
+      this.tui.display(`${character.name} says, "Thank you."`, MessageType.NORMAL);
+
+    } catch (error) {
+      console.error('Error giving item:', error);
+      this.tui.showError('Error giving item to character', (error as Error)?.message);
     }
   }
 
