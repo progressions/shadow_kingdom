@@ -1,7 +1,7 @@
 # Basic Attack Command
 
 **Date**: 2025-08-22  
-**Status**: Open  
+**Status**: Completed  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -21,15 +21,15 @@ Create a simple attack command with the following features:
 - **Clear Feedback**: Show that the character has been killed
 
 **Acceptance criteria:**
-- [ ] Attack command registered in GameController and SessionInterface
-- [ ] Command finds characters by partial name match
-- [ ] Attack sets character's is_dead status to true
-- [ ] Attack displays: "You killed the [Character Name]"
-- [ ] Error message if character not found: "There is no [name] here to attack"
-- [ ] Cannot attack already dead characters
-- [ ] Works with NPCs, enemies, and other players
-- [ ] Case-insensitive character name matching
-- [ ] Test coverage for attack command
+- [x] Attack command registered in GameController and SessionInterface
+- [x] Command finds characters by partial name match
+- [x] Attack sets character's is_dead status to true
+- [x] Attack displays: "You killed the [Character Name]"
+- [x] Error message if character not found: "There is no [name] here to attack"
+- [x] Cannot attack already dead characters
+- [x] Works with NPCs, enemies, and other players
+- [x] Case-insensitive character name matching
+- [x] Test coverage for attack command
 
 ## Examples
 

@@ -327,6 +327,16 @@ export class CharacterService {
   }
 
   /**
+   * Set character as dead
+   */
+  async setCharacterDead(characterId: number): Promise<void> {
+    await this.db.run(
+      'UPDATE characters SET is_dead = ? WHERE id = ?',
+      [true, characterId]
+    );
+  }
+
+  /**
    * Delete a character
    */
   async deleteCharacter(characterId: number): Promise<void> {

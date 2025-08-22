@@ -989,8 +989,9 @@ async function setupGameCommands(
           return;
         }
         
-        // Character responds to attack
-        console.log(`${target.name} says "Ow"`);
+        // Kill the character
+        await characterService.setCharacterDead(target.id);
+        console.log(`You killed the ${target.name}.`);
 
       } catch (error) {
         console.error('Error attacking character:', error);

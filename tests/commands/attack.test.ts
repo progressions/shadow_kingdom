@@ -107,7 +107,7 @@ describe('Attack Command', () => {
       await (controller as any).processCommand('attack Goblin Warrior');
 
       // Check output
-      expect((controller as any).lastDisplayMessage).toBe('Goblin Warrior says "Ow"');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Goblin Warrior.');
     });
 
     it('should attack a character by partial name', async () => {
@@ -121,7 +121,7 @@ describe('Attack Command', () => {
       await (controller as any).processCommand('attack crypt');
 
       // Check output
-      expect((controller as any).lastDisplayMessage).toBe('Crypt Keeper says "Ow"');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Crypt Keeper.');
     });
 
     it('should be case-insensitive', async () => {
@@ -135,7 +135,7 @@ describe('Attack Command', () => {
       await (controller as any).processCommand('attack SPIDER');
 
       // Check output
-      expect((controller as any).lastDisplayMessage).toBe('Giant Spider says "Ow"');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Giant Spider.');
     });
 
     it('should work with NPCs', async () => {
@@ -149,7 +149,7 @@ describe('Attack Command', () => {
       await (controller as any).processCommand('attack merchant');
 
       // Check output
-      expect((controller as any).lastDisplayMessage).toBe('Friendly Merchant says "Ow"');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Friendly Merchant.');
     });
   });
 
@@ -199,7 +199,7 @@ describe('Attack Command', () => {
       await (controller as any).processCommand('attack goblin');
 
       // Check output - should match first character found
-      expect((controller as any).lastDisplayMessage).toBe('Goblin Warrior says "Ow"');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Goblin Warrior.');
     });
   });
 
@@ -237,7 +237,7 @@ describe('Attack Command', () => {
       await (controller as any).processCommand('attack guardian');
 
       // Check output
-      expect((controller as any).lastDisplayMessage).toBe('Ancient Guardian says "Ow"');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Ancient Guardian.');
     });
 
     it('should work with hostile characters', async () => {
@@ -251,7 +251,73 @@ describe('Attack Command', () => {
       await (controller as any).processCommand('attack bandit');
 
       // Check output
-      expect((controller as any).lastDisplayMessage).toBe('Hostile Bandit says "Ow"');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Hostile Bandit.');
+    });
+  });
+
+  describe('Character death state', () => {
+    it('should set character as dead after attack', async () => {
+      // Create a character in the room
+      const characterId = (await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead) VALUES (?, ?, ?, ?, ?)',
+        [gameId, 'Test Enemy', 'enemy', playerRoomId, 0]
+      )).lastID as number;
+
+      // Verify character is alive initially
+      let character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.is_dead).toBeFalsy();
+
+      // Execute attack command
+      await (controller as any).processCommand('attack Test Enemy');
+
+      // Verify character is now dead
+      character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.is_dead).toBeTruthy(); // SQLite stores boolean as 1
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Test Enemy.');
+    });
+
+    it('should not attack already dead characters', async () => {
+      // Create a dead character in the room
+      await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead) VALUES (?, ?, ?, ?, ?)',
+        [gameId, 'Dead Zombie', 'enemy', playerRoomId, 1]
+      );
+
+      // Execute attack command on dead character
+      await (controller as any).processCommand('attack zombie');
+
+      // Check that it shows already dead message
+      expect((controller as any).lastDisplayMessage).toBe('The Dead Zombie is already dead.');
+    });
+
+    it('should allow attacking multiple different characters', async () => {
+      // Create multiple characters
+      const char1Id = (await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead) VALUES (?, ?, ?, ?, ?)',
+        [gameId, 'First Orc', 'enemy', playerRoomId, 0]
+      )).lastID as number;
+      const char2Id = (await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead) VALUES (?, ?, ?, ?, ?)',
+        [gameId, 'Second Orc', 'enemy', playerRoomId, 0]
+      )).lastID as number;
+
+      // Attack first character
+      await (controller as any).processCommand('attack First');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the First Orc.');
+      
+      // Verify first is dead, second is alive
+      let char1 = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [char1Id]);
+      let char2 = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [char2Id]);
+      expect(char1?.is_dead).toBeTruthy(); // SQLite stores boolean as 1
+      expect(char2?.is_dead).toBeFalsy();
+
+      // Attack second character
+      await (controller as any).processCommand('attack Second');
+      expect((controller as any).lastDisplayMessage).toBe('You killed the Second Orc.');
+      
+      // Verify both are now dead
+      char2 = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [char2Id]);
+      expect(char2?.is_dead).toBeTruthy(); // SQLite stores boolean as 1
     });
   });
 });
