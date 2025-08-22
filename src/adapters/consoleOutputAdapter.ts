@@ -1,5 +1,6 @@
 import { OutputInterface } from '../interfaces/outputInterface';
 import { MessageType } from '../ui/MessageFormatter';
+import { sortDirections } from '../utils/directionSorter';
 
 /**
  * ConsoleOutputAdapter adapts console.log output for use with UnifiedRoomDisplayService.
@@ -45,6 +46,7 @@ export class ConsoleOutputAdapter implements OutputInterface {
       return '\nThere are no obvious exits.';
     }
 
+    // Don't sort here - exits are already sorted by UnifiedRoomDisplayService.formatExitNames()
     return `\nExits: ${exits.join(', ')}`;
   }
 }
