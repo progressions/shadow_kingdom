@@ -100,7 +100,7 @@ export class RoomGenerationService {
               },
               region: existingRegions.find(r => r.id === fromRoom.region_id)
             },
-            existingRegions: existingRegions.map(r => r.name || r.type)
+            existingRegions: existingRegions.filter(r => r.name).map(r => r.name!)
           };
 
           const generatedRegion = await this.grokClient.generateRegion(regionContext);
@@ -609,7 +609,7 @@ export class RoomGenerationService {
               },
               region: existingRegions.find(r => r.id === fromRoom.region_id)
             },
-            existingRegions: existingRegions.map(r => r.name || r.type)
+            existingRegions: existingRegions.filter(r => r.name).map(r => r.name!)
           };
 
           const generatedRegion = await this.grokClient.generateRegion(regionContext);
