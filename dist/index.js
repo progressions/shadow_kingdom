@@ -5,14 +5,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameCLI = void 0;
+exports.main = main;
 const database_1 = __importDefault(require("./utils/database"));
 const gameController_1 = require("./gameController");
 async function main() {
-    // Interactive mode only
+    // Parse command-line arguments
+    const args = process.argv.slice(2);
+    let command;
+    // Look for --cmd argument
+    const cmdIndex = args.indexOf('--cmd');
+    if (cmdIndex !== -1 && args[cmdIndex + 1]) {
+        command = args[cmdIndex + 1];
+    }
     const db = new database_1.default();
     try {
         await db.connect();
-        const controller = new gameController_1.GameController(db);
+        const controller = new gameController_1.GameController(db, command);
         await controller.start();
     }
     catch (error) {
@@ -20,7 +28,10 @@ async function main() {
         process.exit(1);
     }
 }
-main();
+// Only run main if this file is executed directly
+if (require.main === module) {
+    main();
+}
 // Export GameCLI for backwards compatibility (not used anymore)
 class GameCLI {
     constructor() {

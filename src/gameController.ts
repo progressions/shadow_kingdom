@@ -2192,9 +2192,27 @@ export class GameController {
         return;
       }
       
-      // Kill the character
-      await this.characterService.setCharacterDead(character.id);
-      this.tui.display(`You killed the ${character.name}.`, MessageType.NORMAL);
+      // Get current health status
+      const healthStatus = await this.characterService.getCharacterHealth(character.id);
+      if (!healthStatus) {
+        this.tui.display('Error: Unable to get character health.', MessageType.ERROR);
+        return;
+      }
+      
+      // Apply 2 points of damage
+      const damageAmount = 2;
+      const newHealth = Math.max(0, healthStatus.current - damageAmount);
+      
+      // Update character health
+      await this.characterService.updateCharacterHealth(character.id, newHealth);
+      
+      this.tui.display(`You attack the ${character.name}. The ${character.name} takes ${damageAmount} damage.`, MessageType.NORMAL);
+      
+      // Check if character died from the attack
+      if (newHealth <= 0) {
+        await this.characterService.setCharacterDead(character.id);
+        this.tui.display(`The ${character.name} dies from your attack!`, MessageType.NORMAL);
+      }
 
     } catch (error) {
       console.error('Error attacking character:', error);
