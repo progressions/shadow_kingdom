@@ -9,6 +9,14 @@ export enum CharacterType {
   ENEMY = 'enemy'
 }
 
+export enum CharacterSentiment {
+  HOSTILE = 'hostile',
+  AGGRESSIVE = 'aggressive',
+  INDIFFERENT = 'indifferent',
+  FRIENDLY = 'friendly',
+  ALLIED = 'allied'
+}
+
 export interface CharacterAttributes {
   strength: number;
   dexterity: number;
@@ -34,7 +42,8 @@ export interface Character {
   max_health: number | null;
   current_health: number | null;
   is_dead?: boolean | null;  // Death state for action validation
-  is_hostile?: boolean | null;  // Whether this character blocks player movement
+  sentiment: CharacterSentiment; // New sentiment system
+  is_hostile?: boolean | null;  // @deprecated - use sentiment instead
   dialogue_response?: string | null;   // Custom dialogue response
   created_at: string;
 }
@@ -51,7 +60,8 @@ export interface CreateCharacterData {
   constitution?: number;
   wisdom?: number;
   charisma?: number;
-  is_hostile?: boolean;        // Whether this character blocks player movement
+  sentiment?: CharacterSentiment; // New sentiment system
+  is_hostile?: boolean;        // @deprecated - use sentiment instead
   dialogue_response?: string;          // Custom dialogue response for new characters
 }
 
@@ -91,4 +101,54 @@ export function getDefaultAttributes(): CharacterAttributes {
     wisdom: 10,
     charisma: 10
   };
+}
+
+/**
+ * Convert sentiment to numeric value for calculations
+ * Range: -2 (hostile) to +2 (allied)
+ */
+export function getSentimentValue(sentiment: CharacterSentiment): number {
+  switch (sentiment) {
+    case CharacterSentiment.HOSTILE:
+      return -2;
+    case CharacterSentiment.AGGRESSIVE:
+      return -1;
+    case CharacterSentiment.INDIFFERENT:
+      return 0;
+    case CharacterSentiment.FRIENDLY:
+      return 1;
+    case CharacterSentiment.ALLIED:
+      return 2;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Determine if a character with given sentiment is hostile to the player
+ * Used for movement blocking and combat behavior
+ */
+export function isHostileToPlayer(sentiment: CharacterSentiment): boolean {
+  return sentiment === CharacterSentiment.HOSTILE || sentiment === CharacterSentiment.AGGRESSIVE;
+}
+
+/**
+ * Get human-readable description of sentiment level
+ * Used for UI display and debugging
+ */
+export function getSentimentDescription(sentiment: CharacterSentiment): string {
+  switch (sentiment) {
+    case CharacterSentiment.HOSTILE:
+      return 'Actively aggressive, attacks on sight';
+    case CharacterSentiment.AGGRESSIVE:
+      return 'Will fight if provoked, blocks passage';
+    case CharacterSentiment.INDIFFERENT:
+      return 'Neutral, allows passage';
+    case CharacterSentiment.FRIENDLY:
+      return 'Helpful responses, assists player';
+    case CharacterSentiment.ALLIED:
+      return 'Actively supports and protects player';
+    default:
+      return 'Unknown sentiment';
+  }
 }
