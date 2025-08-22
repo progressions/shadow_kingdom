@@ -7,6 +7,7 @@ import { GrokClient } from '../src/ai/grokClient';
 import { RegionService } from '../src/services/regionService';
 import { CharacterService } from '../src/services/characterService';
 import { CharacterGenerationService } from '../src/services/characterGenerationService';
+import { FantasyLevelService } from '../src/services/fantasyLevelService';
 describe('Duplicate Room Generation Race Condition Fix', () => {
   let db: Database;
   let roomGenerationService: RoomGenerationService;
@@ -30,6 +31,7 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
     
     const characterService = new CharacterService(db);
     const characterGenerationService = new CharacterGenerationService(db, characterService, { enableDebugLogging: true });
+    const fantasyLevelService = new FantasyLevelService();
     
     roomGenerationService = new RoomGenerationService(
       db, 
@@ -37,6 +39,7 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
       regionService,
       itemGenerationService,
       characterGenerationService,
+      fantasyLevelService,
       { enableDebugLogging: true }
     );
   });
