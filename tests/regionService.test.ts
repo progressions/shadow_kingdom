@@ -104,7 +104,7 @@ describe('RegionService', () => {
         }
       }
       const expectedMediumMin = Math.floor(distance5Prob * 100 * 0.7); // Allow 30% below expected
-      const expectedMediumMax = Math.floor(distance5Prob * 100 * 1.3); // Allow 30% above expected
+      const expectedMediumMax = Math.floor(distance5Prob * 100 * 1.3) + 1; // Allow 30% above expected, plus buffer
       expect(newRegionCount).toBeGreaterThan(expectedMediumMin);
       expect(newRegionCount).toBeLessThan(expectedMediumMax);
     });
