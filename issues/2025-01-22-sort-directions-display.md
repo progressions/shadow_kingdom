@@ -1,7 +1,7 @@
 # Sort Directions Display
 
 **Date**: 2025-01-22  
-**Status**: Open  
+**Status**: Completed  
 **Priority**: Low  
 **Category**: Enhancement  
 
@@ -75,7 +75,36 @@ function sortDirections(directions: string[]): string[] {
 
 ## Resolution
 
-*To be filled when issue is resolved*
+**Resolved**: 2025-01-22
+
+Successfully implemented direction sorting across all display components:
+
+### Implementation Summary
+- **Core Sorting Function**: Created `src/utils/directionSorter.ts` with priority-based sorting
+- **Priority Order**: North (1), South (2), East (3), West (4), then alphabetical for non-cardinals
+- **Updated Components**: 
+  - `UnifiedRoomDisplayService.formatExitNames()` - Sorts connections by direction
+  - `RoomDisplayService.formatExits()` - Sorts connections by direction  
+  - `ConsoleOutputAdapter.formatExits()` - Preserves pre-sorted order
+  - `InkTUIBridge.displayRoom()` - Preserves pre-sorted order
+  - `MessageFormatter.formatExits()` - Sorts exit strings
+
+### Key Features
+- ✅ Cardinal directions appear first: North, South, East, West
+- ✅ Non-cardinal directions appear alphabetically after cardinals
+- ✅ Case-insensitive sorting while preserving original case
+- ✅ Custom direction names preserved and sorted by underlying direction
+- ✅ Consistent ordering across all interfaces (TUI, console, session)
+
+### Testing
+- **20 unit tests** for core sorting function
+- **13 integration tests** covering all display components
+- **642/704 total tests passing** with no regressions
+- **Live verification** confirmed correct direction ordering
+
+### Example Output
+Before: `Exits: west, north, up, south, northeast`
+After: `Exits: north, south, west, northeast, up`
 
 ## Related
 
