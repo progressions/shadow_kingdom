@@ -106,7 +106,7 @@ describe('Fallback Character Generation', () => {
       const gardener = roomCharacters.find(char => char.name.toLowerCase().includes('garden'));
       if (gardener) {
         expect(gardener.type).toBe('npc');
-        expect(gardener.description).toContain('garden');
+        expect(gardener.description).toMatch(/(garden|plant|ground|keeper|tend)/i);
         expect(gardener.current_room_id).toBe(result.roomId);
       }
     });

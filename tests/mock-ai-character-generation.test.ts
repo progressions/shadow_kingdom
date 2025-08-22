@@ -48,8 +48,9 @@ describe('MockAIEngine Character Generation', () => {
     });
 
     test('should respect character generation rate', async () => {
-      // Set high generation rate to ensure characters are generated
-      process.env.AI_CHARACTER_GENERATION_RATE = '1.0';
+      // Set high generation frequency to ensure characters are generated
+      const originalEnv = process.env.CHARACTER_GENERATION_FREQUENCY;
+      process.env.CHARACTER_GENERATION_FREQUENCY = '100';
       
       const mockEngineHighRate = new MockAIEngine({ quality: 'medium', creativityLevel: 0.0, seed: 12345 });
       
@@ -61,13 +62,21 @@ describe('MockAIEngine Character Generation', () => {
 
       const room = await mockEngineHighRate.generateRoom('Generate a library', context);
       
-      // With 100% rate and seed, should generate characters
+      // With 100% frequency and seed, should generate characters
       expect(room.characters).toBeDefined();
       expect(room.characters!.length).toBeGreaterThan(0);
+      
+      // Restore environment variable
+      if (originalEnv !== undefined) {
+        process.env.CHARACTER_GENERATION_FREQUENCY = originalEnv;
+      } else {
+        delete process.env.CHARACTER_GENERATION_FREQUENCY;
+      }
     });
 
     test('should respect max characters per room limit', async () => {
-      process.env.AI_CHARACTER_GENERATION_RATE = '1.0';
+      const originalEnv = process.env.CHARACTER_GENERATION_FREQUENCY;
+      process.env.CHARACTER_GENERATION_FREQUENCY = '100';
       process.env.MAX_CHARACTERS_PER_ROOM = '1';
       
       const mockEngineMaxOne = new MockAIEngine({ quality: 'medium', creativityLevel: 0.0, seed: 12345 });
@@ -82,13 +91,20 @@ describe('MockAIEngine Character Generation', () => {
       
       expect(room.characters).toBeDefined();
       expect(room.characters!.length).toBeLessThanOrEqual(1);
+      
+      // Restore environment variable
+      if (originalEnv !== undefined) {
+        process.env.CHARACTER_GENERATION_FREQUENCY = originalEnv;
+      } else {
+        delete process.env.CHARACTER_GENERATION_FREQUENCY;
+      }
     });
   });
 
   describe('Theme-Based Character Selection', () => {
     beforeEach(() => {
       // Ensure characters are generated for these tests
-      process.env.AI_CHARACTER_GENERATION_RATE = '1.0';
+      process.env.CHARACTER_GENERATION_FREQUENCY = '100';
     });
 
     test('should generate library-themed characters for library rooms', async () => {
