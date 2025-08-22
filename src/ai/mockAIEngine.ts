@@ -375,9 +375,10 @@ export class MockAIEngine {
       return characters;
     }
 
-    // Check generation rate - don't generate characters in every room
-    const generationRate = parseFloat(process.env.AI_CHARACTER_GENERATION_RATE || '0.3');
-    if (this.random() > generationRate) {
+    // Use same percentage logic as real AI: CHARACTER_GENERATION_FREQUENCY (default 40%)
+    const characterGenerationFrequency = parseInt(process.env.CHARACTER_GENERATION_FREQUENCY || '40');
+    const shouldIncludeCharacters = this.random() * 100 <= characterGenerationFrequency;
+    if (!shouldIncludeCharacters) {
       return characters;
     }
 

@@ -538,6 +538,11 @@ If the command cannot be interpreted as a valid game action, return null.`;
     // Roll 1d6-3 for item count (0-3 items, 50% chance of 0)
     const itemCount = Math.max(0, Math.floor(Math.random() * 6) + 1 - 3);
     const itemPrompt = this.getItemPrompt(itemCount);
+    
+    // Roll percentage for character generation frequency (default 40%)
+    const characterGenerationFrequency = parseInt(process.env.CHARACTER_GENERATION_FREQUENCY || '40');
+    const shouldIncludeCharacters = Math.random() * 100 <= characterGenerationFrequency;
+    const characterPrompt = this.getCharacterPrompt(shouldIncludeCharacters);
 
     if (context.connectionName) {
       // Connection-based generation - acknowledge the specific connection
@@ -579,13 +584,7 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
 
 ${itemPrompt}
 
-CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
-- "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
-- Characters should fit the room's theme and atmosphere naturally
-- NPCs can provide information, services, or atmospheric storytelling
-- "personality": short description like "Scholarly and cryptic" or "Gruff but helpful"
-- "initialDialogue": What they say when first met (one sentence)
-- Only include characters if they genuinely enhance the room experience`;
+${characterPrompt}`;
     } else {
       // Standard generation
       return `You are creating a room for Shadow Kingdom text adventure game.
@@ -625,13 +624,7 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
 
 ${itemPrompt}
 
-CHARACTER GUIDELINES (optional - include 0-2 characters that enhance the room):
-- "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
-- Characters should fit the room's theme and atmosphere naturally
-- NPCs can provide information, services, or atmospheric storytelling
-- "personality": short description like "Scholarly and cryptic" or "Gruff but helpful"
-- "initialDialogue": What they say when first met (one sentence)
-- Only include characters if they genuinely enhance the room experience`;
+${characterPrompt}`;
     }
   }
 
@@ -652,6 +645,24 @@ ITEM GUIDELINES:
 - Portable items (isFixed: false): small objects, books, tools, treasures
 - Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
 - Items should be objects naturally found in or mentioned in your room description`;
+    }
+  }
+
+  /**
+   * Generate character prompt based on percentage roll result
+   * @param shouldIncludeCharacters Whether to request character generation
+   */
+  private getCharacterPrompt(shouldIncludeCharacters: boolean): string {
+    if (shouldIncludeCharacters) {
+      return `CHARACTER GUIDELINES (include 0-2 characters that enhance the room):
+- "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
+- Characters should fit the room's theme and atmosphere naturally
+- NPCs can provide information, services, or atmospheric storytelling
+- "personality": short description like "Scholarly and cryptic" or "Gruff but helpful"
+- "initialDialogue": What they say when first met (one sentence)
+- Only include characters if they genuinely enhance the room experience`;
+    } else {
+      return `CHARACTER GUIDELINES: This room should focus on atmospheric description without characters. Do not include any characters in the "characters" array - leave it empty.`;
     }
   }
 
