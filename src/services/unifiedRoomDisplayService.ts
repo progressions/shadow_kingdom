@@ -4,7 +4,7 @@ import { Room, Connection } from './gameStateManager';
 import { ItemService } from './itemService';
 import { CharacterService } from './characterService';
 import { BackgroundGenerationService } from './backgroundGenerationService';
-import { CharacterType } from '../types/character';
+import { CharacterType, getSentimentDescription } from '../types/character';
 import { sortDirections } from '../utils/directionSorter';
 
 export interface RoomDisplayServices {
@@ -126,20 +126,36 @@ export class UnifiedRoomDisplayService {
         outputInterface.display('Characters present:', MessageType.SYSTEM);
         
         roomCharacters.forEach(character => {
-          // Show hostile indicator for characters that block movement
+          // Show sentiment and status indicators for development
           let statusIndicator = '';
           if (character.is_dead) {
             statusIndicator = ' 💀 (dead)';
-          } else if (character.is_hostile) {
-            statusIndicator = ' ⚔️ (hostile)';
+          } else {
+            // Show sentiment with description for development
+            const sentimentEmoji = {
+              'hostile': '😡',
+              'aggressive': '😠', 
+              'indifferent': '😐',
+              'friendly': '😊',
+              'allied': '🤝'
+            }[character.sentiment] || '❓';
+            
+            statusIndicator = ` ${sentimentEmoji} (${character.sentiment})`;
+            
+            // Also show legacy hostile indicator if different from sentiment
+            if (character.is_hostile && !['hostile', 'aggressive'].includes(character.sentiment)) {
+              statusIndicator += ' ⚔️ (legacy hostile)';
+            }
           }
           
           // Use appropriate icon based on character type and status
           let icon = '•';
           if (character.is_dead) {
             icon = '💀';
-          } else if (character.is_hostile) {
+          } else if (character.sentiment === 'hostile' || character.sentiment === 'aggressive') {
             icon = '⚔️';
+          } else if (character.sentiment === 'friendly' || character.sentiment === 'allied') {
+            icon = '👤';
           } else if (character.type === CharacterType.NPC) {
             icon = '👤';
           }
