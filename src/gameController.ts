@@ -25,6 +25,7 @@ import { EventTriggerService, TriggerContext } from './services/eventTriggerServ
 import { CharacterType, Character } from './types/character';
 import { UnifiedRoomDisplayService } from './services/unifiedRoomDisplayService';
 import { TUIOutputAdapter } from './adapters/tuiOutputAdapter';
+import { stripArticles, parseTalkCommand, parseGiveCommand } from './utils/articleParser';
 
 
 // Interfaces imported from GameStateManager
@@ -406,7 +407,7 @@ export class GameController {
     this.commandRouter.addCommand({
       name: 'talk',
       description: 'Talk to a character in the current room',
-      handler: async (args) => await this.handleTalkCommand(args.join(' '))
+      handler: async (args) => await this.handleTalkCommand(args)
     });
 
     this.commandRouter.addCommand({
@@ -1372,6 +1373,9 @@ export class GameController {
       return;
     }
 
+    // Strip articles from item name for more natural language processing
+    const cleanItemName = stripArticles(itemName);
+
     try {
       const session = this.gameStateManager.getCurrentSession();
       const currentRoom = await this.gameStateManager.getCurrentRoom();
@@ -1390,10 +1394,10 @@ export class GameController {
       }
 
       // Find item by name (case-insensitive partial match)
-      const targetItem = this.itemService.findItemByName(roomItems, itemName);
+      const targetItem = this.itemService.findItemByName(roomItems, cleanItemName);
 
       if (!targetItem) {
-        this.tui.display(`There is no ${itemName} here.`, MessageType.ERROR);
+        this.tui.display(`There is no ${cleanItemName} here.`, MessageType.ERROR);
         
         // Show available items as a suggestion
         this.tui.display('Available items:', MessageType.SYSTEM);
@@ -1612,6 +1616,9 @@ export class GameController {
       return;
     }
 
+    // Strip articles from item name for more natural language processing
+    const cleanItemName = stripArticles(itemName);
+
     try {
       const session = this.gameStateManager.getCurrentSession();
       const currentRoom = await this.gameStateManager.getCurrentRoom();
@@ -1633,10 +1640,10 @@ export class GameController {
       }
 
       // Find item by name (case-insensitive partial match)
-      const targetItem = this.itemService.findItemByName(inventory, itemName);
+      const targetItem = this.itemService.findItemByName(inventory, cleanItemName);
 
       if (!targetItem) {
-        this.tui.display(`You don't have a ${itemName}.`, MessageType.ERROR);
+        this.tui.display(`You don't have a ${cleanItemName}.`, MessageType.ERROR);
         
         // Show available items as a suggestion
         this.tui.display('You are carrying:', MessageType.SYSTEM);
@@ -1684,6 +1691,9 @@ export class GameController {
       return;
     }
 
+    // Strip articles from item name for more natural language processing
+    const cleanItemName = stripArticles(itemName);
+
     try {
       const session = this.gameStateManager.getCurrentSession();
       const currentRoom = await this.gameStateManager.getCurrentRoom();
@@ -1698,20 +1708,20 @@ export class GameController {
 
       // Check inventory first
       const inventory = await this.itemService.getCharacterInventory(characterId);
-      let targetInventoryItem = this.itemService.findItemByName(inventory, itemName);
+      let targetInventoryItem = this.itemService.findItemByName(inventory, cleanItemName);
       let targetRoomItem = null;
       let itemLocation = 'inventory';
 
       // If not found in inventory, check current room
       if (!targetInventoryItem) {
         const roomItems = await this.itemService.getRoomItems(currentRoom.id);
-        targetRoomItem = this.itemService.findItemByName(roomItems, itemName);
+        targetRoomItem = this.itemService.findItemByName(roomItems, cleanItemName);
         itemLocation = 'room';
       }
 
       const foundItem = targetInventoryItem || targetRoomItem;
       if (!foundItem) {
-        this.tui.display(`There is no ${itemName} here or in your inventory.`, MessageType.ERROR);
+        this.tui.display(`There is no ${cleanItemName} here or in your inventory.`, MessageType.ERROR);
         return;
       }
 
@@ -2035,12 +2045,15 @@ export class GameController {
   /**
    * Handle talk command - talk to a character in the current room
    */
-  private async handleTalkCommand(characterName: string): Promise<void> {
+  private async handleTalkCommand(args: string[]): Promise<void> {
     if (!this.gameStateManager.isInGame()) {
       this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
       return;
     }
 
+    // Parse talk command with article stripping and "to" handling  
+    const characterName = parseTalkCommand(args);
+    
     if (!characterName) {
       this.tui.display('Who would you like to talk to?', MessageType.ERROR);
       return;
@@ -2085,6 +2098,9 @@ export class GameController {
       return;
     }
 
+    // Strip articles from target name for more natural language processing
+    const cleanTargetName = stripArticles(targetName);
+
     try {
       const session = this.gameStateManager.getCurrentSession();
       const currentRoom = await this.gameStateManager.getCurrentRoom();
@@ -2094,10 +2110,10 @@ export class GameController {
         return;
       }
 
-      const character = await this.findCharacterInRoom(targetName, currentRoom.id);
+      const character = await this.findCharacterInRoom(cleanTargetName, currentRoom.id);
       
       if (!character) {
-        this.tui.display(`There is no ${targetName} here to attack.`, MessageType.ERROR);
+        this.tui.display(`There is no ${cleanTargetName} here to attack.`, MessageType.ERROR);
         return;
       }
       
@@ -2125,7 +2141,10 @@ export class GameController {
       return;
     }
 
-    if (args.length < 3) {
+    // Parse give command with article stripping and preposition handling
+    const parsed = parseGiveCommand(args);
+    
+    if (!parsed.item || !parsed.target) {
       this.tui.display('Give what to whom? Use: give [item] to [character]', MessageType.ERROR);
       return;
     }
@@ -2139,15 +2158,8 @@ export class GameController {
         return;
       }
 
-      // Parse the command - find "to" separator
-      const toIndex = args.findIndex(arg => arg.toLowerCase() === 'to');
-      if (toIndex === -1 || toIndex === 0 || toIndex === args.length - 1) {
-        this.tui.display('Use the format: give [item] to [character]', MessageType.ERROR);
-        return;
-      }
-
-      const itemName = args.slice(0, toIndex).join(' ');
-      const characterName = args.slice(toIndex + 1).join(' ');
+      const itemName = parsed.item;
+      const characterName = parsed.target;
 
       // Get player inventory
       const gameId = session.gameId!;
