@@ -189,10 +189,12 @@ describe('AI Item Generation', () => {
       // Check if items were created in the new room
       const roomItems = await itemService.getRoomItems(result.roomId!);
       
-      // Mock AI should have generated some items
-      expect(roomItems.length).toBeGreaterThan(0);
+      // With new dice-based generation (1d6-3), rooms can have 0-3 items
+      // 50% chance of 0 items, 50% chance of 1-3 items
+      expect(roomItems.length).toBeGreaterThanOrEqual(0);
+      expect(roomItems.length).toBeLessThanOrEqual(3);
       
-      // Verify items have correct properties
+      // If items were generated, verify they have correct properties
       for (const roomItem of roomItems) {
         expect(roomItem.item.name).toBeDefined();
         expect(roomItem.item.description).toBeDefined();
