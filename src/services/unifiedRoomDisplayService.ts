@@ -4,7 +4,7 @@ import { Room, Connection } from './gameStateManager';
 import { ItemService } from './itemService';
 import { CharacterService } from './characterService';
 import { BackgroundGenerationService } from './backgroundGenerationService';
-import { CharacterType, getSentimentDescription } from '../types/character';
+import { Character, CharacterType, CharacterSentiment, getSentimentDescription } from '../types/character';
 import { sortDirections } from '../utils/directionSorter';
 
 export interface RoomDisplayServices {
@@ -79,6 +79,65 @@ export class UnifiedRoomDisplayService {
   }
 
   /**
+   * Format character display with sentiment indicators according to Phase 8 spec
+   * @param characters Array of characters to format
+   * @returns Formatted string for character display
+   */
+  public formatCharacterDisplay(characters: Character[]): string {
+    if (characters.length === 0) {
+      return '';
+    }
+
+    const lines: string[] = [];
+    
+    characters.forEach(character => {
+      let displayLine = '';
+      
+      if (character.is_dead) {
+        // Dead characters always show skull icon
+        displayLine = `💀 ${character.name} 💀 (dead)`;
+      } else {
+        // Format according to Phase 8 specification
+        const sentiment = character.sentiment || CharacterSentiment.INDIFFERENT;
+        
+        switch (sentiment) {
+          case CharacterSentiment.HOSTILE:
+            displayLine = `⚔️ ${character.name} ⚔️ (hostile)`;
+            break;
+          case CharacterSentiment.AGGRESSIVE:
+            displayLine = `🗡️ ${character.name} (aggressive)`;
+            break;
+          case CharacterSentiment.INDIFFERENT:
+            displayLine = `👤 ${character.name} (indifferent)`;
+            break;
+          case CharacterSentiment.FRIENDLY:
+            displayLine = `😊 ${character.name} (friendly)`;
+            break;
+          case CharacterSentiment.ALLIED:
+            displayLine = `🤝 ${character.name} (allied)`;
+            break;
+          default:
+            displayLine = `👤 ${character.name} (indifferent)`;
+            break;
+        }
+
+        // Show legacy hostile indicator if conflicting with sentiment
+        if (character.is_hostile && !['hostile', 'aggressive'].includes(sentiment)) {
+          displayLine += ' ⚔️ (legacy hostile)';
+        }
+      }
+      
+      lines.push(displayLine);
+      
+      if (character.description) {
+        lines.push(`  ${character.description}`);
+      }
+    });
+
+    return lines.join('\n');
+  }
+
+  /**
    * Display items present in the room
    * @param roomId The room ID to get items for
    * @param outputInterface The interface to use for display
@@ -125,45 +184,13 @@ export class UnifiedRoomDisplayService {
         outputInterface.display('', MessageType.NORMAL); // Add spacing
         outputInterface.display('Characters present:', MessageType.SYSTEM);
         
-        roomCharacters.forEach(character => {
-          // Show sentiment and status indicators for development
-          let statusIndicator = '';
-          if (character.is_dead) {
-            statusIndicator = ' 💀 (dead)';
-          } else {
-            // Show sentiment with description for development
-            const sentimentEmoji = {
-              'hostile': '😡',
-              'aggressive': '😠', 
-              'indifferent': '😐',
-              'friendly': '😊',
-              'allied': '🤝'
-            }[character.sentiment] || '❓';
-            
-            statusIndicator = ` ${sentimentEmoji} (${character.sentiment})`;
-            
-            // Also show legacy hostile indicator if different from sentiment
-            if (character.is_hostile && !['hostile', 'aggressive'].includes(character.sentiment)) {
-              statusIndicator += ' ⚔️ (legacy hostile)';
-            }
-          }
-          
-          // Use appropriate icon based on character type and status
-          let icon = '•';
-          if (character.is_dead) {
-            icon = '💀';
-          } else if (character.sentiment === 'hostile' || character.sentiment === 'aggressive') {
-            icon = '⚔️';
-          } else if (character.sentiment === 'friendly' || character.sentiment === 'allied') {
-            icon = '👤';
-          } else if (character.type === CharacterType.NPC) {
-            icon = '👤';
-          }
-          
-          outputInterface.display(`${icon} ${character.name}${statusIndicator}`, MessageType.NORMAL);
-          
-          if (character.description) {
-            outputInterface.display(`  ${character.description}`, MessageType.NORMAL);
+        // Use the standardized character display formatting
+        const characterDisplayText = this.formatCharacterDisplay(roomCharacters);
+        const displayLines = characterDisplayText.split('\n');
+        
+        displayLines.forEach(line => {
+          if (line.trim()) {
+            outputInterface.display(line, MessageType.NORMAL);
           }
         });
       }
