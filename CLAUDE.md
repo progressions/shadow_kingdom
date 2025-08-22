@@ -24,8 +24,8 @@ npm run test:coverage   # Generate coverage report
 npm run dev                # Start interactive game
 
 # Programmatic Testing Interface
-AI_DEBUG_LOGGING=false npm run dev -- --cmd "look" --game-id 1          # Execute single command
-AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north" --game-id 1       # Execute with debug logging
+AI_DEBUG_LOGGING=false npm run dev -- --cmd "look"          # Execute single command
+AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north"       # Execute with debug logging
 ```
 
 ## Architecture Overview
@@ -145,21 +145,20 @@ Execute single commands programmatically for testing and development:
 
 ```bash
 # Basic command execution (quiet logging)
-AI_DEBUG_LOGGING=false npm run dev -- --cmd "look" --game-id 1
+AI_DEBUG_LOGGING=false npm run dev -- --cmd "look"
 
 # Command execution with debug logging (shows AI generation details)
-AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north" --game-id 1
+AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north"
 
 # Common test commands
-npm run dev -- --cmd "go south" --game-id 1
-npm run dev -- --cmd "pickup ancient key" --game-id 1
-npm run dev -- --cmd "inventory" --game-id 1
-npm run dev -- --cmd "examine iron sword" --game-id 1
+npm run dev -- --cmd "go south"
+npm run dev -- --cmd "pickup ancient key"
+npm run dev -- --cmd "inventory"
+npm run dev -- --cmd "examine iron sword"
 ```
 
 **Key Parameters:**
 - `--cmd`: The game command to execute
-- `--game-id`: Game session ID (use 1 for development testing)
 - `AI_DEBUG_LOGGING`: Set to `true` to see detailed AI generation logs, `false` for clean output
 
 **Output Logging:**
