@@ -2171,21 +2171,22 @@ export class GameController {
     // Strip articles from target name for more natural language processing
     const cleanTargetName = stripArticles(targetName);
 
-    try {
-      const session = this.gameStateManager.getCurrentSession();
-      const currentRoom = await this.gameStateManager.getCurrentRoom();
-      
-      if (!currentRoom) {
-        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
-        return;
-      }
+    const session = this.gameStateManager.getCurrentSession();
+    const currentRoom = await this.gameStateManager.getCurrentRoom();
+    
+    if (!currentRoom) {
+      this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+      return;
+    }
 
-      const character = await this.findCharacterInRoom(cleanTargetName, currentRoom.id);
-      
-      if (!character) {
-        this.tui.display(`There is no ${cleanTargetName} here to attack.`, MessageType.ERROR);
-        return;
-      }
+    const character = await this.findCharacterInRoom(cleanTargetName, currentRoom.id);
+    
+    if (!character) {
+      // Throw error to trigger AI fallback instead of handling gracefully
+      throw new Error(`Character not found: ${cleanTargetName}`);
+    }
+
+    try {
       
       if (character.is_dead) {
         this.tui.display(`The ${character.name} is already dead.`, MessageType.ERROR);

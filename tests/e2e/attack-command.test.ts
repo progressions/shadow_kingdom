@@ -161,4 +161,36 @@ describe('Attack Command End-to-End Tests', () => {
     // (Testing the actual error message is covered by unit tests)
     expect(stdout).not.toContain('Error:');
   }, 30000);
+
+  test('should use AI fallback to resolve "attack this guy" to actual character', async () => {
+    // Test that AI fallback works for natural language character references
+    const { stdout } = await execAsync(
+      'AI_DEBUG_LOGGING=true npm run dev -- --cmd "attack this guy" --game-id 1000',
+      { timeout: 30000 }
+    );
+    
+    // Command should execute without throwing
+    expect(stdout).toContain('Connected to SQLite database');
+    
+    // Should show AI processing output in debug mode
+    expect(stdout).toContain('🧠 Processing command');
+    expect(stdout).toContain('🤖 AI match: attack');
+    
+    // Check development log for AI fallback behavior
+    const logPath = path.join(__dirname, '../../logs/development.log');
+    if (fs.existsSync(logPath)) {
+      // Wait for log to be written
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const logContent = fs.readFileSync(logPath, 'utf8');
+      const logLines = logContent.split('\n');
+      const recentLines = logLines.slice(-20); // Get last 20 lines
+      const recentContent = recentLines.join('\n');
+      
+      // Should show exact command failure and AI fallback success
+      expect(recentContent).toMatch(/Exact command "attack" failed/);
+      expect(recentContent).toMatch(/🤖 NLP.*attack.*Crypt Keeper/);
+      expect(recentContent).toMatch(/takes 2 damage/);
+    }
+  }, 60000);
 });
