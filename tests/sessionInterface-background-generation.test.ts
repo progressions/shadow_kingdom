@@ -87,9 +87,9 @@ describe('SessionInterface Background Generation', () => {
         expect(sessionInterfaceCode).toContain(service);
       });
       
-      // Verify setupGameCommands receives backgroundGenerationService and new item services
+      // Verify setupGameCommands receives backgroundGenerationService and new item services, plus loggerService
       expect(sessionInterfaceCode).toContain(
-        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService, examineService)'
+        'await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService, examineService, loggerService)'
       );
     });
   });

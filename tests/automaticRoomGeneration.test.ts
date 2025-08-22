@@ -516,6 +516,10 @@ describe('Automatic Room Generation on Entry', () => {
     });
 
     it('should be silent during background operation', async () => {
+      // Store original environment variable and disable debug logging
+      const originalDebugLogging = process.env.AI_DEBUG_LOGGING;
+      delete process.env.AI_DEBUG_LOGGING;
+
       // Capture console output
       const originalLog = console.log;
       const logs: string[] = [];
@@ -534,8 +538,11 @@ describe('Automatic Room Generation on Entry', () => {
       // Should not log anything with debug disabled
       expect(logs).toHaveLength(0);
 
-      // Restore console.log
+      // Restore console.log and environment
       console.log = originalLog;
+      if (originalDebugLogging) {
+        process.env.AI_DEBUG_LOGGING = originalDebugLogging;
+      }
     });
 
     it('should prevent duplicate generation for same connection', async () => {

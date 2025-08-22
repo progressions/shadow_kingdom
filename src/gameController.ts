@@ -58,6 +58,7 @@ export class GameController {
   private healthService!: ServiceInstances['healthService']; // Initialized in initializeReadlineInterface()
   private eventTriggerService!: ServiceInstances['eventTriggerService']; // Initialized in initializeReadlineInterface()
   private examineService!: ServiceInstances['examineService']; // Initialized in initializeReadlineInterface()
+  private loggerService!: ServiceInstances['loggerService']; // Initialized in initializeReadlineInterface()
   private unifiedRoomDisplayService: UnifiedRoomDisplayService;
   private commandState: CommandState;
 
@@ -454,6 +455,35 @@ export class GameController {
     });
   }
 
+  /**
+   * Display message to user and log it
+   */
+  private displayAndLog(message: string, type: MessageType = MessageType.NORMAL): void {
+    this.tui.display(message, type);
+    
+    // Map MessageType to log categories
+    const logType = this.mapMessageTypeToLogType(type);
+    this.loggerService.logSystemOutput(message, logType);
+  }
+
+  /**
+   * Map MessageType to log categories
+   */
+  private mapMessageTypeToLogType(type: MessageType): 'room' | 'dialogue' | 'combat' | 'system' {
+    switch (type) {
+      case MessageType.NORMAL:
+        return 'room';
+      case MessageType.ERROR:
+        return 'system';
+      case MessageType.SYSTEM:
+        return 'system';
+      case MessageType.AI_GENERATION:
+        return 'system';
+      default:
+        return 'system';
+    }
+  }
+
   private async processInput(): Promise<void> {
     while (true) {
       try {
@@ -462,6 +492,9 @@ export class GameController {
         if (!command) {
           continue; // Skip empty commands
         }
+        
+        // Log user input
+        this.loggerService.logUserInput(command);
         
         await this.processCommand(command);
         this.updateStatusDisplay();
@@ -1053,6 +1086,15 @@ export class GameController {
     this.healthService = services.healthService;
     this.eventTriggerService = services.eventTriggerService;
     this.examineService = services.examineService;
+    this.loggerService = services.loggerService;
+    
+    // Set logger service on TUI if it's an InkTUIBridge
+    if (this.tui && typeof (this.tui as any).setLoggerService === 'function') {
+      (this.tui as any).setLoggerService(this.loggerService);
+    }
+    
+    // Set logger service on GrokClient
+    this.grokClient.setLoggerService(this.loggerService);
     
     // Set up commands
     this.setupCommands();

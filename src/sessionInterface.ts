@@ -81,6 +81,7 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
   const { CharacterGenerationService } = await import('./services/characterGenerationService');
   const { UnifiedRoomDisplayService } = await import('./services/unifiedRoomDisplayService');
   const { ConsoleOutputAdapter } = await import('./adapters/consoleOutputAdapter');
+  const { LoggerService } = await import('./services/loggerService');
   
   // Use persistent database file for session commands
   const dbPath = 'data/db/shadow_kingdom_session.db';
@@ -164,14 +165,23 @@ async function executeCommand(commandInput: string, gameId?: number): Promise<vo
     const { ExamineService } = await import('./services/examineService');
     const examineService = new ExamineService(db, characterService, itemService);
     
+    // Initialize logging service
+    const loggerService = new LoggerService();
+    
+    // Set logger service on GrokClient now that LoggerService is created
+    grokClient.setLoggerService(loggerService);
+    
     // Set up game commands with background generation support
-    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService, examineService);
+    await setupGameCommands(commandRouter, gameStateManager, roomDisplayService, regionService, backgroundGenerationService, db, itemService, equipmentService, characterService, unifiedRoomDisplayService, examineService, loggerService);
     
     // Start the game session (this will put us in the entrance hall)
     await gameStateManager.startGameSession(actualGameId);
     
     // Add command to history for context tracking
     gameStateManager.addRecentCommand(commandInput);
+    
+    // Log user input
+    loggerService.logUserInput(commandInput);
     
     // Create execution context for command processing
     const executionContext = {
@@ -199,10 +209,18 @@ async function setupGameCommands(
   equipmentService: any,
   characterService: any,
   unifiedRoomDisplayService: any,
-  examineService: any
+  examineService: any,
+  loggerService: any
 ): Promise<void> {
   // Import adapter class for use in command handlers
   const { ConsoleOutputAdapter } = await import('./adapters/consoleOutputAdapter');
+  
+  // Helper function to log and display console output
+  const logAndConsole = (message: string, type: 'room' | 'dialogue' | 'combat' | 'system' = 'system') => {
+    console.log(message);
+    loggerService.logSystemOutput(message, type);
+  };
+  
   // Add the basic game commands for session interface
   commandRouter.addGameCommand({
     name: 'help',
@@ -259,7 +277,7 @@ async function setupGameCommands(
         
         if (room) {
           // Use unified room display service with console adapter
-          const consoleAdapter = new ConsoleOutputAdapter();
+          const consoleAdapter = new ConsoleOutputAdapter(loggerService);
           await unifiedRoomDisplayService.displayRoomComplete(
             room,
             connections,
@@ -272,7 +290,7 @@ async function setupGameCommands(
             }
           );
         } else {
-          console.log('You are nowhere to be found.');
+          logAndConsole('You are nowhere to be found.', 'room');
         }
       }
     }
@@ -325,7 +343,7 @@ async function setupGameCommands(
         
         if (room) {
           // Use unified room display service with console adapter
-          const consoleAdapter = new ConsoleOutputAdapter();
+          const consoleAdapter = new ConsoleOutputAdapter(loggerService);
           await unifiedRoomDisplayService.displayRoomComplete(
             room,
             connections,
@@ -660,11 +678,11 @@ async function setupGameCommands(
           return;
         }
 
-        console.log('═══ INVENTORY ═══');
+        logAndConsole('INVENTORY', 'system');
         for (const invItem of inventory) {
           const quantityText = invItem.quantity > 1 ? ` x${invItem.quantity}` : '';
           const equippedText = invItem.equipped ? ' (equipped)' : '';
-          console.log(`• ${invItem.item.name}${quantityText}${equippedText}`);
+          logAndConsole(`• ${invItem.item.name}${quantityText}${equippedText}`, 'system');
         }
 
       } catch (error) {
@@ -734,11 +752,11 @@ async function setupGameCommands(
         const modifiers = characterService.getCharacterModifiers(character);
 
         // Display character information
-        console.log(`\n=== ${character.name.toUpperCase()} ===`);
-        console.log(`Type: ${character.type.charAt(0).toUpperCase() + character.type.slice(1)}`);
+        logAndConsole(`${character.name}`, 'system');
+        logAndConsole(`Type: ${character.type.charAt(0).toUpperCase() + character.type.slice(1)}`, 'system');
         
-        console.log('\n--- ATTRIBUTES ---');
-        console.log(`Strength:     ${character.strength.toString().padStart(2)} (${modifiers.strength >= 0 ? '+' : ''}${modifiers.strength})`);
+        logAndConsole('ATTRIBUTES', 'system');
+        logAndConsole(`Strength:     ${character.strength.toString().padStart(2)} (${modifiers.strength >= 0 ? '+' : ''}${modifiers.strength})`, 'system');
         console.log(`Dexterity:    ${character.dexterity.toString().padStart(2)} (${modifiers.dexterity >= 0 ? '+' : ''}${modifiers.dexterity})`);
         console.log(`Intelligence: ${character.intelligence.toString().padStart(2)} (${modifiers.intelligence >= 0 ? '+' : ''}${modifiers.intelligence})`);
         console.log(`Constitution: ${character.constitution.toString().padStart(2)} (${modifiers.constitution >= 0 ? '+' : ''}${modifiers.constitution})`);
@@ -1043,7 +1061,7 @@ async function setupGameCommands(
         
         // Kill the character
         await characterService.setCharacterDead(target.id);
-        console.log(`You killed the ${target.name}.`);
+        logAndConsole(`You killed the ${target.name}.`, 'combat');
 
       } catch (error) {
         console.error('Error attacking character:', error);

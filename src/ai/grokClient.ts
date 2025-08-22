@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import * as dotenv from 'dotenv';
 import { MockAIEngine } from './mockAIEngine';
+import { LoggerService } from '../services/loggerService';
 
 dotenv.config();
 
@@ -164,8 +165,10 @@ export class GrokClient {
     cost: number;
   } = { input: 0, output: 0, cost: 0 };
   private mockEngine: MockAIEngine;
+  private loggerService?: LoggerService;
 
-  constructor(config?: Partial<GrokConfig>) {
+  constructor(config?: Partial<GrokConfig>, loggerService?: LoggerService) {
+    this.loggerService = loggerService;
     this.config = {
       apiKey: config?.apiKey || process.env.GROK_API_KEY || '',
       apiUrl: config?.apiUrl || process.env.GROK_API_URL || 'https://api.x.ai/v1',
@@ -505,6 +508,14 @@ If the command cannot be interpreted as a valid game action, return null.`;
   }
 
   private async callGrokAPI(prompt: string): Promise<string> {
+    const startTime = Date.now();
+    let requestId = '';
+    
+    // Log the request if LoggerService is available
+    if (this.loggerService) {
+      requestId = this.loggerService.logGrokRequest(prompt, '/chat/completions');
+    }
+    
     try {
       const response = await this.client.post<GrokAPIResponse>('/chat/completions', {
         model: this.config.model,
@@ -535,14 +546,34 @@ If the command cannot be interpreted as a valid game action, return null.`;
 
       const content = response.data.choices[0].message.content;
       
-      // Write Grok responses to a file for debugging
-      const fs = require('fs');
-      const timestamp = new Date().toISOString();
-      const logEntry = `\n\n========= ${timestamp} =========\n${content}\n`;
-      fs.appendFileSync('grok_responses.log', logEntry);
+      // Log the successful response if LoggerService is available
+      if (this.loggerService && requestId) {
+        const durationMs = Date.now() - startTime;
+        const tokenUsage = response.data.usage ? {
+          input: response.data.usage.prompt_tokens,
+          output: response.data.usage.completion_tokens
+        } : undefined;
+        
+        this.loggerService.logGrokResponse(requestId, {
+          content: content,
+          model: this.config.model,
+          usage: response.data.usage
+        }, tokenUsage, durationMs);
+      } else {
+        // Fallback to old logging method if LoggerService not available
+        const fs = require('fs');
+        const timestamp = new Date().toISOString();
+        const logEntry = `\n\n========= ${timestamp} =========\n${content}\n`;
+        fs.appendFileSync('grok_responses.log', logEntry);
+      }
       
       return content;
     } catch (error) {
+      // Log the error if LoggerService is available
+      if (this.loggerService && requestId) {
+        this.loggerService.logGrokError(requestId, error instanceof Error ? error : new Error(String(error)));
+      }
+      
       if (process.env.AI_DEBUG_LOGGING === 'true') {
         if (axios.isAxiosError(error)) {
           console.error('Grok API Error:', error.response?.data || error.message);
@@ -553,6 +584,13 @@ If the command cannot be interpreted as a valid game action, return null.`;
       // Re-throw for handling in calling methods
       throw error;
     }
+  }
+
+  /**
+   * Set the logger service (can be called after construction)
+   */
+  setLoggerService(loggerService: LoggerService): void {
+    this.loggerService = loggerService;
   }
 
   private buildPrompt(context: RoomContext): string {

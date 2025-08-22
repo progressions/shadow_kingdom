@@ -1,6 +1,7 @@
 import { OutputInterface } from '../interfaces/outputInterface';
 import { MessageType } from '../ui/MessageFormatter';
 import { sortDirections } from '../utils/directionSorter';
+import { LoggerService } from '../services/loggerService';
 
 /**
  * ConsoleOutputAdapter adapts console.log output for use with UnifiedRoomDisplayService.
@@ -8,7 +9,12 @@ import { sortDirections } from '../utils/directionSorter';
  * the exact same formatting as the existing SessionInterface implementation.
  */
 export class ConsoleOutputAdapter implements OutputInterface {
-  
+  private loggerService?: LoggerService;
+
+  constructor(loggerService?: LoggerService) {
+    this.loggerService = loggerService;
+  }
+
   /**
    * Display a message to the console
    * @param message The message to display
@@ -16,6 +22,9 @@ export class ConsoleOutputAdapter implements OutputInterface {
    */
   display(message: string, type?: MessageType): void {
     console.log(message);
+    if (this.loggerService) {
+      this.loggerService.logSystemOutput(message, 'room');
+    }
   }
 
   /**
@@ -27,13 +36,22 @@ export class ConsoleOutputAdapter implements OutputInterface {
    */
   displayRoom(name: string, description: string, exits: string[]): void {
     // Display room name with underline (matches RoomDisplayService format)
-    console.log(`\n${name}`);
-    console.log('='.repeat(name.length));
-    console.log(description);
-
-    // Format and display exits
+    const nameOutput = `\n${name}`;
+    const underlineOutput = '='.repeat(name.length);
     const exitsDisplay = this.formatExits(exits);
+    
+    console.log(nameOutput);
+    console.log(underlineOutput);
+    console.log(description);
     console.log(exitsDisplay);
+
+    // Log to LoggerService if available
+    if (this.loggerService) {
+      this.loggerService.logSystemOutput(nameOutput, 'room');
+      this.loggerService.logSystemOutput(underlineOutput, 'room');
+      this.loggerService.logSystemOutput(description, 'room');
+      this.loggerService.logSystemOutput(exitsDisplay, 'room');
+    }
   }
 
   /**
