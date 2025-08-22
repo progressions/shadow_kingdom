@@ -22,6 +22,10 @@ npm run test:coverage   # Generate coverage report
 
 # Playing the Game
 npm run dev                # Start interactive game
+
+# Programmatic Testing Interface
+AI_DEBUG_LOGGING=false npm run dev -- --cmd "look" --game-id 1          # Execute single command
+AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north" --game-id 1       # Execute with debug logging
 ```
 
 ## Architecture Overview
@@ -125,6 +129,44 @@ CHARACTER_GENERATION_FREQUENCY=40   # Percentage (0-100) of rooms that get chara
 - **docs/BACKGROUND_GENERATION_SYSTEM.md** - Detailed background generation guide
 - **archive/completed-issues/** - Completed feature implementations and resolved issues
 - **archive/documentation/** - Comprehensive specs and detailed technical documentation
+
+## Game Testing and Development Interface
+
+### Interactive Mode
+Start the game in interactive mode with a text-based interface:
+```bash
+npm run dev
+```
+
+Navigate using commands like `go north`, `look`, `examine sword`, `pickup key`, `inventory`, etc.
+
+### Programmatic Command Interface
+Execute single commands programmatically for testing and development:
+
+```bash
+# Basic command execution (quiet logging)
+AI_DEBUG_LOGGING=false npm run dev -- --cmd "look" --game-id 1
+
+# Command execution with debug logging (shows AI generation details)
+AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north" --game-id 1
+
+# Common test commands
+npm run dev -- --cmd "go south" --game-id 1
+npm run dev -- --cmd "pickup ancient key" --game-id 1
+npm run dev -- --cmd "inventory" --game-id 1
+npm run dev -- --cmd "examine iron sword" --game-id 1
+```
+
+**Key Parameters:**
+- `--cmd`: The game command to execute
+- `--game-id`: Game session ID (use 1 for development testing)
+- `AI_DEBUG_LOGGING`: Set to `true` to see detailed AI generation logs, `false` for clean output
+
+**Output Logging:**
+- Game responses and state changes are logged to the development log
+- AI generation details (prompts, responses, fallbacks) shown when debug logging is enabled
+- Session state changes and room generation events are tracked
+- Use this interface to test command behaviors and observe system responses
 
 ## Common Development Tasks
 
