@@ -222,6 +222,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       // Column already exists, ignore error
     }
 
+    // Migration: Add dialogue_response column to characters if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE characters ADD COLUMN dialogue_response TEXT DEFAULT 'Lovely day.'`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
     // Create indexes for faster lookups
     await db.run(`
       CREATE INDEX IF NOT EXISTS idx_connections_from_room 
@@ -995,12 +1002,12 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
     const characterGenerationService = new CharacterGenerationService(db, characterService, { enableDebugLogging: false });
     
     const starterRoomCharacters = [
-      { roomId: entranceId, character: { name: 'Ancient Guardian', description: 'A spectral guardian that watches over the entrance hall with eternal vigilance', type: 'npc' as const }, roomName: 'Grand Entrance Hall' },
-      { roomId: libraryId, character: { name: 'Scholar Wraith', description: 'A ghostly figure in scholarly robes, eternally tending to the ancient tomes', type: 'npc' as const }, roomName: 'Scholar\'s Library' },
-      { roomId: gardenId, character: { name: 'Garden Spirit', description: 'A benevolent nature spirit that tends to the moonlit garden with gentle care', type: 'npc' as const }, roomName: 'Moonlit Courtyard Garden' },
-      { roomId: towerStairsId, character: { name: 'Tower Sentinel', description: 'A mysterious figure that guards the winding stairs leading to higher mysteries', type: 'enemy' as const }, roomName: 'Winding Tower Stairs' },
-      { roomId: cryptEntranceId, character: { name: 'Crypt Keeper', description: 'A solemn undead guardian bound to protect the entrance to the ancient crypts', type: 'enemy' as const }, roomName: 'Ancient Crypt Entrance' },
-      { roomId: observatoryStepsId, character: { name: 'Star Watcher', description: 'An ethereal being dedicated to observing the celestial movements above', type: 'npc' as const }, roomName: 'Observatory Steps' }
+      { roomId: entranceId, character: { name: 'Ancient Guardian', description: 'A spectral guardian that watches over the entrance hall with eternal vigilance', type: 'npc' as const, initialDialogue: 'These halls have stood for centuries, and I shall guard them for centuries more.' }, roomName: 'Grand Entrance Hall' },
+      { roomId: libraryId, character: { name: 'Scholar Wraith', description: 'A ghostly figure in scholarly robes, eternally tending to the ancient tomes', type: 'npc' as const, initialDialogue: 'So many books, so little time... even in death.' }, roomName: 'Scholar\'s Library' },
+      { roomId: gardenId, character: { name: 'Garden Spirit', description: 'A benevolent nature spirit that tends to the moonlit garden with gentle care', type: 'npc' as const, initialDialogue: 'The flowers whisper secrets of ages past, if you know how to listen.' }, roomName: 'Moonlit Courtyard Garden' },
+      { roomId: towerStairsId, character: { name: 'Tower Sentinel', description: 'A mysterious figure that guards the winding stairs leading to higher mysteries', type: 'enemy' as const, initialDialogue: 'None may pass without proving their worth. Turn back, or face the consequences.' }, roomName: 'Winding Tower Stairs' },
+      { roomId: cryptEntranceId, character: { name: 'Crypt Keeper', description: 'A solemn undead guardian bound to protect the entrance to the ancient crypts', type: 'enemy' as const, initialDialogue: 'The dead do not appreciate visitors. Disturb them at your own peril.' }, roomName: 'Ancient Crypt Entrance' },
+      { roomId: observatoryStepsId, character: { name: 'Star Watcher', description: 'An ethereal being dedicated to observing the celestial movements above', type: 'npc' as const, initialDialogue: 'The stars tell stories of destiny and fate, written across the night sky.' }, roomName: 'Observatory Steps' }
     ];
 
     let totalCharactersPlaced = 0;

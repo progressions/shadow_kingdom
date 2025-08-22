@@ -34,6 +34,7 @@ export interface Character {
   max_health: number | null;
   current_health: number | null;
   is_dead?: boolean | null;  // Death state for action validation
+  dialogue_response?: string | null;   // Custom dialogue response
   created_at: string;
 }
 
@@ -49,6 +50,7 @@ export interface CreateCharacterData {
   constitution?: number;
   wisdom?: number;
   charisma?: number;
+  dialogue_response?: string;          // Custom dialogue response for new characters
 }
 
 /**
