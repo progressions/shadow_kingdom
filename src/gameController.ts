@@ -2289,6 +2289,12 @@ export class GameController {
         return;
       }
 
+      // Check if character is dead
+      if (character.is_dead) {
+        this.tui.display(`${character.name} is dead and cannot receive items.`, MessageType.ERROR);
+        return;
+      }
+
       // Remove item from player inventory (reduce quantity or delete if quantity is 1)
       if (item.quantity > 1) {
         await this.db.run(
