@@ -23,7 +23,7 @@ import { ActionValidator } from './services/actionValidator';
 import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
 import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
-import { CharacterType, Character, CharacterSentiment } from './types/character';
+import { CharacterType, Character, CharacterSentiment, getAttributeModifier } from './types/character';
 import { UnifiedRoomDisplayService } from './services/unifiedRoomDisplayService';
 import { TUIOutputAdapter } from './adapters/tuiOutputAdapter';
 import { stripArticles, parseTalkCommand, parseGiveCommand } from './utils/articleParser';
@@ -1090,6 +1090,51 @@ export class GameController {
     }
   }
 
+  private async attemptEscapeFromEnemies(enemies: Character[], direction: string): Promise<boolean> {
+    const session = this.gameStateManager.getCurrentSession();
+    if (!session) return false;
+    
+    const playerCharacter = await this.characterService.getPlayerCharacter(session.gameId!);
+    if (!playerCharacter) return false;
+    
+    // Calculate escape attempt
+    const playerDexModifier = getAttributeModifier(playerCharacter.dexterity);
+    const highestEnemyDexModifier = Math.max(
+      ...enemies.map(enemy => getAttributeModifier(enemy.dexterity))
+    );
+    
+    const d20Roll = Math.floor(Math.random() * 20) + 1;
+    const totalRoll = d20Roll + playerDexModifier;
+    const targetNumber = 10 + highestEnemyDexModifier;
+    
+    const success = totalRoll >= targetNumber;
+    
+    // Display outcome with roll details
+    if (success) {
+      const enemyDescription = enemies.length > 1 
+        ? `${enemies.length} enemies` 
+        : `the ${enemies[0].name}`;
+      this.tui.display(
+        `You slip past ${enemyDescription} and escape ${direction}! [Roll: ${d20Roll}${this.formatModifier(playerDexModifier)}=${totalRoll} vs ${targetNumber}]`,
+        MessageType.SYSTEM
+      );
+    } else {
+      const blockerDescription = enemies.length > 1 
+        ? 'the enemies' 
+        : `the ${enemies[0].name}`;
+      this.tui.display(
+        `You try to escape but ${blockerDescription} block your path! [Roll: ${d20Roll}${this.formatModifier(playerDexModifier)}=${totalRoll} vs ${targetNumber}]`,
+        MessageType.ERROR
+      );
+    }
+    
+    return success;
+  }
+
+  private formatModifier(modifier: number): string {
+    return modifier >= 0 ? `+${modifier}` : `${modifier}`;
+  }
+
   private async move(args: string[]) {
     if (!this.gameStateManager.isInGame()) {
       this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
@@ -1101,31 +1146,22 @@ export class GameController {
       return;
     }
 
-    // Check for hostile characters blocking movement
+    const userInput = args.join(' ').toLowerCase();
+
+    // Check for hostile enemies that could block movement (dexterity-based escape system)
     const currentRoomId = this.gameStateManager.getCurrentRoomId();
     if (currentRoomId) {
-      const blockingCharacters = await this.characterService.getBlockingCharacters(currentRoomId);
+      const hostileEnemies = await this.characterService.getHostileEnemiesInRoom(currentRoomId);
       
-      if (blockingCharacters.length > 0) {
-        const blocker = blockingCharacters[0];
-        const sentimentType = blocker.sentiment === CharacterSentiment.HOSTILE ? 'hostile' : 'aggressive';
+      if (hostileEnemies.length > 0) {
+        const escapeSuccessful = await this.attemptEscapeFromEnemies(hostileEnemies, userInput);
         
-        if (blockingCharacters.length === 1) {
-          this.tui.display(
-            `${blocker.name} blocks your path! This ${sentimentType} character prevents movement.`,
-            MessageType.ERROR
-          );
-        } else {
-          this.tui.display(
-            `${blockingCharacters.length} hostile characters prevent movement. Defeat them first!`,
-            MessageType.ERROR
-          );
+        if (!escapeSuccessful) {
+          return; // Escape failed, player remains in room
         }
-        return;
+        // If escape succeeded, continue with movement
       }
     }
-
-    const userInput = args.join(' ').toLowerCase();
 
     try {
       // Find connection by either direction or thematic name (case-insensitive)

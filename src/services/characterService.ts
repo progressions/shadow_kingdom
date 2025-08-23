@@ -201,6 +201,21 @@ export class CharacterService {
   }
 
   /**
+   * Get hostile enemies in a room (excludes NPCs, includes only alive enemies)
+   * Used for dexterity-based escape system
+   */
+  async getHostileEnemiesInRoom(roomId: number): Promise<Character[]> {
+    return await this.db.all<Character>(`
+      SELECT * FROM characters 
+      WHERE current_room_id = ? 
+      AND sentiment IN ('hostile', 'aggressive')
+      AND type = 'enemy'
+      AND (is_dead IS NULL OR is_dead = 0)
+      ORDER BY dexterity DESC
+    `, [roomId]);
+  }
+
+  /**
    * Update character hostility
    */
   /**
