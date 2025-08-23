@@ -25,8 +25,6 @@ export interface RegionConcept {
   suggestedElements: string[];
 }
 
-export type RoomRole = 'entrance' | 'guardian' | 'exit' | 'exploration';
-
 export interface GeneratedRoomCharacter {
   name: string;
   type: 'npc' | 'enemy';
@@ -42,6 +40,8 @@ export interface GeneratedRoom {
 
 export interface RoomGenerationContext {
   concept: RegionConcept;
-  role: RoomRole;
   adjacentRooms?: string[];
+  includeKey?: boolean;
+  includeGuardian?: boolean;
+  includeLockedExit?: boolean;
 }

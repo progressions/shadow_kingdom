@@ -22,19 +22,14 @@ Add room generation capability to RegionPlannerService while keeping game fully 
 ### Core Deliverable
 - Add `generateRoom()` method to RegionPlannerService
 - Generate rooms using region concept as thematic context
-- Handle different room roles (entrance/guardian/exit/exploration)
+- Support optional special requirements (key, guardian, locked exit)
 
 ### Room Generation Features
-- Takes region concept + room role as input
+- Takes region concept as input
 - Returns: name, description, items, NPCs/creatures
 - Uses existing GrokClient patterns for AI generation
 - Room content matches region theme and atmosphere
-
-### Room Role Types
-- **Entrance**: Connects to previous region
-- **Guardian**: Contains hostile enemy + region key
-- **Exit**: Contains locked connection to next region  
-- **Exploration**: General themed rooms with items/NPCs
+- Can specify special requirements (include key, guardian, or locked exit)
 
 ### Example Output
 ```json
@@ -55,19 +50,19 @@ Add room generation capability to RegionPlannerService while keeping game fully 
 ## Acceptance Criteria
 
 - [x] Rooms match region theme and atmosphere perfectly
-- [x] Guardian rooms include hostile enemy + appropriate key
-- [x] Exit rooms include locked connection concept
-- [x] Exploration rooms have varied, thematic content
+- [x] Rooms can include guardian enemy when requested
+- [x] Rooms can include region key when requested  
+- [x] Rooms can include locked exit reference when requested
 - [x] Room descriptions are 2-3 sentences, vivid and engaging
 - [x] Items and NPCs fit region theme
 - [x] Different rooms in same region feel cohesive but unique
 
 ## Test Plan
 
-- Generate rooms for each role type using same region concept
-- Verify guardian room has enemy and key matching theme
-- Verify exit room has locked connection matching theme
-- Verify exploration rooms have varied but consistent content
+- Generate rooms with different special requirements using same region concept
+- Verify rooms with includeGuardian have enemy matching theme
+- Verify rooms with includeKey have region key
+- Verify rooms with includeLockedExit reference the exit
 - Test multiple rooms from same concept maintain thematic coherence
 - Verify room names and descriptions are high quality
 

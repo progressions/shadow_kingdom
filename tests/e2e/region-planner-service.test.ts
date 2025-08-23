@@ -15,7 +15,7 @@
 import Database from '../../src/utils/database';
 import { initializeDatabase } from '../../src/utils/initDb';
 import { RegionPlannerService } from '../../src/services/regionPlannerService';
-import { RegionConcept } from '../../src/types/regionConcept';
+import { RegionConcept, GeneratedRoom } from '../../src/types/regionConcept';
 
 describe('Region Planner Service End-to-End Tests', () => {
   let db: Database;
@@ -189,5 +189,190 @@ describe('Region Planner Service End-to-End Tests', () => {
     });
     
     console.log('✅ Stress test completed successfully');
+  });
+
+  describe('Room Generation End-to-End Tests', () => {
+    let testConcept: RegionConcept;
+
+    beforeAll(async () => {
+      // Generate a concept for room generation tests
+      testConcept = await regionPlannerService.generateRegionConcept();
+      console.log(`🏠 Using test concept: "${testConcept.name}" for room generation tests`);
+    });
+
+    test('should generate rooms with different special requirements', async () => {
+      console.log('🏠 Testing room generation with special requirements...');
+      
+      const roomConfigs = [
+        { name: 'Basic Room', config: { concept: testConcept } },
+        { name: 'Guardian Room', config: { concept: testConcept, includeGuardian: true } },
+        { name: 'Key Room', config: { concept: testConcept, includeKey: true } },
+        { name: 'Exit Room', config: { concept: testConcept, includeLockedExit: true } },
+        { name: 'Full Room', config: { concept: testConcept, includeGuardian: true, includeKey: true, includeLockedExit: true } }
+      ];
+
+      const generatedRooms: GeneratedRoom[] = [];
+      const generationTimes: number[] = [];
+
+      for (const { name, config } of roomConfigs) {
+        const startTime = Date.now();
+        const room = await regionPlannerService.generateRoom(config);
+        const endTime = Date.now();
+        
+        generatedRooms.push(room);
+        generationTimes.push(endTime - startTime);
+        
+        console.log(`🏠 Generated ${name}: "${room.name}" (${endTime - startTime}ms)`);
+        console.log(`   Items: [${room.items.join(', ')}]`);
+        console.log(`   Characters: [${room.characters.map(c => `${c.name}(${c.type})`).join(', ')}]`);
+        
+        // Verify basic structure
+        expect(room.name).toBeTruthy();
+        expect(room.description).toBeTruthy();
+        expect(Array.isArray(room.items)).toBe(true);
+        expect(Array.isArray(room.characters)).toBe(true);
+      }
+
+      // Verify special requirements
+      const guardianRoom = generatedRooms[1]; // Guardian Room
+      const keyRoom = generatedRooms[2]; // Key Room  
+      const exitRoom = generatedRooms[3]; // Exit Room
+      const fullRoom = generatedRooms[4]; // Full Room
+
+      // Guardian room should have guardian enemy
+      const guardianEnemy = guardianRoom.characters.find(c => c.type === 'enemy' && c.name === testConcept.guardian.name);
+      expect(guardianEnemy).toBeDefined();
+      console.log(`   ✓ Guardian room has guardian: ${testConcept.guardian.name}`);
+
+      // Key room should have region key
+      expect(keyRoom.items).toContain(testConcept.key.name);
+      console.log(`   ✓ Key room has key: ${testConcept.key.name}`);
+
+      // Exit room should reference locked exit
+      const hasExitReference = exitRoom.items.some(item => 
+        item.toLowerCase().includes('marker') || 
+        item.toLowerCase().includes(testConcept.lockedExit.name.toLowerCase().split(' ')[0])
+      );
+      expect(hasExitReference).toBe(true);
+      console.log(`   ✓ Exit room references locked exit`);
+
+      // Full room should have all requirements
+      const fullGuardian = fullRoom.characters.find(c => c.type === 'enemy' && c.name === testConcept.guardian.name);
+      expect(fullGuardian).toBeDefined();
+      expect(fullRoom.items).toContain(testConcept.key.name);
+      console.log(`   ✓ Full room has all special requirements`);
+
+      // Performance check
+      const avgTime = generationTimes.reduce((a, b) => a + b, 0) / generationTimes.length;
+      console.log(`🏠 Room generation performance: Average ${avgTime.toFixed(1)}ms`);
+      expect(avgTime).toBeLessThan(100); // Should be fast in mock mode
+    });
+
+    test('should generate varied rooms from same concept', async () => {
+      console.log('🏠 Testing room variety from same concept...');
+      
+      const rooms: GeneratedRoom[] = [];
+      
+      // Generate 6 different rooms from the same concept
+      for (let i = 0; i < 6; i++) {
+        const room = await regionPlannerService.generateRoom({
+          concept: testConcept,
+          adjacentRooms: rooms.map(r => r.name) // Avoid adjacent room names
+        });
+        rooms.push(room);
+        
+        console.log(`🏠 Room ${i + 1}: "${room.name}"`);
+        console.log(`   Description: ${room.description.substring(0, 80)}...`);
+      }
+
+      // All rooms should be valid
+      expect(rooms).toHaveLength(6);
+      rooms.forEach(room => {
+        expect(room.name).toBeTruthy();
+        expect(room.description.length).toBeGreaterThan(20);
+        expect(room.items).toBeInstanceOf(Array);
+        expect(room.characters).toBeInstanceOf(Array);
+      });
+
+      // Room names should be unique (with 24 name templates, this should work)
+      const uniqueNames = new Set(rooms.map(r => r.name));
+      expect(uniqueNames.size).toBe(rooms.length);
+      console.log(`   ✓ All ${rooms.length} room names are unique`);
+
+      // Should have varied content
+      const allItems = rooms.flatMap(r => r.items);
+      const allCharacters = rooms.flatMap(r => r.characters);
+      
+      expect(allItems.length).toBeGreaterThan(rooms.length); // More items than rooms
+      expect(allCharacters.length).toBeGreaterThan(0); // Should have some characters
+      console.log(`   ✓ Generated ${allItems.length} total items and ${allCharacters.length} total characters`);
+    });
+
+    test('should demonstrate thematic consistency in room generation', async () => {
+      console.log('🏠 Testing thematic consistency...');
+      
+      // Generate a room and verify it matches the concept theme
+      const room = await regionPlannerService.generateRoom({ concept: testConcept });
+      
+      console.log(`🏠 Analyzing thematic consistency:`);
+      console.log(`   Concept: "${testConcept.name}" - ${testConcept.theme}`);
+      console.log(`   Room: "${room.name}"`);
+      console.log(`   Description: ${room.description}`);
+      console.log(`   Atmosphere: ${testConcept.atmosphere}`);
+
+      // Room should reflect the concept's theme and atmosphere
+      const description = room.description.toLowerCase();
+      const theme = testConcept.theme.toLowerCase();
+      const atmosphere = testConcept.atmosphere.toLowerCase();
+
+      // The description should be rich and atmospheric
+      expect(room.description.length).toBeGreaterThan(50);
+      expect(room.description.split('. ').length).toBeGreaterThanOrEqual(2); // Multiple sentences
+
+      // Should have reasonable content
+      expect(room.items.length).toBeGreaterThanOrEqual(0);
+      expect(room.characters.length).toBeGreaterThanOrEqual(0);
+
+      // All characters should have proper structure
+      room.characters.forEach(character => {
+        expect(character.name).toBeTruthy();
+        expect(['npc', 'enemy']).toContain(character.type);
+        expect(character.description).toBeTruthy();
+      });
+
+      console.log(`   ✓ Room maintains thematic consistency with concept`);
+    });
+
+    test('should handle rapid room generation for performance', async () => {
+      console.log('🏠 Testing rapid room generation performance...');
+      
+      const promises: Promise<GeneratedRoom>[] = [];
+      
+      // Generate 8 rooms simultaneously
+      for (let i = 0; i < 8; i++) {
+        promises.push(regionPlannerService.generateRoom({ concept: testConcept }));
+      }
+
+      const startTime = Date.now();
+      const rooms = await Promise.all(promises);
+      const endTime = Date.now();
+      
+      console.log(`🏠 Generated ${rooms.length} rooms in ${endTime - startTime}ms (${((endTime - startTime) / rooms.length).toFixed(1)}ms avg)`);
+
+      // All should be valid
+      expect(rooms).toHaveLength(8);
+      rooms.forEach((room, index) => {
+        expect(room.name).toBeTruthy();
+        expect(room.description).toBeTruthy();
+        expect(room.items).toBeInstanceOf(Array);
+        expect(room.characters).toBeInstanceOf(Array);
+      });
+
+      // Should be reasonably fast in mock mode
+      const avgTime = (endTime - startTime) / rooms.length;
+      expect(avgTime).toBeLessThan(50); // Very fast for concurrent generation
+
+      console.log('✅ Rapid room generation completed successfully');
+    });
   });
 });

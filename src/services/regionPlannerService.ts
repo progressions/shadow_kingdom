@@ -57,7 +57,9 @@ export class RegionPlannerService {
       if (this.options.enableDebugLogging) {
         console.log('🏠 Generating room with context:', {
           region: context.concept.name,
-          role: context.role,
+          includeKey: context.includeKey,
+          includeGuardian: context.includeGuardian,
+          includeLockedExit: context.includeLockedExit,
           adjacentRooms: context.adjacentRooms?.length || 0
         });
       }
@@ -65,7 +67,7 @@ export class RegionPlannerService {
       const room = await this.grokClient.generateRegionRoom(context);
       
       if (this.options.enableDebugLogging) {
-        console.log('🏠 Generated room:', room.name, `(${context.role})`);
+        console.log('🏠 Generated room:', room.name);
       }
 
       return room;
