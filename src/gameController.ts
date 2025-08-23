@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { InkTUIBridge } from './ui/InkTUIBridge';
+import { ConsoleTUI } from './ui/ConsoleTUI';
 import { TUIInterface } from './ui/TUIInterface';
 import { GameState as TUIGameState } from './ui/StatusManager';
 import { MessageType } from './ui/MessageFormatter';
@@ -94,9 +95,13 @@ export class GameController {
     // In test environment or command mode, create a mock TUI to avoid blessed.js TTY requirements
     if (tui) {
       this.tui = tui;
-    } else if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID || command) {
-      // Create a minimal mock TUI for tests or command mode
+    } else if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+      // Create a minimal mock TUI for tests
       this.tui = this.createMockTUI();
+    } else if (command) {
+      // Use ConsoleTUI for command mode to output to console
+      // Logger service will be set after initialization
+      this.tui = new ConsoleTUI();
     } else {
       this.tui = new InkTUIBridge(undefined, this.historyManager);
     }
@@ -1337,10 +1342,13 @@ export class GameController {
         this.tui.clear();
         this.tui.showWelcome('Welcome back to Shadow Kingdom!');
         this.tui.display('Your character died in the last game, so this is a brand new game.');
-        this.tui.display('Press any key to continue...');
         
-        // Wait for any key press
-        await this.waitForAnyKey();
+        // Only wait for input in interactive mode
+        if (!this.commandToExecute) {
+          this.tui.display('Press any key to continue...');
+          // Wait for any key press
+          await this.waitForAnyKey();
+        }
         
         // Create new game
         await this.createNewGameForDeadPlayer(game.id);
@@ -1398,7 +1406,7 @@ export class GameController {
     this.examineService = services.examineService;
     this.loggerService = services.loggerService;
     
-    // Set logger service on TUI if it's an InkTUIBridge
+    // Set logger service on TUI if it supports it (InkTUIBridge or ConsoleTUI)
     if (this.tui && typeof (this.tui as any).setLoggerService === 'function') {
       (this.tui as any).setLoggerService(this.loggerService);
     }
@@ -1458,6 +1466,7 @@ export class GameController {
       // Log the command being executed
       this.tui.display(`> ${this.commandToExecute}`);
       await this.processCommand(this.commandToExecute);
+      
       await this.cleanup();
       this.tui.destroy();
       process.exit(0);
@@ -1921,6 +1930,23 @@ export class GameController {
         return;
       }
 
+      // Check if hostile characters are blocking the Vault Key
+      if (targetItem.item.name === 'Vault Key') {
+        const hostileCharacters = await this.characterService.getHostileCharacters(currentRoom.id);
+        if (hostileCharacters.length > 0) {
+          // Find the Stone Sentinel specifically
+          const stoneSentinel = hostileCharacters.find(c => c.name === 'Stone Sentinel');
+          if (stoneSentinel) {
+            this.tui.display('The Stone Sentinel blocks your path to the key!', MessageType.ERROR);
+            this.tui.display('You must defeat it first.', MessageType.SYSTEM);
+          } else {
+            this.tui.display('Hostile creatures block your path to the key!', MessageType.ERROR);
+            this.tui.display('You must defeat them first.', MessageType.SYSTEM);
+          }
+          return;
+        }
+      }
+
       const characterId = await this.getCurrentCharacterId();
 
       // Check if character can add another item to inventory
@@ -1984,10 +2010,34 @@ export class GameController {
       }
 
       // Filter out fixed items
-      const pickupableItems = roomItems.filter((item: any) => !item.item.is_fixed);
+      let pickupableItems = roomItems.filter((item: any) => !item.item.is_fixed);
+      
+      // Check if hostile characters are blocking the Vault Key
+      const hostileCharacters = await this.characterService.getHostileCharacters(currentRoom.id);
+      if (hostileCharacters.length > 0) {
+        // Filter out Vault Key if hostile characters are present
+        const vaultKeyInRoom = pickupableItems.find((item: any) => item.item.name === 'Vault Key');
+        if (vaultKeyInRoom) {
+          pickupableItems = pickupableItems.filter((item: any) => item.item.name !== 'Vault Key');
+          // We'll report this after checking if there are other items
+        }
+      }
       
       if (pickupableItems.length === 0) {
-        this.tui.display('There are no items here that can be picked up.', MessageType.ERROR);
+        // Check if the only item was the blocked Vault Key
+        const vaultKeyInRoom = roomItems.find((item: any) => item.item.name === 'Vault Key' && !item.item.is_fixed);
+        if (vaultKeyInRoom && hostileCharacters.length > 0) {
+          const stoneSentinel = hostileCharacters.find(c => c.name === 'Stone Sentinel');
+          if (stoneSentinel) {
+            this.tui.display('The Stone Sentinel blocks your path to the Vault Key!', MessageType.ERROR);
+            this.tui.display('You must defeat it first.', MessageType.SYSTEM);
+          } else {
+            this.tui.display('Hostile creatures block your path to the key!', MessageType.ERROR);
+            this.tui.display('You must defeat them first.', MessageType.SYSTEM);
+          }
+        } else {
+          this.tui.display('There are no items here that can be picked up.', MessageType.ERROR);
+        }
         return;
       }
 

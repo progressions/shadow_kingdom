@@ -86,12 +86,37 @@ export class MockTUI implements TUIInterface {
     }
   }
 
-  showAIProgress(message: string, detail?: string): void {
-    this.display(`AI: ${message}${detail ? ` (${detail})` : ''}`, MessageType.AI_GENERATION);
+  displayRoom(roomName: string, description: string, exits: string[]): void {
+    this.display('', MessageType.NORMAL);
+    this.display(roomName, MessageType.ROOM_TITLE);
+    this.display('═'.repeat(roomName.length), MessageType.NORMAL);
+    this.display(description, MessageType.ROOM_DESCRIPTION);
+    this.display('', MessageType.NORMAL);
+    if (exits.length > 0) {
+      this.display(`Exits: ${exits.join(', ')}`, MessageType.EXITS);
+    } else {
+      this.display('No exits visible.', MessageType.EXITS);
+    }
+    this.display('', MessageType.NORMAL);
+  }
+
+  showError(message: string, details?: string): void {
+    this.display(`Error: ${message}`, MessageType.ERROR);
+    if (details) {
+      this.display(`Details: ${details}`, MessageType.ERROR);
+    }
+  }
+
+  showAIProgress(action: string, target: string, elapsed?: number): void {
+    this.display(`AI: ${action} ${target}${elapsed ? ` (${elapsed}ms)` : ''}`, MessageType.AI_GENERATION);
   }
 
   // Test helper methods
-  getMessages(): Array<{ message: string; type: MessageType }> {
+  getMessages(): string[] {
+    return this.messages.map(m => m.message);
+  }
+
+  getFullMessages(): Array<{ message: string; type: MessageType }> {
     return [...this.messages];
   }
 
