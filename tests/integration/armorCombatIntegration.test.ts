@@ -170,15 +170,15 @@ describe('Armor Combat Integration', () => {
       await itemService.transferItemToInventory(enemyId, armorId, playerRoomId, 1);
       await equipmentService.equipItem(enemyId, armorId);
 
-      // Attack the armored enemy (base damage 2, armor reduces by 3, minimum 1)
+      // Attack the armored enemy (base damage 2, armor reduces by 3, result is 0)
       await (controller as any).processCommand('attack Armored Orc');
 
-      // Check that damage was reduced to minimum 1 (2 base - 3 armor = -1, clamped to 1)
-      expect((controller as any).lastDisplayMessage).toContain('You attack the Armored Orc. The Armored Orc takes 1 damage.');
+      // Check that damage was completely negated by armor (2 base - 3 armor = 0)
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Armored Orc. The Armored Orc takes 0 damage.');
 
-      // Check enemy health reduced by 1
+      // Check enemy health unchanged due to armor protection
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
-      expect(enemy?.current_health).toBe(9); // 10 - 1 = 9
+      expect(enemy?.current_health).toBe(10); // No damage taken
 
       // Restore Math.random
       (Math.random as jest.Mock).mockRestore();
@@ -337,14 +337,14 @@ describe('Armor Combat Integration', () => {
       await equipmentService.equipItem(enemyId, bodyArmorId);
       await equipmentService.equipItem(enemyId, bootsId);
 
-      // Attack: 2 base damage - 7 total armor (2+4+1) = minimum 1 damage
+      // Attack: 2 base damage - 7 total armor (2+4+1) = 0 damage (completely blocked)
       await (controller as any).processCommand('attack Fully Armored Warrior');
 
-      expect((controller as any).lastDisplayMessage).toContain('You attack the Fully Armored Warrior. The Fully Armored Warrior takes 1 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Fully Armored Warrior. The Fully Armored Warrior takes 0 damage.');
 
-      // Check enemy health
+      // Check enemy health unchanged due to armor protection
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
-      expect(enemy?.current_health).toBe(14); // 15 - 1 = 14
+      expect(enemy?.current_health).toBe(15); // No damage taken
 
       // Restore Math.random
       (Math.random as jest.Mock).mockRestore();
@@ -442,7 +442,7 @@ describe('Armor Combat Integration', () => {
       (Math.random as jest.Mock).mockRestore();
     });
 
-    test('heavy armor should prolong survival by reducing damage to minimum', async () => {
+    test('heavy armor should completely negate weak attacks', async () => {
       // Mock random to always hit
       jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
@@ -476,29 +476,25 @@ describe('Armor Combat Integration', () => {
       await itemService.transferItemToInventory(enemyId, heavyArmorId, playerRoomId, 1);
       await equipmentService.equipItem(enemyId, heavyArmorId);
 
-      // First attack: 2 base - 10 armor = minimum 1 damage
+      // First attack: 2 base - 10 armor = 0 damage (completely blocked)
       await (controller as any).processCommand('attack Tank Warrior');
-      expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 1 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 0 damage.');
 
-      // Check health: 5 - 1 = 4
+      // Check health: 5 - 0 = 5 (no damage taken)
       let enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
-      expect(enemy?.current_health).toBe(4);
+      expect(enemy?.current_health).toBe(5);
       expect(enemy?.is_dead).toBeFalsy();
 
-      // Attack 4 more times to kill
-      for (let i = 0; i < 3; i++) {
+      // Attack several more times - should all do 0 damage due to heavy armor
+      for (let i = 0; i < 5; i++) {
         await (controller as any).processCommand('attack Tank Warrior');
-        expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 1 damage.');
+        expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 0 damage.');
       }
 
-      // Final attack should kill
-      await (controller as any).processCommand('attack Tank Warrior');
-      expect((controller as any).lastDisplayMessage).toContain('The Tank Warrior dies from your attack!');
-
-      // Check enemy is dead
+      // Enemy should still be alive and at full health due to armor protection
       enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
-      expect(enemy?.is_dead).toBeTruthy();
-      expect(enemy?.current_health).toBe(0);
+      expect(enemy?.is_dead).toBeFalsy();
+      expect(enemy?.current_health).toBe(5); // No damage taken through any attacks
 
       // Restore Math.random
       (Math.random as jest.Mock).mockRestore();

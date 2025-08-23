@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import * as dotenv from 'dotenv';
 import { MockAIEngine } from './mockAIEngine';
 import { LoggerService } from '../services/loggerService';
+import { RegionConcept } from '../types/regionConcept';
 
 dotenv.config();
 
@@ -191,6 +192,12 @@ export interface GeneratedRegion {
   name: string;
   type: string;
   description: string;
+}
+
+export interface RegionConceptGenerationContext {
+  gameId?: number;
+  existingConcepts?: string[];
+  stylePreference?: 'fantasy' | 'horror' | 'mystery' | 'adventure';
 }
 
 interface GrokAPIResponse {
@@ -519,6 +526,87 @@ Respond in JSON format:
           sentimentContext: 'indifferent',
           suggestedPlayerActions: ['state_business', 'apologize', 'offer_payment']
         };
+    }
+  }
+
+  /**
+   * Generate a comprehensive region concept for region-based world generation
+   */
+  async generateRegionConcept(context: RegionConceptGenerationContext = {}): Promise<RegionConcept> {
+    if (this.config.mockMode) {
+      return this.mockGenerateRegionConcept(context);
+    }
+
+    let prompt = `You are creating a comprehensive region concept for Shadow Kingdom's region-based world generation system.
+
+Generate a complete region concept that includes:
+- A thematic foundation (name, theme, atmosphere, history)
+- A guardian character that must be defeated
+- A key item that the guardian guards
+- A locked exit that requires the key to access
+- Suggested thematic elements for room generation
+
+${context.existingConcepts && context.existingConcepts.length > 0 ? 
+  `EXISTING REGION CONCEPTS: ${context.existingConcepts.join(', ')}.
+  IMPORTANT: Create a unique concept that is thematically DIFFERENT from all existing ones.` : ''}
+
+THEME EXAMPLES (be creative, combine ideas):
+- Crystal Caverns: Ancient mines overtaken by magical crystal growth
+- Haunted Library: Vast knowledge repository with spectral guardians
+- Volcanic Forges: Underground smithy powered by volcanic heat
+- Floating Gardens: Sky-bound botanical paradise with wind spirits
+- Sunken Temple: Underwater sacred complex with aquatic guardians
+- Clockwork Factory: Mechanical wonderland with steam-powered guardians
+- Shadow Bazaar: Twilight marketplace with phantom merchants
+- Living Tree City: Massive tree complex with nature spirits
+
+REQUIREMENTS:
+- Create original, evocative names for all elements
+- Guardian must thematically fit the region and guard the key
+- Key must be specifically designed to unlock the locked exit
+- All elements should feel cohesive and interconnected
+- Include 4-6 suggested elements for room generation
+
+Respond in JSON format:
+{
+  "name": "Evocative Region Name",
+  "theme": "Brief thematic description of the region's core concept",
+  "atmosphere": "Atmospheric details - lighting, sounds, feelings, mood",
+  "history": "Background story explaining how this region came to be",
+  "guardian": {
+    "name": "Guardian Name",
+    "description": "Physical appearance and demeanor of the guardian",
+    "personality": "How the guardian behaves and speaks"
+  },
+  "key": {
+    "name": "Key Name", 
+    "description": "Detailed description of the key item"
+  },
+  "lockedExit": {
+    "name": "Exit Name",
+    "description": "Description of the locked barrier/door/gate"
+  },
+  "suggestedElements": [
+    "element1", "element2", "element3", "element4", "element5", "element6"
+  ]
+}`;
+
+    try {
+      const response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🤖 Raw Grok API response for region concept generation:', response);
+      }
+      const result = JSON.parse(response);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🏰 Parsed region concept result:', JSON.stringify(result, null, 2));
+      }
+      return result as RegionConcept;
+    } catch (error) {
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating region concept:', error);
+      }
+      // Return fallback region concept
+      return this.getFallbackRegionConcept(context);
     }
   }
 
@@ -981,6 +1069,104 @@ ITEM GUIDELINES:
     ];
 
     return responses[Math.floor(Math.random() * responses.length)];
+  }
+
+  private mockGenerateRegionConcept(context: RegionConceptGenerationContext): RegionConcept {
+    const mockConcepts: RegionConcept[] = [
+      {
+        name: "The Crystal Caverns",
+        theme: "Ancient crystal mines overtaken by magical growth",
+        atmosphere: "Ethereal glow, echoing chambers, crystalline formations",
+        history: "Former mining operation transformed by magical crystal infection",
+        guardian: {
+          name: "The Crystal Warden",
+          description: "A former mine foreman transformed into living crystal",
+          personality: "Protective of crystals, speaks in resonant echoes"
+        },
+        key: {
+          name: "Prism Key",
+          description: "A key carved from pure rainbow crystal"
+        },
+        lockedExit: {
+          name: "The Resonance Gate",
+          description: "A barrier of harmonizing crystal that requires the Prism Key"
+        },
+        suggestedElements: [
+          "mining equipment", "crystal formations", "underground lakes"
+        ]
+      },
+      {
+        name: "The Haunted Observatory",
+        theme: "Celestial watchtower corrupted by dark astronomy",
+        atmosphere: "Starlight filtered through cursed lenses, whispered prophecies",
+        history: "An ancient astronomy tower where scholars delved too deep into forbidden knowledge",
+        guardian: {
+          name: "The Star-Mad Astronomer",
+          description: "A ghostly figure with eyes that reflect distant galaxies",
+          personality: "Obsessed with cosmic patterns, speaks in astronomical riddles"
+        },
+        key: {
+          name: "Astrolabe of Binding",
+          description: "An intricate celestial instrument that opens star-locked doors"
+        },
+        lockedExit: {
+          name: "The Constellation Gate",
+          description: "A doorway sealed with shifting star patterns"
+        },
+        suggestedElements: [
+          "telescopes", "star charts", "mystical instruments", "floating orbs"
+        ]
+      },
+      {
+        name: "The Drowned Cathedral",
+        theme: "Sunken holy site with aquatic corruption",
+        atmosphere: "Filtered sunlight through water, hymns carried by currents",
+        history: "A great cathedral that sank beneath the waves during a divine curse",
+        guardian: {
+          name: "The Tide Priest",
+          description: "A barnacle-encrusted cleric wielding water and faith",
+          personality: "Speaks in tidal rhythms, devoted to oceanic divinity"
+        },
+        key: {
+          name: "Pearl of Absolution",
+          description: "A sacred pearl that parts blessed waters"
+        },
+        lockedExit: {
+          name: "The Sanctified Current",
+          description: "A wall of sacred water that flows only for the pure"
+        },
+        suggestedElements: [
+          "coral growths", "holy relics", "underwater chambers", "singing shells"
+        ]
+      }
+    ];
+
+    return mockConcepts[Math.floor(Math.random() * mockConcepts.length)];
+  }
+
+  private getFallbackRegionConcept(context: RegionConceptGenerationContext): RegionConcept {
+    return {
+      name: "The Mysterious Sanctum",
+      theme: "An enigmatic chamber of unknown purpose",
+      atmosphere: "Shadowed corners and ancient mysteries",
+      history: "A place lost to time, its original purpose forgotten",
+      guardian: {
+        name: "The Silent Sentinel",
+        description: "A motionless figure watching over forgotten secrets",
+        personality: "Speaks little, guards ancient duties"
+      },
+      key: {
+        name: "Key of Mysteries",
+        description: "An ornate key with symbols of unknown meaning"
+      },
+      lockedExit: {
+        name: "The Sealed Portal",
+        description: "A doorway locked by ancient magic"
+      },
+      suggestedElements: [
+        "ancient symbols", "mysterious artifacts", "shadowed corners"
+      ]
+    };
   }
 
   private mockGenerateRegion(context: RegionGenerationContext): GeneratedRegion {

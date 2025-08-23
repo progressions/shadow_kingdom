@@ -40,14 +40,14 @@ Successfully implemented armor damage reduction system using the `value` field f
 
 #### ✅ Core Features Implemented:
 1. **Armor Value System**: Armor items now use `value` field for armor points (e.g., Chain Mail `value: 2` = 2 armor points)
-2. **Armor Calculation**: `calculateArmorPoints()` method sums values of all equipped armor items
-3. **Damage Reduction**: `calculateDamageAfterArmor()` method applies armor reduction with minimum 1 damage
-4. **Combat Integration**: Enemy attacks now show detailed messages: "Enemy attacks doing 2 damage but your armor absorbs 1, you take 1 damage!"
+2. **Armor Calculation**: `calculateArmorPoints()` method sums values of all equipped armor items  
+3. **Damage Reduction**: `calculateDamageAfterArmor()` method applies armor reduction allowing complete damage negation
+4. **Combat Integration**: Enemy attacks now show detailed messages: "Enemy attacks doing 2 damage but your armor completely blocks it!" when armor >= damage
 
 #### ✅ System Integration:
 - **Equipment Service**: Extended with armor calculation methods
 - **Game Controller**: Updated attack system to apply armor reduction
-- **Seed Data**: Added Chain Mail (2 armor points) to starter rooms
+- **Seed Data**: Added Chain Mail (2 armor points) and Leather Boots (1 armor point) to starter rooms
 - **Character ID Fix**: Unified character ID system across all commands for consistency
 
 #### ✅ Quality Assurance:
@@ -72,7 +72,13 @@ async calculateDamageAfterArmor(characterId: number, incomingDamage: number): Pr
 ```typescript
 const finalDamage = await this.equipmentService.calculateDamageAfterArmor(playerCharacter.id, baseDamage);
 const armorPoints = await this.equipmentService.calculateArmorPoints(playerCharacter.id);
-const damageAbsorbed = baseDamage - finalDamage;
+// Armor can completely negate damage (finalDamage = Math.max(0, baseDamage - armorPoints))
 ```
+
+**Recent Updates (Latest):**
+- **No Minimum Damage Rule**: Removed arbitrary minimum 1 damage rule - strong armor can completely negate weak attacks
+- **Starting Equipment**: Added both Chain Mail (2 armor) and Leather Boots (1 armor) to Grand Entrance Hall for immediate protection
+- **Updated Tests**: All armor tests updated to reflect new damage negation behavior
+- **Combat Messages**: Improved messaging to clearly show when armor completely blocks attacks
 
 The armor damage reduction system is now fully operational and integrated with the game's combat mechanics.
