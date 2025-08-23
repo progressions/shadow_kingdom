@@ -1,4 +1,4 @@
-import { GeneratedRoom, GeneratedRegion, GeneratedNPC, GeneratedCharacter, RoomContext, RegionGenerationContext, NPCContext } from './grokClient';
+import { GeneratedRoom, GeneratedRegion, GeneratedNPC, GeneratedCharacter, RoomContext, RegionGenerationContext, NPCContext, CharacterWithSentimentContext, GeneratedCharacterWithSentiment } from './grokClient';
 
 // Enhanced mock content interfaces
 export interface MockRoom {
@@ -210,6 +210,85 @@ export class MockAIEngine {
     }
 
     return { name, description };
+  }
+
+  /**
+   * Generate character with appropriate sentiment based on context
+   */
+  async generateCharacterWithSentiment(prompt: string, context: CharacterWithSentimentContext): Promise<GeneratedCharacterWithSentiment> {
+    const { roomName, roomDescription, regionName, existingCharacters } = context;
+    
+    // Analyze context to determine appropriate sentiment
+    const isGuardedPlace = roomName.toLowerCase().includes('treasury') || 
+                          roomName.toLowerCase().includes('vault') || 
+                          roomName.toLowerCase().includes('fortress') ||
+                          regionName.toLowerCase().includes('fortress') ||
+                          regionName.toLowerCase().includes('dungeon');
+    
+    const isPeacefulPlace = roomName.toLowerCase().includes('village') || 
+                           roomName.toLowerCase().includes('market') || 
+                           roomName.toLowerCase().includes('peaceful') ||
+                           regionName.toLowerCase().includes('village') ||
+                           regionName.toLowerCase().includes('peaceful');
+    
+    const isNeutralPlace = roomName.toLowerCase().includes('outpost') || 
+                          roomName.toLowerCase().includes('crossing') ||
+                          roomName.toLowerCase().includes('guard') ||
+                          roomName.toLowerCase().includes('hall');
+    
+    const isSpecialPlace = roomName.toLowerCase().includes('prison') || 
+                          roomName.toLowerCase().includes('rescue') ||
+                          roomName.toLowerCase().includes('cell');
+
+    // Check for existing character conflicts
+    const hasFriendlyCharacters = existingCharacters.some((char: any) => 
+      char.sentiment === 'friendly' || char.sentiment === 'allied'
+    );
+
+    let sentiment: string;
+    let characterType: 'npc' | 'enemy';
+    let nameTemplate: string;
+    let reasoning: string;
+
+    if (isSpecialPlace) {
+      sentiment = 'allied';
+      characterType = 'npc';
+      nameTemplate = 'Grateful Prisoner';
+      reasoning = 'Rescued prisoners become allied due to gratitude';
+    } else if (isGuardedPlace && hasFriendlyCharacters) {
+      sentiment = 'hostile';
+      characterType = 'enemy';
+      nameTemplate = 'Rival Thief';
+      reasoning = 'Creating conflict with existing friendly characters';
+    } else if (isGuardedPlace) {
+      sentiment = 'aggressive';
+      characterType = 'enemy';
+      nameTemplate = 'Gruff Guardian';
+      reasoning = 'Guardian characters are typically aggressive toward intruders';
+    } else if (isPeacefulPlace) {
+      sentiment = 'friendly';
+      characterType = 'npc';
+      nameTemplate = 'Kind Merchant';
+      reasoning = 'Merchants in peaceful villages are typically friendly to potential customers';
+    } else if (isNeutralPlace) {
+      sentiment = 'indifferent';
+      characterType = 'npc';
+      nameTemplate = 'Stoic Guard';
+      reasoning = 'Guards at neutral outposts are typically indifferent to travelers';
+    } else {
+      sentiment = 'indifferent';
+      characterType = 'npc';
+      nameTemplate = 'Context Character';
+      reasoning = 'Default indifferent character for unspecified context';
+    }
+
+    return {
+      name: nameTemplate,
+      type: characterType,
+      sentiment: sentiment,
+      description: `A character created by AI with ${sentiment} disposition`,
+      contextReasoning: reasoning
+    };
   }
 
   /**

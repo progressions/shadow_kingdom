@@ -1,5 +1,5 @@
 import Database from '../utils/database';
-import { GrokClient, RegionGenerationContext, GeneratedCharacter } from '../ai/grokClient';
+import { GrokClient, RegionGenerationContext, GeneratedCharacter, CharacterWithSentimentContext, GeneratedCharacterWithSentiment } from '../ai/grokClient';
 import { Room, Connection, UnfilledConnection } from './gameStateManager';
 import { RegionService } from './regionService';
 import { Region } from '../types/region';
@@ -1014,6 +1014,102 @@ export class RoomGenerationService {
       return {
         name: 'Neutral Hall',
         description: 'A functional space with a business-like atmosphere, neither particularly welcoming nor threatening.'
+      };
+    }
+  }
+
+  /**
+   * Generate character with intelligent sentiment selection based on room and region context
+   */
+  async generateCharacterWithSentimentContext(
+    roomId: number, 
+    context: {
+      roomName: string;
+      roomDescription: string;
+      regionName: string;
+      existingCharacters: Array<{
+        name: string;
+        sentiment: string;
+        type: string;
+      }>;
+    }
+  ): Promise<GeneratedCharacterWithSentiment> {
+    try {
+      // Build comprehensive context prompt for character generation with sentiment selection
+      let prompt = 'Generate a character for a fantasy text adventure game with intelligent sentiment selection.\n\n';
+      
+      prompt += `CONTEXT:\n`;
+      prompt += `Room: ${context.roomName}\n`;
+      prompt += `Description: ${context.roomDescription}\n`;
+      prompt += `Region: ${context.regionName}\n\n`;
+      
+      if (context.existingCharacters.length > 0) {
+        prompt += 'Existing characters in this room:\n';
+        context.existingCharacters.forEach(char => {
+          prompt += `- ${char.name} (${char.type}, sentiment: ${char.sentiment})\n`;
+        });
+        prompt += '\n';
+      }
+      
+      prompt += 'CHARACTER SENTIMENT SYSTEM:\n';
+      prompt += 'Select appropriate initial sentiment based on context:\n';
+      prompt += '- hostile: -2 (enemies who attack on sight)\n';
+      prompt += '- aggressive: -1 (hostile but might talk first)\n';
+      prompt += '- indifferent: 0 (neutral, business-like)\n';
+      prompt += '- friendly: 1 (helpful, welcoming)\n';
+      prompt += '- allied: 2 (trusted companion, rare)\n\n';
+      
+      prompt += 'SELECTION GUIDELINES:\n';
+      prompt += 'Consider the room context:\n';
+      prompt += '- Treasury/Vault/Fortress: Usually aggressive/hostile guardians\n';
+      prompt += '- Village/Market/Peaceful: Usually friendly merchants/NPCs\n';
+      prompt += '- Outpost/Guard: Usually indifferent officials\n';
+      prompt += '- Prison/Rescue: Rare case for allied (grateful)\n';
+      prompt += '- Mixed existing sentiments: Consider creating interesting conflict/harmony\n\n';
+      
+      prompt += 'CHARACTER TYPES:\n';
+      prompt += '- npc: Non-player characters (merchants, guards, civilians)\n';
+      prompt += '- enemy: Hostile creatures that may engage in combat\n\n';
+      
+      prompt += 'Respond in JSON format:\n';
+      prompt += '{\n';
+      prompt += '  "name": "Character Name",\n';
+      prompt += '  "type": "npc" or "enemy",\n';
+      prompt += '  "sentiment": "hostile|aggressive|indifferent|friendly|allied",\n';
+      prompt += '  "description": "Brief character description",\n';
+      prompt += '  "contextReasoning": "Why this sentiment fits the context"\n';
+      prompt += '}';
+      
+      // Use the new AI method to generate character with sentiment
+      const result = await this.grokClient.generateCharacterWithSentiment(prompt, {
+        roomId,
+        roomName: context.roomName,
+        roomDescription: context.roomDescription,
+        regionName: context.regionName,
+        existingCharacters: context.existingCharacters
+      });
+      
+      if (this.isDebugEnabled()) {
+        console.log(`👤 Generated character with contextual sentiment: ${result.name} (${result.sentiment})`);
+        if (result.contextReasoning) {
+          console.log(`   Reasoning: ${result.contextReasoning}`);
+        }
+      }
+      
+      return result;
+      
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error generating character with sentiment context:', error);
+      }
+      
+      // Return fallback character
+      return {
+        name: 'Mysterious Stranger',
+        type: 'npc',
+        sentiment: 'indifferent',
+        description: 'A figure whose intentions remain unclear.',
+        contextReasoning: 'Fallback character due to generation failure'
       };
     }
   }

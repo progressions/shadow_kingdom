@@ -75,6 +75,26 @@ export interface GeneratedCharacter {
   isHostile?: boolean;             // @deprecated - use sentiment instead
 }
 
+export interface CharacterWithSentimentContext {
+  roomId: number;
+  roomName: string;
+  roomDescription: string;
+  regionName: string;
+  existingCharacters: Array<{
+    name: string;
+    sentiment: string;
+    type: string;
+  }>;
+}
+
+export interface GeneratedCharacterWithSentiment {
+  name: string;
+  description?: string;
+  type: 'npc' | 'enemy';
+  sentiment: string;
+  contextReasoning?: string;
+}
+
 export interface DialogueContext {
   npcName: string;
   npcPersonality: string;
@@ -358,6 +378,48 @@ Respond in JSON format:
       }
       return null;
     }
+  }
+
+  async generateCharacterWithSentiment(prompt: string, context: CharacterWithSentimentContext): Promise<GeneratedCharacterWithSentiment> {
+    if (this.config.mockMode) {
+      return await this.mockEngine.generateCharacterWithSentiment(prompt, context);
+    }
+
+    try {
+      const response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🤖 Raw Grok API response for character sentiment generation:', response);
+      }
+      const result = JSON.parse(response);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('👤 Parsed character sentiment result:', JSON.stringify(result, null, 2));
+      }
+      return result as GeneratedCharacterWithSentiment;
+    } catch (error) {
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating character with sentiment:', error);
+      }
+      // Return fallback character with indifferent sentiment
+      return {
+        name: this.getRandomFallbackCharacterName(),
+        type: 'npc',
+        sentiment: 'indifferent',
+        description: 'A mysterious figure whose intentions are unclear.',
+        contextReasoning: 'AI generation failed, using fallback character'
+      };
+    }
+  }
+
+  private getRandomFallbackCharacterName(): string {
+    const names = [
+      'Wandering Stranger',
+      'Mysterious Figure',
+      'Hooded Wanderer',
+      'Silent Observer',
+      'Unknown Traveler',
+      'Cloaked Figure'
+    ];
+    return names[Math.floor(Math.random() * names.length)];
   }
 
   async generateRegion(context: RegionGenerationContext): Promise<GeneratedRegion> {
