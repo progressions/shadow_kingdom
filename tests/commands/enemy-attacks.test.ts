@@ -159,7 +159,10 @@ describe('Enemy Attack System', () => {
   });
 
   describe('Basic Enemy Attack Mechanics', () => {
-    test('hostile enemies should attack player after each turn', async () => {
+    test('hostile enemies should attack player after each turn - all hit scenario', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Verify initial player health
       const initialHealth = await characterService.getCharacterHealth(playerId);
       expect(initialHealth?.current).toBe(15);
@@ -170,9 +173,34 @@ describe('Enemy Attack System', () => {
       // Verify player took damage from both hostile and aggressive enemies  
       const afterHealth = await characterService.getCharacterHealth(playerId);
       expect(afterHealth?.current).toBe(11); // 15 - 4 damage = 11 (hostile + aggressive)
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
+    });
+
+    test('hostile enemies should miss when attacks fail', async () => {
+      // Mock Math.random to always return 0.6 (miss)
+      jest.spyOn(Math, 'random').mockReturnValue(0.6);
+      
+      // Verify initial player health
+      const initialHealth = await characterService.getCharacterHealth(playerId);
+      expect(initialHealth?.current).toBe(15);
+
+      // Execute any player command (triggers enemy attacks)
+      await (controller as any).processCommand('look');
+
+      // Verify player took no damage due to misses
+      const afterHealth = await characterService.getCharacterHealth(playerId);
+      expect(afterHealth?.current).toBe(15); // No damage taken
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     test('multiple hostile enemies should each attack once per turn', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create another hostile enemy
       await db.run(`
         INSERT INTO characters (game_id, name, type, current_room_id, sentiment, max_health, current_health, is_dead) 
@@ -188,9 +216,15 @@ describe('Enemy Attack System', () => {
       // Should take 6 damage (2 hostile + 1 aggressive = 3 enemies × 2 damage each)
       const afterHealth = await characterService.getCharacterHealth(playerId);
       expect(afterHealth?.current).toBe(9); // 15 - 6 = 9
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     test('aggressive enemies should attack player', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Set hostile enemy to dead so only aggressive attacks
       await characterService.setCharacterDead(hostileEnemyId);
 
@@ -202,6 +236,9 @@ describe('Enemy Attack System', () => {
       // Should take 2 damage from aggressive enemy
       const afterHealth = await characterService.getCharacterHealth(playerId);
       expect(afterHealth?.current).toBe(13);
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     test('friendly and neutral characters should not attack', async () => {
@@ -220,6 +257,9 @@ describe('Enemy Attack System', () => {
     });
 
     test('dead enemies should not attack', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Kill the hostile enemy
       await characterService.setCharacterDead(hostileEnemyId);
 
@@ -231,11 +271,17 @@ describe('Enemy Attack System', () => {
       // Should only take 2 damage from aggressive enemy, not 4
       const afterHealth = await characterService.getCharacterHealth(playerId);
       expect(afterHealth?.current).toBe(13);
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 
   describe('Player Death Scenarios', () => {
     test('should handle player death when health reaches 0', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Set player to very low health
       await characterService.updateCharacterHealth(playerId, 2);
 
@@ -252,9 +298,15 @@ describe('Enemy Attack System', () => {
       // Verify player is marked as dead (SQLite stores boolean as 1)
       const player = await characterService.getCharacter(playerId);
       expect(player?.is_dead).toBeTruthy();
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     test('should handle player death when multiple enemies attack', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create another hostile enemy
       await db.run(`
         INSERT INTO characters (game_id, name, type, current_room_id, sentiment, max_health, current_health, is_dead) 
@@ -266,15 +318,21 @@ describe('Enemy Attack System', () => {
 
       await (controller as any).processCommand('look');
 
-      // Player should be dead (took 4+ damage from multiple enemies)
+      // Player should be dead (took 6 damage from 3 enemies: hostile + aggressive + third)
       const afterHealth = await characterService.getCharacterHealth(playerId);
       expect(afterHealth?.current).toBe(0);
 
       const player = await characterService.getCharacter(playerId);
       expect(player?.is_dead).toBeTruthy();
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     test('should not allow health to go below 0', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Set player to 1 health
       await characterService.updateCharacterHealth(playerId, 1);
 
@@ -283,11 +341,17 @@ describe('Enemy Attack System', () => {
       // Health should be exactly 0, not negative
       const afterHealth = await characterService.getCharacterHealth(playerId);
       expect(afterHealth?.current).toBe(0);
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 
   describe('Room-Based Attack Logic', () => {
     test('enemies only attack if in same room as player', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create another room
       const otherRoomResult = await db.run(`
         INSERT INTO rooms (game_id, name, description) 
@@ -306,6 +370,9 @@ describe('Enemy Attack System', () => {
       // Should only take 2 damage from aggressive enemy (hostile is in different room)
       const afterHealth = await characterService.getCharacterHealth(playerId);
       expect(afterHealth?.current).toBe(13);
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     test('no attacks when no enemies in current room', async () => {
@@ -371,6 +438,9 @@ describe('Enemy Attack System', () => {
     });
 
     test('enemy attacks should happen after all types of commands', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       const testCommands = ['look', 'inventory', 'examine bandit'];
       
       for (const command of testCommands) {
@@ -385,6 +455,9 @@ describe('Enemy Attack System', () => {
         const afterHealth = await characterService.getCharacterHealth(playerId);
         expect(afterHealth?.current).toBe(11); // Always loses 4 HP from hostile + aggressive enemies
       }
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 });

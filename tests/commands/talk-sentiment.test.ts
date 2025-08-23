@@ -47,6 +47,9 @@ describe('Talk Command Sentiment Integration - Phase 7', () => {
     const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
     playerRoomId = rooms[0].id;
 
+    // Mock Math.random to make enemy attacks always miss (don't interfere with talk tests)
+    jest.spyOn(Math, 'random').mockReturnValue(0.6); // > 0.5 = miss
+    
     // Create mock readline interface
     mockRl = {
       question: jest.fn(),
@@ -99,16 +102,17 @@ describe('Talk Command Sentiment Integration - Phase 7', () => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     outputSpy?.mockRestore();
+    jest.restoreAllMocks(); // Restore Math.random and other mocks
   });
 
   describe('Sentiment-Based Dialogue Responses', () => {
     it('should use hostile response for hostile characters', async () => {
-      // Create hostile character
+      // Create hostile character (NPC so it doesn't attack during talk tests)
       const characterId = await characterService.createCharacter({
         game_id: gameId,
         name: 'Angry Goblin',
         description: 'A hostile goblin',
-        type: CharacterType.ENEMY,
+        type: CharacterType.NPC,
         current_room_id: playerRoomId,
         sentiment: CharacterSentiment.HOSTILE
       });
@@ -128,7 +132,7 @@ describe('Talk Command Sentiment Integration - Phase 7', () => {
         game_id: gameId,
         name: 'Surly Bandit',
         description: 'An aggressive bandit',
-        type: CharacterType.ENEMY,
+        type: CharacterType.NPC,
         current_room_id: playerRoomId,
         sentiment: CharacterSentiment.AGGRESSIVE
       });

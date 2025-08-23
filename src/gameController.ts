@@ -632,7 +632,12 @@ export class GameController {
       if (this.gameStateManager.isInGame() && 
           !allowedDuringProcessing.includes(commandName) && 
           process.env.DISABLE_ENEMY_ATTACKS !== 'true') {
+        if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log(`Triggering enemy attacks after command: ${commandName}`);
+        }
         await this.processEnemyAttacks();
+      } else if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log(`Enemy attacks NOT triggered: inGame=${this.gameStateManager.isInGame()}, allowedDuringProcessing=${allowedDuringProcessing.includes(commandName)}, disabled=${process.env.DISABLE_ENEMY_ATTACKS}`);
       }
     } finally {
       // Reset command state (only if we set it)
@@ -648,38 +653,76 @@ export class GameController {
    * Process enemy attacks - enemies with hostile/aggressive sentiment attack the player
    */
   private async processEnemyAttacks(): Promise<void> {
+    if (process.env.AI_DEBUG_LOGGING === 'true') {
+      console.log('processEnemyAttacks called');
+    }
     try {
       const session = this.gameStateManager.getCurrentSession();
-      if (!session) return;
+      if (!session) {
+        if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log('No session found for enemy attacks');
+        }
+        return;
+      }
 
       const currentRoom = await this.gameStateManager.getCurrentRoom();
-      if (!currentRoom) return;
+      if (!currentRoom) {
+        if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log('No current room found for enemy attacks');
+        }
+        return;
+      }
+
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log(`Current room for enemy attacks: ${currentRoom.id}`);
+      }
 
       // Get player character
       const playerCharacter = await this.characterService.getPlayerCharacter(session.gameId!);
-      if (!playerCharacter || playerCharacter.is_dead) return;
+      if (!playerCharacter || playerCharacter.is_dead) {
+        if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log(`Player character issue: exists=${!!playerCharacter}, dead=${playerCharacter?.is_dead}`);
+        }
+        return;
+      }
 
-      // Find hostile/aggressive enemies in current room
+      // Find hostile/aggressive enemies in current room (not NPCs)
       const enemies = await this.db.all<Character>(`
         SELECT * FROM characters 
         WHERE current_room_id = ? 
         AND (sentiment = 'hostile' OR sentiment = 'aggressive')
-        AND (is_dead IS NULL OR is_dead = false)
-        AND type != 'player'
+        AND (is_dead IS NULL OR is_dead = 0)
+        AND type = 'enemy'
         ORDER BY name
       `, [currentRoom.id]);
 
-      if (enemies.length === 0) return;
+      if (enemies.length === 0) {
+        if (process.env.AI_DEBUG_LOGGING === 'true') {
+          console.log(`No enemies found for attack in room ${currentRoom.id}`);
+        }
+        return;
+      }
 
-      // Each enemy attacks for 2 damage
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log(`Found ${enemies.length} enemies to attack:`, enemies.map(e => `${e.name} (${e.sentiment})`));
+      }
+
+      // Each enemy attacks with 50% hit chance for 2 damage
       let totalDamage = 0;
       const attackMessages: string[] = [];
 
       for (const enemy of enemies) {
-        const damage = 2; // Hardcoded 2 damage per attack
-        totalDamage += damage;
+        // 50% hit chance
+        const hitChance = Math.random();
+        const doesHit = hitChance < 0.5;
         
-        attackMessages.push(`The ${enemy.name} attacks you for ${damage} damage!`);
+        if (!doesHit) {
+          attackMessages.push(`The ${enemy.name} attacks you, but misses!`);
+        } else {
+          const damage = 2; // Hardcoded 2 damage per attack
+          totalDamage += damage;
+          attackMessages.push(`The ${enemy.name} attacks you for ${damage} damage!`);
+        }
       }
 
       // Apply total damage to player
@@ -694,17 +737,20 @@ export class GameController {
         this.tui.display(message, MessageType.ERROR);
       }
 
-      // Handle player death
-      if (newHealth <= 0) {
-        await this.characterService.setCharacterDead(playerCharacter.id);
-        this.tui.display('', MessageType.NORMAL);
-        this.tui.display('💀 You have been slain! 💀', MessageType.ERROR);
-        this.tui.display('Your adventure ends here...', MessageType.ERROR);
-        this.tui.display('', MessageType.NORMAL);
-      } else {
-        // Show remaining health
-        const healthPercent = Math.round((newHealth / playerHealth.max) * 100);
-        this.tui.display(`💔 Your health: ${newHealth}/${playerHealth.max} (${healthPercent}%)`, MessageType.SYSTEM);
+      // Only show health updates if damage was actually taken
+      if (totalDamage > 0) {
+        // Handle player death
+        if (newHealth <= 0) {
+          await this.characterService.setCharacterDead(playerCharacter.id);
+          this.tui.display('', MessageType.NORMAL);
+          this.tui.display('💀 You have been slain! 💀', MessageType.ERROR);
+          this.tui.display('Your adventure ends here...', MessageType.ERROR);
+          this.tui.display('', MessageType.NORMAL);
+        } else {
+          // Show remaining health
+          const healthPercent = Math.round((newHealth / playerHealth.max) * 100);
+          this.tui.display(`💔 Your health: ${newHealth}/${playerHealth.max} (${healthPercent}%)`, MessageType.SYSTEM);
+        }
       }
 
     } catch (error) {
@@ -717,6 +763,40 @@ export class GameController {
     this.tui.showWelcome('Welcome to Shadow Kingdom!');
     this.tui.display('A dynamic, AI-powered text adventure.');
     this.tui.display('Type "help" for commands or "new" to start a new adventure.');
+  }
+
+  /**
+   * Wait for any key press from user
+   */
+  private async waitForAnyKey(): Promise<void> {
+    await this.tui.getInput();
+  }
+
+  /**
+   * Create a new game for a dead player character
+   */
+  private async createNewGameForDeadPlayer(oldGameId: number): Promise<void> {
+    try {
+      this.tui.clear();
+      this.tui.display('Creating new adventure...', MessageType.SYSTEM);
+
+      // Create a new game with unique timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const newGameName = `New Adventure ${timestamp}`;
+      const result = await this.gameManagementService.createGameWithName(newGameName);
+      
+      if (!result.success || !result.game) {
+        throw new Error(`Failed to create new game: ${result.error}`);
+      }
+      
+      const newGame = result.game;
+      if (newGame) {
+        await this.loadSelectedGame(newGame, false);
+      }
+    } catch (error) {
+      console.error('Error creating new game for dead player:', error);
+      this.tui.display('Error creating new game. Please try again.', MessageType.ERROR);
+    }
   }
 
   private showNLPStats() {
@@ -1117,6 +1197,23 @@ export class GameController {
     try {
       // Start game session using game state manager
       await this.gameStateManager.startGameSession(game.id);
+      
+      // Check if player character is dead
+      const playerCharacter = await this.characterService.getPlayerCharacter(game.id);
+      if (playerCharacter && (playerCharacter.is_dead || (playerCharacter.current_health !== null && playerCharacter.current_health <= 0))) {
+        // Player is dead - handle gracefully
+        this.tui.clear();
+        this.tui.showWelcome('Welcome back to Shadow Kingdom!');
+        this.tui.display('Your character died in the last game, so this is a brand new game.');
+        this.tui.display('Press any key to continue...');
+        
+        // Wait for any key press
+        await this.waitForAnyKey();
+        
+        // Create new game
+        await this.createNewGameForDeadPlayer(game.id);
+        return;
+      }
       
       this.tui.clear();
       this.tui.showWelcome('Welcome back to Shadow Kingdom!');
@@ -2289,6 +2386,15 @@ export class GameController {
       const healthStatus = await this.characterService.getCharacterHealth(character.id);
       if (!healthStatus) {
         this.tui.display('Error: Unable to get character health.', MessageType.ERROR);
+        return;
+      }
+      
+      // 50% hit chance
+      const hitChance = Math.random();
+      const doesHit = hitChance < 0.5;
+      
+      if (!doesHit) {
+        this.tui.display(`You attack the ${character.name}, but miss!`, MessageType.NORMAL);
         return;
       }
       
