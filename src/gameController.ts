@@ -450,6 +450,13 @@ export class GameController {
       handler: async (args) => await this.handleAttackCommand(args.join(' '))
     });
 
+    // Add "a" alias for attack command with auto-targeting
+    this.commandRouter.addCommand({
+      name: 'a',
+      description: 'Attack shortcut (auto-targets single hostile character)',
+      handler: async (args) => await this.handleAttackShortcutCommand(args)
+    });
+
     this.commandRouter.addCommand({
       name: 'give',
       description: 'Give an item to a character',
@@ -2538,6 +2545,44 @@ export class GameController {
     } catch (error) {
       console.error('Error attacking character:', error);
       this.tui.showError('Error attacking character', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Handle attack shortcut command - "a" with auto-targeting for hostile characters
+   */
+  private async handleAttackShortcutCommand(args: string[]): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    const currentRoom = await this.gameStateManager.getCurrentRoom();
+    if (!currentRoom) {
+      this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+      return;
+    }
+
+    if (args.length === 0) {
+      // Auto-targeting logic when no arguments provided
+      const hostileCharacters = await this.characterService.getHostileCharacters(currentRoom.id);
+      
+      if (hostileCharacters.length === 0) {
+        this.tui.display("There's nothing to attack here.", MessageType.ERROR);
+        return;
+      } else if (hostileCharacters.length === 1) {
+        // Auto-target the single hostile character
+        const targetName = hostileCharacters[0].name;
+        await this.handleAttackCommand(targetName);
+      } else {
+        // Multiple hostile characters - prompt for manual targeting
+        this.tui.display('Multiple targets available. Please specify: attack [character name]', MessageType.ERROR);
+        return;
+      }
+    } else {
+      // Manual targeting with specified arguments - behave like normal attack
+      const targetName = args.join(' ');
+      await this.handleAttackCommand(targetName);
     }
   }
 

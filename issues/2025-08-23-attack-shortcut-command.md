@@ -3,7 +3,7 @@
 ## Issue Details
 
 **Date**: 2025-08-23  
-**Status**: Open  
+**Status**: Completed  
 **Priority**: Medium  
 **Category**: Feature/Quality of Life
 
@@ -79,7 +79,25 @@ You attack the goblin for 2 damage!
 
 ## Resolution
 
-*To be filled when issue is resolved*
+**Implemented Successfully** - 2025-08-23
+
+### Implementation Summary:
+- ✅ Added "a" as command alias that auto-targets hostile characters
+- ✅ Auto-targeting logic: 0 targets = "nothing to attack", 1 target = auto-attack, 2+ targets = prompt for manual targeting
+- ✅ Manual targeting with "a [target]" works identically to "attack [target]"
+- ✅ Integrates with existing combat mechanics (damage, hit/miss, sentiment updates)
+- ✅ Only considers living hostile/aggressive characters for auto-targeting
+- ✅ Command appears in help with clear description
+
+### Files Modified:
+- `src/gameController.ts`: Added command registration and `handleAttackShortcutCommand` method
+- `tests/commands/attack-shortcut.test.ts`: 13 comprehensive unit tests
+- `tests/e2e/attack-shortcut.test.ts`: 10 end-to-end workflow tests
+
+### Test Results:
+- All 23 new tests pass
+- All existing 75 attack-related tests still pass
+- Feature is fully functional and ready for use
 
 ## Related
 
