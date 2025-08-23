@@ -11,6 +11,7 @@ import { MessageType } from './MessageFormatter';
 import { GameState } from './StatusManager';
 import { TUIInterface } from './TUIInterface';
 import { LoggerService } from '../services/loggerService';
+import { HistoryManager } from '../utils/historyManager';
 
 // Bridge state interface
 interface BridgeState {
@@ -24,7 +25,8 @@ const TUIApp: React.FC<{
   eventEmitter: EventEmitter;
   onInput: (input: string) => void;
   onKeyPress?: (key: string) => void;
-}> = ({ eventEmitter, onInput, onKeyPress }) => {
+  historyManager?: HistoryManager;
+}> = ({ eventEmitter, onInput, onKeyPress, historyManager }) => {
   const [state, setState] = useState<BridgeState>({
     messages: [],
     gameState: {},
@@ -49,7 +51,9 @@ const TUIApp: React.FC<{
     gameState: state.gameState,
     onInput,
     onKeyPress,
-    waiting: state.waiting
+    waiting: state.waiting,
+    historyManager,
+    eventEmitter
   });
 };
 
@@ -62,12 +66,14 @@ export class InkTUIBridge implements TUIInterface {
   private unmount?: () => void;
   private messageCounter: number = 0;
   private loggerService?: LoggerService;
+  private historyManager?: HistoryManager;
 
   // Configuration
   private readonly maxScrollback: number = 2000;
 
-  constructor(loggerService?: LoggerService) {
+  constructor(loggerService?: LoggerService, historyManager?: HistoryManager) {
     this.loggerService = loggerService;
+    this.historyManager = historyManager;
     this.eventEmitter = new EventEmitter();
     
     // Bind methods to preserve 'this' context
@@ -83,7 +89,8 @@ export class InkTUIBridge implements TUIInterface {
     const app = React.createElement(TUIApp, {
       eventEmitter: this.eventEmitter,
       onInput: this.handleInput,
-      onKeyPress: this.handleKeyPress
+      onKeyPress: this.handleKeyPress,
+      historyManager: this.historyManager
     });
 
     // Render the React component once
@@ -200,6 +207,13 @@ export class InkTUIBridge implements TUIInterface {
     if (this.unmount) {
       this.unmount();
     }
+  }
+
+  /**
+   * Refresh command history in the TUI
+   */
+  refreshHistory(): void {
+    this.eventEmitter.emit('refreshHistory');
   }
 
   /**

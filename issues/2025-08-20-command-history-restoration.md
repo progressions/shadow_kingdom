@@ -1,7 +1,7 @@
 # Command History Restoration
 
 **Date**: 2025-08-20  
-**Status**: Open  
+**Status**: Completed  
 **Priority**: Medium  
 **Category**: Feature  
 
@@ -269,6 +269,45 @@ const defaultHistoryConfig: CommandHistoryConfig = {
 - References: Previous blessed.js implementation (now removed)
 - Related Issues: TUI Migration (#24)
 
+## Resolution
+
+**Successfully Implemented** - 2025-08-23
+
+### Implementation Summary:
+- ✅ **Persistent History**: Commands are automatically saved to `~/.shadow_kingdom_history` file
+- ✅ **HistoryManager Class**: Handles file I/O, filtering, rotation, and error handling
+- ✅ **GameController Integration**: Commands are tracked during `processCommand()` execution  
+- ✅ **Ink TUI Navigation**: Arrow key navigation implemented in React components
+- ✅ **Smart Filtering**: Duplicate consecutive commands and empty commands are filtered out
+- ✅ **Size Management**: History is limited to configurable max size (default: 100 commands)
+- ✅ **Error Handling**: Graceful fallback for file permission and corruption issues
+- ✅ **Environment Configuration**: Customizable via `COMMAND_HISTORY_FILE` and `COMMAND_HISTORY_SIZE`
+
+### Technical Implementation:
+- **HistoryManager**: File-based persistent storage with async operations
+- **Arrow Key Support**: UP/DOWN navigation through command history in Ink TUI
+- **History Loading**: Previous commands loaded on game start and available for navigation
+- **Command Tracking**: All executed commands automatically saved (excluding empty/duplicate)
+- **Session Persistence**: History survives game restarts and maintains chronological order
+
+### Files Added/Modified:
+- `src/utils/historyManager.ts`: Core history management functionality ✨
+- `tests/historyManager.test.ts`: Comprehensive unit tests (20 tests) ✨  
+- `tests/integration/commandHistory.test.ts`: Integration tests (13 tests) ✨
+- `tests/e2e/commandHistoryNavigation.test.ts`: End-to-end tests (11 tests) ✨
+- `src/gameController.ts`: Added history saving to command processing
+- `src/ui/InkTUIBridge.ts`: Updated to pass HistoryManager to TUI components
+- `src/ui/InkTUIApp.tsx`: Implemented arrow key navigation in InputBar component
+
+### Test Results:
+- **44 new tests pass** (20 unit + 13 integration + 11 e2e)
+- **All existing tests still pass**
+- **Manual testing confirms**: Commands save to history file correctly
+- **Arrow key navigation**: Ready for interactive use
+
+### Usage:
+Players can now use UP/DOWN arrow keys to navigate through their command history during gameplay. History persists between sessions and is automatically managed with smart filtering and size limits.
+
 ## Notes
 
-This feature was previously implemented in the blessed.js version of the TUI and was a valued part of the user experience. The restoration should maintain similar behavior while taking advantage of the new Ink React architecture for better maintainability and extensibility.
+This feature was previously implemented in the blessed.js version of the TUI and was a valued part of the user experience. The restoration maintains similar behavior while taking advantage of the new Ink React architecture for better maintainability and extensibility.

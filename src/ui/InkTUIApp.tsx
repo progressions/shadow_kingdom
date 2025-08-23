@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import { MessageType } from './MessageFormatter';
 import { GameState } from './StatusManager';
+import { HistoryManager } from '../utils/historyManager';
+import { EventEmitter } from 'events';
 
 export interface Message {
   id: string;
@@ -16,6 +18,8 @@ export interface InkTUIAppProps {
   onInput: (input: string) => void;
   onKeyPress?: (key: string) => void;
   waiting?: boolean;
+  historyManager?: HistoryManager;
+  eventEmitter?: EventEmitter;
 }
 
 interface ContentAreaProps {
@@ -27,6 +31,8 @@ interface InputBarProps {
   onSubmit: (input: string) => void;
   waiting?: boolean;
   onKeyPress?: (key: string) => void;
+  historyManager?: HistoryManager;
+  eventEmitter?: EventEmitter;
 }
 
 interface StatusBarProps {
@@ -76,17 +82,97 @@ const ContentArea: React.FC<ContentAreaProps> = ({ messages, maxHeight }) => {
 };
 
 // Input bar component - manual input handling
-const InputBar: React.FC<InputBarProps> = ({ onSubmit, waiting = false, onKeyPress }) => {
+const InputBar: React.FC<InputBarProps> = ({ onSubmit, waiting = false, onKeyPress, historyManager, eventEmitter }) => {
   const [input, setInput] = useState('');
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [originalInput, setOriginalInput] = useState('');
+
+  // Function to refresh history from file
+  const refreshHistory = useCallback(async () => {
+    if (historyManager) {
+      const loadedHistory = await historyManager.loadHistory();
+      setHistory(loadedHistory);
+    }
+  }, [historyManager]);
+
+  // Load history on component mount and track unmount for cleanup
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadInitialHistory = async () => {
+      if (isMounted) {
+        await refreshHistory();
+      }
+    };
+    
+    loadInitialHistory();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshHistory]);
+
+  // Listen for refreshHistory events from the bridge
+  useEffect(() => {
+    if (!eventEmitter) return;
+
+    const handleRefreshHistory = async () => {
+      await refreshHistory();
+    };
+
+    eventEmitter.on('refreshHistory', handleRefreshHistory);
+
+    return () => {
+      eventEmitter.off('refreshHistory', handleRefreshHistory);
+    };
+  }, [eventEmitter, refreshHistory]);
 
   useInput((ch, key) => {
     if (waiting) return; // Don't handle input when processing commands
+    
+    if (key.upArrow && history.length > 0) {
+      // Navigate backwards through history (towards older commands)
+      if (historyIndex === -1) {
+        // Starting history navigation, save current input
+        setOriginalInput(input);
+        const newIndex = history.length - 1;
+        setHistoryIndex(newIndex);
+        setInput(history[newIndex] || '');
+      } else if (historyIndex > 0) {
+        // Go to previous command (older)
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setInput(history[newIndex] || '');
+      }
+      return;
+    }
+    
+    if (key.downArrow) {
+      // Navigate forwards through history (towards newer commands)
+      if (historyIndex > 0) {
+        // Go to next command (newer)
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setInput(history[newIndex] || '');
+      } else if (historyIndex === 0) {
+        // Return to original input
+        setHistoryIndex(-1);
+        setInput(originalInput);
+        setOriginalInput('');
+      }
+      return;
+    }
     
     if (key.return) {
       // Submit on Enter
       if (input.trim()) {
         onSubmit(input.trim());
         setInput('');
+        // Reset history navigation
+        setHistoryIndex(-1);
+        setOriginalInput('');
+        // History will be refreshed via event after command processing completes
       }
       return;
     }
@@ -94,6 +180,9 @@ const InputBar: React.FC<InputBarProps> = ({ onSubmit, waiting = false, onKeyPre
     if (key.backspace || key.delete) {
       // Handle backspace
       setInput(prev => prev.slice(0, -1));
+      // Reset history navigation when user starts editing
+      setHistoryIndex(-1);
+      setOriginalInput('');
       return;
     }
     
@@ -122,6 +211,9 @@ const InputBar: React.FC<InputBarProps> = ({ onSubmit, waiting = false, onKeyPre
     // Add regular characters
     if (ch && ch.length === 1 && !key.ctrl && !key.meta) {
       setInput(prev => prev + ch);
+      // Reset history navigation when user starts typing
+      setHistoryIndex(-1);
+      setOriginalInput('');
     }
   });
 
@@ -164,7 +256,9 @@ export const InkTUIApp: React.FC<InkTUIAppProps> = ({
   gameState, 
   onInput, 
   onKeyPress,
-  waiting = false 
+  waiting = false,
+  historyManager,
+  eventEmitter
 }) => {
   const { stdout } = useStdout();
   
@@ -183,7 +277,7 @@ export const InkTUIApp: React.FC<InkTUIAppProps> = ({
       <ContentArea messages={messages} maxHeight={contentHeight} />
       
       {/* Input Bar */}
-      <InputBar onSubmit={onInput} waiting={waiting} onKeyPress={onKeyPress} />
+      <InputBar onSubmit={onInput} waiting={waiting} onKeyPress={onKeyPress} historyManager={historyManager} eventEmitter={eventEmitter} />
       
       {/* Status Bar - at very bottom, below input */}
       <StatusBar gameState={gameState} />

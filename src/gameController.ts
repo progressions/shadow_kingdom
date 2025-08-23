@@ -98,7 +98,7 @@ export class GameController {
       // Create a minimal mock TUI for tests or command mode
       this.tui = this.createMockTUI();
     } else {
-      this.tui = new InkTUIBridge();
+      this.tui = new InkTUIBridge(undefined, this.historyManager);
     }
     
     // Initialize command router (after TUI is available)
@@ -626,6 +626,9 @@ export class GameController {
       // Add command to game state manager's history
       this.gameStateManager.addRecentCommand(input);
 
+      // Save command to persistent history
+      await this.historyManager.saveCommand(input);
+
       // Create execution context
       const executionContext: CommandExecutionContext = {
         gameContext: await this.gameStateManager.buildGameContext(),
@@ -652,6 +655,11 @@ export class GameController {
         this.commandState = {
           isProcessing: false
         };
+      }
+      
+      // Refresh history in TUI after command processing is complete
+      if (this.tui && 'refreshHistory' in this.tui && typeof this.tui.refreshHistory === 'function') {
+        this.tui.refreshHistory();
       }
     }
   }

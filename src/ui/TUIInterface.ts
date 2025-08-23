@@ -23,4 +23,7 @@ export interface TUIInterface {
   showError(message: string, details?: string): void;
   showAIProgress(action: string, target: string, elapsed?: number): void;
   displayRoom(roomName: string, description: string, exits: string[]): void;
+  
+  // History management
+  refreshHistory?(): void; // Optional method for TUI implementations that support history
 }
