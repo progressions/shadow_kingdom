@@ -95,6 +95,35 @@ export interface GeneratedCharacterWithSentiment {
   contextReasoning?: string;
 }
 
+export interface BehavioralDialogueContext {
+  characterId: number;
+  characterName: string;
+  sentiment: string;
+  playerCommand: string;
+  context: string;
+  conversationHistory?: Array<{
+    speaker: 'player' | 'character';
+    message: string;
+  }>;
+  recentActions?: string[];
+  roomContext?: {
+    name: string;
+    description: string;
+    type?: string;
+  };
+  sentimentChange?: string;
+}
+
+export interface GeneratedBehavioralDialogue {
+  response: string;
+  tone: string;
+  action?: string;
+  sentimentContext: string;
+  sentimentChange?: string;
+  locationModifier?: string;
+  suggestedPlayerActions?: string[];
+}
+
 export interface DialogueContext {
   npcName: string;
   npcPersonality: string;
@@ -420,6 +449,77 @@ Respond in JSON format:
       'Cloaked Figure'
     ];
     return names[Math.floor(Math.random() * names.length)];
+  }
+
+  async generateSentimentBasedDialogue(prompt: string, context: BehavioralDialogueContext): Promise<GeneratedBehavioralDialogue> {
+    if (this.config.mockMode) {
+      return await this.mockEngine.generateSentimentBasedDialogue(prompt, context);
+    }
+
+    try {
+      const response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🤖 Raw Grok API response for behavioral dialogue:', response);
+      }
+      const result = JSON.parse(response);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('💬 Parsed behavioral dialogue result:', JSON.stringify(result, null, 2));
+      }
+      return result as GeneratedBehavioralDialogue;
+    } catch (error) {
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating behavioral dialogue:', error);
+      }
+      // Return sentiment-appropriate fallback
+      return this.getFallbackBehavioralDialogue(context);
+    }
+  }
+
+  private getFallbackBehavioralDialogue(context: BehavioralDialogueContext): GeneratedBehavioralDialogue {
+    const sentiment = context.sentiment.toLowerCase();
+    
+    switch (sentiment) {
+      case 'hostile':
+        return {
+          response: "You dare approach me?! Draw your weapon or prepare to die!",
+          tone: 'threatening',
+          action: 'draws_weapon',
+          sentimentContext: 'hostile',
+          suggestedPlayerActions: ['retreat', 'defend', 'attack']
+        };
+      case 'aggressive':
+        return {
+          response: "State your business quickly. I don't trust strangers.",
+          tone: 'suspicious',
+          action: 'watches_warily', 
+          sentimentContext: 'aggressive',
+          suggestedPlayerActions: ['explain_purpose', 'show_credentials', 'back_away']
+        };
+      case 'friendly':
+        return {
+          response: "Welcome, friend! How can I help you today?",
+          tone: 'welcoming',
+          action: 'smiles_warmly',
+          sentimentContext: 'friendly',
+          suggestedPlayerActions: ['ask_for_help', 'trade_items', 'share_news']
+        };
+      case 'allied':
+        return {
+          response: "My trusted companion! What do you need from me?",
+          tone: 'devoted',
+          action: 'stands_ready',
+          sentimentContext: 'allied',
+          suggestedPlayerActions: ['request_aid', 'share_plans', 'ask_advice']
+        };
+      default: // indifferent
+        return {
+          response: "Yes? What do you need? I'm quite busy.",
+          tone: 'neutral',
+          action: 'continues_working',
+          sentimentContext: 'indifferent',
+          suggestedPlayerActions: ['state_business', 'apologize', 'offer_payment']
+        };
+    }
   }
 
   async generateRegion(context: RegionGenerationContext): Promise<GeneratedRegion> {

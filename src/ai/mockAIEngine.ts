@@ -1,4 +1,4 @@
-import { GeneratedRoom, GeneratedRegion, GeneratedNPC, GeneratedCharacter, RoomContext, RegionGenerationContext, NPCContext, CharacterWithSentimentContext, GeneratedCharacterWithSentiment } from './grokClient';
+import { GeneratedRoom, GeneratedRegion, GeneratedNPC, GeneratedCharacter, RoomContext, RegionGenerationContext, NPCContext, CharacterWithSentimentContext, GeneratedCharacterWithSentiment, BehavioralDialogueContext, GeneratedBehavioralDialogue } from './grokClient';
 
 // Enhanced mock content interfaces
 export interface MockRoom {
@@ -289,6 +289,123 @@ export class MockAIEngine {
       description: `A character created by AI with ${sentiment} disposition`,
       contextReasoning: reasoning
     };
+  }
+
+  /**
+   * Generate sentiment-based behavioral dialogue
+   */
+  async generateSentimentBasedDialogue(prompt: string, context: BehavioralDialogueContext): Promise<GeneratedBehavioralDialogue> {
+    const sentiment = context.sentiment.toLowerCase();
+    const playerCommand = context.playerCommand.toLowerCase();
+    const hasHistory = context.conversationHistory && context.conversationHistory.length > 0;
+    const isSpecialLocation = context.roomContext?.type === 'sacred' || 
+                             context.roomContext?.name.toLowerCase().includes('temple') ||
+                             context.roomContext?.name.toLowerCase().includes('sacred');
+    
+    // Adjust responses based on context
+    switch (sentiment) {
+      case 'hostile':
+        if (isSpecialLocation) {
+          return {
+            response: "Even in this sacred place, I'll gladly spill your blood if you don't leave!",
+            tone: 'threatening',
+            action: 'prepares_for_combat',
+            sentimentContext: 'hostile',
+            locationModifier: 'sacred_space',
+            suggestedPlayerActions: ['retreat', 'defend', 'attack']
+          };
+        }
+        return {
+          response: "You dare approach me?! Draw your weapon or flee, coward!",
+          tone: 'threatening',
+          action: 'prepares_for_combat',
+          sentimentContext: 'hostile',
+          suggestedPlayerActions: ['retreat', 'defend', 'attack']
+        };
+
+      case 'aggressive':
+        if (hasHistory) {
+          return {
+            response: "We've spoken before. What more do you want?",
+            tone: 'impatient',
+            action: 'watches_warily',
+            sentimentContext: 'aggressive',
+            suggestedPlayerActions: ['explain_purpose', 'back_away']
+          };
+        }
+        if (isSpecialLocation) {
+          return {
+            response: "In this sacred place, even I must speak softly. What brings you to this holy ground?",
+            tone: 'reverent',
+            action: 'speaks_quietly',
+            sentimentContext: 'aggressive',
+            locationModifier: 'sacred_space',
+            suggestedPlayerActions: ['explain_purpose', 'show_respect']
+          };
+        }
+        if (context.sentimentChange === 'recently_improved') {
+          return {
+            response: "You again? That gift you gave me... it was unexpected. Perhaps you're not so bad after all.",
+            tone: 'softening',
+            action: 'reconsiders_position',
+            sentimentContext: 'indifferent',
+            sentimentChange: 'recently_improved',
+            suggestedPlayerActions: ['continue_conversation', 'offer_more_help']
+          };
+        }
+        return {
+          response: "State your business quickly. I don't have time for idle chatter.",
+          tone: 'suspicious',
+          action: 'watches_warily',
+          sentimentContext: 'aggressive',
+          suggestedPlayerActions: ['explain_purpose', 'show_credentials', 'back_away']
+        };
+
+      case 'friendly':
+        if (playerCommand.includes('lost') || context.context.includes('lost')) {
+          return {
+            response: "You look lost, friend. Let me share what I know about these lands.",
+            tone: 'helpful',
+            action: 'offers_guidance',
+            sentimentContext: 'friendly',
+            suggestedPlayerActions: ['ask_for_directions', 'accept_help', 'trade_items']
+          };
+        }
+        return {
+          response: "Welcome, friend! How wonderful to see a new face. How can I help you today?",
+          tone: 'welcoming',
+          action: 'smiles_warmly',
+          sentimentContext: 'friendly',
+          suggestedPlayerActions: ['ask_for_help', 'trade_items', 'share_news']
+        };
+
+      case 'allied':
+        return {
+          response: "My trusted friend! I would follow you to the ends of the earth. What is our next move?",
+          tone: 'devoted',
+          action: 'stands_ready',
+          sentimentContext: 'allied',
+          suggestedPlayerActions: ['request_aid', 'share_plans', 'ask_advice']
+        };
+
+      default: // indifferent
+        if (playerCommand.includes('examine')) {
+          return {
+            response: "Yes? What do you need? I'm quite busy with these ledgers.",
+            tone: 'neutral',
+            action: 'continues_working',
+            sentimentContext: 'indifferent',
+            suggestedPlayerActions: ['state_business', 'apologize', 'offer_payment']
+          };
+        }
+        return {
+          response: "Yes? What do you need? I'm quite busy with these ledgers.",
+          tone: 'neutral',
+          action: 'continues_working',
+          sentimentContext: 'indifferent',
+          suggestedPlayerActions: ['state_business', 'apologize', 'offer_payment']
+        };
+    }
   }
 
   /**
