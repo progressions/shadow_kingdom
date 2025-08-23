@@ -123,7 +123,10 @@ describe('Attack Command', () => {
   });
 
   describe('Basic functionality', () => {
-    it('should attack a character by full name', async () => {
+    it('should attack a character by full name - hit scenario', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character in the room with health
       await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -133,11 +136,37 @@ describe('Attack Command', () => {
       // Execute attack command
       await (controller as any).processCommand('attack Goblin Warrior');
 
-      // Check output - should show damage but not kill
+      // Check output - should show damage
       expect((controller as any).lastDisplayMessage).toBe('You attack the Goblin Warrior. The Goblin Warrior takes 2 damage.');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
+    });
+
+    it('should attack a character by full name - miss scenario', async () => {
+      // Mock Math.random to always return 0.6 (miss)
+      jest.spyOn(Math, 'random').mockReturnValue(0.6);
+      
+      // Create a character in the room with health
+      await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [gameId, 'Goblin Warrior', 'enemy', playerRoomId, 0, 10, 10]
+      );
+
+      // Execute attack command
+      await (controller as any).processCommand('attack Goblin Warrior');
+
+      // Check output - should show miss
+      expect((controller as any).lastDisplayMessage).toBe('You attack the Goblin Warrior, but miss!');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should attack a character by partial name', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character in the room with health
       await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -149,9 +178,15 @@ describe('Attack Command', () => {
 
       // Check output - should show damage but not kill
       expect((controller as any).lastDisplayMessage).toBe('You attack the Crypt Keeper. The Crypt Keeper takes 2 damage.');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should be case-insensitive', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character in the room with health
       await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -163,9 +198,15 @@ describe('Attack Command', () => {
 
       // Check output - should show damage but not kill
       expect((controller as any).lastDisplayMessage).toBe('You attack the Giant Spider. The Giant Spider takes 2 damage.');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should work with NPCs', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create an NPC in the room with health
       await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -177,6 +218,9 @@ describe('Attack Command', () => {
 
       // Check output - should show damage but not kill
       expect((controller as any).lastDisplayMessage).toBe('You attack the Friendly Merchant. The Friendly Merchant takes 2 damage.');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 
@@ -219,6 +263,9 @@ describe('Attack Command', () => {
     });
 
     it('should handle multiple characters with partial match', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create multiple goblins with health
       await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -234,6 +281,9 @@ describe('Attack Command', () => {
 
       // Check output - should match first character found
       expect((controller as any).lastDisplayMessage).toBe('You attack the Goblin Warrior. The Goblin Warrior takes 2 damage.');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 
@@ -267,6 +317,9 @@ describe('Attack Command', () => {
     });
 
     it('should work with characters created by AI generation', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Simulate an AI-generated character with typical fields including health
       await db.run(
         `INSERT INTO characters (game_id, name, type, description, current_room_id, is_dead, sentiment, dialogue_response, max_health, current_health) 
@@ -279,9 +332,15 @@ describe('Attack Command', () => {
 
       // Check output - should show damage but not kill
       expect((controller as any).lastDisplayMessage).toBe('You attack the Ancient Guardian. The Ancient Guardian takes 2 damage.');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should work with hostile characters', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a hostile character with health
       await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, sentiment, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -293,11 +352,17 @@ describe('Attack Command', () => {
 
       // Check output - should show damage but not kill
       expect((controller as any).lastDisplayMessage).toBe('You attack the Hostile Bandit. The Hostile Bandit takes 2 damage.');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 
   describe('Character death state', () => {
     it('should reduce health and kill character when health reaches 0', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character in the room with low health (2 HP)
       const characterId = (await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -317,6 +382,9 @@ describe('Attack Command', () => {
       expect(character?.is_dead).toBeTruthy(); // SQLite stores boolean as 1
       expect(character?.current_health).toBe(0);
       expect((controller as any).lastDisplayMessage).toBe('The Test Enemy dies from your attack!');
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should not attack already dead characters', async () => {
@@ -334,6 +402,9 @@ describe('Attack Command', () => {
     });
 
     it('should allow attacking multiple different characters', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create multiple characters with low health
       const char1Id = (await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -364,11 +435,17 @@ describe('Attack Command', () => {
       char2 = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [char2Id]);
       expect(char2?.is_dead).toBeTruthy(); // SQLite stores boolean as 1
       expect(char2?.current_health).toBe(0);
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 
   describe('Damage system', () => {
-    it('should deal exactly 2 damage per attack', async () => {
+    it('should deal exactly 2 damage per attack when hit', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character with high health
       const characterId = (await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -392,9 +469,82 @@ describe('Attack Command', () => {
       character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
       expect(character?.current_health).toBe(16);
       expect(character?.is_dead).toBeFalsy();
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
+    });
+
+    it('should deal no damage when attack misses', async () => {
+      // Mock Math.random to always return 0.6 (miss)
+      jest.spyOn(Math, 'random').mockReturnValue(0.6);
+      
+      // Create a character with health
+      const characterId = (await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [gameId, 'Lucky Troll', 'enemy', playerRoomId, 0, 20, 20]
+      )).lastID as number;
+
+      // Execute attack (should miss)
+      await (controller as any).processCommand('attack Lucky Troll');
+      expect((controller as any).lastDisplayMessage).toBe('You attack the Lucky Troll, but miss!');
+
+      // Verify health unchanged
+      const character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.current_health).toBe(20);
+      expect(character?.is_dead).toBeFalsy();
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
+    });
+
+    it('should handle mixed hit and miss attacks correctly', async () => {
+      // Mock sequence: hit, miss, hit, miss
+      const randomValues = [0.4, 0.6, 0.3, 0.7];
+      let callCount = 0;
+      jest.spyOn(Math, 'random').mockImplementation(() => randomValues[callCount++]);
+      
+      // Create a character with health
+      const characterId = (await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [gameId, 'Test Target', 'enemy', playerRoomId, 0, 20, 20]
+      )).lastID as number;
+
+      // First attack (hit) - should reduce health from 20 to 18
+      await (controller as any).processCommand('attack Test Target');
+      expect((controller as any).lastDisplayMessage).toBe('You attack the Test Target. The Test Target takes 2 damage.');
+      
+      let character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.current_health).toBe(18);
+
+      // Second attack (miss) - health should remain 18
+      await (controller as any).processCommand('attack Test Target');
+      expect((controller as any).lastDisplayMessage).toBe('You attack the Test Target, but miss!');
+      
+      character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.current_health).toBe(18);
+
+      // Third attack (hit) - should reduce health from 18 to 16
+      await (controller as any).processCommand('attack Test Target');
+      expect((controller as any).lastDisplayMessage).toBe('You attack the Test Target. The Test Target takes 2 damage.');
+      
+      character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.current_health).toBe(16);
+
+      // Fourth attack (miss) - health should remain 16
+      await (controller as any).processCommand('attack Test Target');
+      expect((controller as any).lastDisplayMessage).toBe('You attack the Test Target, but miss!');
+      
+      character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.current_health).toBe(16);
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should kill character when health reaches exactly 0', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character with exactly 2 health
       const characterId = (await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -409,9 +559,15 @@ describe('Attack Command', () => {
       const character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
       expect(character?.current_health).toBe(0);
       expect(character?.is_dead).toBeTruthy();
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should kill character when health would go below 0', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character with 1 health
       const characterId = (await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -426,9 +582,15 @@ describe('Attack Command', () => {
       const character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
       expect(character?.current_health).toBe(0);
       expect(character?.is_dead).toBeTruthy();
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
 
     it('should show multiple attacks required for high health characters', async () => {
+      // Mock Math.random to always return 0.4 (hit)
+      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      
       // Create a character with 6 health (should take 3 attacks to kill)
       const characterId = (await db.run(
         'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -458,6 +620,9 @@ describe('Attack Command', () => {
       character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
       expect(character?.current_health).toBe(0);
       expect(character?.is_dead).toBeTruthy();
+      
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
     });
   });
 });

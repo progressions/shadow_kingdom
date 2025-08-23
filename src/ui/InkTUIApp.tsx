@@ -174,8 +174,8 @@ export const InkTUIApp: React.FC<InkTUIAppProps> = ({
   }, []);
   
   const terminalHeight = stdout?.rows || 24; // Default to 24 if unavailable
-  // Give content area nearly the full screen height, just leave 2 lines for status + input
-  const contentHeight = Math.max(20, terminalHeight - 2);
+  // Give content area nearly the full screen height, leave 5 lines for status + input + padding
+  const contentHeight = Math.max(20, terminalHeight - 5);
   
   return (
     <Box flexDirection="column" height="100%" width="100%">
