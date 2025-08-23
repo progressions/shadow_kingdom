@@ -243,6 +243,21 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       // Column already exists, ignore error
     }
 
+    // Migration: Convert is_hostile values to sentiment system (Phase 9)
+    try {
+      await db.run(`
+        UPDATE characters 
+        SET sentiment = CASE 
+          WHEN is_hostile = 1 THEN 'aggressive'
+          ELSE 'indifferent' 
+        END
+        WHERE sentiment IS NULL OR sentiment = 'indifferent'
+      `);
+    } catch (error) {
+      // Migration might fail if sentiment column doesn't exist yet, but that's okay
+      console.warn('Sentiment migration failed, likely due to missing column:', error);
+    }
+
     // Migration: Add generation_processed column to rooms if it doesn't exist (for legacy test compatibility)
     try {
       await db.run(`ALTER TABLE rooms ADD COLUMN generation_processed BOOLEAN DEFAULT FALSE`);
