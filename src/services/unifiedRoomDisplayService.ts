@@ -121,10 +121,7 @@ export class UnifiedRoomDisplayService {
             break;
         }
 
-        // Show legacy hostile indicator if conflicting with sentiment
-        if (character.is_hostile && !['hostile', 'aggressive'].includes(sentiment)) {
-          displayLine += ' ⚔️ (legacy hostile)';
-        }
+        // Legacy hostile indicator is no longer needed as is_hostile column has been removed
       }
       
       lines.push(displayLine);

@@ -258,6 +258,67 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       console.warn('Sentiment migration failed, likely due to missing column:', error);
     }
 
+    // Migration: Remove is_hostile column from characters table (Phase 10)
+    try {
+      // Check if the column exists before trying to drop it
+      const tableInfo = await db.all("PRAGMA table_info(characters)");
+      const hasIsHostile = tableInfo.some((col: any) => col.name === 'is_hostile');
+      
+      if (hasIsHostile) {
+        // SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
+        await db.run('BEGIN TRANSACTION');
+        
+        // Create new table without is_hostile column
+        await db.run(`
+          CREATE TABLE characters_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            game_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            type TEXT DEFAULT 'player',
+            current_room_id INTEGER,
+            strength INTEGER DEFAULT 10,
+            dexterity INTEGER DEFAULT 10,
+            intelligence INTEGER DEFAULT 10,
+            constitution INTEGER DEFAULT 10,
+            wisdom INTEGER DEFAULT 10,
+            charisma INTEGER DEFAULT 10,
+            max_health INTEGER,
+            current_health INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_dead BOOLEAN DEFAULT FALSE,
+            description TEXT,
+            dialogue_response TEXT,
+            sentiment TEXT DEFAULT 'indifferent',
+            FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+            FOREIGN KEY (current_room_id) REFERENCES rooms(id) ON DELETE SET NULL
+          )
+        `);
+        
+        // Copy data from old table to new table (excluding is_hostile)
+        await db.run(`
+          INSERT INTO characters_new (
+            id, game_id, name, type, current_room_id, strength, dexterity, intelligence,
+            constitution, wisdom, charisma, max_health, current_health, created_at,
+            is_dead, description, dialogue_response, sentiment
+          )
+          SELECT 
+            id, game_id, name, type, current_room_id, strength, dexterity, intelligence,
+            constitution, wisdom, charisma, max_health, current_health, created_at,
+            is_dead, description, dialogue_response, sentiment
+          FROM characters
+        `);
+        
+        // Drop old table and rename new table
+        await db.run('DROP TABLE characters');
+        await db.run('ALTER TABLE characters_new RENAME TO characters');
+        
+        await db.run('COMMIT');
+      }
+    } catch (error) {
+      await db.run('ROLLBACK');
+      console.warn('Phase 10 migration failed (is_hostile column removal):', error);
+    }
+
     // Migration: Add generation_processed column to rooms if it doesn't exist (for legacy test compatibility)
     try {
       await db.run(`ALTER TABLE rooms ADD COLUMN generation_processed BOOLEAN DEFAULT FALSE`);

@@ -43,7 +43,6 @@ export interface Character {
   current_health: number | null;
   is_dead?: boolean | null;  // Death state for action validation
   sentiment: CharacterSentiment; // New sentiment system
-  is_hostile?: boolean | null;  // @deprecated - use sentiment instead
   dialogue_response?: string | null;   // Custom dialogue response
   created_at: string;
 }
@@ -61,7 +60,6 @@ export interface CreateCharacterData {
   wisdom?: number;
   charisma?: number;
   sentiment?: CharacterSentiment; // New sentiment system
-  is_hostile?: boolean;        // @deprecated - use sentiment instead
   dialogue_response?: string;          // Custom dialogue response for new characters
 }
 

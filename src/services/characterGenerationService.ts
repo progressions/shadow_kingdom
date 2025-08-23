@@ -127,7 +127,6 @@ export class CharacterGenerationService {
       wisdom: character.attributes?.wisdom ?? 10,
       charisma: character.attributes?.charisma ?? 10,
       sentiment: sentiment, // New sentiment system
-      is_hostile: character.isHostile ?? (characterType === CharacterType.ENEMY), // Backward compatibility
       dialogue_response: character.initialDialogue
     });
 
