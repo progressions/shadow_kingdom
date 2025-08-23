@@ -52,7 +52,6 @@ describe('ItemService', () => {
       expect(columnNames).toContain('value');
       expect(columnNames).toContain('stackable');
       expect(columnNames).toContain('max_stack');
-      expect(columnNames).toContain('weapon_damage');
       expect(columnNames).toContain('armor_rating');
       expect(columnNames).toContain('created_at');
     });
@@ -170,7 +169,6 @@ describe('ItemService', () => {
         value: 50,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '1d6'
       };
 
       const itemId = await itemService.createItem(testItem);
@@ -264,7 +262,6 @@ describe('ItemService', () => {
         value: 100,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '2d6+2',
         armor_rating: 5
       };
 
@@ -272,7 +269,6 @@ describe('ItemService', () => {
       const retrievedItem = await itemService.getItem(itemId);
       
       expect(retrievedItem).toBeDefined();
-      expect(retrievedItem!.weapon_damage).toBe(testItem.weapon_damage);
       expect(retrievedItem!.armor_rating).toBe(testItem.armor_rating);
       expect(retrievedItem!.created_at).toBeDefined();
     });
@@ -292,7 +288,6 @@ describe('ItemService', () => {
       const retrievedItem = await itemService.getItem(itemId);
       
       expect(retrievedItem).toBeDefined();
-      expect(retrievedItem!.weapon_damage).toBeNull();
       expect([0, null]).toContain(retrievedItem!.armor_rating); // Default value or null
     });
   });
@@ -318,7 +313,6 @@ describe('ItemService', () => {
       const ironSword = items.find(item => item.name === 'Iron Sword');
       if (ironSword) {
         expect(ironSword.type).toBe(ItemType.WEAPON);
-        expect(ironSword.weapon_damage).toBe('1d8+1');
         expect(Boolean(ironSword.stackable)).toBe(false);
       }
 
@@ -614,7 +608,6 @@ describe('ItemService', () => {
         value: 150,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '2d6+3',
         armor_rating: 2
       });
 
@@ -630,7 +623,6 @@ describe('ItemService', () => {
       expect(retrievedItem.item.value).toBe(150);
       expect(Boolean(retrievedItem.item.stackable)).toBe(false);
       expect(retrievedItem.item.max_stack).toBe(1);
-      expect(retrievedItem.item.weapon_damage).toBe('2d6+3');
       expect(retrievedItem.item.armor_rating).toBe(2);
       expect(retrievedItem.item.created_at).toBeDefined();
     });
@@ -1030,7 +1022,6 @@ describe('ItemService', () => {
         value: 100,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '1d8+1'
       });
 
       // Create test character and room
@@ -1633,7 +1624,6 @@ describe('ItemService', () => {
         value: 150,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '1d8+1',
         armor_rating: 0
       });
 
@@ -1645,7 +1635,6 @@ describe('ItemService', () => {
         value: 50,
         stackable: true,
         max_stack: 10,
-        weapon_damage: undefined,
         armor_rating: 0
       });
     });
@@ -1662,7 +1651,6 @@ describe('ItemService', () => {
         expect(item!.value).toBe(150);
         expect(item!.stackable).toBe(false);
         expect(item!.max_stack).toBe(1);
-        expect(item!.weapon_damage).toBe('1d8+1');
         expect(item!.armor_rating).toBe(0);
       });
 
@@ -1701,7 +1689,6 @@ describe('ItemService', () => {
         
         expect(sword).toBeDefined();
         expect(sword!.item.name).toBe('Iron Sword');
-        expect(sword!.item.weapon_damage).toBe('1d8+1');
         
         expect(potion).toBeDefined();
         expect(potion!.item.name).toBe('Health Potion');
@@ -1799,7 +1786,6 @@ describe('ItemService', () => {
         const weapon = await itemService.getItem(ironSwordId);
         
         expect(weapon!.type).toBe(ItemType.WEAPON);
-        expect(weapon!.weapon_damage).toBe('1d8+1');
         expect(weapon!.armor_rating).toBe(0);
         expect(weapon!.stackable).toBe(false);
       });
@@ -1808,16 +1794,14 @@ describe('ItemService', () => {
         const consumable = await itemService.getItem(healthPotionId);
         
         expect(consumable!.type).toBe(ItemType.CONSUMABLE);
-        expect(consumable!.weapon_damage).toBeNull();
         expect(consumable!.armor_rating).toBe(0);
         expect(consumable!.stackable).toBe(true);
         expect(consumable!.max_stack).toBe(10);
       });
 
-      test('should handle items with null weapon_damage for examination', async () => {
+      test('should handle items for examination', async () => {
         const consumable = await itemService.getItem(healthPotionId);
         
-        expect(consumable!.weapon_damage).toBeNull();
         // Ensure this doesn't break the examination display
         expect(consumable!.name).toBe('Health Potion');
       });
@@ -1838,7 +1822,6 @@ describe('ItemService', () => {
         value: 100,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '1d8',
         armor_rating: 0,
         equipment_slot: EquipmentSlot.HAND
       });

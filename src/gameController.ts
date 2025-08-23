@@ -2398,8 +2398,11 @@ export class GameController {
         return;
       }
       
-      // Apply 2 points of damage
-      const damageAmount = 2;
+      // Calculate damage including weapon bonus
+      const session = this.gameStateManager.getCurrentSession();
+      const characterId = session.gameId!; // Use game ID as character ID for single-player
+      const baseDamage = 2;
+      const damageAmount = await this.equipmentService.calculateAttackDamage(characterId, baseDamage);
       const newHealth = Math.max(0, healthStatus.current - damageAmount);
       
       // Update character health

@@ -247,12 +247,10 @@ export class ExamineService {
     // Add detailed item information since it's in inventory
     description += `\n\nType: ${item.type}`;
     
-    if (item.value > 0) {
+    if (item.type === 'weapon' && item.value > 0) {
+      description += `\nDamage Bonus: +${item.value}`;
+    } else if (item.value > 0) {
       description += `\nEstimated Value: ${item.value} gold`;
-    }
-
-    if (item.weapon_damage) {
-      description += `\nDamage: ${item.weapon_damage}`;
     }
 
     if (item.armor_rating) {

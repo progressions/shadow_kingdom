@@ -110,7 +110,6 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         value INTEGER DEFAULT 0, -- in copper pieces
         stackable BOOLEAN DEFAULT FALSE,
         max_stack INTEGER DEFAULT 1,
-        weapon_damage TEXT, -- e.g., '1d6+1'
         armor_rating INTEGER DEFAULT 0,
         equipment_slot TEXT, -- hand, head, body, foot
         is_fixed BOOLEAN DEFAULT FALSE, -- true for scenery items that cannot be picked up

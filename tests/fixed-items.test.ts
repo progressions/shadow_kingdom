@@ -229,7 +229,6 @@ async function initializeTestSchema(db: Database): Promise<void> {
       value INTEGER NOT NULL,
       stackable BOOLEAN NOT NULL DEFAULT FALSE,
       max_stack INTEGER DEFAULT 1,
-      weapon_damage TEXT,
       armor_rating INTEGER,
       equipment_slot TEXT,
       is_fixed BOOLEAN DEFAULT FALSE,

@@ -52,7 +52,6 @@ describe('ExamineService', () => {
         value INTEGER DEFAULT 0,
         stackable BOOLEAN DEFAULT FALSE,
         max_stack INTEGER DEFAULT 1,
-        weapon_damage TEXT,
         armor_rating INTEGER DEFAULT 0,
         equipment_slot TEXT,
         is_fixed BOOLEAN DEFAULT FALSE,
@@ -240,7 +239,6 @@ describe('ExamineService', () => {
           value: 50,
           stackable: false,
           max_stack: 1,
-          weapon_damage: '1d8',
           equipment_slot: 'hand' as any,
           is_fixed: false,
           created_at: new Date().toISOString()

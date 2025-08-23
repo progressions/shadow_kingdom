@@ -29,7 +29,6 @@ export interface Item {
   value: number;
   stackable: boolean;
   max_stack: number;
-  weapon_damage?: string;
   armor_rating?: number;
   equipment_slot?: EquipmentSlot;
   is_fixed?: boolean;

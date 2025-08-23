@@ -4,6 +4,10 @@
  * This file contains seed data for the item system, providing a basic set of items
  * for testing and initial gameplay. These items are created during database
  * initialization if the items table is empty.
+ * 
+ * Note: The "value" field serves dual purposes:
+ * - For WEAPON items: Represents additional damage points added to attacks
+ * - For other items: Represents monetary value in copper pieces
  */
 
 import Database from './database';
@@ -21,10 +25,9 @@ const SEED_ITEMS: CreateItemData[] = [
     description: 'A sturdy iron sword with a well-balanced blade. The metal gleams with a dull silver sheen.',
     type: ItemType.WEAPON,
     weight: 2.5,
-    value: 100,
+    value: 1, // Adds 1 damage to attacks
     stackable: false,
     max_stack: 1,
-    weapon_damage: '1d8+1',
     equipment_slot: EquipmentSlot.HAND
   },
   {
@@ -79,10 +82,9 @@ const SEED_ITEMS: CreateItemData[] = [
     description: 'A simple wooden staff, worn smooth by many hands. It hums faintly with magical energy.',
     type: ItemType.WEAPON,
     weight: 1.5,
-    value: 50,
+    value: 0, // No additional damage (basic weapon)
     stackable: false,
     max_stack: 1,
-    weapon_damage: '1d6',
     equipment_slot: EquipmentSlot.HAND
   },
   {
@@ -158,10 +160,9 @@ const SEED_ITEMS: CreateItemData[] = [
     description: 'A wickedly sharp dagger with a blade coated in a greenish substance. The poison glistens ominously in the light.',
     type: ItemType.WEAPON,
     weight: 1.0,
-    value: 180,
+    value: 2, // Adds 2 damage due to poison
     stackable: false,
     max_stack: 1,
-    weapon_damage: '1d4+2',
     equipment_slot: EquipmentSlot.HAND
   },
   {
