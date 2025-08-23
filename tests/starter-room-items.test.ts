@@ -35,7 +35,7 @@ describe('Starter Room Item Placement', () => {
     const expectedRoomItems = {
       'Grand Entrance Hall': ['Iron Sword', 'Chain Mail', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'],
       'Scholar\'s Library': ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'],
-      'Moonlit Courtyard Garden': ['Health Potion', 'Bread', 'Mysterious Glowing Orb'],
+      'Moonlit Courtyard Garden': ['Health Potion', 'Bread', 'Mysterious Glowing Orb', 'Celestial Star Key'],
       'Winding Tower Stairs': ['Wooden Staff', 'Cursed Ruby Ring'],
       'Ancient Crypt Entrance': ['Iron Helmet', 'Gold Coins', 'Poisoned Dagger'],
       'Observatory Steps': ['Leather Boots', 'Leather Armor']
