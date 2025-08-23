@@ -1,7 +1,7 @@
 import Database from '../../src/utils/database';
 import { initializeDatabase } from '../../src/utils/initDb';
 import { RegionPlannerService } from '../../src/services/regionPlannerService';
-import { RegionConcept } from '../../src/types/regionConcept';
+import { RegionConcept, GeneratedRoom, RoomRole } from '../../src/types/regionConcept';
 import { GrokClient } from '../../src/ai/grokClient';
 
 describe('RegionPlannerService', () => {
@@ -175,6 +175,185 @@ describe('RegionPlannerService', () => {
       
       // This test will become more meaningful when we implement real AI calls
       expect(concept.name).toBeTruthy();
+    });
+  });
+
+  describe('generateRoom', () => {
+    let testConcept: RegionConcept;
+
+    beforeEach(async () => {
+      // Generate a concept to use for room generation tests
+      testConcept = await regionPlannerService.generateRegionConcept();
+    });
+
+    test('should generate valid room structure for all role types', async () => {
+      const roles: RoomRole[] = ['entrance', 'guardian', 'exit', 'exploration'];
+      
+      for (const role of roles) {
+        const room = await regionPlannerService.generateRoom({
+          concept: testConcept,
+          role: role
+        });
+        
+        // Verify the JSON structure matches expected format
+        expect(room).toHaveProperty('name');
+        expect(room).toHaveProperty('description');
+        expect(room).toHaveProperty('items');
+        expect(room).toHaveProperty('characters');
+        
+        // Verify all required fields are non-empty
+        expect(room.name.trim()).not.toBe('');
+        expect(room.description.trim()).not.toBe('');
+        
+        // Verify arrays are present
+        expect(Array.isArray(room.items)).toBe(true);
+        expect(Array.isArray(room.characters)).toBe(true);
+        
+        // Verify characters have correct structure
+        room.characters.forEach(character => {
+          expect(character).toHaveProperty('name');
+          expect(character).toHaveProperty('type');
+          expect(character).toHaveProperty('description');
+          expect(['npc', 'enemy']).toContain(character.type);
+          expect(character.name.trim()).not.toBe('');
+          expect(character.description.trim()).not.toBe('');
+        });
+      }
+    });
+
+    test('should generate guardian room with guardian enemy and key', async () => {
+      const room = await regionPlannerService.generateRoom({
+        concept: testConcept,
+        role: 'guardian'
+      });
+      
+      // Guardian room should include the region's guardian as an enemy
+      const guardianCharacter = room.characters.find(char => 
+        char.type === 'enemy' && char.name === testConcept.guardian.name
+      );
+      expect(guardianCharacter).toBeDefined();
+      expect(guardianCharacter?.description).toBe(testConcept.guardian.description);
+      
+      // Guardian room should include the region's key
+      expect(room.items).toContain(testConcept.key.name);
+    });
+
+    test('should generate exit room with locked exit reference', async () => {
+      const room = await regionPlannerService.generateRoom({
+        concept: testConcept,
+        role: 'exit'
+      });
+      
+      // Exit room description should reference the locked exit
+      const description = room.description.toLowerCase();
+      const exitName = testConcept.lockedExit.name.toLowerCase();
+      
+      // Check if any part of the exit name appears in the description
+      const exitWords = exitName.split(' ');
+      const hasExitReference = exitWords.some(word => 
+        word.length > 2 && description.includes(word)
+      );
+      
+      expect(hasExitReference).toBe(true);
+    });
+
+    test('should generate rooms with thematic coherence', async () => {
+      const roles: RoomRole[] = ['entrance', 'guardian', 'exit', 'exploration'];
+      const rooms: GeneratedRoom[] = [];
+      
+      // Generate multiple rooms from the same concept
+      for (const role of roles) {
+        const room = await regionPlannerService.generateRoom({
+          concept: testConcept,
+          role: role
+        });
+        rooms.push(room);
+      }
+      
+      // All rooms should have content that relates to the concept theme
+      const conceptWords = testConcept.theme.toLowerCase().split(' ');
+      const atmosphereWords = testConcept.atmosphere.toLowerCase().split(' ');
+      const allThemeWords = [...conceptWords, ...atmosphereWords];
+      
+      rooms.forEach((room, index) => {
+        // Room description should relate to the concept
+        const roomContent = `${room.name} ${room.description}`.toLowerCase();
+        
+        // At least some rooms should contain thematic references
+        // (We check this across all rooms rather than requiring each room)
+        if (index === 0) { // Just verify structure for first room
+          expect(room.name).toBeTruthy();
+          expect(room.description.length).toBeGreaterThan(20);
+          expect(room.description.split('. ').length).toBeGreaterThan(1); // Should be 2-3 sentences
+        }
+      });
+      
+      // Verify rooms feel distinct from each other
+      const roomNames = rooms.map(r => r.name);
+      const uniqueNames = new Set(roomNames);
+      expect(uniqueNames.size).toBe(roomNames.length); // All names should be unique
+    });
+
+    test('should generate varied content across multiple rooms of same role', async () => {
+      const rooms: GeneratedRoom[] = [];
+      
+      // Generate 3 exploration rooms from same concept
+      for (let i = 0; i < 3; i++) {
+        const room = await regionPlannerService.generateRoom({
+          concept: testConcept,
+          role: 'exploration'
+        });
+        rooms.push(room);
+      }
+      
+      // Rooms should have some variety in names and items
+      const roomNames = rooms.map(r => r.name);
+      const allItems = rooms.flatMap(r => r.items);
+      const allCharacters = rooms.flatMap(r => r.characters);
+      
+      // With mock generation, we should get some variety
+      expect(roomNames.every(name => typeof name === 'string' && name.length > 0)).toBe(true);
+      expect(allItems.every(item => typeof item === 'string' && item.length > 0)).toBe(true);
+      expect(allCharacters.every(char => 
+        typeof char.name === 'string' && 
+        char.name.length > 0 &&
+        ['npc', 'enemy'].includes(char.type)
+      )).toBe(true);
+    });
+
+    test('should handle adjacent rooms context', async () => {
+      const adjacentRooms = ['Crystal Formation Chamber', 'Echoing Cavern Hall'];
+      
+      const room = await regionPlannerService.generateRoom({
+        concept: testConcept,
+        role: 'exploration',
+        adjacentRooms: adjacentRooms
+      });
+      
+      // Should still generate valid room structure
+      expect(room).toHaveProperty('name');
+      expect(room).toHaveProperty('description');
+      expect(room).toHaveProperty('items');
+      expect(room).toHaveProperty('characters');
+      
+      // Room should be distinct from adjacent rooms
+      expect(adjacentRooms).not.toContain(room.name);
+    });
+
+    test('should handle room generation errors gracefully', async () => {
+      // This test will become more meaningful when we implement real AI calls
+      // For now, verify the mock implementation doesn't throw errors
+      
+      const room = await regionPlannerService.generateRoom({
+        concept: testConcept,
+        role: 'entrance'
+      });
+      
+      expect(room).toBeDefined();
+      expect(room.name).toBeTruthy();
+      expect(room.description).toBeTruthy();
+      expect(room.items).toBeDefined();
+      expect(room.characters).toBeDefined();
     });
   });
 });

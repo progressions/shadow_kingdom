@@ -1,5 +1,5 @@
 import Database from '../utils/database';
-import { RegionConcept } from '../types/regionConcept';
+import { RegionConcept, GeneratedRoom, RoomGenerationContext } from '../types/regionConcept';
 import { GrokClient, RegionConceptGenerationContext } from '../ai/grokClient';
 
 export interface RegionPlannerServiceOptions {
@@ -43,6 +43,35 @@ export class RegionPlannerService {
     } catch (error) {
       if (this.options.enableDebugLogging) {
         console.error('Error generating region concept:', error);
+      }
+      // Re-throw the error - let the caller handle it
+      throw error;
+    }
+  }
+
+  /**
+   * Generate a single themed room from a region concept
+   */
+  async generateRoom(context: RoomGenerationContext): Promise<GeneratedRoom> {
+    try {
+      if (this.options.enableDebugLogging) {
+        console.log('🏠 Generating room with context:', {
+          region: context.concept.name,
+          role: context.role,
+          adjacentRooms: context.adjacentRooms?.length || 0
+        });
+      }
+
+      const room = await this.grokClient.generateRegionRoom(context);
+      
+      if (this.options.enableDebugLogging) {
+        console.log('🏠 Generated room:', room.name, `(${context.role})`);
+      }
+
+      return room;
+    } catch (error) {
+      if (this.options.enableDebugLogging) {
+        console.error('Error generating room:', error);
       }
       // Re-throw the error - let the caller handle it
       throw error;

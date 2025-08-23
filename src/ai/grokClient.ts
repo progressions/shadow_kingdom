@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import * as dotenv from 'dotenv';
 import { MockAIEngine } from './mockAIEngine';
 import { LoggerService } from '../services/loggerService';
-import { RegionConcept } from '../types/regionConcept';
+import { RegionConcept, GeneratedRoom as RegionGeneratedRoom, RoomGenerationContext } from '../types/regionConcept';
 
 dotenv.config();
 
@@ -610,6 +610,106 @@ Respond in JSON format:
     }
   }
 
+  /**
+   * Generate a single themed room from a region concept
+   */
+  async generateRegionRoom(context: RoomGenerationContext): Promise<RegionGeneratedRoom> {
+    if (this.config.mockMode) {
+      return this.mockGenerateRoom(context);
+    }
+
+    const { concept, role, adjacentRooms = [] } = context;
+
+    let prompt = `You are generating a single room for the "${concept.name}" region in Shadow Kingdom.
+
+REGION CONTEXT:
+- Theme: ${concept.theme}
+- Atmosphere: ${concept.atmosphere}
+- History: ${concept.history}
+- Suggested Elements: ${concept.suggestedElements.join(', ')}
+
+ROOM ROLE: ${role.toUpperCase()}`;
+
+    switch (role) {
+      case 'entrance':
+        prompt += `
+This is an ENTRANCE room - the first room players enter when arriving in this region.
+- Should introduce the region's theme and atmosphere
+- Can have basic items and NPCs that set the mood
+- Should feel welcoming but hint at deeper mysteries`;
+        break;
+      case 'guardian':
+        prompt += `
+This is a GUARDIAN room - contains the region's main enemy and key.
+- MUST include the guardian enemy: ${concept.guardian.name} - ${concept.guardian.description}
+- MUST include the region key: ${concept.key.name} - ${concept.key.description}
+- Should be challenging and dramatic
+- Room should reflect the guardian's power and connection to the region`;
+        break;
+      case 'exit':
+        prompt += `
+This is an EXIT room - contains the locked barrier to the next region.
+- MUST include the locked exit: ${concept.lockedExit.name} - ${concept.lockedExit.description}
+- Should feel like a gateway or transition point
+- Can have items related to the barrier or next region`;
+        break;
+      case 'exploration':
+        prompt += `
+This is an EXPLORATION room - a general themed room for discovery.
+- Should contain interesting items and NPCs that expand on the region theme
+- Can have puzzles, lore, or atmospheric details
+- Should feel unique but cohesive with the region`;
+        break;
+    }
+
+    if (adjacentRooms.length > 0) {
+      prompt += `\n\nADJACENT ROOMS: ${adjacentRooms.join(', ')}
+Ensure this room connects thematically but feels distinct from adjacent rooms.`;
+    }
+
+    prompt += `
+
+Generate a JSON response with this exact structure:
+{
+  "name": "Room Name (2-5 words, evocative)",
+  "description": "Vivid 2-3 sentence description of the room, focusing on atmosphere and visual details",
+  "items": ["item1", "item2", "item3"],
+  "characters": [
+    {
+      "name": "Character Name",
+      "type": "npc" or "enemy", 
+      "description": "Brief character description"
+    }
+  ]
+}
+
+IMPORTANT:
+- Room name should be evocative and match the region theme
+- Description should be 2-3 sentences, vivid and atmospheric
+- Items should fit the theme and room role
+- Characters should match the theme and have clear types (npc/enemy)
+- For guardian rooms, ensure the guardian enemy and key are included
+- Maintain thematic coherence with the region concept`;
+
+    try {
+      const response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🤖 Raw Grok API response for room generation:', response);
+      }
+      const result = JSON.parse(response);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🏠 Parsed room generation result:', JSON.stringify(result, null, 2));
+      }
+      return result as RegionGeneratedRoom;
+    } catch (error) {
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating room:', error);
+      }
+      // Return fallback room
+      return this.getFallbackRegionRoom(context);
+    }
+  }
+
   async generateRegion(context: RegionGenerationContext): Promise<GeneratedRegion> {
     if (this.config.mockMode) {
       return this.mockGenerateRegion(context);
@@ -1166,6 +1266,118 @@ ITEM GUIDELINES:
       suggestedElements: [
         "ancient symbols", "mysterious artifacts", "shadowed corners"
       ]
+    };
+  }
+
+  private getFallbackRegionRoom(context: RoomGenerationContext): RegionGeneratedRoom {
+    const { concept, role } = context;
+    
+    return {
+      name: `${concept.name} Chamber`,
+      description: `A mysterious room within ${concept.name}. ${concept.atmosphere} creates an intriguing environment that invites exploration.`,
+      items: ["Mysterious Object", "Ancient Artifact"],
+      characters: [
+        {
+          name: "Enigmatic Figure",
+          type: role === "guardian" ? "enemy" : "npc",
+          description: "A being that seems to belong to this strange place"
+        }
+      ]
+    };
+  }
+
+  private mockGenerateRoom(context: RoomGenerationContext): RegionGeneratedRoom {
+    const { concept, role } = context;
+    
+    // Create role-specific room templates
+    const roomTemplates = {
+      entrance: {
+        names: ["Grand Entrance", "Threshold Chamber", "Gateway Hall", "Arrival Plaza"],
+        descriptions: [
+          "An impressive entryway that sets the tone for the entire region. {atmosphere} fills the space, hinting at the wonders and dangers that lie ahead. This threshold welcomes all who dare to explore further.",
+          "This welcoming chamber serves as a transition from the outside world. {atmosphere} creates an immediate sense of the region's unique character. The architecture speaks of mysteries waiting to be uncovered.",
+          "The first glimpse into this remarkable region greets visitors with {atmosphere} and subtle indications of what awaits within. Every detail suggests this is only the beginning of a grand adventure."
+        ],
+        items: ["Welcome Sign", "Regional Map", "Traveler's Pack", "Information Plaque"],
+        characters: [
+          { name: "Region Guide", type: "npc" as const, description: "A knowledgeable local who helps newcomers" },
+          { name: "Curious Observer", type: "npc" as const, description: "A resident watching new arrivals with interest" }
+        ]
+      },
+      guardian: {
+        names: ["Guardian's Sanctum", "Chamber of Trials", "The Guardian's Domain", "Hall of the Protector"],
+        descriptions: [
+          "This imposing chamber serves as the stronghold of {guardianName}. {atmosphere} permeates the space, and the {keyName} gleams prominently within reach of the guardian.",
+          "The very air in this room speaks of power and ancient duty. {guardianName} stands ready to protect {keyName}, surrounded by {atmosphere}.",
+          "A place of testing and challenge where {guardianName} waits. The coveted {keyName} rests here, guarded faithfully amid {atmosphere}."
+        ],
+        items: ["Guardian's Trophy", "Ancient Weapon", "Protective Relic"],
+        characters: [
+          { name: "Guardian Enemy", type: "enemy" as const, description: "A powerful guardian" }
+        ]
+      },
+      exit: {
+        names: ["Exit Portal", "The Departure Gate", "Threshold to Beyond", "Region's End"],
+        descriptions: [
+          "This chamber houses the {exitName}, the passage to whatever lies beyond this region. {atmosphere} creates an air of anticipation and mystery.",
+          "The {exitName} dominates this space, sealed and waiting. {atmosphere} suggests the importance of this threshold.",
+          "A place of transition where the {exitName} stands ready to transport travelers onward, surrounded by {atmosphere}."
+        ],
+        items: ["Exit Instructions", "Transition Crystal", "Farewell Token", "Journey Supplies"],
+        characters: [
+          { name: "Portal Guardian", type: "npc" as const, description: "A being who maintains the exit portal" },
+          { name: "Departing Spirit", type: "npc" as const, description: "The essence of those who have passed through" }
+        ]
+      },
+      exploration: {
+        names: ["Discovery Chamber", "Hidden Alcove", "Secret Sanctum", "Explorer's Find"],
+        descriptions: [
+          "This intriguing space rewards curious explorers with unique sights and treasures. {atmosphere} creates a sense of discovery and wonder.",
+          "A room filled with the essence of exploration and adventure. {atmosphere} beckons visitors to investigate further.",
+          "This chamber holds secrets and surprises for those who seek them. {atmosphere} enhances the sense of mystery and revelation."
+        ],
+        items: ["Mysterious Artifact", "Explorer's Notes", "Hidden Treasure", "Ancient Scroll"],
+        characters: [
+          { name: "Wise Hermit", type: "npc" as const, description: "A solitary figure with knowledge of the region" },
+          { name: "Curious Creature", type: "npc" as const, description: "A unique being native to this region" }
+        ]
+      }
+    };
+
+    const template = roomTemplates[role];
+    const randomName = template.names[Math.floor(Math.random() * template.names.length)];
+    const randomDescription = template.descriptions[Math.floor(Math.random() * template.descriptions.length)];
+    
+    // Replace placeholders in description
+    let description = randomDescription
+      .replace(/{atmosphere}/g, concept.atmosphere.toLowerCase())
+      .replace(/{guardianName}/g, concept.guardian.name)
+      .replace(/{keyName}/g, concept.key.name)
+      .replace(/{exitName}/g, concept.lockedExit.name);
+
+    // Select random items (2-4 items)
+    const shuffledItems = [...template.items].sort(() => Math.random() - 0.5);
+    let selectedItems = shuffledItems.slice(0, 2 + Math.floor(Math.random() * 3));
+
+    // Select 1-2 characters
+    const shuffledCharacters = [...template.characters].sort(() => Math.random() - 0.5);
+    let selectedCharacters = shuffledCharacters.slice(0, 1 + Math.floor(Math.random() * 2));
+
+    // Special handling for guardian rooms
+    if (role === 'guardian') {
+      selectedItems.push(concept.key.name);
+      selectedCharacters.push({
+        name: concept.guardian.name,
+        type: 'enemy',
+        description: concept.guardian.description
+      });
+    }
+
+    return {
+      name: randomName,
+      description: description,
+      items: selectedItems,
+      characters: selectedCharacters
     };
   }
 

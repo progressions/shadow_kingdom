@@ -24,3 +24,24 @@ export interface RegionConcept {
   lockedExit: RegionLockedExit;
   suggestedElements: string[];
 }
+
+export type RoomRole = 'entrance' | 'guardian' | 'exit' | 'exploration';
+
+export interface GeneratedRoomCharacter {
+  name: string;
+  type: 'npc' | 'enemy';
+  description: string;
+}
+
+export interface GeneratedRoom {
+  name: string;
+  description: string;
+  items: string[];
+  characters: GeneratedRoomCharacter[];
+}
+
+export interface RoomGenerationContext {
+  concept: RegionConcept;
+  role: RoomRole;
+  adjacentRooms?: string[];
+}
