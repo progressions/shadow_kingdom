@@ -2535,7 +2535,18 @@ export class GameController {
       await this.characterService.updateCharacterHealth(character.id, newHealth);
 
       // Update character sentiment to hostile after successful attack
+      const oldSentiment = await this.characterService.getSentiment(character.id);
       await this.characterService.setSentiment(character.id, CharacterSentiment.HOSTILE);
+      const newSentiment = await this.characterService.getSentiment(character.id);
+      
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log(`💥 Sentiment change: ${character.name} (${character.type}) ${oldSentiment} -> ${newSentiment}`);
+      }
+      
+      // Inform player that the character became hostile (if not already hostile)
+      if (oldSentiment !== CharacterSentiment.HOSTILE && newSentiment === CharacterSentiment.HOSTILE) {
+        this.tui.display(`The ${character.name} becomes hostile toward you!`, MessageType.SYSTEM);
+      }
       
       const strModText = attackResult.strengthModifier >= 0 ? `+${attackResult.strengthModifier}` : `${attackResult.strengthModifier}`;
       const dexModText = attackResult.dexterityModifier >= 0 ? `+${attackResult.dexterityModifier}` : `${attackResult.dexterityModifier}`;
