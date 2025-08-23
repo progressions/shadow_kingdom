@@ -160,8 +160,8 @@ describe('Enemy Attack System', () => {
 
   describe('Basic Enemy Attack Mechanics', () => {
     test('hostile enemies should attack player after each turn - all hit scenario', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Verify initial player health
       const initialHealth = await characterService.getCharacterHealth(playerId);
@@ -179,8 +179,8 @@ describe('Enemy Attack System', () => {
     });
 
     test('hostile enemies should miss when attacks fail', async () => {
-      // Mock Math.random to always return 0.6 (miss)
-      jest.spyOn(Math, 'random').mockReturnValue(0.6);
+      // Mock Math.random for D20 system - guaranteed miss
+      jest.spyOn(Math, 'random').mockReturnValue(0.0);
       
       // Verify initial player health
       const initialHealth = await characterService.getCharacterHealth(playerId);
@@ -198,8 +198,8 @@ describe('Enemy Attack System', () => {
     });
 
     test('multiple hostile enemies should each attack once per turn', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Create another hostile enemy
       await db.run(`
@@ -222,8 +222,8 @@ describe('Enemy Attack System', () => {
     });
 
     test('aggressive enemies should attack player', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Set hostile enemy to dead so only aggressive attacks
       await characterService.setCharacterDead(hostileEnemyId);
@@ -257,8 +257,8 @@ describe('Enemy Attack System', () => {
     });
 
     test('dead enemies should not attack', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Kill the hostile enemy
       await characterService.setCharacterDead(hostileEnemyId);
@@ -279,8 +279,8 @@ describe('Enemy Attack System', () => {
 
   describe('Player Death Scenarios', () => {
     test('should handle player death when health reaches 0', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Set player to very low health
       await characterService.updateCharacterHealth(playerId, 2);
@@ -304,8 +304,8 @@ describe('Enemy Attack System', () => {
     });
 
     test('should handle player death when multiple enemies attack', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Create another hostile enemy
       await db.run(`
@@ -330,8 +330,8 @@ describe('Enemy Attack System', () => {
     });
 
     test('should not allow health to go below 0', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Set player to 1 health
       await characterService.updateCharacterHealth(playerId, 1);
@@ -349,8 +349,8 @@ describe('Enemy Attack System', () => {
 
   describe('Room-Based Attack Logic', () => {
     test('enemies only attack if in same room as player', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Create another room
       const otherRoomResult = await db.run(`
@@ -438,8 +438,8 @@ describe('Enemy Attack System', () => {
     });
 
     test('enemy attacks should happen after all types of commands', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit  
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       const testCommands = ['look', 'inventory', 'examine bandit'];
       

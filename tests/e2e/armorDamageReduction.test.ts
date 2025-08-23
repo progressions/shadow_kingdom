@@ -124,7 +124,7 @@ describe('Armor Damage Reduction E2E', () => {
   describe('Complete armor acquisition and usage workflow', () => {
     test('should demonstrate full armor workflow: find -> get -> equip -> combat', async () => {
       // Mock random to always hit in combat
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Scenario: Player finds armor, equips it, then fights an enemy
       
@@ -177,7 +177,7 @@ describe('Armor Damage Reduction E2E', () => {
     });
 
     test('should show armor effectiveness in extended combat', async () => {
-      jest.spyOn(Math, 'random').mockReturnValue(0.3); // Always hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.95); // Guaranteed hit with D20 system
 
       // Create enemy with higher health for extended combat
       await db.run(
@@ -240,7 +240,7 @@ describe('Armor Damage Reduction E2E', () => {
     });
 
     test('should handle armor upgrade scenario', async () => {
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create a tough enemy
       await db.run(
@@ -308,7 +308,7 @@ describe('Armor Damage Reduction E2E', () => {
     });
 
     test('should demonstrate full armor set benefits', async () => {
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create armor pieces for different slots
       const helmetId = await itemService.createItem({
