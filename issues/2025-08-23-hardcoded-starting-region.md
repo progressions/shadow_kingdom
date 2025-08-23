@@ -1,7 +1,7 @@
 # Hardcoded Starting Region
 
 **Date**: 2025-08-23  
-**Status**: Open  
+**Status**: Completed  
 **Priority**: High  
 **Category**: Feature  
 
@@ -18,11 +18,11 @@ Replace dynamic starter room generation with a hardcoded 12-room monastery regio
 - Rooms have multiple connections for non-linear exploration
 
 **Acceptance Criteria:**
-- [ ] New games start with 12 monastery rooms instead of 6 generated rooms
-- [ ] Stone Sentinel enemy blocks Vault Key pickup until defeated
-- [ ] Simple attack command can defeat enemy
-- [ ] Vault Key unlocks exit connection to future Region 2
-- [ ] All 12 rooms are interconnected with multiple paths
+- [x] New games start with 12 monastery rooms instead of 6 generated rooms
+- [x] Stone Sentinel enemy blocks Vault Key pickup until defeated
+- [x] Simple attack command can defeat enemy
+- [x] Vault Key unlocks exit connection to future Region 2
+- [x] All 12 rooms are interconnected with multiple paths
 
 ## Technical Notes
 
