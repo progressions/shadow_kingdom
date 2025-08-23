@@ -170,13 +170,13 @@ describe('Armor Combat Integration', () => {
       await itemService.transferItemToInventory(enemyId, armorId, playerRoomId, 1);
       await equipmentService.equipItem(enemyId, armorId);
 
-      // Attack the armored enemy (base damage 2, armor reduces by 3, minimum 1)
+      // Attack the armored enemy (base damage 2, armor reduces by 3, result is 0)
       await (controller as any).processCommand('attack Armored Orc');
 
-      // Check that damage was completely blocked (2 base - 3 armor = 0 damage)
+      // Check that damage was completely negated by armor (2 base - 3 armor = 0)
       expect((controller as any).lastDisplayMessage).toContain('You attack the Armored Orc. The Armored Orc takes 0 damage.');
 
-      // Check enemy health unchanged
+      // Check enemy health unchanged due to armor protection
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
       expect(enemy?.current_health).toBe(10); // No damage taken
 
@@ -342,7 +342,7 @@ describe('Armor Combat Integration', () => {
 
       expect((controller as any).lastDisplayMessage).toContain('You attack the Fully Armored Warrior. The Fully Armored Warrior takes 0 damage.');
 
-      // Check enemy health unchanged
+      // Check enemy health unchanged due to armor protection
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
       expect(enemy?.current_health).toBe(15); // No damage taken
 
@@ -442,7 +442,7 @@ describe('Armor Combat Integration', () => {
       (Math.random as jest.Mock).mockRestore();
     });
 
-    test('heavy armor should provide complete damage immunity', async () => {
+    test('heavy armor should completely negate weak attacks', async () => {
       // Mock random to always hit
       jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
@@ -476,25 +476,25 @@ describe('Armor Combat Integration', () => {
       await itemService.transferItemToInventory(enemyId, heavyArmorId, playerRoomId, 1);
       await equipmentService.equipItem(enemyId, heavyArmorId);
 
-      // Attack: 2 base - 10 armor = 0 damage (completely immune)
+      // First attack: 2 base - 10 armor = 0 damage (completely blocked)
       await (controller as any).processCommand('attack Tank Warrior');
       expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 0 damage.');
 
-      // Check health unchanged (armor completely blocks damage)
+      // Check health: 5 - 0 = 5 (no damage taken)
       let enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
       expect(enemy?.current_health).toBe(5);
       expect(enemy?.is_dead).toBeFalsy();
 
-      // Multiple attacks should still do 0 damage - armor makes enemy invulnerable
+      // Attack several more times - should all do 0 damage due to heavy armor
       for (let i = 0; i < 5; i++) {
         await (controller as any).processCommand('attack Tank Warrior');
         expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 0 damage.');
       }
 
-      // Enemy should still be alive with full health (heavy armor provides complete immunity)
+      // Enemy should still be alive and at full health due to armor protection
       enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
       expect(enemy?.is_dead).toBeFalsy();
-      expect(enemy?.current_health).toBe(5);
+      expect(enemy?.current_health).toBe(5); // No damage taken through any attacks
 
       // Restore Math.random
       (Math.random as jest.Mock).mockRestore();

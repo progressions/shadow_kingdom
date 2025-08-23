@@ -31,14 +31,14 @@ describe('Starter Room Item Placement', () => {
     
     expect(rooms).toHaveLength(6); // Should have 6 starter rooms
 
-    // Expected items in each room (updated with new triggered items)
+    // Expected items in each room (updated with armor additions)
     const expectedRoomItems = {
-      'Grand Entrance Hall': ['Iron Sword', 'Chain Mail', 'Leather Boots', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'],
+      'Grand Entrance Hall': ['Iron Sword', 'Chain Mail', 'Leather Armor', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull', 'Leather Boots'],
       'Scholar\'s Library': ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'],
       'Moonlit Courtyard Garden': ['Health Potion', 'Bread', 'Mysterious Glowing Orb', 'Celestial Star Key'],
       'Winding Tower Stairs': ['Wooden Staff', 'Cursed Ruby Ring'],
-      'Ancient Crypt Entrance': ['Iron Helmet', 'Gold Coins', 'Poisoned Dagger'],
-      'Observatory Steps': ['Leather Boots', 'Leather Armor']
+      'Ancient Crypt Entrance': ['Vault Key', 'Iron Helmet', 'Gold Coins', 'Poisoned Dagger'],
+      'Observatory Steps': []
     };
 
     // Check each room has the expected items
@@ -122,8 +122,8 @@ describe('Starter Room Item Placement', () => {
     const items1 = await itemService.getRoomItems(entranceRoom1.id);
     const items2 = await itemService.getRoomItems(entranceRoom2.id);
     
-    expect(items1).toHaveLength(6); // Iron Sword + Chain Mail + Leather Boots + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull
-    expect(items2).toHaveLength(6); // Iron Sword + Chain Mail + Leather Boots + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull
+    expect(items1).toHaveLength(7); // Iron Sword + Chain Mail + Leather Armor + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull + Leather Boots
+    expect(items2).toHaveLength(7); // Iron Sword + Chain Mail + Leather Armor + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull + Leather Boots
     
     // Items should be in different room instances
     expect(entranceRoom1.id).not.toBe(entranceRoom2.id);

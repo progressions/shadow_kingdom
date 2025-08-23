@@ -757,10 +757,13 @@ export class GameController {
           
           // Create detailed attack message showing armor absorption
           if (armorPoints > 0) {
-            if (damageAbsorbed >= baseDamage) {
-              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs it all! ${rollText}`);
+            if (finalDamage <= 0) {
+              // Armor completely blocks the attack
+              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor completely blocks it! ${rollText}`);
             } else {
-              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs ${damageAbsorbed}, you take ${finalDamage} damage! ${rollText}`);
+              // Partial armor absorption
+              const actualAbsorbed = baseDamage - finalDamage;
+              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs ${actualAbsorbed}, you take ${finalDamage} damage! ${rollText}`);
             }
           } else {
             attackMessages.push(`The ${enemy.name} attacks you for ${finalDamage} damage! ${rollText}`);
@@ -1341,16 +1344,11 @@ export class GameController {
         // Player is dead - handle gracefully
         this.tui.clear();
         this.tui.showWelcome('Welcome back to Shadow Kingdom!');
-        this.tui.display('Your character died in the last game, so this is a brand new game.');
+        this.tui.display('Your character died in the last game.');
+        this.tui.display('Creating a new adventure for you...', MessageType.SYSTEM);
         
-        // Only wait for input in interactive mode
-        if (!this.commandToExecute) {
-          this.tui.display('Press any key to continue...');
-          // Wait for any key press
-          await this.waitForAnyKey();
-        }
-        
-        // Create new game
+        // Don't wait for input - just create a new game immediately
+        // This fixes the hanging issue where the game waits for input that never comes
         await this.createNewGameForDeadPlayer(game.id);
         return;
       }
@@ -2045,6 +2043,8 @@ export class GameController {
       const pickedUpItems: string[] = [];
       const failedItems: { name: string; reason: string }[] = [];
 
+      const processedItemIds: number[] = [];
+      
       // Process each item
       for (const roomItem of pickupableItems) {
         // Check if character can add another item to inventory
@@ -2077,15 +2077,7 @@ export class GameController {
           );
 
           pickedUpItems.push(roomItem.item.name);
-
-          // Process pickup triggers for the item
-          await this.executeValidatedAction(
-            'pickup',
-            { itemId: roomItem.item_id },
-            async () => {
-              // Action already executed above, this is just for trigger processing
-            }
-          );
+          processedItemIds.push(roomItem.item_id);
 
         } catch (error) {
           // Individual item failure - continue with others
@@ -2093,6 +2085,35 @@ export class GameController {
             name: roomItem.item.name, 
             reason: 'error during pickup' 
           });
+        }
+      }
+
+      // Process pickup triggers for all successfully picked up items (batched to prevent duplicate messages)
+      if (processedItemIds.length > 0) {
+        const session = this.gameStateManager.getCurrentSession();
+        const character = await this.characterService.getPlayerCharacter(session.gameId!);
+        const room = await this.gameStateManager.getCurrentRoom();
+        
+        if (character && room) {
+          const actionId = Date.now().toString(); // Single action ID for the entire batch
+          const triggerContext = {
+            character,
+            room,
+            actionId
+          };
+
+          // Process triggers for each item with the same action ID to prevent duplicates
+          for (const itemId of processedItemIds) {
+            const item = await this.itemService.getItem(itemId);
+            if (item) {
+              await this.eventTriggerService.processTrigger(
+                'pickup',
+                'item',
+                itemId,
+                { ...triggerContext, item }
+              );
+            }
+          }
         }
       }
 
