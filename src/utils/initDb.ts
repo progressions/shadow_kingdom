@@ -926,7 +926,7 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
     const cryptEntranceResult = await db.run(
       'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
       [gameId, 'Ancient Crypt Entrance', 
-       `You stand before the entrance to what appears to be an ancient crypt, its arched doorway carved with weathered symbols that seem to shift in your peripheral vision. Cool air flows from the depths beyond, carrying the scent of stone and time itself. Flickering torchlight from within casts dancing shadows on walls lined with worn burial niches, their occupants long since turned to dust. The silence here is profound, broken only by the occasional drip of water and the whisper of air moving through forgotten passages.`, 
+       `You stand before the entrance to what appears to be an ancient crypt, its arched doorway carved with weathered symbols that seem to shift in your peripheral vision. A massive Stone Sentinel stands guard here, its granite form emanating ancient magic as it protects a glowing key. Cool air flows from the depths beyond, carrying the scent of stone and time itself. The silence here is profound, broken only by the occasional drip of water and the grinding of stone as the guardian shifts its weight.`, 
        regionId, 2]
     );
 
@@ -1075,12 +1075,12 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
 
     // Place starter items in all starter rooms
     const starterRoomItems = [
-      { roomId: entranceId, itemNames: ['Iron Sword', 'Chain Mail', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'], roomName: 'Grand Entrance Hall' },
+      { roomId: entranceId, itemNames: ['Iron Sword', 'Chain Mail', 'Leather Armor', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull', 'Leather Boots'], roomName: 'Grand Entrance Hall' },
       { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'], roomName: 'Scholar\'s Library' },
       { roomId: gardenId, itemNames: ['Health Potion', 'Bread', 'Mysterious Glowing Orb', 'Celestial Star Key'], roomName: 'Moonlit Courtyard Garden' },
       { roomId: towerStairsId, itemNames: ['Wooden Staff', 'Cursed Ruby Ring'], roomName: 'Winding Tower Stairs' },
-      { roomId: cryptEntranceId, itemNames: ['Iron Helmet', 'Gold Coins', 'Poisoned Dagger'], roomName: 'Ancient Crypt Entrance' },
-      { roomId: observatoryStepsId, itemNames: ['Leather Boots', 'Leather Armor'], roomName: 'Observatory Steps' }
+      { roomId: cryptEntranceId, itemNames: ['Vault Key', 'Iron Helmet', 'Gold Coins', 'Poisoned Dagger'], roomName: 'Ancient Crypt Entrance' },
+      { roomId: observatoryStepsId, itemNames: [], roomName: 'Observatory Steps' }
     ];
 
     let totalItemsPlaced = 0;
@@ -1118,7 +1118,7 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       { roomId: libraryId, character: { name: 'Scholar Wraith', description: 'A ghostly figure in scholarly robes, eternally tending to the ancient tomes', type: 'npc' as const, initialDialogue: 'So many books, so little time... even in death.' }, roomName: 'Scholar\'s Library' },
       { roomId: gardenId, character: { name: 'Garden Spirit', description: 'A benevolent nature spirit that tends to the moonlit garden with gentle care', type: 'npc' as const, initialDialogue: 'The flowers whisper secrets of ages past, if you know how to listen.' }, roomName: 'Moonlit Courtyard Garden' },
       { roomId: towerStairsId, character: { name: 'Tower Sentinel', description: 'A mysterious figure that guards the winding stairs leading to higher mysteries', type: 'enemy' as const, initialDialogue: 'None may pass without proving their worth. Turn back, or face the consequences.' }, roomName: 'Winding Tower Stairs' },
-      { roomId: cryptEntranceId, character: { name: 'Crypt Keeper', description: 'A solemn undead guardian bound to protect the entrance to the ancient crypts', type: 'enemy' as const, initialDialogue: 'The dead do not appreciate visitors. Disturb them at your own peril.' }, roomName: 'Ancient Crypt Entrance' },
+      { roomId: cryptEntranceId, character: { name: 'Stone Sentinel', description: 'An ancient golem of carved granite, eyes glowing with fading protective magic. It guards the Vault Key with unwavering dedication.', type: 'enemy' as const, initialDialogue: 'None shall take what I am sworn to protect. Turn back or face destruction.' }, roomName: 'Ancient Crypt Entrance' },
       { roomId: observatoryStepsId, character: { name: 'Star Watcher', description: 'An ethereal being dedicated to observing the celestial movements above', type: 'npc' as const, initialDialogue: 'The stars tell stories of destiny and fate, written across the night sky.' }, roomName: 'Observatory Steps' }
     ];
 

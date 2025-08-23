@@ -97,6 +97,15 @@ const SEED_ITEMS: CreateItemData[] = [
     max_stack: 1
   },
   {
+    name: 'Vault Key',
+    description: 'A heavy iron key with religious symbols etched into its surface. It glows faintly with divine magic, the power needed to open the sacred vault door.',
+    type: ItemType.QUEST,
+    weight: 0.3,
+    value: 0,
+    stackable: false,
+    max_stack: 1
+  },
+  {
     name: 'Wooden Staff',
     description: 'A simple wooden staff, worn smooth by many hands. It hums faintly with magical energy.',
     type: ItemType.WEAPON,

@@ -260,12 +260,15 @@ export class RoomGenerationServicePrisma {
         });
 
         // Create AI-generated connections from the new room
+        let hasReturnPath = false;
+        
         if (newRoom.connections && newRoom.connections.length > 0) {
           for (const connection of newRoom.connections) {
             // Find if this connection leads back to the origin room
             const isReturnPath = connection.direction === this.getReverseDirection(context.direction);
             
             if (isReturnPath) {
+              hasReturnPath = true;
               // Create the return connection with thematic name
               await tx.connection.create({
                 data: {
@@ -293,8 +296,11 @@ export class RoomGenerationServicePrisma {
               }
             }
           }
-        } else {
-          // Fallback: ensure new room has at least one exit (back to where we came from)
+        }
+        
+        // ALWAYS ensure new room has at least one exit back to where we came from
+        // This prevents dead-end rooms that trap players
+        if (!hasReturnPath) {
           const reverseDirection = this.getReverseDirection(context.direction);
           if (reverseDirection) {
             await tx.connection.create({
@@ -303,9 +309,13 @@ export class RoomGenerationServicePrisma {
                 fromRoomId: createdRoom.id,
                 toRoomId: context.fromRoomId,
                 direction: reverseDirection,
-                name: returnThematicName
+                name: `back through the ${context.direction}ern passage`
               }
             });
+            
+            if (this.isDebugEnabled()) {
+              console.log(`🔗 Added mandatory return path: ${reverseDirection} back to origin`);
+            }
           }
         }
 
