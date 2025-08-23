@@ -179,6 +179,40 @@ export class MockAIEngine {
   }
 
   /**
+   * Generate room description with sentiment context
+   */
+  async generateRoomDescription(prompt: string, context?: any): Promise<{ name: string; description: string }> {
+    // Extract sentiment information from the prompt
+    const hasHostileCharacters = prompt.includes('hostile') || prompt.includes('aggressive');
+    const hasFriendlyCharacters = prompt.includes('friendly') || prompt.includes('allied');
+    const hasMixedSentiments = hasHostileCharacters && hasFriendlyCharacters;
+    const hasNoCharacters = prompt.includes('No characters currently present');
+
+    // Generate appropriate room description based on sentiment context
+    let name: string;
+    let description: string;
+
+    if (hasNoCharacters) {
+      name = 'Empty Chamber';
+      description = 'A quiet, empty chamber with a neutral atmosphere. The silence is almost palpable.';
+    } else if (hasMixedSentiments) {
+      name = 'Tense Meeting Hall';
+      description = 'A room charged with complex social dynamics. You can sense the tension between conflicting personalities, creating an atmosphere of uncertainty and potential conflict.';
+    } else if (hasHostileCharacters) {
+      name = 'Dangerous Den';
+      description = 'A menacing space that radiates danger and hostility. The very air seems thick with threat and malice, making every shadow seem ominous.';
+    } else if (hasFriendlyCharacters) {
+      name = 'Welcoming Hall';
+      description = 'A warm and inviting space that exudes comfort and safety. The atmosphere is friendly and peaceful, putting visitors at ease.';
+    } else {
+      name = 'Neutral Chamber';
+      description = 'A functional space with a business-like atmosphere. Neither welcoming nor threatening, it serves its purpose efficiently.';
+    }
+
+    return { name, description };
+  }
+
+  /**
    * Generate a region using context-aware mock selection
    */
   async generateRegion(prompt: string, context: RegionGenerationContext): Promise<GeneratedRegion> {

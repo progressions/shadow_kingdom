@@ -337,6 +337,29 @@ Respond in JSON format:
     }
   }
 
+  async generateRoomDescription(prompt: string, context?: any): Promise<{ name: string; description: string } | null> {
+    if (this.config.mockMode) {
+      return await this.mockEngine.generateRoomDescription(prompt, context);
+    }
+
+    try {
+      const response = await this.callGrokAPI(prompt);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('🤖 Raw Grok API response for room description generation:', response);
+      }
+      const result = JSON.parse(response);
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.log('📦 Parsed room description result:', JSON.stringify(result, null, 2));
+      }
+      return result as { name: string; description: string };
+    } catch (error) {
+      if (process.env.AI_DEBUG_LOGGING === 'true') {
+        console.error('Error generating room description:', error);
+      }
+      return null;
+    }
+  }
+
   async generateRegion(context: RegionGenerationContext): Promise<GeneratedRegion> {
     if (this.config.mockMode) {
       return this.mockGenerateRegion(context);

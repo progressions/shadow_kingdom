@@ -887,4 +887,135 @@ export class RoomGenerationService {
     return { ...this.options };
   }
 
+  /**
+   * Generate room description with character sentiment context - Phase 13
+   */
+  async generateRoomWithSentimentContext(roomId: number): Promise<{ name: string; description: string } | null> {
+    try {
+      // Get all living characters in the room
+      const characters = await this.db.all<any>(
+        'SELECT name, sentiment FROM characters WHERE current_room_id = ? AND (is_dead IS NULL OR is_dead = 0)',
+        [roomId]
+      );
+
+      // Build sentiment-aware prompt
+      let prompt = 'Generate a room description that reflects the emotional atmosphere created by its inhabitants.\n\n';
+
+      if (characters.length === 0) {
+        prompt += 'No characters currently present. Generate a neutral, empty room atmosphere.\n\n';
+      } else {
+        prompt += 'Room characters and their sentiments:\n';
+        characters.forEach(char => {
+          prompt += `- ${char.name}: ${char.sentiment}\n`;
+        });
+        prompt += '\n';
+
+        prompt += 'Generate room atmosphere considering character emotional states:\n';
+        prompt += '- Hostile characters create tense, dangerous atmosphere\n';
+        prompt += '- Friendly characters create welcoming environment\n';
+        prompt += '- Mixed sentiments create complex social dynamics\n';
+        prompt += '- Indifferent characters create neutral atmosphere\n\n';
+      }
+
+      prompt += 'Respond in JSON format:\n';
+      prompt += '{\n';
+      prompt += '  "name": "Room Name",\n';
+      prompt += '  "description": "Detailed description reflecting the emotional atmosphere"\n';
+      prompt += '}';
+
+      // Generate room description using AI
+      const result = await this.grokClient.generateRoomDescription(prompt, { roomId, characters });
+      
+      if (result) {
+        // Update the room in database with new description
+        await this.db.run(
+          'UPDATE rooms SET name = ?, description = ? WHERE id = ?',
+          [result.name, result.description, roomId]
+        );
+
+        if (this.isDebugEnabled()) {
+          console.log(`🏠 Generated sentiment-aware description for room ${roomId}: ${result.name}`);
+        }
+
+        return result;
+      }
+
+      // Fallback: generate basic description based on sentiment analysis
+      const fallback = this.generateFallbackSentimentDescription(characters);
+      await this.db.run(
+        'UPDATE rooms SET name = ?, description = ? WHERE id = ?',
+        [fallback.name, fallback.description, roomId]
+      );
+
+      return fallback;
+
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error generating room with sentiment context:', error);
+      }
+
+      // Fallback to basic room description
+      const fallback = {
+        name: 'Generated Room',
+        description: 'A room shaped by the emotions of its inhabitants.'
+      };
+
+      return fallback;
+    }
+  }
+
+  /**
+   * Generate fallback room description based on character sentiments
+   */
+  private generateFallbackSentimentDescription(characters: any[]): { name: string; description: string } {
+    if (characters.length === 0) {
+      return {
+        name: 'Empty Chamber',
+        description: 'A quiet, empty chamber with a neutral atmosphere.'
+      };
+    }
+
+    // Count sentiment types
+    const sentimentCounts = {
+      hostile: 0,
+      aggressive: 0,
+      indifferent: 0,
+      friendly: 0,
+      allied: 0
+    };
+
+    characters.forEach(char => {
+      if (sentimentCounts.hasOwnProperty(char.sentiment)) {
+        sentimentCounts[char.sentiment as keyof typeof sentimentCounts]++;
+      }
+    });
+
+    const totalHostile = sentimentCounts.hostile + sentimentCounts.aggressive;
+    const totalFriendly = sentimentCounts.friendly + sentimentCounts.allied;
+    const totalNeutral = sentimentCounts.indifferent;
+
+    // Determine dominant atmosphere
+    if (totalHostile > totalFriendly && totalHostile > totalNeutral) {
+      return {
+        name: 'Tense Chamber',
+        description: 'The atmosphere is thick with tension and hostility. Every shadow seems to harbor potential danger.'
+      };
+    } else if (totalFriendly > totalHostile && totalFriendly > totalNeutral) {
+      return {
+        name: 'Welcoming Space',
+        description: 'A warm and inviting atmosphere permeates this space, making visitors feel safe and comfortable.'
+      };
+    } else if (totalHostile > 0 && totalFriendly > 0) {
+      return {
+        name: 'Room of Contrasts',
+        description: 'Complex social dynamics create an atmosphere of uncertainty, with conflicting emotions creating palpable tension.'
+      };
+    } else {
+      return {
+        name: 'Neutral Hall',
+        description: 'A functional space with a business-like atmosphere, neither particularly welcoming nor threatening.'
+      };
+    }
+  }
+
 }
