@@ -30,7 +30,7 @@ export class MessageFormatter {
         return this.applyColor(message, '{white-fg}');
       
       case MessageType.EXITS:
-        return this.applyColor(message, '{blue-fg}');
+        return this.applyColor(message, '{cyan-fg}');
       
       case MessageType.SYSTEM:
         return this.applyColor(message, '{gray-fg}');
