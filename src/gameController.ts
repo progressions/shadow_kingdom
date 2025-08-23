@@ -1188,11 +1188,11 @@ export class GameController {
             
             // Check if NLP connection is locked
             if (nlpConnection.locked && nlpConnection.required_key_name) {
-              // Check if player has the required key
-              const session = this.gameStateManager.getCurrentSession();
-              if (session && session.characterId) {
+              try {
+                // Check if player has the required key
+                const characterId = await this.getCurrentCharacterId();
                 const hasKey = await this.itemService.hasItemByPartialName(
-                  session.characterId, 
+                  characterId, 
                   nlpConnection.required_key_name
                 );
                 
@@ -1209,7 +1209,7 @@ export class GameController {
                   `You unlock the passage with the ${nlpConnection.required_key_name} and go ${resolvedDirection}.`,
                   MessageType.NORMAL
                 );
-              } else {
+              } catch (error) {
                 this.tui.display('This passage is locked.', MessageType.ERROR);
                 return;
               }
@@ -1256,11 +1256,11 @@ export class GameController {
 
       // Check if connection is locked
       if (connection.locked && connection.required_key_name) {
-        // Check if player has the required key
-        const session = this.gameStateManager.getCurrentSession();
-        if (session && session.characterId) {
+        try {
+          // Check if player has the required key
+          const characterId = await this.getCurrentCharacterId();
           const hasKey = await this.itemService.hasItemByPartialName(
-            session.characterId, 
+            characterId, 
             connection.required_key_name
           );
           
@@ -1277,7 +1277,7 @@ export class GameController {
             `You unlock the passage with the ${connection.required_key_name} and go ${userInput}.`,
             MessageType.NORMAL
           );
-        } else {
+        } catch (error) {
           this.tui.display('This passage is locked.', MessageType.ERROR);
           return;
         }
