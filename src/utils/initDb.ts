@@ -1075,7 +1075,7 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
 
     // Place starter items in all starter rooms
     const starterRoomItems = [
-      { roomId: entranceId, itemNames: ['Iron Sword', 'Chain Mail', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'], roomName: 'Grand Entrance Hall' },
+      { roomId: entranceId, itemNames: ['Iron Sword', 'Chain Mail', 'Leather Boots', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'], roomName: 'Grand Entrance Hall' },
       { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'], roomName: 'Scholar\'s Library' },
       { roomId: gardenId, itemNames: ['Health Potion', 'Bread', 'Mysterious Glowing Orb', 'Celestial Star Key'], roomName: 'Moonlit Courtyard Garden' },
       { roomId: towerStairsId, itemNames: ['Wooden Staff', 'Cursed Ruby Ring'], roomName: 'Winding Tower Stairs' },

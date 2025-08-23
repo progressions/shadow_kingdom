@@ -2524,6 +2524,11 @@ export class GameController {
       // Show equipment summary using consolidated method
       await this.displayEquipmentSummary(characterId, false);
 
+      // Show armor bonus
+      this.tui.display('\n--- ARMOR ---', MessageType.SYSTEM);
+      const totalArmorPoints = await this.equipmentService.calculateArmorPoints(characterId);
+      this.tui.display(`🛡️  Total Armor: ${totalArmorPoints} (damage reduction)`, MessageType.NORMAL);
+
     } catch (error) {
       console.error('Error displaying character stats:', error);
       this.tui.display('Error displaying character stats.', MessageType.ERROR);

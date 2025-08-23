@@ -61,7 +61,6 @@ describe('Attack Shortcut E2E Tests', () => {
     mockGrokClient = {
       interpretCommand: jest.fn().mockResolvedValue({
         intent: 'unknown',
-        confidence: 0.1,
         extractedInfo: {},
         explanation: 'Could not interpret command'
       }),

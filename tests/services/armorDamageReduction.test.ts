@@ -298,7 +298,7 @@ describe('Armor Damage Reduction System', () => {
       expect(finalDamage).toBe(4); // 7 - 3 = 4
     });
 
-    test('should enforce minimum damage of 1', async () => {
+    test('should allow damage reduction to 0', async () => {
       // Create heavy armor with high armor points
       const heavyArmorId = await itemService.createItem({
         name: 'Plate Armor',
@@ -319,7 +319,7 @@ describe('Armor Damage Reduction System', () => {
       // Test with low incoming damage
       const incomingDamage = 3;
       const finalDamage = await equipmentService.calculateDamageAfterArmor(playerCharacterId, incomingDamage);
-      expect(finalDamage).toBe(1); // Math.max(1, 3 - 10) = 1
+      expect(finalDamage).toBe(0); // Math.max(0, 3 - 10) = 0
     });
 
     test('should work with multiple armor pieces', async () => {
@@ -403,7 +403,7 @@ describe('Armor Damage Reduction System', () => {
       expect(finalDamage).toBe(8); // 5 - (-3) = 8
     });
 
-    test('should still enforce minimum damage with negative armor', async () => {
+    test('should handle negative armor correctly (no minimum damage)', async () => {
       // Create extreme cursed armor
       const extremeCursedId = await itemService.createItem({
         name: 'Extremely Cursed Armor',
@@ -424,7 +424,7 @@ describe('Armor Damage Reduction System', () => {
       // Test with small incoming damage and extreme negative armor
       const incomingDamage = 1;
       const finalDamage = await equipmentService.calculateDamageAfterArmor(playerCharacterId, incomingDamage);
-      expect(finalDamage).toBe(11); // 1 - (-10) = 11 (cursed armor significantly increases damage)
+      expect(finalDamage).toBe(11); // 1 - (-10) = 11 (cursed armor increases damage)
     });
   });
 });

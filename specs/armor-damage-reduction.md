@@ -9,7 +9,6 @@ This specification defines how armor items reduce damage taken by characters whe
 - Base damage: 2 points per successful attack
 - Weapon items add their `value` field to base damage
 - Formula: `totalDamage = baseDamage + weaponValue`
-- Minimum damage is clamped to 1 (even with negative weapon values)
 
 ### Attack System
 - Hit chance: 50% (Math.random() < 0.5)
@@ -21,7 +20,7 @@ This specification defines how armor items reduce damage taken by characters whe
 ### Core Functionality
 1. **Armor Points Calculation**: Sum the `value` field of all equipped armor items
 2. **Damage Reduction**: Subtract total armor points from incoming damage
-3. **Minimum Damage**: Ensure damage never goes below 1 point (armor cannot completely negate damage)
+3. **Full Reduction Allowed**: Armor can reduce damage to 0 (complete damage negation is possible)
 
 ### Implementation Details
 
@@ -34,14 +33,14 @@ This specification defines how armor items reduce damage taken by characters whe
 #### Damage Calculation Formula
 ```
 totalArmorPoints = sum(equipped_armor_items.value)
-finalDamage = Math.max(1, baseDamage + weaponDamage - totalArmorPoints)
+finalDamage = Math.max(0, baseDamage + weaponDamage - totalArmorPoints)
 ```
 
 #### Example Calculations
 1. **No armor**: 2 base + 0 weapon - 0 armor = 2 damage
 2. **Light armor**: 2 base + 3 weapon - 2 armor = 3 damage
-3. **Heavy armor**: 2 base + 0 weapon - 5 armor = 1 damage (minimum)
-4. **Overpowered armor**: 2 base + 1 weapon - 10 armor = 1 damage (minimum)
+3. **Heavy armor**: 2 base + 0 weapon - 5 armor = 0 damage (blocked)
+4. **Overpowered armor**: 2 base + 1 weapon - 10 armor = 0 damage (blocked)
 
 ### Database Schema
 No schema changes required - using existing `value` field:
@@ -87,7 +86,7 @@ async calculateDamageAfterArmor(characterId: number, incomingDamage: number): Pr
 2. **Damage Reduction**
    - No armor → full damage taken
    - Light armor → partial damage reduction
-   - Heavy armor → minimum 1 damage enforced
+   - Heavy armor → damage can be reduced to 0
    - Zero/negative armor values → no reduction or increase
 
 3. **Equipment Integration**
@@ -103,7 +102,7 @@ async calculateDamageAfterArmor(characterId: number, incomingDamage: number): Pr
    - Weapon + armor interaction → both systems work together
 
 2. **Character Death**
-   - High armor preventing death → character survives with 1 HP
+   - High armor preventing death → character takes 0 damage
    - Armor vs high damage → death still occurs appropriately
 
 ### End-to-End Tests  

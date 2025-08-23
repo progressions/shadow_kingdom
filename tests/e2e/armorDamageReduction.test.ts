@@ -163,7 +163,7 @@ describe('Armor Damage Reduction E2E', () => {
       );
 
       // 7. Player attacks enemy - damage should be reduced by armor
-      // When enemy attacks back, damage will be: base 2 - 2 armor = 1 minimum damage
+      // When enemy attacks back, damage will be: base 2 - 2 armor = 0 damage
       await (controller as any).processCommand('attack bandit');
       expect((controller as any).lastDisplayMessage).toContain('takes 2 damage'); // Player's attack to enemy (no armor on enemy)
       
@@ -227,7 +227,7 @@ describe('Armor Damage Reduction E2E', () => {
       // If enemy did 3 damage to player, with 2 armor it would be reduced to 1 (minimum)
       const simulatedEnemyDamage = 3;
       const playerArmorReduction = await equipmentService.calculateDamageAfterArmor(characterId2, simulatedEnemyDamage);
-      expect(playerArmorReduction).toBe(1); // 3 - 2 = 1 (minimum damage)
+      expect(playerArmorReduction).toBe(1); // 3 - 2 = 1
 
       // Continue the fight - player damage should still be 2 (armor doesn't affect player's attack)
       await (controller as any).processCommand('attack tough orc');
@@ -302,7 +302,7 @@ describe('Armor Damage Reduction E2E', () => {
       // Enemy attacks should now be significantly reduced
       const incomingDamage = 5;
       const finalDamage = await equipmentService.calculateDamageAfterArmor(characterId3, incomingDamage);
-      expect(finalDamage).toBe(1); // 5 - 4 = 1 (minimum damage)
+      expect(finalDamage).toBe(1); // 5 - 4 = 1
 
       (Math.random as jest.Mock).mockRestore();
     });
