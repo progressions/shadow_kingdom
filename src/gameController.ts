@@ -23,7 +23,7 @@ import { ActionValidator } from './services/actionValidator';
 import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
 import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
-import { CharacterType, Character } from './types/character';
+import { CharacterType, Character, CharacterSentiment } from './types/character';
 import { UnifiedRoomDisplayService } from './services/unifiedRoomDisplayService';
 import { TUIOutputAdapter } from './adapters/tuiOutputAdapter';
 import { stripArticles, parseTalkCommand, parseGiveCommand } from './utils/articleParser';
@@ -911,18 +911,20 @@ export class GameController {
     // Check for hostile characters blocking movement
     const currentRoomId = this.gameStateManager.getCurrentRoomId();
     if (currentRoomId) {
-      const hostileCharacters = await this.characterService.getHostileCharacters(currentRoomId);
+      const blockingCharacters = await this.characterService.getBlockingCharacters(currentRoomId);
       
-      if (hostileCharacters.length > 0) {
-        const hostileName = hostileCharacters[0].name;
-        if (hostileCharacters.length === 1) {
+      if (blockingCharacters.length > 0) {
+        const blocker = blockingCharacters[0];
+        const sentimentType = blocker.sentiment === CharacterSentiment.HOSTILE ? 'hostile' : 'aggressive';
+        
+        if (blockingCharacters.length === 1) {
           this.tui.display(
-            `You cannot flee! The ${hostileName} blocks your path!`,
+            `${blocker.name} blocks your path! This ${sentimentType} character prevents movement.`,
             MessageType.ERROR
           );
         } else {
           this.tui.display(
-            `You cannot flee! Hostile enemies block your escape!`,
+            `${blockingCharacters.length} hostile characters prevent movement. Defeat them first!`,
             MessageType.ERROR
           );
         }
@@ -2145,7 +2147,22 @@ export class GameController {
         return;
       }
       
-      const response = character.dialogue_response || "Lovely day."
+      // Check if character is dead
+      if (character.is_dead) {
+        this.tui.display(`${character.name} is lifeless and does not respond.`, MessageType.NORMAL);
+        return;
+      }
+
+      // Use custom dialogue response if available, otherwise use sentiment-based response
+      let response: string;
+      if (character.dialogue_response && character.dialogue_response.trim() !== '') {
+        response = character.dialogue_response;
+      } else {
+        // Get character's current sentiment
+        const sentiment = await this.characterService.getSentiment(character.id);
+        response = this.characterService.getSentimentDialogueResponse(sentiment);
+      }
+
       this.tui.display(`${character.name} says: "${response}"`, MessageType.NORMAL);
 
     } catch (error) {
@@ -2206,6 +2223,9 @@ export class GameController {
       
       // Update character health
       await this.characterService.updateCharacterHealth(character.id, newHealth);
+
+      // Update character sentiment to hostile after successful attack
+      await this.characterService.setSentiment(character.id, CharacterSentiment.HOSTILE);
       
       this.tui.display(`You attack the ${character.name}. The ${character.name} takes ${damageAmount} damage.`, MessageType.NORMAL);
       
@@ -2269,6 +2289,12 @@ export class GameController {
         return;
       }
 
+      // Check if character is dead
+      if (character.is_dead) {
+        this.tui.display(`${character.name} is dead and cannot receive items.`, MessageType.ERROR);
+        return;
+      }
+
       // Remove item from player inventory (reduce quantity or delete if quantity is 1)
       if (item.quantity > 1) {
         await this.db.run(
@@ -2284,7 +2310,35 @@ export class GameController {
 
       // Display success messages
       this.tui.display(`You give the ${item.item.name} to the ${character.name}.`, MessageType.NORMAL);
-      this.tui.display(`${character.name} says, "Thank you."`, MessageType.NORMAL);
+      
+      // Handle sentiment improvement for giving items to NPCs
+      let sentimentMessage = `${character.name} says, "Thank you."`;
+      
+      if (character.type === CharacterType.NPC && !character.is_dead) {
+        try {
+          // Improve sentiment by one step for any item given
+          const oldSentiment = await this.characterService.getSentiment(character.id);
+          const newSentiment = await this.characterService.changeSentiment(character.id, 1);
+          
+          // If sentiment actually improved, show additional message
+          if (newSentiment !== oldSentiment) {
+            const sentimentMessages = {
+              [CharacterSentiment.HOSTILE]: `${character.name} seems slightly less hostile toward you.`,
+              [CharacterSentiment.AGGRESSIVE]: `${character.name} appears to be warming up to you.`,
+              [CharacterSentiment.INDIFFERENT]: `${character.name} looks at you with newfound interest.`,
+              [CharacterSentiment.FRIENDLY]: `${character.name} smiles warmly at your generosity.`,
+              [CharacterSentiment.ALLIED]: `${character.name} regards you as a trusted ally.`
+            };
+            
+            sentimentMessage += ` ${sentimentMessages[newSentiment] || ''}`;
+          }
+        } catch (error) {
+          console.error('Error updating character sentiment:', error);
+          // Continue with basic message if sentiment update fails
+        }
+      }
+      
+      this.tui.display(sentimentMessage, MessageType.NORMAL);
 
     } catch (error) {
       console.error('Error giving item:', error);
@@ -2309,4 +2363,5 @@ export class GameController {
     
     return foundCharacter || null;
   }
+
 }

@@ -7,7 +7,7 @@
 
 import Database from '../utils/database';
 import { CharacterService } from './characterService';
-import { CharacterType } from '../types/character';
+import { CharacterType, CharacterSentiment } from '../types/character';
 import { GeneratedCharacter } from '../ai/grokClient';
 
 export interface CharacterGenerationConfig {
@@ -102,6 +102,16 @@ export class CharacterGenerationService {
       throw new Error(`Invalid character type: ${character.type}`);
     }
 
+    // Determine sentiment based on character data
+    let sentiment: CharacterSentiment;
+    if (character.sentiment) {
+      // Use explicit sentiment if provided
+      sentiment = character.sentiment as CharacterSentiment;
+    } else {
+      // Use type-based defaults
+      sentiment = characterType === CharacterType.ENEMY ? CharacterSentiment.AGGRESSIVE : CharacterSentiment.INDIFFERENT;
+    }
+
     // Create the character in database with attributes
     const characterId = await this.characterService.createCharacter({
       game_id: gameId,
@@ -116,7 +126,7 @@ export class CharacterGenerationService {
       constitution: character.attributes?.constitution ?? 10,
       wisdom: character.attributes?.wisdom ?? 10,
       charisma: character.attributes?.charisma ?? 10,
-      is_hostile: characterType === CharacterType.ENEMY, // Enemies are hostile by default
+      sentiment: sentiment, // New sentiment system
       dialogue_response: character.initialDialogue
     });
 

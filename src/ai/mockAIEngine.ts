@@ -1,4 +1,4 @@
-import { GeneratedRoom, GeneratedRegion, GeneratedNPC, GeneratedCharacter, RoomContext, RegionGenerationContext, NPCContext } from './grokClient';
+import { GeneratedRoom, GeneratedRegion, GeneratedNPC, GeneratedCharacter, RoomContext, RegionGenerationContext, NPCContext, CharacterWithSentimentContext, GeneratedCharacterWithSentiment, BehavioralDialogueContext, GeneratedBehavioralDialogue } from './grokClient';
 
 // Enhanced mock content interfaces
 export interface MockRoom {
@@ -176,6 +176,236 @@ export class MockAIEngine {
     }
 
     return generatedRoom;
+  }
+
+  /**
+   * Generate room description with sentiment context
+   */
+  async generateRoomDescription(prompt: string, context?: any): Promise<{ name: string; description: string }> {
+    // Extract sentiment information from the prompt
+    const hasHostileCharacters = prompt.includes('hostile') || prompt.includes('aggressive');
+    const hasFriendlyCharacters = prompt.includes('friendly') || prompt.includes('allied');
+    const hasMixedSentiments = hasHostileCharacters && hasFriendlyCharacters;
+    const hasNoCharacters = prompt.includes('No characters currently present');
+
+    // Generate appropriate room description based on sentiment context
+    let name: string;
+    let description: string;
+
+    if (hasNoCharacters) {
+      name = 'Empty Chamber';
+      description = 'A quiet, empty chamber with a neutral atmosphere. The silence is almost palpable.';
+    } else if (hasMixedSentiments) {
+      name = 'Tense Meeting Hall';
+      description = 'A room charged with complex social dynamics. You can sense the tension between conflicting personalities, creating an atmosphere of uncertainty and potential conflict.';
+    } else if (hasHostileCharacters) {
+      name = 'Dangerous Den';
+      description = 'A menacing space that radiates danger and hostility. The very air seems thick with threat and malice, making every shadow seem ominous.';
+    } else if (hasFriendlyCharacters) {
+      name = 'Welcoming Hall';
+      description = 'A warm and inviting space that exudes comfort and safety. The atmosphere is friendly and peaceful, putting visitors at ease.';
+    } else {
+      name = 'Neutral Chamber';
+      description = 'A functional space with a business-like atmosphere. Neither welcoming nor threatening, it serves its purpose efficiently.';
+    }
+
+    return { name, description };
+  }
+
+  /**
+   * Generate character with appropriate sentiment based on context
+   */
+  async generateCharacterWithSentiment(prompt: string, context: CharacterWithSentimentContext): Promise<GeneratedCharacterWithSentiment> {
+    const { roomName, roomDescription, regionName, existingCharacters } = context;
+    
+    // Analyze context to determine appropriate sentiment
+    const isGuardedPlace = roomName.toLowerCase().includes('treasury') || 
+                          roomName.toLowerCase().includes('vault') || 
+                          roomName.toLowerCase().includes('fortress') ||
+                          regionName.toLowerCase().includes('fortress') ||
+                          regionName.toLowerCase().includes('dungeon');
+    
+    const isPeacefulPlace = roomName.toLowerCase().includes('village') || 
+                           roomName.toLowerCase().includes('market') || 
+                           roomName.toLowerCase().includes('peaceful') ||
+                           regionName.toLowerCase().includes('village') ||
+                           regionName.toLowerCase().includes('peaceful');
+    
+    const isNeutralPlace = roomName.toLowerCase().includes('outpost') || 
+                          roomName.toLowerCase().includes('crossing') ||
+                          roomName.toLowerCase().includes('guard') ||
+                          roomName.toLowerCase().includes('hall');
+    
+    const isSpecialPlace = roomName.toLowerCase().includes('prison') || 
+                          roomName.toLowerCase().includes('rescue') ||
+                          roomName.toLowerCase().includes('cell');
+
+    // Check for existing character conflicts
+    const hasFriendlyCharacters = existingCharacters.some((char: any) => 
+      char.sentiment === 'friendly' || char.sentiment === 'allied'
+    );
+
+    let sentiment: string;
+    let characterType: 'npc' | 'enemy';
+    let nameTemplate: string;
+    let reasoning: string;
+
+    if (isSpecialPlace) {
+      sentiment = 'allied';
+      characterType = 'npc';
+      nameTemplate = 'Grateful Prisoner';
+      reasoning = 'Rescued prisoners become allied due to gratitude';
+    } else if (isGuardedPlace && hasFriendlyCharacters) {
+      sentiment = 'hostile';
+      characterType = 'enemy';
+      nameTemplate = 'Rival Thief';
+      reasoning = 'Creating conflict with existing friendly characters';
+    } else if (isGuardedPlace) {
+      sentiment = 'aggressive';
+      characterType = 'enemy';
+      nameTemplate = 'Gruff Guardian';
+      reasoning = 'Guardian characters are typically aggressive toward intruders';
+    } else if (isPeacefulPlace) {
+      sentiment = 'friendly';
+      characterType = 'npc';
+      nameTemplate = 'Kind Merchant';
+      reasoning = 'Merchants in peaceful villages are typically friendly to potential customers';
+    } else if (isNeutralPlace) {
+      sentiment = 'indifferent';
+      characterType = 'npc';
+      nameTemplate = 'Stoic Guard';
+      reasoning = 'Guards at neutral outposts are typically indifferent to travelers';
+    } else {
+      sentiment = 'indifferent';
+      characterType = 'npc';
+      nameTemplate = 'Context Character';
+      reasoning = 'Default indifferent character for unspecified context';
+    }
+
+    return {
+      name: nameTemplate,
+      type: characterType,
+      sentiment: sentiment,
+      description: `A character created by AI with ${sentiment} disposition`,
+      contextReasoning: reasoning
+    };
+  }
+
+  /**
+   * Generate sentiment-based behavioral dialogue
+   */
+  async generateSentimentBasedDialogue(prompt: string, context: BehavioralDialogueContext): Promise<GeneratedBehavioralDialogue> {
+    const sentiment = context.sentiment.toLowerCase();
+    const playerCommand = context.playerCommand.toLowerCase();
+    const hasHistory = context.conversationHistory && context.conversationHistory.length > 0;
+    const isSpecialLocation = context.roomContext?.type === 'sacred' || 
+                             context.roomContext?.name.toLowerCase().includes('temple') ||
+                             context.roomContext?.name.toLowerCase().includes('sacred');
+    
+    // Adjust responses based on context
+    switch (sentiment) {
+      case 'hostile':
+        if (isSpecialLocation) {
+          return {
+            response: "Even in this sacred place, I'll gladly spill your blood if you don't leave!",
+            tone: 'threatening',
+            action: 'prepares_for_combat',
+            sentimentContext: 'hostile',
+            locationModifier: 'sacred_space',
+            suggestedPlayerActions: ['retreat', 'defend', 'attack']
+          };
+        }
+        return {
+          response: "You dare approach me?! Draw your weapon or flee, coward!",
+          tone: 'threatening',
+          action: 'prepares_for_combat',
+          sentimentContext: 'hostile',
+          suggestedPlayerActions: ['retreat', 'defend', 'attack']
+        };
+
+      case 'aggressive':
+        if (hasHistory) {
+          return {
+            response: "We've spoken before. What more do you want?",
+            tone: 'impatient',
+            action: 'watches_warily',
+            sentimentContext: 'aggressive',
+            suggestedPlayerActions: ['explain_purpose', 'back_away']
+          };
+        }
+        if (isSpecialLocation) {
+          return {
+            response: "In this sacred place, even I must speak softly. What brings you to this holy ground?",
+            tone: 'reverent',
+            action: 'speaks_quietly',
+            sentimentContext: 'aggressive',
+            locationModifier: 'sacred_space',
+            suggestedPlayerActions: ['explain_purpose', 'show_respect']
+          };
+        }
+        if (context.sentimentChange === 'recently_improved') {
+          return {
+            response: "You again? That gift you gave me... it was unexpected. Perhaps you're not so bad after all.",
+            tone: 'softening',
+            action: 'reconsiders_position',
+            sentimentContext: 'indifferent',
+            sentimentChange: 'recently_improved',
+            suggestedPlayerActions: ['continue_conversation', 'offer_more_help']
+          };
+        }
+        return {
+          response: "State your business quickly. I don't have time for idle chatter.",
+          tone: 'suspicious',
+          action: 'watches_warily',
+          sentimentContext: 'aggressive',
+          suggestedPlayerActions: ['explain_purpose', 'show_credentials', 'back_away']
+        };
+
+      case 'friendly':
+        if (playerCommand.includes('lost') || context.context.includes('lost')) {
+          return {
+            response: "You look lost, friend. Let me share what I know about these lands.",
+            tone: 'helpful',
+            action: 'offers_guidance',
+            sentimentContext: 'friendly',
+            suggestedPlayerActions: ['ask_for_directions', 'accept_help', 'trade_items']
+          };
+        }
+        return {
+          response: "Welcome, friend! How wonderful to see a new face. How can I help you today?",
+          tone: 'welcoming',
+          action: 'smiles_warmly',
+          sentimentContext: 'friendly',
+          suggestedPlayerActions: ['ask_for_help', 'trade_items', 'share_news']
+        };
+
+      case 'allied':
+        return {
+          response: "My trusted friend! I would follow you to the ends of the earth. What is our next move?",
+          tone: 'devoted',
+          action: 'stands_ready',
+          sentimentContext: 'allied',
+          suggestedPlayerActions: ['request_aid', 'share_plans', 'ask_advice']
+        };
+
+      default: // indifferent
+        if (playerCommand.includes('examine')) {
+          return {
+            response: "Yes? What do you need? I'm quite busy with these ledgers.",
+            tone: 'neutral',
+            action: 'continues_working',
+            sentimentContext: 'indifferent',
+            suggestedPlayerActions: ['state_business', 'apologize', 'offer_payment']
+          };
+        }
+        return {
+          response: "Yes? What do you need? I'm quite busy with these ledgers.",
+          tone: 'neutral',
+          action: 'continues_working',
+          sentimentContext: 'indifferent',
+          suggestedPlayerActions: ['state_business', 'apologize', 'offer_payment']
+        };
+    }
   }
 
   /**

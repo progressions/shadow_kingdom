@@ -1,5 +1,5 @@
 import Database from '../utils/database';
-import { GrokClient, RegionGenerationContext, GeneratedCharacter } from '../ai/grokClient';
+import { GrokClient, RegionGenerationContext, GeneratedCharacter, CharacterWithSentimentContext, GeneratedCharacterWithSentiment } from '../ai/grokClient';
 import { Room, Connection, UnfilledConnection } from './gameStateManager';
 import { RegionService } from './regionService';
 import { Region } from '../types/region';
@@ -885,6 +885,233 @@ export class RoomGenerationService {
    */
   getOptions(): RoomGenerationOptions {
     return { ...this.options };
+  }
+
+  /**
+   * Generate room description with character sentiment context - Phase 13
+   */
+  async generateRoomWithSentimentContext(roomId: number): Promise<{ name: string; description: string } | null> {
+    try {
+      // Get all living characters in the room
+      const characters = await this.db.all<any>(
+        'SELECT name, sentiment FROM characters WHERE current_room_id = ? AND (is_dead IS NULL OR is_dead = 0)',
+        [roomId]
+      );
+
+      // Build sentiment-aware prompt
+      let prompt = 'Generate a room description that reflects the emotional atmosphere created by its inhabitants.\n\n';
+
+      if (characters.length === 0) {
+        prompt += 'No characters currently present. Generate a neutral, empty room atmosphere.\n\n';
+      } else {
+        prompt += 'Room characters and their sentiments:\n';
+        characters.forEach(char => {
+          prompt += `- ${char.name}: ${char.sentiment}\n`;
+        });
+        prompt += '\n';
+
+        prompt += 'Generate room atmosphere considering character emotional states:\n';
+        prompt += '- Hostile characters create tense, dangerous atmosphere\n';
+        prompt += '- Friendly characters create welcoming environment\n';
+        prompt += '- Mixed sentiments create complex social dynamics\n';
+        prompt += '- Indifferent characters create neutral atmosphere\n\n';
+      }
+
+      prompt += 'Respond in JSON format:\n';
+      prompt += '{\n';
+      prompt += '  "name": "Room Name",\n';
+      prompt += '  "description": "Detailed description reflecting the emotional atmosphere"\n';
+      prompt += '}';
+
+      // Generate room description using AI
+      const result = await this.grokClient.generateRoomDescription(prompt, { roomId, characters });
+      
+      if (result) {
+        // Update the room in database with new description
+        await this.db.run(
+          'UPDATE rooms SET name = ?, description = ? WHERE id = ?',
+          [result.name, result.description, roomId]
+        );
+
+        if (this.isDebugEnabled()) {
+          console.log(`🏠 Generated sentiment-aware description for room ${roomId}: ${result.name}`);
+        }
+
+        return result;
+      }
+
+      // Fallback: generate basic description based on sentiment analysis
+      const fallback = this.generateFallbackSentimentDescription(characters);
+      await this.db.run(
+        'UPDATE rooms SET name = ?, description = ? WHERE id = ?',
+        [fallback.name, fallback.description, roomId]
+      );
+
+      return fallback;
+
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error generating room with sentiment context:', error);
+      }
+
+      // Fallback to basic room description
+      const fallback = {
+        name: 'Generated Room',
+        description: 'A room shaped by the emotions of its inhabitants.'
+      };
+
+      return fallback;
+    }
+  }
+
+  /**
+   * Generate fallback room description based on character sentiments
+   */
+  private generateFallbackSentimentDescription(characters: any[]): { name: string; description: string } {
+    if (characters.length === 0) {
+      return {
+        name: 'Empty Chamber',
+        description: 'A quiet, empty chamber with a neutral atmosphere.'
+      };
+    }
+
+    // Count sentiment types
+    const sentimentCounts = {
+      hostile: 0,
+      aggressive: 0,
+      indifferent: 0,
+      friendly: 0,
+      allied: 0
+    };
+
+    characters.forEach(char => {
+      if (sentimentCounts.hasOwnProperty(char.sentiment)) {
+        sentimentCounts[char.sentiment as keyof typeof sentimentCounts]++;
+      }
+    });
+
+    const totalHostile = sentimentCounts.hostile + sentimentCounts.aggressive;
+    const totalFriendly = sentimentCounts.friendly + sentimentCounts.allied;
+    const totalNeutral = sentimentCounts.indifferent;
+
+    // Determine dominant atmosphere
+    if (totalHostile > totalFriendly && totalHostile > totalNeutral) {
+      return {
+        name: 'Tense Chamber',
+        description: 'The atmosphere is thick with tension and hostility. Every shadow seems to harbor potential danger.'
+      };
+    } else if (totalFriendly > totalHostile && totalFriendly > totalNeutral) {
+      return {
+        name: 'Welcoming Space',
+        description: 'A warm and inviting atmosphere permeates this space, making visitors feel safe and comfortable.'
+      };
+    } else if (totalHostile > 0 && totalFriendly > 0) {
+      return {
+        name: 'Room of Contrasts',
+        description: 'Complex social dynamics create an atmosphere of uncertainty, with conflicting emotions creating palpable tension.'
+      };
+    } else {
+      return {
+        name: 'Neutral Hall',
+        description: 'A functional space with a business-like atmosphere, neither particularly welcoming nor threatening.'
+      };
+    }
+  }
+
+  /**
+   * Generate character with intelligent sentiment selection based on room and region context
+   */
+  async generateCharacterWithSentimentContext(
+    roomId: number, 
+    context: {
+      roomName: string;
+      roomDescription: string;
+      regionName: string;
+      existingCharacters: Array<{
+        name: string;
+        sentiment: string;
+        type: string;
+      }>;
+    }
+  ): Promise<GeneratedCharacterWithSentiment> {
+    try {
+      // Build comprehensive context prompt for character generation with sentiment selection
+      let prompt = 'Generate a character for a fantasy text adventure game with intelligent sentiment selection.\n\n';
+      
+      prompt += `CONTEXT:\n`;
+      prompt += `Room: ${context.roomName}\n`;
+      prompt += `Description: ${context.roomDescription}\n`;
+      prompt += `Region: ${context.regionName}\n\n`;
+      
+      if (context.existingCharacters.length > 0) {
+        prompt += 'Existing characters in this room:\n';
+        context.existingCharacters.forEach(char => {
+          prompt += `- ${char.name} (${char.type}, sentiment: ${char.sentiment})\n`;
+        });
+        prompt += '\n';
+      }
+      
+      prompt += 'CHARACTER SENTIMENT SYSTEM:\n';
+      prompt += 'Select appropriate initial sentiment based on context:\n';
+      prompt += '- hostile: -2 (enemies who attack on sight)\n';
+      prompt += '- aggressive: -1 (hostile but might talk first)\n';
+      prompt += '- indifferent: 0 (neutral, business-like)\n';
+      prompt += '- friendly: 1 (helpful, welcoming)\n';
+      prompt += '- allied: 2 (trusted companion, rare)\n\n';
+      
+      prompt += 'SELECTION GUIDELINES:\n';
+      prompt += 'Consider the room context:\n';
+      prompt += '- Treasury/Vault/Fortress: Usually aggressive/hostile guardians\n';
+      prompt += '- Village/Market/Peaceful: Usually friendly merchants/NPCs\n';
+      prompt += '- Outpost/Guard: Usually indifferent officials\n';
+      prompt += '- Prison/Rescue: Rare case for allied (grateful)\n';
+      prompt += '- Mixed existing sentiments: Consider creating interesting conflict/harmony\n\n';
+      
+      prompt += 'CHARACTER TYPES:\n';
+      prompt += '- npc: Non-player characters (merchants, guards, civilians)\n';
+      prompt += '- enemy: Hostile creatures that may engage in combat\n\n';
+      
+      prompt += 'Respond in JSON format:\n';
+      prompt += '{\n';
+      prompt += '  "name": "Character Name",\n';
+      prompt += '  "type": "npc" or "enemy",\n';
+      prompt += '  "sentiment": "hostile|aggressive|indifferent|friendly|allied",\n';
+      prompt += '  "description": "Brief character description",\n';
+      prompt += '  "contextReasoning": "Why this sentiment fits the context"\n';
+      prompt += '}';
+      
+      // Use the new AI method to generate character with sentiment
+      const result = await this.grokClient.generateCharacterWithSentiment(prompt, {
+        roomId,
+        roomName: context.roomName,
+        roomDescription: context.roomDescription,
+        regionName: context.regionName,
+        existingCharacters: context.existingCharacters
+      });
+      
+      if (this.isDebugEnabled()) {
+        console.log(`👤 Generated character with contextual sentiment: ${result.name} (${result.sentiment})`);
+        if (result.contextReasoning) {
+          console.log(`   Reasoning: ${result.contextReasoning}`);
+        }
+      }
+      
+      return result;
+      
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error generating character with sentiment context:', error);
+      }
+      
+      // Return fallback character
+      return {
+        name: 'Mysterious Stranger',
+        type: 'npc',
+        sentiment: 'indifferent',
+        description: 'A figure whose intentions remain unclear.',
+        contextReasoning: 'Fallback character due to generation failure'
+      };
+    }
   }
 
 }

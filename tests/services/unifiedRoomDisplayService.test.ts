@@ -6,7 +6,7 @@ import { ItemService } from '../../src/services/itemService';
 import { CharacterService } from '../../src/services/characterService';
 import { BackgroundGenerationService } from '../../src/services/backgroundGenerationService';
 import { RoomItem, ItemType } from '../../src/types/item';
-import { Character, CharacterType } from '../../src/types/character';
+import { Character, CharacterType, CharacterSentiment } from '../../src/types/character';
 
 // Mock output interface to capture calls
 class MockOutputInterface implements OutputInterface {
@@ -201,6 +201,7 @@ describe('UnifiedRoomDisplayService', () => {
           intelligence: 14,
           wisdom: 13,
           charisma: 16,
+          sentiment: CharacterSentiment.FRIENDLY,
           created_at: '2024-01-01T00:00:00Z'
         },
         {
@@ -218,6 +219,7 @@ describe('UnifiedRoomDisplayService', () => {
           intelligence: 8,
           wisdom: 10,
           charisma: 6,
+          sentiment: CharacterSentiment.AGGRESSIVE,
           created_at: '2024-01-01T00:00:00Z'
         }
       ];
@@ -231,9 +233,9 @@ describe('UnifiedRoomDisplayService', () => {
       
       expect(displayCalls).toContainEqual({ message: '', type: MessageType.NORMAL });
       expect(displayCalls).toContainEqual({ message: 'Characters present:', type: MessageType.SYSTEM });
-      expect(displayCalls).toContainEqual({ message: '👤 Friendly Merchant', type: MessageType.NORMAL });
+      expect(displayCalls).toContainEqual({ message: '😊 Friendly Merchant (friendly)', type: MessageType.NORMAL });
       expect(displayCalls).toContainEqual({ message: '  A jovial merchant with a wide smile', type: MessageType.NORMAL });
-      expect(displayCalls).toContainEqual({ message: '• Goblin Warrior', type: MessageType.NORMAL });
+      expect(displayCalls).toContainEqual({ message: '🗡️ Goblin Warrior (aggressive)', type: MessageType.NORMAL });
       expect(displayCalls).toContainEqual({ message: '  A snarling goblin with rusty weapons', type: MessageType.NORMAL });
     });
 

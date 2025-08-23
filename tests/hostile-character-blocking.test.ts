@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { Database } from '../src/utils/database';
 import { CharacterService } from '../src/services/characterService';
 import { GameStateManager } from '../src/services/gameStateManager';
-import { CharacterType } from '../src/types/character';
+import { CharacterType, CharacterSentiment } from '../src/types/character';
 import { initializeDatabase } from '../src/utils/initDb';
 
-describe('Hostile Character Blocking System', () => {
+describe('Sentiment-Based Character Blocking System', () => {
   let db: Database;
   let characterService: CharacterService;
   let gameStateManager: GameStateManager;
@@ -50,8 +50,8 @@ describe('Hostile Character Blocking System', () => {
     await db.close();
   });
 
-  describe('CharacterService hostile methods', () => {
-    it('should create a hostile enemy character by default', async () => {
+  describe('CharacterService sentiment methods', () => {
+    it('should create an aggressive enemy character by default', async () => {
       const characterId = await characterService.createCharacter({
         game_id: gameId,
         name: 'Goblin Warrior',
@@ -62,11 +62,11 @@ describe('Hostile Character Blocking System', () => {
 
       const character = await characterService.getCharacter(characterId);
       expect(character).toBeDefined();
-      expect(character?.is_hostile).toBe(1); // SQLite stores boolean as 0/1
+      expect(character?.sentiment).toBe(CharacterSentiment.AGGRESSIVE);
       expect(character?.type).toBe(CharacterType.ENEMY);
     });
 
-    it('should create a non-hostile NPC by default', async () => {
+    it('should create an indifferent NPC by default', async () => {
       const characterId = await characterService.createCharacter({
         game_id: gameId,
         name: 'Village Elder',
@@ -77,47 +77,50 @@ describe('Hostile Character Blocking System', () => {
 
       const character = await characterService.getCharacter(characterId);
       expect(character).toBeDefined();
-      expect(character?.is_hostile).toBe(0);
+      expect(character?.sentiment).toBe(CharacterSentiment.INDIFFERENT);
       expect(character?.type).toBe(CharacterType.NPC);
     });
 
-    it('should override default hostility when specified', async () => {
+    it('should allow custom sentiment when specified', async () => {
       const characterId = await characterService.createCharacter({
         game_id: gameId,
         name: 'Corrupted Villager',
         description: 'A villager turned hostile',
         type: CharacterType.NPC,
         current_room_id: roomId,
-        is_hostile: true
+        sentiment: CharacterSentiment.HOSTILE
       });
 
       const character = await characterService.getCharacter(characterId);
       expect(character).toBeDefined();
-      expect(character?.is_hostile).toBe(1);
+      expect(character?.sentiment).toBe(CharacterSentiment.HOSTILE);
       expect(character?.type).toBe(CharacterType.NPC);
     });
 
-    it('should get all hostile characters in a room', async () => {
+    it('should get all hostile/aggressive characters in a room', async () => {
       // Create mix of hostile and non-hostile characters
       await characterService.createCharacter({
         game_id: gameId,
         name: 'Goblin',
         type: CharacterType.ENEMY,
-        current_room_id: roomId
+        current_room_id: roomId,
+        sentiment: CharacterSentiment.AGGRESSIVE
       });
 
       await characterService.createCharacter({
         game_id: gameId,
         name: 'Friendly NPC',
         type: CharacterType.NPC,
-        current_room_id: roomId
+        current_room_id: roomId,
+        sentiment: CharacterSentiment.FRIENDLY
       });
 
       await characterService.createCharacter({
         game_id: gameId,
         name: 'Dragon',
         type: CharacterType.ENEMY,
-        current_room_id: roomId
+        current_room_id: roomId,
+        sentiment: CharacterSentiment.HOSTILE
       });
 
       const hostileCharacters = await characterService.getHostileCharacters(roomId);
@@ -159,24 +162,24 @@ describe('Hostile Character Blocking System', () => {
       expect(hasHostiles).toBe(true);
     });
 
-    it('should update character hostility', async () => {
+    it('should update character sentiment', async () => {
       const characterId = await characterService.createCharacter({
         game_id: gameId,
         name: 'Guard',
         type: CharacterType.NPC,
         current_room_id: roomId,
-        is_hostile: false
+        sentiment: CharacterSentiment.INDIFFERENT
       });
 
       // Make character hostile
-      await characterService.setCharacterHostility(characterId, true);
+      await characterService.setSentiment(characterId, CharacterSentiment.HOSTILE);
       let character = await characterService.getCharacter(characterId);
-      expect(character?.is_hostile).toBe(1);
+      expect(character?.sentiment).toBe(CharacterSentiment.HOSTILE);
 
-      // Make character non-hostile
-      await characterService.setCharacterHostility(characterId, false);
+      // Make character friendly
+      await characterService.setSentiment(characterId, CharacterSentiment.FRIENDLY);
       character = await characterService.getCharacter(characterId);
-      expect(character?.is_hostile).toBe(0);
+      expect(character?.sentiment).toBe(CharacterSentiment.FRIENDLY);
     });
   });
 
@@ -215,7 +218,7 @@ describe('Hostile Character Blocking System', () => {
         name: 'Friendly NPC',
         type: CharacterType.NPC,
         current_room_id: roomId,
-        is_hostile: false
+        sentiment: CharacterSentiment.FRIENDLY
       });
 
       const hostileCharacters = await characterService.getHostileCharacters(roomId);
@@ -266,8 +269,8 @@ describe('Hostile Character Blocking System', () => {
     });
   });
 
-  describe('Character generation with hostility', () => {
-    it('should set enemies as hostile during generation', async () => {
+  describe('Character generation with sentiment', () => {
+    it('should set enemies as aggressive during generation', async () => {
       const enemyId = await characterService.createCharacter({
         game_id: gameId,
         name: 'Generated Enemy',
@@ -281,11 +284,11 @@ describe('Hostile Character Blocking System', () => {
 
       const enemy = await characterService.getCharacter(enemyId);
       expect(enemy).toBeDefined();
-      expect(enemy?.is_hostile).toBe(1);
+      expect(enemy?.sentiment).toBe(CharacterSentiment.AGGRESSIVE);
       expect(enemy?.type).toBe(CharacterType.ENEMY);
     });
 
-    it('should set NPCs as non-hostile during generation', async () => {
+    it('should set NPCs as indifferent during generation', async () => {
       const npcId = await characterService.createCharacter({
         game_id: gameId,
         name: 'Generated NPC',
@@ -299,7 +302,7 @@ describe('Hostile Character Blocking System', () => {
 
       const npc = await characterService.getCharacter(npcId);
       expect(npc).toBeDefined();
-      expect(npc?.is_hostile).toBe(0);
+      expect(npc?.sentiment).toBe(CharacterSentiment.INDIFFERENT);
       expect(npc?.type).toBe(CharacterType.NPC);
     });
   });

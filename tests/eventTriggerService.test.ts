@@ -6,7 +6,7 @@
 
 import Database from '../src/utils/database';
 import { EventTriggerService, TriggerContext } from '../src/services/eventTriggerService';
-import { Character, CharacterType } from '../src/types/character';
+import { Character, CharacterType, CharacterSentiment } from '../src/types/character';
 import { initializeDatabase } from '../src/utils/initDb';
 
 describe('EventTriggerService', () => {
@@ -38,6 +38,7 @@ describe('EventTriggerService', () => {
       charisma: 10,
       max_health: 10,
       current_health: 10,
+      sentiment: CharacterSentiment.INDIFFERENT,
       is_dead: false,
       created_at: new Date().toISOString()
     };
