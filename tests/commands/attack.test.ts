@@ -31,6 +31,7 @@ describe('Attack Command', () => {
     process.env.USE_PRISMA = 'false';
     process.env.NODE_ENV = 'test';
     process.env.AI_MOCK_MODE = 'true'; // Disable real AI calls
+    process.env.DISABLE_ENEMY_ATTACKS = 'true'; // Disable enemy attacks for attack command tests
     
     // Set up the GrokClient mock
     mockGrokClient = {
@@ -118,6 +119,7 @@ describe('Attack Command', () => {
     
     // Clean up environment
     delete process.env.AI_MOCK_MODE;
+    delete process.env.DISABLE_ENEMY_ATTACKS;
   });
 
   describe('Basic functionality', () => {

@@ -627,6 +627,13 @@ export class GameController {
 
       // Delegate to command router
       await this.commandRouter.processCommand(input, executionContext);
+
+      // Process enemy attacks after player command (only for game commands)
+      if (this.gameStateManager.isInGame() && 
+          !allowedDuringProcessing.includes(commandName) && 
+          process.env.DISABLE_ENEMY_ATTACKS !== 'true') {
+        await this.processEnemyAttacks();
+      }
     } finally {
       // Reset command state (only if we set it)
       if (!allowedDuringProcessing.includes(commandName)) {
@@ -637,6 +644,74 @@ export class GameController {
     }
   }
 
+  /**
+   * Process enemy attacks - enemies with hostile/aggressive sentiment attack the player
+   */
+  private async processEnemyAttacks(): Promise<void> {
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      if (!session) return;
+
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      if (!currentRoom) return;
+
+      // Get player character
+      const playerCharacter = await this.characterService.getPlayerCharacter(session.gameId!);
+      if (!playerCharacter || playerCharacter.is_dead) return;
+
+      // Find hostile/aggressive enemies in current room
+      const enemies = await this.db.all<Character>(`
+        SELECT * FROM characters 
+        WHERE current_room_id = ? 
+        AND (sentiment = 'hostile' OR sentiment = 'aggressive')
+        AND (is_dead IS NULL OR is_dead = false)
+        AND type != 'player'
+        ORDER BY name
+      `, [currentRoom.id]);
+
+      if (enemies.length === 0) return;
+
+      // Each enemy attacks for 2 damage
+      let totalDamage = 0;
+      const attackMessages: string[] = [];
+
+      for (const enemy of enemies) {
+        const damage = 2; // Hardcoded 2 damage per attack
+        totalDamage += damage;
+        
+        attackMessages.push(`The ${enemy.name} attacks you for ${damage} damage!`);
+      }
+
+      // Apply total damage to player
+      const playerHealth = await this.characterService.getCharacterHealth(playerCharacter.id);
+      if (!playerHealth) return;
+
+      const newHealth = Math.max(0, playerHealth.current - totalDamage);
+      await this.characterService.updateCharacterHealth(playerCharacter.id, newHealth);
+
+      // Display attack messages
+      for (const message of attackMessages) {
+        this.tui.display(message, MessageType.ERROR);
+      }
+
+      // Handle player death
+      if (newHealth <= 0) {
+        await this.characterService.setCharacterDead(playerCharacter.id);
+        this.tui.display('', MessageType.NORMAL);
+        this.tui.display('💀 You have been slain! 💀', MessageType.ERROR);
+        this.tui.display('Your adventure ends here...', MessageType.ERROR);
+        this.tui.display('', MessageType.NORMAL);
+      } else {
+        // Show remaining health
+        const healthPercent = Math.round((newHealth / playerHealth.max) * 100);
+        this.tui.display(`💔 Your health: ${newHealth}/${playerHealth.max} (${healthPercent}%)`, MessageType.SYSTEM);
+      }
+
+    } catch (error) {
+      // Silent error handling - don't break the game flow
+      console.error('Error processing enemy attacks:', error);
+    }
+  }
 
   private showWelcome() {
     this.tui.showWelcome('Welcome to Shadow Kingdom!');
