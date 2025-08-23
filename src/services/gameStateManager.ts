@@ -26,6 +26,8 @@ export interface Connection {
   to_room_id: number | null;  // Changed: nullable for unfilled connections
   direction: string;
   name: string;
+  locked?: boolean;  // Optional for backward compatibility
+  required_key_name?: string;  // Optional for backward compatibility
 }
 
 export interface UnfilledConnection extends Connection {

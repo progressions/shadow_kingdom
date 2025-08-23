@@ -88,6 +88,15 @@ const SEED_ITEMS: CreateItemData[] = [
     max_stack: 1
   },
   {
+    name: 'Celestial Star Key',
+    description: 'A beautiful key crafted from meteoric metal that glows with a soft starlight. Its surface is etched with constellations.',
+    type: ItemType.QUEST,
+    weight: 0.2,
+    value: 0,
+    stackable: false,
+    max_stack: 1
+  },
+  {
     name: 'Wooden Staff',
     description: 'A simple wooden staff, worn smooth by many hands. It hums faintly with magical energy.',
     type: ItemType.WEAPON,

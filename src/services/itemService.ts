@@ -382,4 +382,31 @@ export class ItemService {
     );
   }
 
+  /**
+   * Check if character has an item by partial name match
+   * @param characterId Character ID
+   * @param itemName Partial item name to search for
+   * @returns True if character has the item
+   */
+  async hasItemByPartialName(characterId: number, itemName: string): Promise<boolean> {
+    const inventory = await this.getCharacterInventory(characterId);
+    const foundItem = inventory.find(inventoryItem => 
+      inventoryItem.item.name.toLowerCase().includes(itemName.toLowerCase())
+    );
+    return foundItem !== undefined;
+  }
+
+  /**
+   * Add an item directly to character's inventory (for testing purposes)
+   * @param characterId Character ID
+   * @param itemId Item ID
+   * @param quantity Quantity to add (default: 1)
+   */
+  async addItemToCharacter(characterId: number, itemId: number, quantity: number = 1): Promise<void> {
+    await this.db.run(`
+      INSERT INTO character_inventory (character_id, item_id, quantity)
+      VALUES (?, ?, ?)
+    `, [characterId, itemId, quantity]);
+  }
+
 }

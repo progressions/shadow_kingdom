@@ -1186,6 +1186,35 @@ export class GameController {
               }
             }
             
+            // Check if NLP connection is locked
+            if (nlpConnection.locked && nlpConnection.required_key_name) {
+              // Check if player has the required key
+              const session = this.gameStateManager.getCurrentSession();
+              if (session && session.characterId) {
+                const hasKey = await this.itemService.hasItemByPartialName(
+                  session.characterId, 
+                  nlpConnection.required_key_name
+                );
+                
+                if (!hasKey) {
+                  this.tui.display(
+                    `This passage is locked. You need a ${nlpConnection.required_key_name} to pass.`,
+                    MessageType.ERROR
+                  );
+                  return;
+                }
+                
+                // Player has the key - allow movement and show success message
+                this.tui.display(
+                  `You unlock the passage with the ${nlpConnection.required_key_name} and go ${resolvedDirection}.`,
+                  MessageType.NORMAL
+                );
+              } else {
+                this.tui.display('This passage is locked.', MessageType.ERROR);
+                return;
+              }
+            }
+
             // Check if NLP connection needs room generation
             if (!nlpConnection.to_room_id) {
               this.tui.showAIProgress('Generating new room', resolvedDirection);
@@ -1223,6 +1252,35 @@ export class GameController {
         
         this.tui.display(`You can't go ${userInput} from here.`, MessageType.ERROR);
         return;
+      }
+
+      // Check if connection is locked
+      if (connection.locked && connection.required_key_name) {
+        // Check if player has the required key
+        const session = this.gameStateManager.getCurrentSession();
+        if (session && session.characterId) {
+          const hasKey = await this.itemService.hasItemByPartialName(
+            session.characterId, 
+            connection.required_key_name
+          );
+          
+          if (!hasKey) {
+            this.tui.display(
+              `This passage is locked. You need a ${connection.required_key_name} to pass.`,
+              MessageType.ERROR
+            );
+            return;
+          }
+          
+          // Player has the key - allow movement and show success message
+          this.tui.display(
+            `You unlock the passage with the ${connection.required_key_name} and go ${userInput}.`,
+            MessageType.NORMAL
+          );
+        } else {
+          this.tui.display('This passage is locked.', MessageType.ERROR);
+          return;
+        }
       }
 
       // Check if connection needs room generation
