@@ -707,17 +707,19 @@ export class GameController {
         console.log(`Found ${enemies.length} enemies to attack:`, enemies.map(e => `${e.name} (${e.sentiment})`));
       }
 
-      // Each enemy attacks with 50% hit chance for 2 damage
+      // Each enemy attacks using strength vs dexterity system
       let totalFinalDamage = 0;
       const attackMessages: string[] = [];
+      const { calculateAttack } = await import('./utils/combat');
 
       for (const enemy of enemies) {
-        // 50% hit chance
-        const hitChance = Math.random();
-        const doesHit = hitChance < 0.5;
+        // Calculate attack with detailed results
+        const attackResult = calculateAttack(enemy.strength, playerCharacter.dexterity);
         
-        if (!doesHit) {
-          attackMessages.push(`The ${enemy.name} attacks you, but misses!`);
+        if (!attackResult.hits) {
+          const strModText = attackResult.strengthModifier >= 0 ? `+${attackResult.strengthModifier}` : `${attackResult.strengthModifier}`;
+          const dexModText = attackResult.dexterityModifier >= 0 ? `+${attackResult.dexterityModifier}` : `${attackResult.dexterityModifier}`;
+          attackMessages.push(`The ${enemy.name} attacks you, but misses! [Roll: ${attackResult.d20Roll}${strModText}=${attackResult.attackRoll} vs ${attackResult.targetNumber} (10${dexModText})]`);
         } else {
           const baseDamage = 2; // Base damage per attack
           
@@ -728,15 +730,20 @@ export class GameController {
           
           totalFinalDamage += finalDamage;
           
+          // Create attack calculation display text
+          const strModText = attackResult.strengthModifier >= 0 ? `+${attackResult.strengthModifier}` : `${attackResult.strengthModifier}`;
+          const dexModText = attackResult.dexterityModifier >= 0 ? `+${attackResult.dexterityModifier}` : `${attackResult.dexterityModifier}`;
+          const rollText = `[Roll: ${attackResult.d20Roll}${strModText}=${attackResult.attackRoll} vs ${attackResult.targetNumber} (10${dexModText})]`;
+          
           // Create detailed attack message showing armor absorption
           if (armorPoints > 0) {
             if (damageAbsorbed >= baseDamage) {
-              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs it all!`);
+              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs it all! ${rollText}`);
             } else {
-              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs ${damageAbsorbed}, you take ${finalDamage} damage!`);
+              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs ${damageAbsorbed}, you take ${finalDamage} damage! ${rollText}`);
             }
           } else {
-            attackMessages.push(`The ${enemy.name} attacks you for ${finalDamage} damage!`);
+            attackMessages.push(`The ${enemy.name} attacks you for ${finalDamage} damage! ${rollText}`);
           }
         }
       }
@@ -2467,23 +2474,13 @@ export class GameController {
         return;
       }
       
-      // 50% hit chance
-      const hitChance = Math.random();
-      const doesHit = hitChance < 0.5;
-      
-      if (!doesHit) {
-        this.tui.display(`You attack the ${character.name}, but miss!`, MessageType.NORMAL);
-        return;
-      }
-      
-      // Calculate damage including weapon bonus (attacker)
+      // Get game state and attacker character for strength-based attack calculation
       const session = this.gameStateManager.getCurrentSession();
       if (!session) {
         this.tui.display('No active game session.', MessageType.ERROR);
         return;
       }
 
-      // Get character ID from game state (proper approach)
       const gameState = await this.gameStateManager.getGameState(session.gameId);
       if (!gameState || !gameState.character_id) {
         this.tui.display('No character found for this game.', MessageType.ERROR);
@@ -2491,6 +2488,27 @@ export class GameController {
       }
       
       const attackerCharacterId = gameState.character_id;
+      const attacker = await this.characterService.getCharacter(attackerCharacterId);
+      if (!attacker) {
+        this.tui.display('Error: Unable to get attacker character.', MessageType.ERROR);
+        return;
+      }
+      
+      // Calculate attack with detailed results
+      const { calculateAttack } = await import('./utils/combat');
+      const attackResult = calculateAttack(attacker.strength, character.dexterity);
+      
+      if (!attackResult.hits) {
+        const strModText = attackResult.strengthModifier >= 0 ? `+${attackResult.strengthModifier}` : `${attackResult.strengthModifier}`;
+        const dexModText = attackResult.dexterityModifier >= 0 ? `+${attackResult.dexterityModifier}` : `${attackResult.dexterityModifier}`;
+        this.tui.display(
+          `You attack the ${character.name}, but miss! [Roll: ${attackResult.d20Roll}${strModText}=${attackResult.attackRoll} vs ${attackResult.targetNumber} (10${dexModText})]`, 
+          MessageType.NORMAL
+        );
+        return;
+      }
+      
+      // Calculate damage including weapon bonus (attacker)
       const baseDamage = 2;
       const attackDamage = await this.equipmentService.calculateAttackDamage(attackerCharacterId, baseDamage);
       
@@ -2504,7 +2522,12 @@ export class GameController {
       // Update character sentiment to hostile after successful attack
       await this.characterService.setSentiment(character.id, CharacterSentiment.HOSTILE);
       
-      this.tui.display(`You attack the ${character.name}. The ${character.name} takes ${finalDamage} damage.`, MessageType.NORMAL);
+      const strModText = attackResult.strengthModifier >= 0 ? `+${attackResult.strengthModifier}` : `${attackResult.strengthModifier}`;
+      const dexModText = attackResult.dexterityModifier >= 0 ? `+${attackResult.dexterityModifier}` : `${attackResult.dexterityModifier}`;
+      this.tui.display(
+        `You attack the ${character.name}. The ${character.name} takes ${finalDamage} damage. [Roll: ${attackResult.d20Roll}${strModText}=${attackResult.attackRoll} vs ${attackResult.targetNumber} (10${dexModText})]`, 
+        MessageType.NORMAL
+      );
       
       // Check if character died from the attack
       if (newHealth <= 0) {

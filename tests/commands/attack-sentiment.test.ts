@@ -105,8 +105,8 @@ describe('Attack Command Sentiment Update', () => {
 
   describe('Phase 5: Attack Command Sentiment Update', () => {
     it('should change character sentiment to hostile after successful attack', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Verify initial sentiment
       expect(await characterService.getSentiment(characterId)).toBe(CharacterSentiment.FRIENDLY);
@@ -124,8 +124,8 @@ describe('Attack Command Sentiment Update', () => {
     });
 
     it('should change indifferent character to hostile when attacked', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Set character to indifferent first
       await characterService.setSentiment(characterId, CharacterSentiment.INDIFFERENT);
@@ -143,8 +143,8 @@ describe('Attack Command Sentiment Update', () => {
     });
 
     it('should change allied character to hostile when attacked', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Set character to allied first
       await characterService.setSentiment(characterId, CharacterSentiment.ALLIED);
@@ -175,8 +175,8 @@ describe('Attack Command Sentiment Update', () => {
     });
 
     it('should keep aggressive character as hostile after attack (not revert to aggressive)', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Set character to aggressive first
       await characterService.setSentiment(characterId, CharacterSentiment.AGGRESSIVE);
@@ -194,8 +194,8 @@ describe('Attack Command Sentiment Update', () => {
     });
 
     it('should update sentiment even if character dies from attack', async () => {
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Create a low-health character
       const lowHealthCharacterId = await characterService.createCharacter({
@@ -265,8 +265,8 @@ describe('Attack Command Sentiment Update', () => {
       expect(await characterService.getSentiment(characterId)).toBe(CharacterSentiment.FRIENDLY);
       expect(await characterService.getSentiment(secondCharacterId)).toBe(CharacterSentiment.INDIFFERENT);
 
-      // Mock Math.random to always return 0.4 (hit)
-      jest.spyOn(Math, 'random').mockReturnValue(0.4);
+      // Mock Math.random for D20 system - guaranteed hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
       
       // Attack first character
       await (controller as any).processCommand('attack test guardian');

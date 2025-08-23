@@ -137,7 +137,7 @@ describe('Armor Combat Integration', () => {
   describe('Attack with armor defense', () => {
     test('should reduce damage when target has equipped armor', async () => {
       // Mock random to always hit
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create an enemy character with health
       const enemyId = await characterService.createCharacter({
@@ -174,7 +174,7 @@ describe('Armor Combat Integration', () => {
       await (controller as any).processCommand('attack Armored Orc');
 
       // Check that damage was reduced to minimum 1 (2 base - 3 armor = -1, clamped to 1)
-      expect((controller as any).lastDisplayMessage).toBe('You attack the Armored Orc. The Armored Orc takes 1 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Armored Orc. The Armored Orc takes 1 damage.');
 
       // Check enemy health reduced by 1
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
@@ -186,7 +186,7 @@ describe('Armor Combat Integration', () => {
 
     test('should deal full damage when target has no armor', async () => {
       // Mock random to always hit
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create an unarmored enemy
       const enemyId = await characterService.createCharacter({
@@ -204,7 +204,7 @@ describe('Armor Combat Integration', () => {
       await (controller as any).processCommand('attack Unarmored Goblin');
 
       // Check full damage dealt
-      expect((controller as any).lastDisplayMessage).toBe('You attack the Unarmored Goblin. The Unarmored Goblin takes 2 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Unarmored Goblin. The Unarmored Goblin takes 2 damage.');
 
       // Check enemy health reduced by 2
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
@@ -216,7 +216,7 @@ describe('Armor Combat Integration', () => {
 
     test('should combine weapon damage with armor reduction correctly', async () => {
       // Mock random to always hit
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create armored enemy using direct database insertion like working tests
       const characterResult = await db.run(
@@ -264,7 +264,7 @@ describe('Armor Combat Integration', () => {
       // Attack with weapon vs armor: (2 base + 4 weapon) - 5 armor = 1 damage
       await (controller as any).processCommand('attack Knight');
 
-      expect((controller as any).lastDisplayMessage).toBe('You attack the Knight. The Knight takes 1 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Knight. The Knight takes 1 damage.');
 
       // Check enemy health
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
@@ -276,7 +276,7 @@ describe('Armor Combat Integration', () => {
 
     test('should work with multiple armor pieces providing cumulative protection', async () => {
       // Mock random to always hit
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create enemy using direct database insertion
       const characterResult = await db.run(
@@ -340,7 +340,7 @@ describe('Armor Combat Integration', () => {
       // Attack: 2 base damage - 7 total armor (2+4+1) = minimum 1 damage
       await (controller as any).processCommand('attack Fully Armored Warrior');
 
-      expect((controller as any).lastDisplayMessage).toBe('You attack the Fully Armored Warrior. The Fully Armored Warrior takes 1 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Fully Armored Warrior. The Fully Armored Warrior takes 1 damage.');
 
       // Check enemy health
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
@@ -352,7 +352,7 @@ describe('Armor Combat Integration', () => {
 
     test('should handle negative armor values (cursed armor increasing damage)', async () => {
       // Mock random to always hit
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create enemy using direct database insertion
       const characterResult = await db.run(
@@ -382,7 +382,7 @@ describe('Armor Combat Integration', () => {
       // Attack: 2 base damage - (-2) armor = 4 damage
       await (controller as any).processCommand('attack Cursed Warrior');
 
-      expect((controller as any).lastDisplayMessage).toBe('You attack the Cursed Warrior. The Cursed Warrior takes 4 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Cursed Warrior. The Cursed Warrior takes 4 damage.');
 
       // Check enemy health
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
@@ -396,7 +396,7 @@ describe('Armor Combat Integration', () => {
   describe('Character death with armor', () => {
     test('armor should not prevent death when sufficient damage is dealt', async () => {
       // Mock random to always hit
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create enemy with low health
       const enemyId = await characterService.createCharacter({
@@ -431,7 +431,7 @@ describe('Armor Combat Integration', () => {
       // Attack: 2 base - 1 armor = 1 damage, which kills enemy with 1 HP
       await (controller as any).processCommand('attack Wounded Soldier');
 
-      expect((controller as any).lastDisplayMessage).toBe('The Wounded Soldier dies from your attack!');
+      expect((controller as any).lastDisplayMessage).toContain('The Wounded Soldier dies from your attack!');
 
       // Check enemy is dead
       const enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
@@ -444,7 +444,7 @@ describe('Armor Combat Integration', () => {
 
     test('heavy armor should prolong survival by reducing damage to minimum', async () => {
       // Mock random to always hit
-      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+      jest.spyOn(Math, 'random').mockReturnValue(0.95);
 
       // Create enemy with moderate health
       const enemyId = await characterService.createCharacter({
@@ -478,7 +478,7 @@ describe('Armor Combat Integration', () => {
 
       // First attack: 2 base - 10 armor = minimum 1 damage
       await (controller as any).processCommand('attack Tank Warrior');
-      expect((controller as any).lastDisplayMessage).toBe('You attack the Tank Warrior. The Tank Warrior takes 1 damage.');
+      expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 1 damage.');
 
       // Check health: 5 - 1 = 4
       let enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
@@ -488,12 +488,12 @@ describe('Armor Combat Integration', () => {
       // Attack 4 more times to kill
       for (let i = 0; i < 3; i++) {
         await (controller as any).processCommand('attack Tank Warrior');
-        expect((controller as any).lastDisplayMessage).toBe('You attack the Tank Warrior. The Tank Warrior takes 1 damage.');
+        expect((controller as any).lastDisplayMessage).toContain('You attack the Tank Warrior. The Tank Warrior takes 1 damage.');
       }
 
       // Final attack should kill
       await (controller as any).processCommand('attack Tank Warrior');
-      expect((controller as any).lastDisplayMessage).toBe('The Tank Warrior dies from your attack!');
+      expect((controller as any).lastDisplayMessage).toContain('The Tank Warrior dies from your attack!');
 
       // Check enemy is dead
       enemy = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [enemyId]);
