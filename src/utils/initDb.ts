@@ -43,6 +43,8 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         direction TEXT,
         name TEXT NOT NULL,
         processing BOOLEAN DEFAULT FALSE,
+        locked BOOLEAN DEFAULT FALSE,
+        required_key_name TEXT,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
         FOREIGN KEY (from_room_id) REFERENCES rooms(id),
         FOREIGN KEY (to_room_id) REFERENCES rooms(id)
@@ -321,6 +323,20 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     // Migration: Add generation_processed column to rooms if it doesn't exist (for legacy test compatibility)
     try {
       await db.run(`ALTER TABLE rooms ADD COLUMN generation_processed BOOLEAN DEFAULT FALSE`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
+    // Migration: Add locked column to connections if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE connections ADD COLUMN locked BOOLEAN DEFAULT FALSE`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
+    // Migration: Add required_key_name column to connections if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE connections ADD COLUMN required_key_name TEXT`);
     } catch (error) {
       // Column already exists, ignore error
     }
@@ -975,10 +991,10 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, towerStairsId, entranceId, 'down', 'down the worn steps to the entrance hall']
     );
 
-    // From Scholar's Library to Ancient Crypt Entrance
+    // From Scholar's Library to Ancient Crypt Entrance (LOCKED - requires Ancient Key)
     await db.run(
-      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-      [gameId, libraryId, cryptEntranceId, 'west', 'through the hidden door behind dusty tomes']
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name, locked, required_key_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [gameId, libraryId, cryptEntranceId, 'west', 'through the sealed door behind dusty tomes', 1, 'Ancient Key']
     );
 
     // From Ancient Crypt Entrance back to Scholar's Library
@@ -987,10 +1003,10 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       [gameId, cryptEntranceId, libraryId, 'east', 'back through the concealed library entrance']
     );
 
-    // From Moonlit Courtyard Garden to Observatory Steps
+    // From Moonlit Courtyard Garden to Observatory Steps (LOCKED - requires Celestial Star Key)
     await db.run(
-      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-      [gameId, gardenId, observatoryStepsId, 'up', 'up the celestial pathway to the stars']
+      'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name, locked, required_key_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [gameId, gardenId, observatoryStepsId, 'up', 'through the starlit gateway to the observatory', 1, 'Star Key']
     );
 
     // From Observatory Steps back to Moonlit Courtyard Garden
@@ -1061,7 +1077,7 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
     const starterRoomItems = [
       { roomId: entranceId, itemNames: ['Iron Sword', 'Chain Mail', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'], roomName: 'Grand Entrance Hall' },
       { roomId: libraryId, itemNames: ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'], roomName: 'Scholar\'s Library' },
-      { roomId: gardenId, itemNames: ['Health Potion', 'Bread', 'Mysterious Glowing Orb'], roomName: 'Moonlit Courtyard Garden' },
+      { roomId: gardenId, itemNames: ['Health Potion', 'Bread', 'Mysterious Glowing Orb', 'Celestial Star Key'], roomName: 'Moonlit Courtyard Garden' },
       { roomId: towerStairsId, itemNames: ['Wooden Staff', 'Cursed Ruby Ring'], roomName: 'Winding Tower Stairs' },
       { roomId: cryptEntranceId, itemNames: ['Iron Helmet', 'Gold Coins', 'Poisoned Dagger'], roomName: 'Ancient Crypt Entrance' },
       { roomId: observatoryStepsId, itemNames: ['Leather Boots', 'Leather Armor'], roomName: 'Observatory Steps' }
