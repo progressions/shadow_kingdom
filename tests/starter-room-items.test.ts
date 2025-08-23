@@ -33,7 +33,7 @@ describe('Starter Room Item Placement', () => {
 
     // Expected items in each room (updated with new triggered items)
     const expectedRoomItems = {
-      'Grand Entrance Hall': ['Iron Sword', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'],
+      'Grand Entrance Hall': ['Iron Sword', 'Chain Mail', 'Ancient Stone Pedestal', 'Blessed Silver Amulet', 'Cursed Skull'],
       'Scholar\'s Library': ['Ancient Key', 'Healing Herbs', 'Scholar\'s Spectacles'],
       'Moonlit Courtyard Garden': ['Health Potion', 'Bread', 'Mysterious Glowing Orb'],
       'Winding Tower Stairs': ['Wooden Staff', 'Cursed Ruby Ring'],
@@ -122,8 +122,8 @@ describe('Starter Room Item Placement', () => {
     const items1 = await itemService.getRoomItems(entranceRoom1.id);
     const items2 = await itemService.getRoomItems(entranceRoom2.id);
     
-    expect(items1).toHaveLength(4); // Iron Sword + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull
-    expect(items2).toHaveLength(4); // Iron Sword + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull
+    expect(items1).toHaveLength(5); // Iron Sword + Chain Mail + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull
+    expect(items2).toHaveLength(5); // Iron Sword + Chain Mail + Ancient Stone Pedestal + Blessed Silver Amulet + Cursed Skull
     
     // Items should be in different room instances
     expect(entranceRoom1.id).not.toBe(entranceRoom2.id);

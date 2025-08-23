@@ -5,8 +5,9 @@
  * for testing and initial gameplay. These items are created during database
  * initialization if the items table is empty.
  * 
- * Note: The "value" field serves dual purposes:
+ * Note: The "value" field serves multiple purposes:
  * - For WEAPON items: Represents additional damage points added to attacks
+ * - For ARMOR items: Represents armor points that reduce incoming damage
  * - For other items: Represents monetary value in copper pieces
  */
 
@@ -35,10 +36,19 @@ const SEED_ITEMS: CreateItemData[] = [
     description: 'Well-crafted leather armor that provides protection while maintaining flexibility.',
     type: ItemType.ARMOR,
     weight: 8.0,
-    value: 150,
+    value: 1, // Provides 1 armor point (damage reduction)
     stackable: false,
     max_stack: 1,
-    armor_rating: 2,
+    equipment_slot: EquipmentSlot.BODY
+  },
+  {
+    name: 'Chain Mail',
+    description: 'Interlocking metal rings form this protective chain mail. It provides solid defense while allowing for reasonable mobility.',
+    type: ItemType.ARMOR,
+    weight: 12.0,
+    value: 2, // Provides 2 armor points (damage reduction)
+    stackable: false,
+    max_stack: 1,
     equipment_slot: EquipmentSlot.BODY
   },
   {
@@ -101,10 +111,9 @@ const SEED_ITEMS: CreateItemData[] = [
     description: 'A solid iron helmet that protects the head. The metal is dented from many battles.',
     type: ItemType.ARMOR,
     weight: 3.0,
-    value: 75,
+    value: 1, // Provides 1 armor point (damage reduction)
     stackable: false,
     max_stack: 1,
-    armor_rating: 1,
     equipment_slot: EquipmentSlot.HEAD
   },
   {
@@ -112,10 +121,9 @@ const SEED_ITEMS: CreateItemData[] = [
     description: 'Sturdy leather boots with thick soles, perfect for long journeys.',
     type: ItemType.ARMOR,
     weight: 2.0,
-    value: 50,
+    value: 1, // Provides 1 armor point (damage reduction)
     stackable: false,
     max_stack: 1,
-    armor_rating: 1,
     equipment_slot: EquipmentSlot.FOOT
   },
   {

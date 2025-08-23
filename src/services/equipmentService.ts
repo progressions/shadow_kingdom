@@ -131,7 +131,8 @@ export class EquipmentService {
    */
   async getEquippedItems(characterId: number): Promise<InventoryItem[]> {
     const results = await this.db.all<any>(`
-      SELECT ci.*, i.* 
+      SELECT ci.id as inv_id, ci.character_id, ci.item_id, ci.quantity, ci.equipped, ci.equipped_slot, ci.created_at as inv_created_at,
+             i.id as item_id, i.name, i.description, i.type, i.weight, i.value, i.stackable, i.max_stack, i.armor_rating, i.equipment_slot, i.is_fixed, i.created_at as item_created_at
       FROM character_inventory ci 
       JOIN items i ON ci.item_id = i.id 
       WHERE ci.character_id = ? AND ci.equipped = TRUE
@@ -139,13 +140,13 @@ export class EquipmentService {
     `, [characterId]);
 
     return results.map(result => ({
-      id: result.id,
+      id: result.inv_id,
       character_id: result.character_id,
       item_id: result.item_id,
       quantity: result.quantity,
       equipped: Boolean(result.equipped),
       equipped_slot: result.equipped_slot,
-      created_at: result.created_at,
+      created_at: result.inv_created_at,
       item: {
         id: result.item_id,
         name: result.name,
@@ -157,7 +158,8 @@ export class EquipmentService {
         max_stack: result.max_stack,
         armor_rating: result.armor_rating,
         equipment_slot: result.equipment_slot,
-        created_at: result.created_at
+        is_fixed: result.is_fixed,
+        created_at: result.item_created_at
       }
     }));
   }
@@ -233,5 +235,38 @@ export class EquipmentService {
     const weapon = await this.getEquippedWeapon(characterId);
     const weaponDamage = weapon ? weapon.item.value : 0;
     return Math.max(1, baseDamage + weaponDamage); // Minimum 1 damage
+  }
+
+  /**
+   * Calculate total armor points from all equipped armor
+   * @param characterId Character ID
+   * @returns Promise<number> - Total armor points
+   */
+  async calculateArmorPoints(characterId: number): Promise<number> {
+    const equippedItems = await this.getEquippedItems(characterId);
+    
+    // Sum the value field of all equipped armor items
+    let totalArmorPoints = 0;
+    for (const inventoryItem of equippedItems) {
+      if (inventoryItem.item.type === 'armor') {
+        totalArmorPoints += inventoryItem.item.value;
+      }
+    }
+    
+    return totalArmorPoints;
+  }
+
+  /**
+   * Calculate damage after armor reduction
+   * @param characterId Character ID (defender)
+   * @param incomingDamage Damage before armor reduction
+   * @returns Promise<number> - Final damage after armor reduction
+   */
+  async calculateDamageAfterArmor(characterId: number, incomingDamage: number): Promise<number> {
+    const armorPoints = await this.calculateArmorPoints(characterId);
+    const finalDamage = incomingDamage - armorPoints;
+    
+    // Ensure minimum damage of 1
+    return Math.max(1, finalDamage);
   }
 }

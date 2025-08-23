@@ -41,7 +41,7 @@ const getMessageColor = (type: MessageType): string => {
     case MessageType.ROOM_DESCRIPTION:
       return 'white';
     case MessageType.EXITS:
-      return 'blue';
+      return 'cyan';
     case MessageType.ERROR:
       return 'red';
     case MessageType.AI_GENERATION:
@@ -174,8 +174,8 @@ export const InkTUIApp: React.FC<InkTUIAppProps> = ({
   }, []);
   
   const terminalHeight = stdout?.rows || 24; // Default to 24 if unavailable
-  // Give content area nearly the full screen height, leave 5 lines for status + input + padding
-  const contentHeight = Math.max(20, terminalHeight - 5);
+  // Give content area nearly the full screen height, leave 6 lines for status + input + padding
+  const contentHeight = Math.max(20, terminalHeight - 6);
   
   return (
     <Box flexDirection="column" height="100%" width="100%">

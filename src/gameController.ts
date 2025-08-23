@@ -91,11 +91,11 @@ export class GameController {
     this.historyManager = new HistoryManager(process.env.COMMAND_HISTORY_FILE, maxHistorySize);
     
     // Initialize TUI (use provided TUI or create new one)
-    // In test environment, create a mock TUI to avoid blessed.js TTY requirements
+    // In test environment or command mode, create a mock TUI to avoid blessed.js TTY requirements
     if (tui) {
       this.tui = tui;
-    } else if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
-      // Create a minimal mock TUI for tests
+    } else if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID || command) {
+      // Create a minimal mock TUI for tests or command mode
       this.tui = this.createMockTUI();
     } else {
       this.tui = new InkTUIBridge();
@@ -708,7 +708,7 @@ export class GameController {
       }
 
       // Each enemy attacks with 50% hit chance for 2 damage
-      let totalDamage = 0;
+      let totalFinalDamage = 0;
       const attackMessages: string[] = [];
 
       for (const enemy of enemies) {
@@ -719,17 +719,33 @@ export class GameController {
         if (!doesHit) {
           attackMessages.push(`The ${enemy.name} attacks you, but misses!`);
         } else {
-          const damage = 2; // Hardcoded 2 damage per attack
-          totalDamage += damage;
-          attackMessages.push(`The ${enemy.name} attacks you for ${damage} damage!`);
+          const baseDamage = 2; // Base damage per attack
+          
+          // Apply armor damage reduction
+          const finalDamage = await this.equipmentService.calculateDamageAfterArmor(playerCharacter.id, baseDamage);
+          const armorPoints = await this.equipmentService.calculateArmorPoints(playerCharacter.id);
+          const damageAbsorbed = baseDamage - finalDamage;
+          
+          totalFinalDamage += finalDamage;
+          
+          // Create detailed attack message showing armor absorption
+          if (armorPoints > 0) {
+            if (damageAbsorbed >= baseDamage) {
+              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs it all!`);
+            } else {
+              attackMessages.push(`The ${enemy.name} attacks doing ${baseDamage} damage but your armor absorbs ${damageAbsorbed}, you take ${finalDamage} damage!`);
+            }
+          } else {
+            attackMessages.push(`The ${enemy.name} attacks you for ${finalDamage} damage!`);
+          }
         }
       }
 
-      // Apply total damage to player
+      // Apply total final damage to player
       const playerHealth = await this.characterService.getCharacterHealth(playerCharacter.id);
       if (!playerHealth) return;
 
-      const newHealth = Math.max(0, playerHealth.current - totalDamage);
+      const newHealth = Math.max(0, playerHealth.current - totalFinalDamage);
       await this.characterService.updateCharacterHealth(playerCharacter.id, newHealth);
 
       // Display attack messages
@@ -738,7 +754,7 @@ export class GameController {
       }
 
       // Only show health updates if damage was actually taken
-      if (totalDamage > 0) {
+      if (totalFinalDamage > 0) {
         // Handle player death
         if (newHealth <= 0) {
           await this.characterService.setCharacterDead(playerCharacter.id);
@@ -1343,15 +1359,81 @@ export class GameController {
   }
 
   /**
+   * Get the current character ID from game state
+   * @returns Promise<number> The character ID for the current game session
+   * @throws Error if no session or character found
+   */
+  private async getCurrentCharacterId(): Promise<number> {
+    const session = this.gameStateManager.getCurrentSession();
+    if (!session) {
+      throw new Error('No active game session');
+    }
+
+    // Get character ID from game state (proper approach)
+    const gameState = await this.gameStateManager.getGameState(session.gameId);
+    if (!gameState || !gameState.character_id) {
+      throw new Error('No character found for this game');
+    }
+    
+    return gameState.character_id;
+  }
+
+  /**
+   * Display equipment summary for a character
+   * @param characterId Character ID to display equipment for
+   * @param showTitle Whether to show the equipment title
+   */
+  private async displayEquipmentSummary(characterId: number, showTitle: boolean = true): Promise<void> {
+    const equipmentSummary = await this.equipmentService.getEquipmentSummary(characterId);
+    
+    if (showTitle) {
+      this.tui.display('═══ EQUIPMENT ═══', MessageType.NORMAL);
+    } else {
+      this.tui.display('\n--- EQUIPMENT ---', MessageType.SYSTEM);
+    }
+    
+    const slots = ['hand', 'head', 'body', 'foot'] as const;
+    
+    for (const slot of slots) {
+      const item = equipmentSummary[slot];
+      const slotLabel = showTitle ? slot.toUpperCase() : (slot.charAt(0).toUpperCase() + slot.slice(1));
+      if (item) {
+        this.tui.display(`${slotLabel}: ${item.item.name}`, MessageType.NORMAL);
+      } else {
+        this.tui.display(`${slotLabel}: [Empty]`, MessageType.NORMAL);
+      }
+    }
+  }
+
+  /**
    * Create a mock TUI for testing that doesn't use blessed.js
    */
   private createMockTUI(): TUIInterface {
-    return {
+    const mockTUI = {
       initialize: async () => {},
-      display: () => {},
-      displayLines: () => {},
+      display: (message: string, type?: MessageType) => {
+        // Log to development log if logger service is available
+        if (this.loggerService) {
+          // Map MessageType to logger type
+          let logType: 'room' | 'dialogue' | 'combat' | 'system' = 'system';
+          if (type === MessageType.ROOM_TITLE || type === MessageType.ROOM_DESCRIPTION) {
+            logType = 'room';
+          } else if (type === MessageType.ERROR) {
+            logType = 'combat';
+          }
+          this.loggerService.logSystemOutput(message, logType);
+        } else {
+          // Fallback to console output for debugging
+          console.log(message);
+        }
+      },
+      displayLines: (lines: string[], type?: MessageType) => {
+        lines.forEach(line => mockTUI.display(line, type));
+      },
       showWelcome: () => {},
-      showError: () => {},
+      showError: (message: string) => {
+        mockTUI.display(message, MessageType.ERROR);
+      },
       getInput: () => Promise.resolve(''),
       updateStatus: () => {},
       clear: () => {},
@@ -1361,6 +1443,7 @@ export class GameController {
       showAIProgress: () => {},
       displayRoom: () => {}
     };
+    return mockTUI;
   }
 
   /**
@@ -1722,8 +1805,7 @@ export class GameController {
         return;
       }
 
-      // For this phase, use game ID as character ID (simple approach for single-player game)
-      const characterId = session.gameId!;
+      const characterId = await this.getCurrentCharacterId();
 
       // Check if character can add another item to inventory
       const canAddItem = await this.itemService.canAddItemToInventory(characterId);
@@ -1793,7 +1875,7 @@ export class GameController {
         return;
       }
 
-      const characterId = session.gameId!;
+      const characterId = await this.getCurrentCharacterId();
       const pickedUpItems: string[] = [];
       const failedItems: { name: string; reason: string }[] = [];
 
@@ -1880,9 +1962,19 @@ export class GameController {
 
     try {
       const session = this.gameStateManager.getCurrentSession();
+      if (!session) {
+        this.tui.display('No active game session.', MessageType.ERROR);
+        return;
+      }
+
+      // Get character ID from game state (proper approach)
+      const gameState = await this.gameStateManager.getGameState(session.gameId);
+      if (!gameState || !gameState.character_id) {
+        this.tui.display('No character found for this game.', MessageType.ERROR);
+        return;
+      }
       
-      // For this phase, use game ID as character ID (simple approach for single-player game)
-      const characterId = session.gameId!;
+      const characterId = gameState.character_id;
 
       // Get character's inventory
       const inventory = await this.itemService.getCharacterInventory(characterId);
@@ -1936,8 +2028,7 @@ export class GameController {
         return;
       }
 
-      // For this phase, use game ID as character ID (simple approach for single-player game)
-      const characterId = session.gameId!;
+      const characterId = await this.getCurrentCharacterId();
 
       // Get character's inventory
       const inventory = await this.itemService.getCharacterInventory(characterId);
@@ -2111,8 +2202,7 @@ export class GameController {
     }
 
     try {
-      const session = this.gameStateManager.getCurrentSession();
-      const characterId = session.gameId!; // Use game ID as character ID for single-player
+      const characterId = await this.getCurrentCharacterId();
 
       // Find the item in inventory that can be equipped
       const item = await this.equipmentService.findEquippableItem(characterId, itemName);
@@ -2154,8 +2244,7 @@ export class GameController {
     }
 
     try {
-      const session = this.gameStateManager.getCurrentSession();
-      const characterId = session.gameId!; // Use game ID as character ID for single-player
+      const characterId = await this.getCurrentCharacterId();
 
       // Get equipped items
       const equippedItems = await this.equipmentService.getEquippedItems(characterId);
@@ -2188,24 +2277,22 @@ export class GameController {
 
     try {
       const session = this.gameStateManager.getCurrentSession();
-      const characterId = session.gameId!; // Use game ID as character ID for single-player
-
-      const equipmentSummary = await this.equipmentService.getEquipmentSummary(characterId);
-      
-      this.tui.display('═══ EQUIPMENT ═══', MessageType.NORMAL);
-      
-      // Show all 4 slots
-      const slots = ['hand', 'head', 'body', 'foot'] as const;
-      
-      for (const slot of slots) {
-        const item = equipmentSummary[slot];
-        const slotLabel = slot.toUpperCase();
-        if (item) {
-          this.tui.display(`${slotLabel}: ${item.item.name}`, MessageType.NORMAL);
-        } else {
-          this.tui.display(`${slotLabel}: [Empty]`, MessageType.NORMAL);
-        }
+      if (!session) {
+        this.tui.display('No active game session.', MessageType.ERROR);
+        return;
       }
+
+      // Get character ID from game state (proper approach)
+      const gameState = await this.gameStateManager.getGameState(session.gameId);
+      if (!gameState || !gameState.character_id) {
+        this.tui.display('No character found for this game.', MessageType.ERROR);
+        return;
+      }
+      
+      const characterId = gameState.character_id;
+
+      // Use the consolidated equipment display method
+      await this.displayEquipmentSummary(characterId, true);
 
     } catch (error) {
       console.error('Error showing equipment:', error);
@@ -2224,15 +2311,18 @@ export class GameController {
         return;
       }
 
-      // Get character ID from game state
+      // Get character ID from game state (proper approach)
       const gameState = await this.gameStateManager.getGameState(session.gameId);
       if (!gameState || !gameState.character_id) {
         this.tui.display('No character found for this game.', MessageType.ERROR);
         return;
       }
+      
+      const characterId = gameState.character_id;
+      console.log(`DEBUG: Stats command - Using character ID: ${characterId} from game state`);
 
       // Get character information
-      const character = await this.characterService.getCharacter(gameState.character_id);
+      const character = await this.characterService.getCharacter(characterId);
       if (!character) {
         this.tui.display('Character not found.', MessageType.ERROR);
         return;
@@ -2265,20 +2355,8 @@ export class GameController {
       const healthDisplay = this.healthService.getHealthDisplay(healthStatus);
       this.tui.display(healthDisplay, MessageType.NORMAL);
 
-      // Show equipment summary
-      this.tui.display('\n--- EQUIPMENT ---', MessageType.SYSTEM);
-      const equipmentSummary = await this.equipmentService.getEquipmentSummary(character.id);
-      const slots = ['hand', 'head', 'body', 'foot'] as const;
-      
-      for (const slot of slots) {
-        const item = equipmentSummary[slot];
-        const slotLabel = slot.charAt(0).toUpperCase() + slot.slice(1);
-        if (item) {
-          this.tui.display(`${slotLabel}: ${item.item.name}`, MessageType.NORMAL);
-        } else {
-          this.tui.display(`${slotLabel}: [Empty]`, MessageType.NORMAL);
-        }
-      }
+      // Show equipment summary using consolidated method
+      await this.displayEquipmentSummary(characterId, false);
 
     } catch (error) {
       console.error('Error displaying character stats:', error);
@@ -2398,12 +2476,27 @@ export class GameController {
         return;
       }
       
-      // Calculate damage including weapon bonus
+      // Calculate damage including weapon bonus (attacker)
       const session = this.gameStateManager.getCurrentSession();
-      const characterId = session.gameId!; // Use game ID as character ID for single-player
+      if (!session) {
+        this.tui.display('No active game session.', MessageType.ERROR);
+        return;
+      }
+
+      // Get character ID from game state (proper approach)
+      const gameState = await this.gameStateManager.getGameState(session.gameId);
+      if (!gameState || !gameState.character_id) {
+        this.tui.display('No character found for this game.', MessageType.ERROR);
+        return;
+      }
+      
+      const attackerCharacterId = gameState.character_id;
       const baseDamage = 2;
-      const damageAmount = await this.equipmentService.calculateAttackDamage(characterId, baseDamage);
-      const newHealth = Math.max(0, healthStatus.current - damageAmount);
+      const attackDamage = await this.equipmentService.calculateAttackDamage(attackerCharacterId, baseDamage);
+      
+      // Apply armor damage reduction (defender)
+      const finalDamage = await this.equipmentService.calculateDamageAfterArmor(character.id, attackDamage);
+      const newHealth = Math.max(0, healthStatus.current - finalDamage);
       
       // Update character health
       await this.characterService.updateCharacterHealth(character.id, newHealth);
@@ -2411,7 +2504,7 @@ export class GameController {
       // Update character sentiment to hostile after successful attack
       await this.characterService.setSentiment(character.id, CharacterSentiment.HOSTILE);
       
-      this.tui.display(`You attack the ${character.name}. The ${character.name} takes ${damageAmount} damage.`, MessageType.NORMAL);
+      this.tui.display(`You attack the ${character.name}. The ${character.name} takes ${finalDamage} damage.`, MessageType.NORMAL);
       
       // Check if character died from the attack
       if (newHealth <= 0) {
@@ -2455,8 +2548,8 @@ export class GameController {
       const characterName = parsed.target;
 
       // Get player inventory
-      const gameId = session.gameId!;
-      const inventory = await this.itemService.getCharacterInventory(gameId);
+      const characterId = await this.getCurrentCharacterId();
+      const inventory = await this.itemService.getCharacterInventory(characterId);
       
       // Find item in inventory
       const item = this.itemService.findItemByName(inventory, itemName);
@@ -2483,12 +2576,12 @@ export class GameController {
       if (item.quantity > 1) {
         await this.db.run(
           'UPDATE character_inventory SET quantity = quantity - 1 WHERE character_id = ? AND item_id = ?',
-          [gameId, item.item_id]
+          [characterId, item.item_id]
         );
       } else {
         await this.db.run(
           'DELETE FROM character_inventory WHERE character_id = ? AND item_id = ?',
-          [gameId, item.item_id]
+          [characterId, item.item_id]
         );
       }
 
