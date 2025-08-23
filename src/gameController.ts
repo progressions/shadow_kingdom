@@ -2304,7 +2304,35 @@ export class GameController {
 
       // Display success messages
       this.tui.display(`You give the ${item.item.name} to the ${character.name}.`, MessageType.NORMAL);
-      this.tui.display(`${character.name} says, "Thank you."`, MessageType.NORMAL);
+      
+      // Handle sentiment improvement for giving items to NPCs
+      let sentimentMessage = `${character.name} says, "Thank you."`;
+      
+      if (character.type === CharacterType.NPC && !character.is_dead) {
+        try {
+          // Improve sentiment by one step for any item given
+          const oldSentiment = await this.characterService.getSentiment(character.id);
+          const newSentiment = await this.characterService.changeSentiment(character.id, 1);
+          
+          // If sentiment actually improved, show additional message
+          if (newSentiment !== oldSentiment) {
+            const sentimentMessages = {
+              [CharacterSentiment.HOSTILE]: `${character.name} seems slightly less hostile toward you.`,
+              [CharacterSentiment.AGGRESSIVE]: `${character.name} appears to be warming up to you.`,
+              [CharacterSentiment.INDIFFERENT]: `${character.name} looks at you with newfound interest.`,
+              [CharacterSentiment.FRIENDLY]: `${character.name} smiles warmly at your generosity.`,
+              [CharacterSentiment.ALLIED]: `${character.name} regards you as a trusted ally.`
+            };
+            
+            sentimentMessage += ` ${sentimentMessages[newSentiment] || ''}`;
+          }
+        } catch (error) {
+          console.error('Error updating character sentiment:', error);
+          // Continue with basic message if sentiment update fails
+        }
+      }
+      
+      this.tui.display(sentimentMessage, MessageType.NORMAL);
 
     } catch (error) {
       console.error('Error giving item:', error);
@@ -2329,4 +2357,5 @@ export class GameController {
     
     return foundCharacter || null;
   }
+
 }

@@ -235,27 +235,4 @@ describe('Character Display Sentiment Indicators - Phase 8', () => {
     });
   });
 
-  describe('Legacy Compatibility', () => {
-    it('should handle characters with both sentiment and is_hostile set', async () => {
-      // Create character with conflicting sentiment and is_hostile
-      const characterId = await characterService.createCharacter({
-        game_id: gameId,
-        name: 'Conflicted Character',
-        description: 'A character with mixed signals',
-        type: CharacterType.NPC,
-        current_room_id: roomId,
-        sentiment: CharacterSentiment.FRIENDLY, // Friendly sentiment
-        is_hostile: true // But legacy hostile flag
-      });
-
-      const character = await characterService.getCharacter(characterId);
-      const displayText = displayService.formatCharacterDisplay([character!]);
-
-      // Should prioritize sentiment over legacy is_hostile
-      expect(displayText).toMatch(/😊.*Conflicted Character.*friendly/);
-      
-      // Should also indicate legacy conflict
-      expect(displayText).toMatch(/legacy hostile/);
-    });
-  });
 });

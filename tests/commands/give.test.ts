@@ -122,7 +122,7 @@ describe('Give Command', () => {
 
       // Check output
       expect(outputMessages).toContain('You give the Gold Coin to the Friendly Merchant.');
-      expect(outputMessages).toContain('Friendly Merchant says, "Thank you."');
+      expect(outputMessages.some(msg => msg.includes('Friendly Merchant says, "Thank you."'))).toBe(true);
 
       // Verify item was removed from inventory
       const inventory = await db.all('SELECT * FROM character_inventory WHERE character_id = ? AND item_id = ?', [gameId, item.lastID]);
@@ -154,7 +154,7 @@ describe('Give Command', () => {
 
       // Check output
       expect(outputMessages).toContain('You give the Rusty Iron Sword to the Royal Palace Keeper.');
-      expect(outputMessages).toContain('Royal Palace Keeper says, "Thank you."');
+      expect(outputMessages.some(msg => msg.includes('Royal Palace Keeper says, "Thank you."'))).toBe(true);
     });
 
     it('should work with partial character names', async () => {
@@ -182,7 +182,7 @@ describe('Give Command', () => {
 
       // Check output
       expect(outputMessages).toContain('You give the Healing Herb to the Forest Spirit Elder.');
-      expect(outputMessages).toContain('Forest Spirit Elder says, "Thank you."');
+      expect(outputMessages.some(msg => msg.includes('Forest Spirit Elder says, "Thank you."'))).toBe(true);
     });
 
     it('should be case-insensitive', async () => {
@@ -207,7 +207,7 @@ describe('Give Command', () => {
 
       // Check output
       expect(outputMessages).toContain('You give the Magic Wand to the Wizard.');
-      expect(outputMessages).toContain('Wizard says, "Thank you."');
+      expect(outputMessages.some(msg => msg.includes('Wizard says, "Thank you."'))).toBe(true);
     });
   });
 
@@ -343,7 +343,7 @@ describe('Give Command', () => {
       await (controller as any).processCommand('give letter to captain');
       
       expect(outputMessages).toContain('You give the Letter to the Guard Captain.');
-      expect(outputMessages).toContain('Guard Captain says, "Thank you."');
+      expect(outputMessages.some(msg => msg.includes('Guard Captain says, "Thank you."'))).toBe(true);
     });
   });
 });
