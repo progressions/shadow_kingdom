@@ -403,7 +403,7 @@ describe('Armor Damage Reduction System', () => {
       expect(finalDamage).toBe(8); // 5 - (-3) = 8
     });
 
-    test('should still enforce minimum damage with negative armor', async () => {
+    test('should handle negative armor correctly (no minimum damage)', async () => {
       // Create extreme cursed armor
       const extremeCursedId = await itemService.createItem({
         name: 'Extremely Cursed Armor',
@@ -424,7 +424,7 @@ describe('Armor Damage Reduction System', () => {
       // Test with small incoming damage and extreme negative armor
       const incomingDamage = 1;
       const finalDamage = await equipmentService.calculateDamageAfterArmor(playerCharacterId, incomingDamage);
-      expect(finalDamage).toBe(11); // 1 - (-10) = 11 (cursed armor significantly increases damage)
+      expect(finalDamage).toBe(11); // 1 - (-10) = 11 (cursed armor increases damage)
     });
   });
 });

@@ -44,11 +44,18 @@ AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north"       # Execute with debug
 
 ## Development Patterns
 
-### Database Operations
-All database operations use the async Database wrapper (`src/utils/database.ts`):
+### Database Operations - CRITICAL REQUIREMENT
+**⚠️ MANDATORY: ALL DATABASE ACCESS MUST USE PRISMA ONLY**
+
+Every single database operation MUST go through Prisma ORM. No exceptions. Do not create legacy SQL-based services.
+
 ```typescript
+// ✅ CORRECT - Use Prisma services only
+const room = await this.prismaService.room.findFirst({ where: { id: roomId } });
+const connections = await this.prismaService.connection.findMany({ where: { gameId } });
+
+// ❌ FORBIDDEN - Direct SQL or legacy database wrappers
 const room = await this.db.get<Room>('SELECT * FROM rooms WHERE id = ?', [roomId]);
-const connections = await this.db.all<Connection>('SELECT * FROM connections WHERE game_id = ?', [gameId]);
 ```
 
 ### AI Integration Patterns

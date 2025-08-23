@@ -248,10 +248,18 @@ export class GameStateManager {
 
     try {
       // Try exact match first (case-insensitive) - includes unfilled connections
-      const connection = await this.db.get<Connection>(
+      let connection = await this.db.get<Connection>(
         'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND (LOWER(direction) = LOWER(?) OR LOWER(name) = LOWER(?))',
         [this.currentRoomId, this.currentGameId, directionOrName, directionOrName]
       );
+
+      // If no exact match, try partial matching on thematic names
+      if (!connection) {
+        connection = await this.db.get<Connection>(
+          'SELECT * FROM connections WHERE from_room_id = ? AND game_id = ? AND LOWER(name) LIKE LOWER(?)',
+          [this.currentRoomId, this.currentGameId, `%${directionOrName}%`]
+        );
+      }
 
       return connection || null;
     } catch (error) {

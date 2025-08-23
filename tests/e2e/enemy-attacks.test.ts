@@ -72,7 +72,7 @@ describe('Enemy Attack System End-to-End Tests', () => {
     expect(output).not.toContain('Failed to');
     
     // The look command should have executed (we should see it was processed)
-    expect(output).toMatch(/ts-node.*--cmd.*look/i);
+    expect(output).toContain('Triggering enemy attacks after command: look');
     
     // If there are enemy attack messages, they should be properly formatted
     const attackPattern = /attacks you for 2 damage/i;
@@ -105,7 +105,7 @@ describe('Enemy Attack System End-to-End Tests', () => {
     const output = fs.readFileSync(testLogFile, 'utf8');
     
     // Basic functionality check - command should execute
-    expect(output).toMatch(/ts-node.*--cmd.*look/i);
+    expect(output).toContain('Triggering enemy attacks after command: look');
     
     console.log('Basic command execution test passed');
   }, 30000);
@@ -162,7 +162,7 @@ describe('Enemy Attack System End-to-End Tests', () => {
     
     // Inventory command should execute successfully
     expect(output).not.toContain('Error:');
-    expect(output).toMatch(/ts-node.*--cmd.*inventory/i);
+    expect(output).toContain('Triggering enemy attacks after command: inventory');
     
     // If combat occurs, verify feedback format
     if (output.match(/attacks you/i)) {
@@ -188,7 +188,7 @@ describe('Enemy Attack System End-to-End Tests', () => {
     
     // Help command should work normally
     expect(output).not.toContain('Error:');
-    expect(output).toMatch(/ts-node.*--cmd.*help/i);
+    expect(output).toContain('Enemy attacks NOT triggered');
     
     // Enemy attacks shouldn't interfere with help command
     // (Help is typically not a game action that would trigger attacks)

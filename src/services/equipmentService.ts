@@ -266,7 +266,7 @@ export class EquipmentService {
     const armorPoints = await this.calculateArmorPoints(characterId);
     const finalDamage = incomingDamage - armorPoints;
     
-    // Armor can completely negate damage
+    // Armor can reduce damage to 0
     return Math.max(0, finalDamage);
   }
 }
