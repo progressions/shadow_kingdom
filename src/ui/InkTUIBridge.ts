@@ -52,7 +52,8 @@ const TUIApp: React.FC<{
     onInput,
     onKeyPress,
     waiting: state.waiting,
-    historyManager
+    historyManager,
+    eventEmitter
   });
 };
 
@@ -206,6 +207,13 @@ export class InkTUIBridge implements TUIInterface {
     if (this.unmount) {
       this.unmount();
     }
+  }
+
+  /**
+   * Refresh command history in the TUI
+   */
+  refreshHistory(): void {
+    this.eventEmitter.emit('refreshHistory');
   }
 
   /**

@@ -656,6 +656,11 @@ export class GameController {
           isProcessing: false
         };
       }
+      
+      // Refresh history in TUI after command processing is complete
+      if (this.tui && 'refreshHistory' in this.tui && typeof this.tui.refreshHistory === 'function') {
+        this.tui.refreshHistory();
+      }
     }
   }
 
