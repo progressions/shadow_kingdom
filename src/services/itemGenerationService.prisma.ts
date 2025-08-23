@@ -70,7 +70,6 @@ export class ItemGenerationServicePrisma {
             value: this.calculateValue(item.name),
             stackable: false, // Generated items are typically unique
             max_stack: 1,
-            weapon_damage: null,
             armor_rating: null,
             equipment_slot: null,
             is_fixed: item.isFixed

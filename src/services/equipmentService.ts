@@ -117,7 +117,6 @@ export class EquipmentService {
         value: result.value,
         stackable: Boolean(result.stackable),
         max_stack: result.max_stack,
-        weapon_damage: result.weapon_damage,
         armor_rating: result.armor_rating,
         equipment_slot: result.equipment_slot,
         created_at: result.created_at
@@ -156,7 +155,6 @@ export class EquipmentService {
         value: result.value,
         stackable: Boolean(result.stackable),
         max_stack: result.max_stack,
-        weapon_damage: result.weapon_damage,
         armor_rating: result.armor_rating,
         equipment_slot: result.equipment_slot,
         created_at: result.created_at
@@ -207,5 +205,33 @@ export class EquipmentService {
     );
 
     return this.itemService.findItemByName(equippableItems, itemName) || null;
+  }
+
+  /**
+   * Get the equipped weapon for damage calculation
+   * @param characterId Character ID
+   * @returns Promise<InventoryItem | null> - Returns equipped weapon or null
+   */
+  async getEquippedWeapon(characterId: number): Promise<InventoryItem | null> {
+    const weapon = await this.getEquippedItemInSlot(characterId, EquipmentSlot.HAND);
+    
+    // Only return if it's actually a weapon type
+    if (weapon && weapon.item.type === 'weapon') {
+      return weapon;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Calculate total attack damage including weapon bonus
+   * @param characterId Character ID
+   * @param baseDamage Base attack damage
+   * @returns Promise<number> - Total damage including weapon bonus
+   */
+  async calculateAttackDamage(characterId: number, baseDamage: number): Promise<number> {
+    const weapon = await this.getEquippedWeapon(characterId);
+    const weaponDamage = weapon ? weapon.item.value : 0;
+    return Math.max(1, baseDamage + weaponDamage); // Minimum 1 damage
   }
 }

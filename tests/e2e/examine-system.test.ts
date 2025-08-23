@@ -99,7 +99,6 @@ describe('Examine System End-to-End Tests', () => {
         value: 100,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '1d8',
         equipment_slot: EquipmentSlot.HAND
       });
     });
@@ -133,8 +132,7 @@ describe('Examine System End-to-End Tests', () => {
       const description = examineService.getExaminationText(target!);
       expect(description).toContain('A well-crafted blade with intricate runes.');
       expect(description).toContain('Type: weapon');
-      expect(description).toContain('Estimated Value: 100 gold');
-      expect(description).toContain('Damage: 1d8');
+      expect(description).toContain('Damage Bonus: +100');
       expect(description).not.toContain('Weight:'); // Weight should be removed
     });
   });

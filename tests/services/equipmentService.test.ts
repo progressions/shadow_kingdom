@@ -46,7 +46,6 @@ describe('EquipmentService', () => {
       value: 100,
       stackable: false,
       max_stack: 1,
-      weapon_damage: '1d8',
       equipment_slot: EquipmentSlot.HAND
     });
     
@@ -206,8 +205,7 @@ describe('EquipmentService', () => {
         value: 100,
         stackable: false,
         max_stack: 1,
-        weapon_damage: '1d8',
-        equipment_slot: EquipmentSlot.HAND
+          equipment_slot: EquipmentSlot.HAND
       });
       
       // Add to inventory
@@ -330,7 +328,6 @@ async function initializeTestSchema(db: Database): Promise<void> {
       value INTEGER NOT NULL,
       stackable BOOLEAN NOT NULL DEFAULT FALSE,
       max_stack INTEGER DEFAULT 1,
-      weapon_damage TEXT,
       armor_rating INTEGER,
       equipment_slot TEXT,
       is_fixed BOOLEAN DEFAULT FALSE,

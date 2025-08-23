@@ -625,4 +625,99 @@ describe('Attack Command', () => {
       (Math.random as jest.Mock).mockRestore();
     });
   });
+
+  describe('Weapon damage integration', () => {
+    beforeEach(() => {
+      // Import required types at the top of each test
+      jest.doMock('../../src/types/item', () => ({
+        ItemType: { WEAPON: 'weapon', ARMOR: 'armor' },
+        EquipmentSlot: { HAND: 'hand', HEAD: 'head', BODY: 'body', FOOT: 'foot' }
+      }));
+      jest.doMock('../../src/types/character', () => ({
+        CharacterType: { PLAYER: 'player', NPC: 'npc', ENEMY: 'enemy' },
+        CharacterSentiment: { HOSTILE: 'hostile', INDIFFERENT: 'indifferent' }
+      }));
+    });
+
+    test('should deal additional damage when player has equipped weapon', async () => {
+      const { ItemType, EquipmentSlot } = require('../../src/types/item');
+      const { CharacterType, CharacterSentiment } = require('../../src/types/character');
+
+      // Mock random to always hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+
+      // Create a character with known health
+      const characterId = (await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health, sentiment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [gameId, 'Test Orc', 'enemy', playerRoomId, 0, 10, 10, 'hostile']
+      )).lastID as number;
+
+      // Create and equip a weapon with damage value 3
+      const swordId = await controller['itemService'].createItem({
+        name: 'Magic Sword',
+        description: 'A magical sword',
+        type: ItemType.WEAPON,
+        weight: 2.0,
+        value: 3, // 3 damage bonus
+        stackable: false,
+        max_stack: 1,
+        armor_rating: 0,
+        equipment_slot: EquipmentSlot.HAND
+      });
+
+      // Place item in room and transfer to player
+      await controller['itemService'].placeItemInRoom(playerRoomId, swordId, 1);
+      await controller['itemService'].transferItemToInventory(gameId, swordId, playerRoomId, 1);
+      await controller['equipmentService'].equipItem(gameId, swordId);
+
+      // Start game session to enable attack
+      const gameStateManager = (controller as any).gameStateManager;
+      await gameStateManager.startGameSession(gameId);
+      await gameStateManager.moveToRoom(playerRoomId);
+
+      // Attack the character
+      await controller['handleAttackCommand']('Test Orc');
+
+      // Check that character took 5 damage (2 base + 3 weapon)
+      const character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.current_health).toBe(5); // 10 - 5 = 5
+
+      // Check that the attack message includes damage amount
+      expect((controller as any).lastDisplayMessage).toContain('takes 5 damage');
+
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
+    });
+
+    test('should use base damage when no weapon equipped', async () => {
+      const { CharacterType, CharacterSentiment } = require('../../src/types/character');
+
+      // Mock random to always hit
+      jest.spyOn(Math, 'random').mockReturnValue(0.3);
+
+      // Create a character with known health
+      const characterId = (await db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, is_dead, max_health, current_health, sentiment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [gameId, 'Test Goblin', 'enemy', playerRoomId, 0, 10, 10, 'hostile']
+      )).lastID as number;
+
+      // Start game session to enable attack (no weapon equipped)
+      const gameStateManager = (controller as any).gameStateManager;
+      await gameStateManager.startGameSession(gameId);
+      await gameStateManager.moveToRoom(playerRoomId);
+
+      // Attack the character
+      await controller['handleAttackCommand']('Test Goblin');
+
+      // Check that character took 2 damage (base only)
+      const character = await db.get<Character>('SELECT * FROM characters WHERE id = ?', [characterId]);
+      expect(character?.current_health).toBe(8); // 10 - 2 = 8
+
+      // Check that the attack message includes damage amount
+      expect((controller as any).lastDisplayMessage).toContain('takes 2 damage');
+
+      // Restore Math.random
+      (Math.random as jest.Mock).mockRestore();
+    });
+  });
 });
