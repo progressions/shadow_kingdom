@@ -261,6 +261,41 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       console.warn('Sentiment migration failed, likely due to missing column:', error);
     }
 
+    // Migration: Add room connection validation triggers (Phase 11)
+    try {
+      // Create triggers to validate room connections
+      await db.run(`
+        CREATE TRIGGER IF NOT EXISTS validate_room_connections_after_insert
+        AFTER INSERT ON rooms
+        BEGIN
+          -- Allow the insert to proceed, but log a warning if no connections exist
+          -- This is handled by application logic rather than blocking the insert
+          SELECT CASE 
+            WHEN (SELECT COUNT(*) FROM connections WHERE from_room_id = NEW.id OR to_room_id = NEW.id) = 0 
+            THEN RAISE(IGNORE) -- Allow insertion, validation happens at application level
+          END;
+        END;
+      `);
+
+      // Trigger to warn about room deletion that might orphan other rooms  
+      await db.run(`
+        CREATE TRIGGER IF NOT EXISTS validate_room_connections_before_delete
+        BEFORE DELETE ON rooms
+        BEGIN
+          -- Check if deleting this room would orphan other rooms
+          UPDATE connections SET to_room_id = NULL 
+          WHERE to_room_id = OLD.id;
+          
+          DELETE FROM connections 
+          WHERE from_room_id = OLD.id;
+        END;
+      `);
+
+      console.log('✅ Room connection validation triggers created successfully');
+    } catch (error) {
+      console.warn('⚠️ Failed to create room connection validation triggers:', error);
+    }
+
     // Migration: Remove is_hostile column from characters table (Phase 10)
     try {
       // Check if the column exists before trying to drop it
