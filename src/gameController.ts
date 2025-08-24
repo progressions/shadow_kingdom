@@ -12,6 +12,7 @@ import { UnifiedNLPEngine } from './nlp/unifiedNLPEngine';
 import { GameContext } from './nlp/types';
 import { getNLPConfig, applyEnvironmentOverrides } from './nlp/config';
 import { CommandRouter, Command, CommandExecutionContext } from './services/commandRouter';
+import { TargetContext, ResolvedTarget } from './types/targetResolution';
 import { GameStateManager } from './services/gameStateManager';
 import { RoomDisplayService } from './services/roomDisplayService';
 import { CommandParsingError } from './services/commandParsingError';
@@ -123,6 +124,9 @@ export class GameController {
         enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
       }
     );
+    
+    // Set up commands after CommandRouter is initialized
+    this.setupCommands();
   }
 
   private setupCommands() {
@@ -418,10 +422,16 @@ export class GameController {
       handler: async () => await this.handleInventory()
     });
 
-    this.commandRouter.addCommand({
+    this.commandRouter.addEnhancedCommand({
       name: 'drop',
-      description: 'Drop an item from your inventory',
-      handler: async (args) => await this.handleDrop(args.join(' '))
+      description: 'Drop items from your inventory',
+      targetContext: TargetContext.INVENTORY_ITEMS,
+      supportsAll: true,
+      requiresTarget: true,
+      resolutionOptions: {
+        includeEquipped: true // Include equipped items so we can decide what to do with them
+      },
+      handler: async (targets: ResolvedTarget[]) => await this.handleDropWithTargets(targets)
     });
 
 
@@ -1448,8 +1458,7 @@ export class GameController {
     // Set logger service on GrokClient
     this.grokClient.setLoggerService(this.loggerService);
     
-    // Set up commands
-    this.setupCommands();
+    // Commands will be set up after CommandRouter is initialized
   }
 
   /**
@@ -2226,7 +2235,85 @@ export class GameController {
   }
 
   /**
-   * Handle drop command - drop items from inventory to current room
+   * Handle drop command with resolved targets - supports both single items and "drop all"
+   */
+  private async handleDropWithTargets(targets: ResolvedTarget[]): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    try {
+      const session = this.gameStateManager.getCurrentSession();
+      const currentRoom = await this.gameStateManager.getCurrentRoom();
+      
+      if (!currentRoom) {
+        this.tui.display('Error: Unable to determine current room.', MessageType.ERROR);
+        return;
+      }
+
+      const characterId = await this.getCurrentCharacterId();
+      const droppedItems: string[] = [];
+      const failedItems: string[] = [];
+
+      // Process each target with full validation
+      for (const target of targets) {
+        try {
+          // Skip equipped items (they shouldn't be in the targets, but double-check)
+          if (target.metadata?.isEquipped) {
+            failedItems.push(`${target.name} (equipped)`);
+            continue;
+          }
+
+          // Validate the drop action with item context
+          await this.executeValidatedAction(
+            'drop',
+            { itemId: target.entity.item_id },
+            async () => {
+              // Transfer item from character inventory to room
+              await this.itemService.transferItemToRoom(
+                characterId,
+                target.entity.item_id,
+                currentRoom.id,
+                1
+              );
+
+              droppedItems.push(target.name);
+            }
+          );
+
+        } catch (error) {
+          console.error(`Error dropping ${target.name}:`, error);
+          failedItems.push(target.name);
+        }
+      }
+
+      // Display results
+      if (droppedItems.length > 0) {
+        if (droppedItems.length === 1) {
+          this.tui.display(`You drop the ${droppedItems[0]}.`, MessageType.NORMAL);
+        } else {
+          this.tui.display(`You drop: ${droppedItems.join(', ')}.`, MessageType.NORMAL);
+        }
+      }
+
+      if (failedItems.length > 0) {
+        this.tui.display(`Could not drop: ${failedItems.join(', ')}.`, MessageType.ERROR);
+      }
+
+      if (droppedItems.length === 0 && failedItems.length === 0) {
+        this.tui.display('Nothing to drop.', MessageType.ERROR);
+      }
+
+    } catch (error) {
+      console.error('Error in drop command:', error);
+      this.tui.showError('Error dropping items', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Handle drop command - drop items from inventory to current room (legacy)
+   * @deprecated Use handleDropWithTargets for enhanced functionality
    */
   private async handleDrop(itemName: string): Promise<void> {
     if (!this.gameStateManager.isInGame()) {

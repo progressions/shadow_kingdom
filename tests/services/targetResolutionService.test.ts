@@ -88,63 +88,9 @@ const createMockCharacter = (id: number, name: string, options: Partial<any> = {
   created_at: '2024-01-01T00:00:00Z'
 });
 
-// Test data helpers - Legacy (keeping for compatibility)
+// Legacy helper function for simple mock creation
 function createMockItem(id: number, name: string, isFixed = false) {
-  return {
-    id,
-    name,
-    description: `A ${name.toLowerCase()}`,
-    type: ItemType.MISC,
-    weight: 1,
-    value: 10,
-    stackable: false,
-    max_stack: 1,
-    is_fixed: isFixed,
-    created_at: '2025-01-01'
-  };
-}
-
-function createMockRoomItem(id: number, itemId: number, roomId: number, name: string, isFixed = false) {
-  return {
-    id,
-    item_id: itemId,
-    room_id: roomId,
-    quantity: 1,
-    created_at: '2025-01-01',
-    item: createMockItem(itemId, name, isFixed)
-  };
-}
-
-function createMockInventoryItem(id: number, itemId: number, characterId: number, name: string, equipped = false) {
-  return {
-    id,
-    character_id: characterId,
-    item_id: itemId,
-    quantity: 1,
-    equipped,
-    created_at: '2025-01-01',
-    item: createMockItem(itemId, name)
-  };
-}
-
-function createMockCharacter(id: number, name: string, sentiment = 'friendly') {
-  return {
-    id,
-    game_id: 10,
-    name,
-    type: 'npc',
-    current_room_id: 1,
-    strength: 10,
-    dexterity: 10,
-    intelligence: 10,
-    constitution: 10,
-    wisdom: 10,
-    charisma: 10,
-    max_health: 10,
-    current_health: 10,
-    sentiment,
-    created_at: '2025-01-01'
-  };
+  return createMockFullItem(id, name, ItemType.MISC, { is_fixed: isFixed });
 }
 
 describe('TargetResolutionService', () => {
@@ -173,9 +119,11 @@ describe('TargetResolutionService', () => {
   describe('resolveTargets - Single Target Resolution', () => {
     it('should resolve a single room item by exact name', async () => {
       // Arrange
+      const ironSword = createMockFullItem(1, 'Iron Sword', ItemType.WEAPON);
+      const healthPotion = createMockFullItem(2, 'Health Potion', ItemType.CONSUMABLE);
       const mockRoomItems = [
-        createMockRoomItem(1, 1, 1, 'Iron Sword'),
-        createMockRoomItem(2, 2, 1, 'Health Potion')
+        createMockRoomItem(1, 1, 1, ironSword),
+        createMockRoomItem(2, 2, 1, healthPotion)
       ];
       mockItemService.getRoomItems.mockResolvedValue(mockRoomItems);
 
@@ -196,8 +144,9 @@ describe('TargetResolutionService', () => {
 
     it('should resolve a single item by partial name match', async () => {
       // Arrange  
+      const ancientSword = createMockFullItem(1, 'Ancient Rusty Sword', ItemType.WEAPON);
       const mockRoomItems = [
-        createMockRoomItem(1, 1, 1, 'Ancient Rusty Sword')
+        createMockRoomItem(1, 1, 1, ancientSword)
       ];
       mockItemService.getRoomItems.mockResolvedValue(mockRoomItems);
 
@@ -215,8 +164,9 @@ describe('TargetResolutionService', () => {
 
     it('should strip articles from target name', async () => {
       // Arrange
+      const magicOrb = createMockFullItem(1, 'Magic Orb', ItemType.MISC);
       const mockRoomItems = [
-        createMockRoomItem(1, 1, 1, 'Magic Orb')
+        createMockRoomItem(1, 1, 1, magicOrb)
       ];
       mockItemService.getRoomItems.mockResolvedValue(mockRoomItems);
 
@@ -301,7 +251,8 @@ describe('TargetResolutionService', () => {
       const result = await service.resolveTargets(
         'all',
         TargetContext.INVENTORY_ITEMS,
-        mockGameContext
+        mockGameContext,
+        { includeEquipped: true }
       );
 
       // Assert
@@ -359,12 +310,10 @@ describe('TargetResolutionService', () => {
     it('should resolve character by exact name', async () => {
       // Arrange
       const mockCharacters = [
-        {
-          id: 1,
-          name: 'Merchant Bob',
+        createMockCharacter(1, 'Merchant Bob', {
           type: CharacterType.NPC,
-          sentiment: 'friendly'
-        }
+          sentiment: CharacterSentiment.FRIENDLY
+        })
       ];
       mockCharacterService.getRoomCharacters.mockResolvedValue(mockCharacters);
 
@@ -385,12 +334,10 @@ describe('TargetResolutionService', () => {
     it('should resolve character by partial name', async () => {
       // Arrange
       const mockCharacters = [
-        {
-          id: 1,
-          name: 'Wise Old Sage',
+        createMockCharacter(1, 'Wise Old Sage', {
           type: CharacterType.NPC,
-          sentiment: 'friendly'
-        }
+          sentiment: CharacterSentiment.FRIENDLY
+        })
       ];
       mockCharacterService.getRoomCharacters.mockResolvedValue(mockCharacters);
 
@@ -409,12 +356,10 @@ describe('TargetResolutionService', () => {
     it('should identify hostile characters', async () => {
       // Arrange
       const mockCharacters = [
-        {
-          id: 1,
-          name: 'Evil Wizard',
+        createMockCharacter(1, 'Evil Wizard', {
           type: CharacterType.NPC,
-          sentiment: 'hostile'
-        }
+          sentiment: CharacterSentiment.HOSTILE
+        })
       ];
       mockCharacterService.getRoomCharacters.mockResolvedValue(mockCharacters);
 
@@ -434,28 +379,19 @@ describe('TargetResolutionService', () => {
   describe('resolveTargets - ANY_ENTITY Context', () => {
     it('should resolve entities from multiple contexts', async () => {
       // Arrange
+      const roomSword = createMockFullItem(1, 'Room Sword', ItemType.WEAPON, { is_fixed: false });
       const mockRoomItems = [
-        {
-          item_id: 1,
-          room_id: 1,
-          item: { name: 'Room Sword', is_fixed: false }
-        }
+        createMockRoomItem(1, 1, 1, roomSword)
       ];
+      const inventoryPotion = createMockFullItem(1, 'Inventory Potion', ItemType.CONSUMABLE, { is_fixed: false });
       const mockInventoryItems = [
-        {
-          inventory_id: 1,
-          character_id: 100,
-          item: { name: 'Inventory Potion', is_fixed: false },
-          equipped: false
-        }
+        createMockInventoryItem(1, 100, 1, inventoryPotion, { equipped: false })
       ];
       const mockCharacters = [
-        {
-          id: 1,
-          name: 'Room Character',
+        createMockCharacter(1, 'Room Character', {
           type: CharacterType.NPC,
-          sentiment: 'friendly'
-        }
+          sentiment: CharacterSentiment.FRIENDLY
+        })
       ];
 
       mockItemService.getRoomItems.mockResolvedValue(mockRoomItems);
@@ -486,12 +422,9 @@ describe('TargetResolutionService', () => {
 
     it('should handle case-insensitive matching', async () => {
       // Arrange
+      const magicSword = createMockFullItem(1, 'MAGIC SWORD', ItemType.WEAPON, { is_fixed: false });
       const mockRoomItems = [
-        {
-          item_id: 1,
-          room_id: 1,
-          item: { name: 'MAGIC SWORD', is_fixed: false }
-        }
+        createMockRoomItem(1, 1, 1, magicSword)
       ];
       mockItemService.getRoomItems.mockResolvedValue(mockRoomItems);
 
@@ -509,17 +442,11 @@ describe('TargetResolutionService', () => {
 
     it('should prefer exact matches over partial matches', async () => {
       // Arrange
+      const sword = createMockFullItem(1, 'Sword', ItemType.WEAPON, { is_fixed: false });
+      const magicSword = createMockFullItem(2, 'Magic Sword', ItemType.WEAPON, { is_fixed: false });
       const mockRoomItems = [
-        {
-          item_id: 1,
-          room_id: 1,
-          item: { name: 'Sword', is_fixed: false }
-        },
-        {
-          item_id: 2,
-          room_id: 1,
-          item: { name: 'Magic Sword', is_fixed: false }
-        }
+        createMockRoomItem(1, 1, 1, sword),
+        createMockRoomItem(2, 2, 1, magicSword)
       ];
       mockItemService.getRoomItems.mockResolvedValue(mockRoomItems);
 
@@ -540,12 +467,10 @@ describe('TargetResolutionService', () => {
     it('should resolve character target for give commands', async () => {
       // Arrange
       const mockCharacters = [
-        {
-          id: 1,
-          name: 'Village Blacksmith',
+        createMockCharacter(1, 'Village Blacksmith', {
           type: CharacterType.NPC,
-          sentiment: 'friendly'
-        }
+          sentiment: CharacterSentiment.FRIENDLY
+        })
       ];
       mockCharacterService.getRoomCharacters.mockResolvedValue(mockCharacters);
 

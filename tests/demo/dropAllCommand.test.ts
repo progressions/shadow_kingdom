@@ -25,7 +25,10 @@ const mockItemService = {
 const mockCharacterService = {
   getRoomCharacters: jest.fn(),
 } as unknown as CharacterService;
-const mockGameStateManager = {} as GameStateManager;
+const mockGameStateManager = {
+  getCurrentCharacterId: jest.fn().mockResolvedValue(100),
+  getCurrentSession: jest.fn().mockReturnValue({ gameId: 10, roomId: 1 })
+} as unknown as GameStateManager;
 
 describe('Drop All Command Demonstration', () => {
   let router: CommandRouter;

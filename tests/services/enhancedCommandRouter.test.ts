@@ -24,7 +24,10 @@ const mockItemService = {
 const mockCharacterService = {
   getRoomCharacters: jest.fn(),
 } as unknown as CharacterService;
-const mockGameStateManager = {} as GameStateManager;
+const mockGameStateManager = {
+  getCurrentCharacterId: jest.fn().mockResolvedValue(100),
+  getCurrentSession: jest.fn().mockReturnValue({ gameId: 10, roomId: 1 })
+} as unknown as GameStateManager;
 
 describe('EnhancedCommandRouter', () => {
   let router: CommandRouter;
@@ -115,7 +118,11 @@ describe('EnhancedCommandRouter', () => {
           location: EntityLocation.ROOM
         })
       ]),
-      mockGameContext.gameContext
+      expect.objectContaining({
+        characterId: 100,
+        gameId: 10,
+        currentRoom: { id: 1 }
+      })
     );
   });
 
@@ -193,7 +200,11 @@ describe('EnhancedCommandRouter', () => {
           location: EntityLocation.ROOM
         })
       ]),
-      mockGameContext.gameContext
+      expect.objectContaining({
+        characterId: 100,
+        gameId: 10,
+        currentRoom: { id: 1 }
+      })
     );
   });
 

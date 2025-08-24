@@ -27,6 +27,13 @@ export interface EnhancedCommand {
   supportsAll?: boolean;
   requiresTarget?: boolean;
   maxTargets?: number;
+  resolutionOptions?: {
+    includeFixed?: boolean;
+    includeHostileBlocked?: boolean;
+    includeEquipped?: boolean;
+    maxResults?: number;
+    exactMatchOnly?: boolean;
+  };
   handler: (targets: ResolvedTarget[], context: GameContext) => void | Promise<void>;
 }
 
@@ -53,6 +60,7 @@ export class CommandRouter {
   private tui: TUIInterface | null;
   private aiCommandFallback: AICommandFallback | null = null;
   private targetResolver: TargetResolutionService;
+  private gameStateManager: GameStateManager;
 
   constructor(
     nlpEngine: UnifiedNLPEngine, 
@@ -73,6 +81,7 @@ export class CommandRouter {
     this.aiCommandFallback = new AICommandFallback(grokClient, db, tui, {
       enableDebugLogging: options.enableDebugLogging || false
     });
+    this.gameStateManager = gameStateManager;
     this.targetResolver = new TargetResolutionService(
       db,
       itemService,
@@ -145,16 +154,22 @@ export class CommandRouter {
     if (targetString && targetString.trim() && command.targetContext) {
       try {
         // Convert NLPGameContext to enhanced GameContext for target resolution
+        // Get actual character ID from game state
+        const currentCharacterId = await this.gameStateManager.getCurrentCharacterId();
+        const session = this.gameStateManager.getCurrentSession();
+        
         const enhancedGameContext: GameContext = {
-          ...context.gameContext,
-          characterId: context.gameContext.gameId || 1, // Default character ID
-          sessionId: 'session-' + Date.now() // Default session ID
+          currentRoom: context.gameContext.currentRoom,
+          characterId: currentCharacterId,
+          gameId: context.gameContext.gameId || session.gameId || 1,
+          sessionId: 'session-' + Date.now()
         };
         
         resolvedTargets = await this.targetResolver.resolveTargets(
           targetString.trim(),
           command.targetContext,
-          enhancedGameContext
+          enhancedGameContext,
+          command.resolutionOptions
         );
 
         // Check if targets were found when required
@@ -177,10 +192,12 @@ export class CommandRouter {
     // Execute the enhanced command with resolved targets
     try {
       // Convert NLPGameContext to enhanced GameContext for command execution
+      const currentCharacterId = await this.gameStateManager.getCurrentCharacterId();
       const enhancedGameContext: GameContext = {
-        ...context.gameContext,
-        characterId: context.gameContext.gameId || 1, // Default character ID
-        sessionId: 'session-' + Date.now() // Default session ID
+        currentRoom: context.gameContext.currentRoom,
+        gameId: context.gameContext.gameId || 1,
+        characterId: currentCharacterId,
+        sessionId: 'session-' + Date.now()
       };
       
       await command.handler(resolvedTargets, enhancedGameContext);
@@ -317,11 +334,12 @@ export class CommandRouter {
         if (this.isEnhancedCommand(resolvedCommand)) {
           // For enhanced commands, we need to create a proper context
           // NLP processing doesn't support target resolution yet, so pass empty targets
+          const currentCharacterId = await this.gameStateManager.getCurrentCharacterId();
           const enhancedGameContext: GameContext = {
-            gameId: undefined, // Will be filled by actual game context
-            recentCommands: [],
-            characterId: 1, // Default character ID
-            sessionId: 'session-' + Date.now() // Default session ID
+            currentRoom: undefined,
+            gameId: 1,
+            characterId: currentCharacterId,
+            sessionId: 'session-' + Date.now()
           };
           await resolvedCommand.handler([], enhancedGameContext);
         } else {
