@@ -46,8 +46,10 @@ export class UnifiedRoomDisplayService {
       // Display characters in the room
       await this.displayRoomCharacters(room.id, outputInterface, services.characterService);
 
-      // Trigger background generation
-      await this.triggerBackgroundGeneration(room.id, gameId, services.backgroundGenerationService);
+      // Trigger background generation (fire-and-forget for non-blocking UX)
+      this.triggerBackgroundGeneration(room.id, gameId, services.backgroundGenerationService).catch(error => {
+        console.error('Failed to trigger background generation:', error);
+      });
 
     } catch (error) {
       outputInterface.display(`Error displaying room: ${(error as Error)?.message}`, MessageType.ERROR);
@@ -209,12 +211,16 @@ export class UnifiedRoomDisplayService {
     backgroundGenerationService: BackgroundGenerationService
   ): Promise<void> {
     try {
-      // Trigger automatic room generation on entry (new auto-generation feature)
-      await backgroundGenerationService.generateForRoomEntry(roomId, gameId);
+      // Trigger automatic room generation on entry (fire-and-forget for non-blocking UX)
+      backgroundGenerationService.generateForRoomEntry(roomId, gameId).catch(error => {
+        console.error('Background room generation failed on entry:', error);
+      });
       
-      // Trigger background generation for unfilled connections (existing system)
+      // Trigger background generation for unfilled connections (fire-and-forget for non-blocking UX)
       // Background generation will mark TARGET rooms as processed after expanding them
-      await backgroundGenerationService.preGenerateAdjacentRooms(roomId, gameId);
+      backgroundGenerationService.preGenerateAdjacentRooms(roomId, gameId).catch(error => {
+        console.error('Background pre-generation failed:', error);
+      });
     } catch (error) {
       // Log error but don't break room display
       console.error('Error triggering background generation:', error);

@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LogLevel } from '../types/logging';
 import { LogFormatter } from './logFormatter';
+import { JsonFormatter } from './jsonFormatter';
 
 export class FileLogger {
   private logDirectory: string;
@@ -44,22 +45,32 @@ export class FileLogger {
   }
 
   /**
-   * Write structured data to AI log file
+   * Write structured data to AI log file with enhanced visual formatting
    */
   writeAILog(data: object): void {
     try {
-      this.writeToFile('ai', JSON.stringify(data));
+      // Use enhanced JSON formatter for better visual structure
+      const formattedContent = JsonFormatter.formatJsonData(data);
+      // Strip colors for file output (colors don't render well in files)
+      const fileContent = JsonFormatter.stripColors(formattedContent);
+      this.writeToFile('ai', fileContent);
     } catch (error) {
       // Handle circular references or other JSON errors
       try {
-        this.writeToFile('ai', JSON.stringify(data, this.getCircularReplacer()));
+        const sanitizedData = JSON.parse(JSON.stringify(data, this.getCircularReplacer()));
+        const formattedContent = JsonFormatter.formatJsonData(sanitizedData);
+        const fileContent = JsonFormatter.stripColors(formattedContent);
+        this.writeToFile('ai', fileContent);
       } catch (fallbackError) {
         // Final fallback - log the error instead
-        this.writeToFile('ai', JSON.stringify({
+        const errorData = {
           error: 'Failed to serialize log data',
           originalError: error instanceof Error ? error.message : String(error),
           timestamp: new Date().toISOString()
-        }));
+        };
+        const formattedContent = JsonFormatter.formatJsonData(errorData);
+        const fileContent = JsonFormatter.stripColors(formattedContent);
+        this.writeToFile('ai', fileContent);
       }
     }
   }

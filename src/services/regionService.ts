@@ -498,4 +498,43 @@ export class RegionService {
       }
     }
   }
+
+  /**
+   * Connect Region 1's exit to Region 2's entrance
+   * Phase 6: Update the locked connection in Region 1 to point to Region 2
+   */
+  async connectRegions(fromRegionExitRoomId: number, toRegionEntranceRoomId: number): Promise<void> {
+    try {
+      if (this.options.enableDebugLogging) {
+        console.log(`🔗 Connecting regions: Room ${fromRegionExitRoomId} -> Room ${toRegionEntranceRoomId}`);
+      }
+
+      // Update the locked connection in Region 1 to point to Region 2
+      // Only update connections that are locked with NULL to_room_id
+      const result = await this.db.run(
+        'UPDATE connections SET to_room_id = ? WHERE from_room_id = ? AND locked = TRUE AND to_room_id IS NULL',
+        [toRegionEntranceRoomId, fromRegionExitRoomId]
+      );
+
+      if (this.options.enableDebugLogging) {
+        console.log(`🔗 Updated ${result.changes} locked connections from room ${fromRegionExitRoomId} to point to room ${toRegionEntranceRoomId}`);
+      }
+
+      // Optionally update connection names to reflect the transition
+      await this.db.run(
+        'UPDATE connections SET name = ? WHERE from_room_id = ? AND to_room_id = ? AND locked = TRUE',
+        ['through the ancient vault door to another realm', fromRegionExitRoomId, toRegionEntranceRoomId]
+      );
+
+      if (this.options.enableDebugLogging) {
+        console.log(`🔗 Successfully connected regions`);
+      }
+
+    } catch (error) {
+      if (this.options.enableDebugLogging) {
+        console.error(`❌ Error connecting regions:`, error);
+      }
+      throw error;
+    }
+  }
 }

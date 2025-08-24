@@ -262,7 +262,7 @@ export class GrokClient {
   }
 
   /**
-   * Log Grok API request and response to grok_responses.log
+   * Log Grok API request and response to grok_responses.log with enhanced formatting
    */
   private logGrokResponse(endpoint: string, request: any, response: any, error?: any): void {
     const logPath = path.join(process.cwd(), 'grok_responses.log');
@@ -285,10 +285,14 @@ export class GrokClient {
       success: !error
     };
 
-    const logLine = JSON.stringify(logEntry, null, 2) + '\n' + '='.repeat(80) + '\n';
-    
     try {
-      fs.appendFileSync(logPath, logLine);
+      // Use enhanced JSON formatter for better visual structure
+      const { JsonFormatter } = require('../utils/jsonFormatter');
+      const formattedContent = JsonFormatter.formatGrokResponse(logEntry);
+      // Strip colors for file output (colors don't render well in files)
+      const fileContent = JsonFormatter.stripColors(formattedContent);
+      
+      fs.appendFileSync(logPath, fileContent);
     } catch (writeError) {
       console.error('Failed to write to grok_responses.log:', writeError);
     }

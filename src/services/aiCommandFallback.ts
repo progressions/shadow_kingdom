@@ -270,12 +270,33 @@ The target MUST be the exact, complete name from the room context lists above.`;
         // For real API, use the enhanced prompt directly
         const response = await this.grokClient.callAPI(prompt);
         
-        // Log the enhanced prompt response
+        // Log the enhanced prompt response with enhanced visual formatting
         if (this.isDebugEnabled()) {
           const fs = require('fs');
           const timestamp = new Date().toISOString();
-          const logEntry = `\n\n========= ENHANCED COMMAND INTERPRETATION ${timestamp} =========\nInput: ${userInput}\nPrompt: ${prompt}\nAI Response: ${response}\n`;
-          fs.appendFileSync('grok_responses.log', logEntry);
+          
+          const logData = {
+            timestamp,
+            type: 'ENHANCED_COMMAND_INTERPRETATION',
+            input: userInput,
+            prompt: prompt,
+            aiResponse: response,
+            parsed: null as any // Will be set after parsing
+          };
+          
+          // Try to parse the response to include parsed data
+          try {
+            logData.parsed = JSON.parse(response);
+          } catch (parseError) {
+            logData.parsed = { error: 'Failed to parse AI response as JSON', rawResponse: response };
+          }
+          
+          // Use JsonFormatter for enhanced visual formatting
+          const { JsonFormatter } = require('../utils/jsonFormatter');
+          const formattedContent = JsonFormatter.formatJsonData(logData);
+          const fileContent = JsonFormatter.stripColors(formattedContent);
+          
+          fs.appendFileSync('grok_responses.log', fileContent);
         }
         
         const parsed = JSON.parse(response);

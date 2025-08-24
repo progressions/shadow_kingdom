@@ -8,6 +8,7 @@ import { ItemService } from './itemService';
 import { CharacterGenerationService } from './characterGenerationService';
 import { FantasyLevelService } from './fantasyLevelService';
 import { FantasyLevel } from '../types/fantasy';
+import { RoomConnectionValidator } from './roomConnectionValidator';
 
 export interface RoomGenerationOptions {
   enableDebugLogging?: boolean;
@@ -41,6 +42,7 @@ export interface GenerationLimits {
  */
 export class RoomGenerationService {
   private options: RoomGenerationOptions;
+  private connectionValidator: RoomConnectionValidator;
 
   constructor(
     private db: Database,
@@ -55,6 +57,7 @@ export class RoomGenerationService {
       enableDebugLogging: false,
       ...options
     };
+    this.connectionValidator = new RoomConnectionValidator(this.db);
   }
 
 
@@ -223,6 +226,8 @@ export class RoomGenerationService {
         [context.gameId, uniqueName, newRoom.description, regionId, regionDistance]
       );
 
+      // Note: Room connection validation will happen after connections are created
+
       // Generate items for the room if AI provided them
       if (this.isDebugEnabled()) {
         console.log(`🔍 Room generation result has ${newRoom.items?.length || 0} items`);
@@ -379,6 +384,14 @@ export class RoomGenerationService {
           if (this.isDebugEnabled()) {
             console.log(`🔗 Added mandatory return path: ${reverseDirection} back to origin`);
           }
+        }
+      }
+
+      // Validate room connections after all connections are created
+      if (roomResult.lastID) {
+        const validation = await this.connectionValidator.validateRoomConnections(roomResult.lastID);
+        if (!validation.isValid && this.isDebugEnabled()) {
+          console.warn(`⚠️ Room ${roomResult.lastID} ("${uniqueName}") has connection issues:`, validation.issues);
         }
       }
 
@@ -544,7 +557,15 @@ export class RoomGenerationService {
       'east': 'west',
       'west': 'east',
       'up': 'down',
-      'down': 'up'
+      'down': 'up',
+      'northeast': 'southwest',
+      'northwest': 'southeast',
+      'southeast': 'northwest',
+      'southwest': 'northeast',
+      'ne': 'sw',
+      'nw': 'se',
+      'se': 'nw',
+      'sw': 'ne'
     };
     
     return directionMap[direction.toLowerCase()] || null;
@@ -863,6 +884,12 @@ export class RoomGenerationService {
             }
           }
         }
+      }
+
+      // Validate room connections after all connections are created
+      const validation = await this.connectionValidator.validateRoomConnections(newRoomId);
+      if (!validation.isValid && this.isDebugEnabled()) {
+        console.warn(`⚠️ Room ${newRoomId} ("${uniqueName}") has connection issues:`, validation.issues);
       }
 
       if (this.isDebugEnabled()) {
