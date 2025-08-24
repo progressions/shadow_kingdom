@@ -25,6 +25,7 @@ import { ValidationResult, ActionContext } from './types/validation';
 import { HealthService, HealthStatus } from './services/healthService';
 import { EventTriggerService, TriggerContext } from './services/eventTriggerService';
 import { CharacterType, Character, CharacterSentiment, getAttributeModifier } from './types/character';
+import { Item } from './types/item';
 import { UnifiedRoomDisplayService } from './services/unifiedRoomDisplayService';
 import { TUIOutputAdapter } from './adapters/tuiOutputAdapter';
 import { stripArticles, parseTalkCommand, parseGiveCommand } from './utils/articleParser';
@@ -436,6 +437,19 @@ export class GameController {
       name: 'unequip',
       description: 'Unequip an equipped item',
       handler: async (args) => await this.handleUnequip(args.join(' '))
+    });
+
+    // Context-aware equip aliases
+    this.commandRouter.addCommand({
+      name: 'wear',
+      description: 'Equip armor items (helmets, boots, armor, etc.)',
+      handler: async (args) => await this.handleWear(args.join(' '))
+    });
+
+    this.commandRouter.addCommand({
+      name: 'use',
+      description: 'Equip weapons (swords, axes, staves, etc.)',
+      handler: async (args) => await this.handleUse(args.join(' '))
     });
 
     this.commandRouter.addCommand({
@@ -2997,6 +3011,110 @@ export class GameController {
     } catch (error) {
       console.error('Error during teleport:', error);
       this.tui.showError('Teleport failed', (error as Error)?.message);
+    }
+  }
+
+  /**
+   * Check if an item is armor-type (can be worn)
+   */
+  private isArmorItem(item: Item): boolean {
+    const armorTypes = ['armor', 'helmet', 'boots', 'gloves', 'shield', 'cloak', 'ring', 'amulet'];
+    return armorTypes.some(type => 
+      item.type === type || 
+      item.name.toLowerCase().includes(type) ||
+      item.description.toLowerCase().includes('wear') ||
+      item.description.toLowerCase().includes('armor')
+    );
+  }
+
+  /**
+   * Check if an item is weapon-type (can be used as a weapon)
+   */
+  private isWeaponItem(item: Item): boolean {
+    const weaponTypes = ['weapon', 'sword', 'axe', 'bow', 'dagger', 'staff', 'mace', 'hammer'];
+    return weaponTypes.some(type => 
+      item.type === type || 
+      item.name.toLowerCase().includes(type) ||
+      item.description.toLowerCase().includes('weapon') ||
+      item.description.toLowerCase().includes('wield')
+    );
+  }
+
+  /**
+   * Handle wearing armor items (context-aware equip alias)
+   */
+  private async handleWear(itemName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!itemName) {
+      this.tui.display('Wear what?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const characterId = await this.getCurrentCharacterId();
+
+      // Find the item in inventory that can be equipped
+      const item = await this.equipmentService.findEquippableItem(characterId, itemName);
+      if (!item) {
+        this.tui.display(`You don't have a ${itemName}.`, MessageType.ERROR);
+        return;
+      }
+
+      // Validate item is armor-type
+      if (!this.isArmorItem(item.item)) {
+        this.tui.display(`You can't wear a ${item.item.name}. Try "equip" or "use" instead.`, MessageType.ERROR);
+        return;
+      }
+
+      // Route to existing equip logic
+      return this.handleEquip(itemName);
+
+    } catch (error) {
+      console.error('Error wearing item:', error);
+      this.tui.display((error as Error).message, MessageType.ERROR);
+    }
+  }
+
+  /**
+   * Handle using weapon items (context-aware equip alias)
+   */
+  private async handleUse(itemName: string): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (!itemName) {
+      this.tui.display('Use what?', MessageType.ERROR);
+      return;
+    }
+
+    try {
+      const characterId = await this.getCurrentCharacterId();
+
+      // Find the item in inventory that can be equipped
+      const item = await this.equipmentService.findEquippableItem(characterId, itemName);
+      if (!item) {
+        this.tui.display(`You don't have a ${itemName}.`, MessageType.ERROR);
+        return;
+      }
+
+      // Validate item is weapon-type
+      if (!this.isWeaponItem(item.item)) {
+        this.tui.display(`You can't use a ${item.item.name} as a weapon. Try "equip" or "wear" instead.`, MessageType.ERROR);
+        return;
+      }
+
+      // Route to existing equip logic
+      return this.handleEquip(itemName);
+
+    } catch (error) {
+      console.error('Error using item:', error);
+      this.tui.display((error as Error).message, MessageType.ERROR);
     }
   }
 
