@@ -1,6 +1,8 @@
 import Database from '../utils/database';
 import { Region, RegionContext, RoomWithRegion } from '../types/region';
 import { Room } from './gameStateManager';
+import { CompleteRegion, RoomConnection } from '../types/regionConcept';
+import { RegionConnectorService } from './regionConnectorService';
 
 export interface RegionServiceOptions {
   enableDebugLogging?: boolean;
@@ -286,5 +288,214 @@ export class RegionService {
   async isRegionCenter(roomId: number): Promise<boolean> {
     const room = await this.db.get<RoomWithRegion>('SELECT * FROM rooms WHERE id = ?', [roomId]);
     return room?.region_distance === 0;
+  }
+
+  /**
+   * Instantiate a complete region in the database
+   * Phase 5: Save generated regions to database, making them explorable
+   */
+  async instantiateRegion(regionData: CompleteRegion, gameId: number): Promise<number> {
+    try {
+      if (this.options.enableDebugLogging) {
+        console.log(`🏰 Instantiating region "${regionData.concept.name}" (sequence ${regionData.sequenceNumber})`);
+      }
+
+      // 1. Create region record
+      const regionId = await this.createRegionRecord(regionData, gameId);
+      
+      // 2. Generate connections using the region connector
+      const connectorService = new RegionConnectorService();
+      const connections = connectorService.connectRooms(regionData.rooms, regionData.concept.theme);
+      
+      // 3. Create all 12 rooms
+      const roomIds = await this.createRoomsInDatabase(regionData.rooms, regionId, gameId);
+      
+      // 4. Create connections between rooms
+      await this.createConnectionsInDatabase(connections, roomIds, gameId);
+      
+      // 5. Create items in appropriate rooms
+      await this.createItemsInDatabase(regionData, roomIds, gameId);
+      
+      // 6. Create NPCs and enemies in appropriate rooms
+      await this.createCharactersInDatabase(regionData, roomIds, gameId);
+
+      if (this.options.enableDebugLogging) {
+        console.log(`🏰 Successfully instantiated region "${regionData.concept.name}" with ID ${regionId}`);
+      }
+
+      return regionId;
+    } catch (error) {
+      if (this.options.enableDebugLogging) {
+        console.error(`Error instantiating region "${regionData.concept.name}":`, error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Create region record in database
+   */
+  private async createRegionRecord(regionData: CompleteRegion, gameId: number): Promise<number> {
+    const result = await this.db.run(
+      'INSERT INTO regions (game_id, name, type, description) VALUES (?, ?, ?, ?)',
+      [gameId, regionData.concept.name, regionData.concept.theme, regionData.concept.atmosphere]
+    );
+    
+    if (!result.lastID) {
+      throw new Error('Failed to create region record');
+    }
+
+    if (this.options.enableDebugLogging) {
+      console.log(`🏰 Created region record: ${regionData.concept.name} (ID: ${result.lastID})`);
+    }
+
+    return result.lastID;
+  }
+
+  /**
+   * Create all rooms in database and return their IDs
+   */
+  private async createRoomsInDatabase(rooms: any[], regionId: number, gameId: number): Promise<number[]> {
+    const roomIds: number[] = [];
+    
+    for (let i = 0; i < rooms.length; i++) {
+      const room = rooms[i];
+      const result = await this.db.run(
+        'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
+        [gameId, room.name, room.description, regionId, i] // Use index as region_distance for now
+      );
+      
+      if (!result.lastID) {
+        throw new Error(`Failed to create room: ${room.name}`);
+      }
+      
+      roomIds.push(result.lastID);
+      
+      if (this.options.enableDebugLogging) {
+        console.log(`🏠 Created room: "${room.name}" (ID: ${result.lastID})`);
+      }
+    }
+    
+    return roomIds;
+  }
+
+  /**
+   * Create connections in database using generated connections and actual room IDs
+   */
+  private async createConnectionsInDatabase(connections: RoomConnection[], roomIds: number[], gameId: number): Promise<void> {
+    for (const connection of connections) {
+      const fromRoomId = roomIds[connection.fromRoomId];
+      const toRoomId = roomIds[connection.toRoomId];
+      
+      if (!fromRoomId || !toRoomId) {
+        if (this.options.enableDebugLogging) {
+          console.warn(`⚠️ Skipping invalid connection: ${connection.fromRoomId} -> ${connection.toRoomId}`);
+        }
+        continue;
+      }
+
+      await this.db.run(
+        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+        [gameId, fromRoomId, toRoomId, connection.direction, connection.name]
+      );
+      
+      if (this.options.enableDebugLogging) {
+        console.log(`🔗 Created connection: ${fromRoomId} --${connection.direction}--> ${toRoomId} (${connection.name})`);
+      }
+    }
+  }
+
+  /**
+   * Create items in appropriate rooms
+   */
+  private async createItemsInDatabase(regionData: CompleteRegion, roomIds: number[], gameId: number): Promise<void> {
+    for (let i = 0; i < regionData.rooms.length; i++) {
+      const room = regionData.rooms[i];
+      const roomId = roomIds[i];
+      
+      if (!room.items || room.items.length === 0) {
+        continue;
+      }
+      
+      for (const itemName of room.items) {
+        // First, create or find the item in items table
+        const itemResult = await this.db.run(
+          'INSERT INTO items (name, description, type, weight, value) VALUES (?, ?, ?, ?, ?)',
+          [itemName, `A ${itemName.toLowerCase()} found in ${regionData.concept.name}`, 'misc', 1.0, 10]
+        );
+        
+        if (itemResult.lastID) {
+          // Then place it in the room
+          await this.db.run(
+            'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
+            [roomId, itemResult.lastID, 1]
+          );
+          
+          if (this.options.enableDebugLogging) {
+            console.log(`📦 Placed item "${itemName}" in room "${room.name}"`);
+          }
+        }
+      }
+      
+      // Handle special items: Guardian's key
+      if (i === regionData.guardianRoomIndex) {
+        const keyName = regionData.concept.key.name;
+        const keyResult = await this.db.run(
+          'INSERT INTO items (name, description, type, weight, value) VALUES (?, ?, ?, ?, ?)',
+          [keyName, regionData.concept.key.description, 'quest', 0.1, 100]
+        );
+        
+        if (keyResult.lastID) {
+          await this.db.run(
+            'INSERT INTO room_items (room_id, item_id, quantity) VALUES (?, ?, ?)',
+            [roomId, keyResult.lastID, 1]
+          );
+          
+          if (this.options.enableDebugLogging) {
+            console.log(`🗝️ Placed key "${keyName}" in guardian room "${room.name}"`);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Create NPCs and enemies in appropriate rooms
+   */
+  private async createCharactersInDatabase(regionData: CompleteRegion, roomIds: number[], gameId: number): Promise<void> {
+    for (let i = 0; i < regionData.rooms.length; i++) {
+      const room = regionData.rooms[i];
+      const roomId = roomIds[i];
+      
+      if (!room.characters || room.characters.length === 0) {
+        continue;
+      }
+      
+      for (const character of room.characters) {
+        const result = await this.db.run(
+          'INSERT INTO characters (game_id, name, type, current_room_id, strength, dexterity, intelligence, constitution, wisdom, charisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [gameId, character.name, character.type, roomId, 10, 10, 10, 10, 10, 10] // Default stats
+        );
+        
+        if (this.options.enableDebugLogging) {
+          console.log(`🧙 Created ${character.type} "${character.name}" in room "${room.name}"`);
+        }
+      }
+    }
+    
+    // Handle special character: Guardian
+    if (regionData.guardianRoomIndex < roomIds.length) {
+      const guardianRoomId = roomIds[regionData.guardianRoomIndex];
+      const guardian = regionData.concept.guardian;
+      
+      const result = await this.db.run(
+        'INSERT INTO characters (game_id, name, type, current_room_id, strength, dexterity, intelligence, constitution, wisdom, charisma, max_health, current_health) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [gameId, guardian.name, 'enemy', guardianRoomId, 15, 12, 14, 16, 13, 8, 50, 50] // Guardian stats
+      );
+      
+      if (this.options.enableDebugLogging) {
+        console.log(`👹 Created guardian "${guardian.name}" in guardian room`);
+      }
+    }
   }
 }

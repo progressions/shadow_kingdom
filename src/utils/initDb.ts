@@ -7,6 +7,8 @@ import { seedGameTriggers } from './seedGameTriggers';
 import { CharacterService } from '../services/characterService';
 import { CharacterGenerationService } from '../services/characterGenerationService';
 import type { CreateCharacterData } from '../types/character';
+import { RegionPlannerService } from '../services/regionPlannerService';
+import { RegionService } from '../services/regionService';
 
 export async function initializeDatabase(db: Database, tui?: TUIInterface): Promise<void> {
   try {
@@ -1158,6 +1160,64 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
       cryptEntranceRoomId: cryptEntranceId,
       observatoryStepsRoomId: observatoryStepsId
     }, tui);
+
+    // Phase 5: Generate Region 2 for new games  
+    try {
+      if (tui) {
+        tui.display('🏰 Generating Region 2...', MessageType.SYSTEM);
+      }
+      
+      const regionPlannerService = new RegionPlannerService(db, { enableDebugLogging: !!tui });
+      const regionService = new RegionService(db, { enableDebugLogging: !!tui });
+      
+      // Generate complete Region 2 (sequence number 2)
+      const completeRegion2 = await regionPlannerService.generateCompleteRegion(2, {
+        existingConcepts: ['Shadow Kingdom Manor'] // Avoid duplicating the hardcoded region
+      });
+      
+      // Instantiate Region 2 in the database
+      const region2Id = await regionService.instantiateRegion(completeRegion2, gameId);
+      
+      // Connect Region 1's locked exit to Region 2's entrance
+      const region2Rooms = await db.all('SELECT * FROM rooms WHERE region_id = ? ORDER BY region_distance LIMIT 1', [region2Id]);
+      const region2Entrance = region2Rooms[0];
+      
+      if (region2Entrance) {
+        // Find a room in Region 1 that needs a locked connection to Region 2
+        // The Ancient Crypt Entrance should have a locked vault door leading to Region 2
+        const cryptEntrance = await db.get('SELECT id FROM rooms WHERE name = ? AND game_id = ?', ['Ancient Crypt Entrance', gameId]);
+        
+        if (cryptEntrance) {
+          // Create locked connection from crypt to Region 2 using Vault Key
+          await db.run(
+            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name, locked, required_key_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [gameId, cryptEntrance.id, region2Entrance.id, 'vault', 'through the ancient vault door to another realm', 1, 'Vault Key']
+          );
+          
+          // Create return connection from Region 2 back to Region 1
+          await db.run(
+            'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+            [gameId, region2Entrance.id, cryptEntrance.id, 'back', 'back through the vault door to the crypt']
+          );
+          
+          if (tui) {
+            tui.display(`🔗 Connected Region 1 (Ancient Crypt Entrance) to Region 2 (${region2Entrance.name})`, MessageType.SYSTEM);
+            tui.display(`🗝️ Connection requires Vault Key to unlock`, MessageType.SYSTEM);
+          }
+        }
+      }
+      
+      if (tui) {
+        tui.display(`🏰 Successfully generated Region 2: "${completeRegion2.concept.name}" (ID: ${region2Id})`, MessageType.SYSTEM);
+        tui.display(`🏰 Region 2 contains 12 rooms with guardian "${completeRegion2.concept.guardian.name}" and key "${completeRegion2.concept.key.name}"`, MessageType.SYSTEM);
+      }
+    } catch (error) {
+      if (tui) {
+        tui.display(`⚠️ Warning: Failed to generate Region 2: ${error}`, MessageType.ERROR);
+        tui.display('Game still created successfully with Region 1', MessageType.SYSTEM);
+      }
+      // Don't fail game creation if Region 2 generation fails
+    }
 
     if (tui) {
       tui.display(`Game "${gameName}" created successfully with ID ${gameId}`, MessageType.SYSTEM);

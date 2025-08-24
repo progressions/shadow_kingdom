@@ -21,7 +21,7 @@ export class RegionPlannerService {
       enableDebugLogging: false,
       ...options
     };
-    this.grokClient = new GrokClient({ mockMode: true }); // Start with mock mode for testing
+    this.grokClient = new GrokClient(); // Respects AI_MOCK_MODE environment variable
   }
 
   /**

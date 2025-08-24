@@ -819,6 +819,19 @@ export class MockAIEngine {
       connections.push(connection);
     }
 
+    // CRITICAL FIX: Ensure at least one connection exists to prevent dead ends
+    if (connections.length === 0) {
+      console.warn(`🚨 MockAIEngine: Room "${room.name}" had no connections - adding emergency exit`);
+      
+      // Create emergency connection using the first available direction
+      const emergencyDirection = availableDirections[0] || 'back';
+      const emergencyConnection = {
+        direction: emergencyDirection,
+        name: emergencyDirection === 'back' ? 'back to safety' : `through the ${emergencyDirection}ern passage`
+      };
+      connections.push(emergencyConnection);
+    }
+
     return connections;
   }
 
