@@ -172,15 +172,15 @@ describe('Connection-Based Generation Schema', () => {
         buildRoomGenerationPrompt: jest.fn().mockResolvedValue('mansion themed prompt')
       };
 
-      const itemService = new (await import('../src/services/itemService')).ItemService(db);
-      const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+      const itemService = new (await import('../../src/services/itemService')).ItemService(db);
+      const itemGenerationService = new (await import('../../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
       
-      const characterService = new (await import('../src/services/characterService')).CharacterService(db);
-      const characterGenerationService = new (await import('../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
+      const characterService = new (await import('../../src/services/characterService')).CharacterService(db);
+      const characterGenerationService = new (await import('../../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
 
-      const { FantasyLevelService } = await import('../src/services/fantasyLevelService');
+      const { FantasyLevelService } = await import('../../src/services/fantasyLevelService');
       const fantasyLevelService = new FantasyLevelService();
-      const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
+      const roomGenService = new (await import('../../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
@@ -258,15 +258,15 @@ describe('Connection-Based Generation Schema', () => {
         generateRegionDistance: jest.fn().mockReturnValue(1)
       };
 
-      const itemService = new (await import('../src/services/itemService')).ItemService(db);
-      const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+      const itemService = new (await import('../../src/services/itemService')).ItemService(db);
+      const itemGenerationService = new (await import('../../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
       
-      const characterService = new (await import('../src/services/characterService')).CharacterService(db);
-      const characterGenerationService = new (await import('../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
+      const characterService = new (await import('../../src/services/characterService')).CharacterService(db);
+      const characterGenerationService = new (await import('../../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
 
-      const { FantasyLevelService } = await import('../src/services/fantasyLevelService');
+      const { FantasyLevelService } = await import('../../src/services/fantasyLevelService');
       const fantasyLevelService = new FantasyLevelService();
-      const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
+      const roomGenService = new (await import('../../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,
@@ -341,15 +341,15 @@ describe('Connection-Based Generation Schema', () => {
         generateRegionDistance: jest.fn().mockReturnValue(1)
       };
 
-      const itemService = new (await import('../src/services/itemService')).ItemService(db);
-      const itemGenerationService = new (await import('../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
+      const itemService = new (await import('../../src/services/itemService')).ItemService(db);
+      const itemGenerationService = new (await import('../../src/services/itemGenerationService')).ItemGenerationService(db, itemService);
       
-      const characterService = new (await import('../src/services/characterService')).CharacterService(db);
-      const characterGenerationService = new (await import('../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
+      const characterService = new (await import('../../src/services/characterService')).CharacterService(db);
+      const characterGenerationService = new (await import('../../src/services/characterGenerationService')).CharacterGenerationService(db, characterService, { enableDebugLogging: false });
 
-      const { FantasyLevelService } = await import('../src/services/fantasyLevelService');
+      const { FantasyLevelService } = await import('../../src/services/fantasyLevelService');
       const fantasyLevelService = new FantasyLevelService();
-      const roomGenService = new (await import('../src/services/roomGenerationService')).RoomGenerationService(
+      const roomGenService = new (await import('../../src/services/roomGenerationService')).RoomGenerationService(
         db,
         mockGrokClient as any,
         mockRegionService as any,

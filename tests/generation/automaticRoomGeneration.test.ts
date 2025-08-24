@@ -35,7 +35,7 @@ describe('Automatic Room Generation on Entry', () => {
     const itemGenerationService = new ItemGenerationService(db, itemService);
     const characterService = new CharacterService(db);
     const characterGenerationService = new CharacterGenerationService(db, characterService, { enableDebugLogging: false });
-    const { FantasyLevelService } = require('../src/services/fantasyLevelService');
+    const { FantasyLevelService } = require('../../src/services/fantasyLevelService');
     const fantasyLevelService = new FantasyLevelService();
     roomGenerationService = new RoomGenerationService(
       db,

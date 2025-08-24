@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
 import { ItemService } from '../../src/services/itemService';
 import { ItemGenerationService } from '../../src/services/itemGenerationService';
@@ -8,6 +8,7 @@ import { RegionService } from '../../src/services/regionService';
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterGenerationService } from '../../src/services/characterGenerationService';
 import { FantasyLevelService } from '../../src/services/fantasyLevelService';
+import { UnfilledConnection } from '../../src/services/gameStateManager';
 describe('Duplicate Room Generation Race Condition Fix', () => {
   let db: Database;
   let roomGenerationService: RoomGenerationService;
@@ -56,36 +57,38 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
   });
 
   it('should handle race condition when multiple generations target same connection', async () => {
-    // Create a game with an unfilled connection
-    const gameResult = await db.run(
-      'INSERT INTO games (name) VALUES (?)',
-      ['Race Condition Test']
-    );
-    const gameId = gameResult.lastID as number;
+    const uniqueGameName = `Race Condition Test ${Date.now()}-${Math.random()}`;
+    const gameId = await createGameWithRooms(db, uniqueGameName);
+    
+    // Get the first room from the created game
+    const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY id ASC', [gameId]);
+    const firstRoom = rooms[0];
+    expect(firstRoom).toBeDefined();
 
-    // Create a room 
-    const roomResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-      [gameId, 'Test Room', 'A test room']
-    );
-    const roomId = roomResult.lastID as number;
-
-    // Create an unfilled connection (to_room_id = NULL)
+    // Create an unfilled connection (to_room_id = NULL) 
     const connectionResult = await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, NULL, ?, ?)',
-      [gameId, roomId, 'east', 'eastern corridor']
+      [gameId, firstRoom.id, 'race-test-direction', 'test corridor for race condition']
     );
     const connectionId = connectionResult.lastID as number;
 
     // Get the connection for testing
-    const connection = await db.get<any>(
+    const connection = await db.get<UnfilledConnection>(
       'SELECT * FROM connections WHERE id = ?',
       [connectionId]
     );
+    expect(connection).toBeDefined();
+    expect(connection!.to_room_id).toBeNull();
+
+    // Count initial rooms before generation
+    const initialRoomCount = await db.get<any>(
+      'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+      [gameId]
+    );
 
     // Simulate race condition: two concurrent generation attempts
-    const generation1Promise = roomGenerationService.generateRoomForConnection(connection);
-    const generation2Promise = roomGenerationService.generateRoomForConnection(connection);
+    const generation1Promise = roomGenerationService.generateRoomForConnection(connection!);
+    const generation2Promise = roomGenerationService.generateRoomForConnection(connection!);
 
     // Wait for both to complete
     const [result1, result2] = await Promise.all([generation1Promise, generation2Promise]);
@@ -105,15 +108,16 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
     expect(finalConnection.to_room_id).toBeTruthy();
     expect(finalConnection.to_room_id).toBe(result1.roomId);
 
-    // Verify no orphaned rooms were created
-    const roomCount = await db.get<any>(
+    // Verify the race condition cleanup worked - no orphaned rooms
+    const finalRoomCount = await db.get<any>(
       'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
       [gameId]
     );
-    // Should have original room + 1 generated room (race condition prevented duplicate)
-    // Note: return room creation may depend on the specific room generation logic
-    expect(roomCount.count).toBeGreaterThanOrEqual(2); // At minimum: original + generated
-    expect(roomCount.count).toBeLessThanOrEqual(3); // At most: original + generated + return
+    // Should have created exactly 1 new room (plus possible return room), not 2
+    // The race condition handler should have deleted the orphaned room
+    const roomsAdded = finalRoomCount.count - initialRoomCount.count;
+    expect(roomsAdded).toBeLessThanOrEqual(2); // At most: generated room + return room
+    expect(roomsAdded).toBeGreaterThanOrEqual(1); // At least: generated room
   });
 
   it('should prevent duplicate room generation with concurrent movement commands', async () => {
@@ -134,58 +138,60 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
   });
 
   it('should clean up orphaned room when race condition is detected', async () => {
-    // Create a game and room setup
-    const gameResult = await db.run(
-      'INSERT INTO games (name) VALUES (?)',
-      ['Cleanup Test']
-    );
-    const gameId = gameResult.lastID as number;
-
-    const roomResult = await db.run(
-      'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
-      [gameId, 'Test Room', 'A test room']
-    );
-    const roomId = roomResult.lastID as number;
+    const uniqueGameName = `Cleanup Test ${Date.now()}-${Math.random()}`;
+    const gameId = await createGameWithRooms(db, uniqueGameName);
+    
+    // Get a room from the created game
+    const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY id ASC', [gameId]);
+    const testRoom = rooms[0];
+    expect(testRoom).toBeDefined();
 
     // Create connection 
     const connectionResult = await db.run(
       'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, NULL, ?, ?)',
-      [gameId, roomId, 'east', 'eastern corridor']
+      [gameId, testRoom.id, 'cleanup-test', 'cleanup test corridor']
     );
     const connectionId = connectionResult.lastID as number;
 
-    const connection = await db.get<any>(
+    const connection = await db.get<UnfilledConnection>(
       'SELECT * FROM connections WHERE id = ?',
       [connectionId]
     );
+    expect(connection).toBeDefined();
 
-    // Simulate the race condition by manually filling the connection after getting it
-    // but before the generation service tries to update it
-    const originalGenerate = roomGenerationService.generateRoomForConnection.bind(roomGenerationService);
+    // Count rooms before any generation
+    const initialCount = await db.get<any>(
+      'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+      [gameId]
+    );
+
+    // Create a fake room to pre-fill the connection, simulating a race condition
+    const fakeRoomResult = await db.run(
+      'INSERT INTO rooms (game_id, name, description) VALUES (?, ?, ?)',
+      [gameId, 'Pre-filled Room', 'A room created to simulate race condition']
+    );
+    const fakeRoomId = fakeRoomResult.lastID as number;
+
+    // Pre-fill the connection to simulate another process winning the race
+    await db.run(
+      'UPDATE connections SET to_room_id = ? WHERE id = ?',
+      [fakeRoomId, connectionId]
+    );
+
+    // Now try to generate a room for the already-filled connection
+    const result = await roomGenerationService.generateRoomForConnection(connection!);
+
+    // Should succeed but return the existing room ID
+    expect(result.success).toBe(true);
+    expect(result.roomId).toBe(fakeRoomId);
+
+    // Verify no additional orphaned room was created
+    const finalCount = await db.get<any>(
+      'SELECT COUNT(*) as count FROM rooms WHERE game_id = ?',
+      [gameId]
+    );
     
-    let firstCall = true;
-    roomGenerationService.generateRoomForConnection = jest.fn().mockImplementation(async (conn) => {
-      if (firstCall) {
-        firstCall = false;
-        // Let the first call proceed normally
-        return originalGenerate(conn);
-      } else {
-        // For the second call, fill the connection first to simulate race condition
-        await db.run(
-          'UPDATE connections SET to_room_id = ? WHERE id = ?',
-          [999, connectionId] // Use a fake room ID
-        );
-        return originalGenerate(conn);
-      }
-    });
-
-    // Start both generations
-    const result1 = await roomGenerationService.generateRoomForConnection(connection);
-    const result2 = await roomGenerationService.generateRoomForConnection(connection);
-
-    // First should succeed normally, second should detect race condition
-    expect(result1.success).toBe(true);
-    expect(result2.success).toBe(true);
-    expect(result2.roomId).toBe(999); // Should return the existing room ID
+    // Should be initial + 1 (the fake room we created)
+    expect(finalCount.count).toBe(initialCount.count + 1);
   });
 });

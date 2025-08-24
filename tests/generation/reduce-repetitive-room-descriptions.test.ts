@@ -16,7 +16,7 @@ describe('Reduce Repetitive Room Descriptions', () => {
     // Read the GameController source code
     const fs = require('fs');
     const path = require('path');
-    const gameControllerPath = path.join(__dirname, '../src/gameController.ts');
+    const gameControllerPath = path.join(__dirname, '../../src/gameController.ts');
     const sourceCode = fs.readFileSync(gameControllerPath, 'utf8');
 
     // Split into lines for analysis

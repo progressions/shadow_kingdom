@@ -1,7 +1,7 @@
 import Database from '../../src/utils/database';
 import { GameController } from '../../src/gameController';
 import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
-import { MockTUI } from './mocks/mockTUI';
+import { MockTUI } from '../mocks/mockTUI';
 
 // Mock readline to avoid actual I/O during testing
 jest.mock('readline', () => ({

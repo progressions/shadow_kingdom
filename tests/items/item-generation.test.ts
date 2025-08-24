@@ -33,7 +33,7 @@ describe('AI Item Generation', () => {
     grokClient = new GrokClient({ mockMode: true }); // Use mock mode for testing
     const characterService = new CharacterService(db);
     const characterGenerationService = new CharacterGenerationService(db, characterService);
-    const { FantasyLevelService } = require('../src/services/fantasyLevelService');
+    const { FantasyLevelService } = require('../../src/services/fantasyLevelService');
     const fantasyLevelService = new FantasyLevelService();
     roomGenerationService = new RoomGenerationService(
       db,
