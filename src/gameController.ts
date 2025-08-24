@@ -107,13 +107,22 @@ export class GameController {
       this.tui = new InkTUIBridge(undefined, this.historyManager);
     }
     
-    // Initialize command router (after TUI is available)
-    this.commandRouter = new CommandRouter(this.nlpEngine, this.grokClient, this.db, this.tui, {
-      enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
-    });
-    
-    // Initialize services after command router is ready
+    // Initialize services first
     this.initializeServices();
+    
+    // Initialize command router (after services are available)
+    this.commandRouter = new CommandRouter(
+      this.nlpEngine, 
+      this.grokClient, 
+      this.db, 
+      this.itemService,
+      this.characterService,
+      this.gameStateManager,
+      this.tui, 
+      {
+        enableDebugLogging: process.env.AI_DEBUG_LOGGING === 'true'
+      }
+    );
   }
 
   private setupCommands() {

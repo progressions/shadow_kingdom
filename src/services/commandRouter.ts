@@ -1,20 +1,40 @@
 import { UnifiedNLPEngine } from '../nlp/unifiedNLPEngine';
-import { GameContext, NLPResult } from '../nlp/types';
+import { GameContext as NLPGameContext, NLPResult } from '../nlp/types';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 import { AICommandFallback } from './aiCommandFallback';
 import { GrokClient } from '../ai/grokClient';
 import { CommandParsingError } from './commandParsingError';
+import { TargetResolutionService } from './targetResolutionService';
+import { TargetContext, ResolvedTarget, GameContext } from '../types/targetResolution';
+import { ItemService } from './itemService';
+import { CharacterService } from './characterService';
+import { GameStateManager } from './gameStateManager';
 import Database from '../utils/database';
 
+// Legacy command interface for backward compatibility
 export interface Command {
   name: string;
   description: string;
   handler: (args: string[]) => void | Promise<void>;
 }
 
+// Enhanced command interface with target resolution support
+export interface EnhancedCommand {
+  name: string;
+  description: string;
+  targetContext?: TargetContext;
+  supportsAll?: boolean;
+  requiresTarget?: boolean;
+  maxTargets?: number;
+  handler: (targets: ResolvedTarget[], context: GameContext) => void | Promise<void>;
+}
+
+// Union type for both command types
+export type AnyCommand = Command | EnhancedCommand;
+
 export interface CommandExecutionContext {
-  gameContext: GameContext;
+  gameContext: NLPGameContext;
   recentCommands: string[];
 }
 
@@ -27,13 +47,23 @@ export interface CommandRouterOptions {
  * It supports both exact command matching and NLP-based command resolution.
  */
 export class CommandRouter {
-  private commands: Map<string, Command> = new Map();
+  private commands: Map<string, AnyCommand> = new Map();
   private nlpEngine: UnifiedNLPEngine;
   private options: CommandRouterOptions;
   private tui: TUIInterface | null;
   private aiCommandFallback: AICommandFallback | null = null;
+  private targetResolver: TargetResolutionService;
 
-  constructor(nlpEngine: UnifiedNLPEngine, grokClient: GrokClient, db: Database, tui: TUIInterface | null = null, options: CommandRouterOptions = {}) {
+  constructor(
+    nlpEngine: UnifiedNLPEngine, 
+    grokClient: GrokClient, 
+    db: Database, 
+    itemService: ItemService,
+    characterService: CharacterService,
+    gameStateManager: GameStateManager,
+    tui: TUIInterface | null = null, 
+    options: CommandRouterOptions = {}
+  ) {
     this.nlpEngine = nlpEngine;
     this.tui = tui;
     this.options = {
@@ -43,19 +73,32 @@ export class CommandRouter {
     this.aiCommandFallback = new AICommandFallback(grokClient, db, tui, {
       enableDebugLogging: options.enableDebugLogging || false
     });
+    this.targetResolver = new TargetResolutionService(
+      db,
+      itemService,
+      characterService,
+      gameStateManager
+    );
   }
 
   /**
-   * Register a command
+   * Register a command (legacy support)
    */
   addCommand(command: Command): void {
     this.commands.set(command.name.toLowerCase(), command);
   }
 
   /**
+   * Register an enhanced command with target resolution support
+   */
+  addEnhancedCommand(command: EnhancedCommand): void {
+    this.commands.set(command.name.toLowerCase(), command);
+  }
+
+  /**
    * Get all commands
    */
-  getCommands(): Map<string, Command> {
+  getCommands(): Map<string, AnyCommand> {
     return this.commands;
   }
 
@@ -76,6 +119,90 @@ export class CommandRouter {
   }
 
   /**
+   * Check if a command is enhanced (has target resolution support)
+   */
+  private isEnhancedCommand(command: AnyCommand): command is EnhancedCommand {
+    return 'targetContext' in command;
+  }
+
+  /**
+   * Process an enhanced command with target resolution
+   */
+  private async processEnhancedCommand(
+    command: EnhancedCommand, 
+    targetString: string, 
+    context: CommandExecutionContext
+  ): Promise<boolean> {
+    // Check if target is required but not provided
+    if (command.requiresTarget && (!targetString || !targetString.trim())) {
+      this.showError(`${command.name} requires a target. Usage: ${command.name} <target>`);
+      return false;
+    }
+
+    let resolvedTargets: ResolvedTarget[] = [];
+
+    // Resolve targets if provided and context is available
+    if (targetString && targetString.trim() && command.targetContext) {
+      try {
+        // Convert NLPGameContext to enhanced GameContext for target resolution
+        const enhancedGameContext: GameContext = {
+          ...context.gameContext,
+          characterId: context.gameContext.gameId || 1, // Default character ID
+          sessionId: 'session-' + Date.now() // Default session ID
+        };
+        
+        resolvedTargets = await this.targetResolver.resolveTargets(
+          targetString.trim(),
+          command.targetContext,
+          enhancedGameContext
+        );
+
+        // Check if targets were found when required
+        if (command.requiresTarget && resolvedTargets.length === 0) {
+          this.showError(`Could not find "${targetString}".`);
+          return false;
+        }
+
+        // Check target limits
+        if (command.maxTargets && resolvedTargets.length > command.maxTargets) {
+          resolvedTargets = resolvedTargets.slice(0, command.maxTargets);
+        }
+
+      } catch (error) {
+        this.showError(`Error resolving target "${targetString}": ${error}`);
+        return false;
+      }
+    }
+
+    // Execute the enhanced command with resolved targets
+    try {
+      // Convert NLPGameContext to enhanced GameContext for command execution
+      const enhancedGameContext: GameContext = {
+        ...context.gameContext,
+        characterId: context.gameContext.gameId || 1, // Default character ID
+        sessionId: 'session-' + Date.now() // Default session ID
+      };
+      
+      await command.handler(resolvedTargets, enhancedGameContext);
+      return true;
+    } catch (error) {
+      this.showError(`Error executing ${command.name}: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Display error message to user
+   */
+  private showError(message: string): void {
+    if (this.tui) {
+      this.tui.display(message, MessageType.ERROR);
+    } else {
+      console.error(message);
+    }
+  }
+
+  /**
    * Process and execute a command with full context
    */
   async processCommand(input: string, context: CommandExecutionContext): Promise<boolean> {
@@ -83,14 +210,21 @@ export class CommandRouter {
 
     const commands = this.getCommands();
     
-    // First, try exact command matching for simple commands
+    // Parse command input
     const parts = input.trim().split(' ');
     const commandName = parts[0].toLowerCase();
     const args = parts.slice(1);
+    const targetString = args.join(' ');
     
     const exactCommand = commands.get(commandName);
     if (exactCommand) {
       try {
+        // Handle enhanced commands with target resolution
+        if (this.isEnhancedCommand(exactCommand)) {
+          return await this.processEnhancedCommand(exactCommand, targetString, context);
+        }
+        
+        // Handle legacy commands
         await exactCommand.handler(args);
         return true;
       } catch (error) {
@@ -157,7 +291,7 @@ export class CommandRouter {
    */
   private async executeNLPResult(
     nlpResult: NLPResult, 
-    commands: Map<string, Command>, 
+    commands: Map<string, AnyCommand>, 
     originalInput: string
   ): Promise<boolean> {
     const resolvedCommand = commands.get(nlpResult.action);
@@ -179,7 +313,20 @@ export class CommandRouter {
             }
           }
         }
-        await resolvedCommand.handler(nlpResult.params);
+        // Handle enhanced vs legacy commands
+        if (this.isEnhancedCommand(resolvedCommand)) {
+          // For enhanced commands, we need to create a proper context
+          // NLP processing doesn't support target resolution yet, so pass empty targets
+          const enhancedGameContext: GameContext = {
+            gameId: undefined, // Will be filled by actual game context
+            recentCommands: [],
+            characterId: 1, // Default character ID
+            sessionId: 'session-' + Date.now() // Default session ID
+          };
+          await resolvedCommand.handler([], enhancedGameContext);
+        } else {
+          await resolvedCommand.handler(nlpResult.params);
+        }
         return true;
       } catch (error) {
         // If it's a CommandParsingError, don't show the error yet - let AI fallback try first

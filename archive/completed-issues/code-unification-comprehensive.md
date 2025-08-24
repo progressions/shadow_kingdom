@@ -2,7 +2,7 @@
 
 **Created**: 2025-08-22  
 **Based on**: issues/2025-08-21-unify-room-display-systems.md  
-**Status**: Implementation Ready
+**Status**: Completed
 
 ## Overview
 
