@@ -28,7 +28,7 @@ describe('Simple Database Tests', () => {
     const gameId = await createGameWithRooms(db, `Room Test Game ${Date.now()}-${Math.random()}`);
     
     const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [gameId]);
-    expect(rooms).toHaveLength(6);
+    expect(rooms).toHaveLength(18); // Region 1: 6 + Region 2: 12
 
     const connections = await db.all('SELECT * FROM connections WHERE game_id = ?', [gameId]);
     expect(connections.length).toBeGreaterThan(0);
@@ -72,8 +72,8 @@ describe('Simple Database Tests', () => {
     const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game1Id]);
     const game2Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game2Id]);
     
-    expect(game1Rooms).toHaveLength(6);
-    expect(game2Rooms).toHaveLength(6);
+    expect(game1Rooms).toHaveLength(18); // Region 1: 6 + Region 2: 12
+    expect(game2Rooms).toHaveLength(18);
     
     // Room IDs should be different
     const game1RoomIds = game1Rooms.map(r => r.id);

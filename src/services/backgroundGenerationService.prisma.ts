@@ -96,10 +96,7 @@ export class BackgroundGenerationServicePrisma {
    */
   async generateForRoomEntry(roomId: number, gameId: number): Promise<void> {
     try {
-      // Check if auto-generation is enabled
-      if (process.env.AUTO_GENERATE_ON_ENTRY !== 'true') {
-        return;
-      }
+      // Auto-generation always enabled
 
       // Find unfilled connections that aren't already being processed using Prisma
       const unfilledConnections = await this.prisma.connection.findMany({

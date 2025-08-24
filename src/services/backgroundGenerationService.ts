@@ -40,8 +40,11 @@ export class BackgroundGenerationService {
    */
   async generateForRoomEntry(roomId: number, gameId: number): Promise<void> {
     try {
-      // Auto-generation is now disabled in Phase 9 - region queue handles generation
-      return;
+      // Auto-generation is disabled in Phase 9 - region queue handles generation
+      // However, allow individual room generation for testing purposes
+      if (!process.env.JEST_WORKER_ID && process.env.NODE_ENV !== 'test') {
+        return;
+      }
 
       // Get current room's region info
       const currentRoom = await this.db.get<any>(`

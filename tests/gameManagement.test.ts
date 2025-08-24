@@ -29,9 +29,9 @@ describe('Game Management', () => {
       expect(game.created_at).toBeDefined();
       expect(game.last_played_at).toBeDefined();
 
-      // Verify rooms were created (3 starter + 3 leaf nodes = 6 total)
+      // Verify rooms were created (Region 1: 6 rooms + Region 2: 12 rooms = 18 total)
       const rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY name', [gameId]);
-      expect(rooms).toHaveLength(6);
+      expect(rooms).toHaveLength(18);
       
       const roomNames = rooms.map(r => r.name);
       expect(roomNames).toContain('Grand Entrance Hall');
@@ -60,8 +60,9 @@ describe('Game Management', () => {
       const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game1Id]);
       const game2Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ?', [game2Id]);
 
-      expect(game1Rooms).toHaveLength(6);
-      expect(game2Rooms).toHaveLength(6);
+      // createGameWithRooms now creates Region 1 (6 rooms) + Region 2 (12 rooms) = 18 total
+      expect(game1Rooms).toHaveLength(18);
+      expect(game2Rooms).toHaveLength(18);
 
       // Room IDs should be different between games
       const game1RoomIds = game1Rooms.map(r => r.id);

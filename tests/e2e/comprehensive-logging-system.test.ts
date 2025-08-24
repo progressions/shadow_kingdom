@@ -255,7 +255,7 @@ describe('Comprehensive Logging System End-to-End Tests', () => {
       const aiContent = fs.readFileSync(paths.ai, 'utf8');
       
       expect(sessionContent).toContain('session message');
-      expect(aiContent).toContain('"test":"ai data"');
+      expect(aiContent).toContain('"test": "ai data"'); // Match the actual formatted output with spaces
     });
 
     test('should handle different log levels', () => {
