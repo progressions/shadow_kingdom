@@ -29,6 +29,7 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         game_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
+        extended_description TEXT, -- detailed description shown on examine
         region_id INTEGER,
         region_distance INTEGER,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
@@ -97,6 +98,8 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         charisma INTEGER DEFAULT 10,
         max_health INTEGER, -- calculated from constitution, NULL = not calculated yet
         current_health INTEGER, -- current HP, NULL = full health
+        description TEXT, -- basic description
+        extended_description TEXT, -- detailed description shown on examine
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
         FOREIGN KEY (current_room_id) REFERENCES rooms(id)
@@ -109,6 +112,7 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
+        extended_description TEXT, -- detailed description shown on examine
         type TEXT NOT NULL, -- weapon, armor, consumable, misc, quest
         weight REAL DEFAULT 0.0,
         value INTEGER DEFAULT 0, -- in copper pieces
@@ -256,6 +260,13 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     // Migration: Add extended_description column to items if it doesn't exist
     try {
       await db.run(`ALTER TABLE items ADD COLUMN extended_description TEXT`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
+    // Migration: Add extended_description column to rooms if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE rooms ADD COLUMN extended_description TEXT`);
     } catch (error) {
       // Column already exists, ignore error
     }
