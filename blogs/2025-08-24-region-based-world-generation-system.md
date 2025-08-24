@@ -18,24 +18,15 @@ The new system organizes the world into thematic regions (mansions, forests, cav
 
 The system revolves around three key components:
 
-1. **RegionService** (`src/services/regionService.ts:15`) - Manages region creation and probability logic
+1. **RegionService** (`src/services/regionService.ts:15`) - Manages region creation and CRUD operations
 2. **RoomGenerationService** (`src/services/roomGenerationService.ts:43`) - Handles AI-powered room creation within regional context
 3. **BackgroundGenerationService** (`src/services/backgroundGenerationService.ts:20`) - Proactively generates new areas as players explore
 
-### Distance-Based Probability Logic
+### Region Queue System
 
-The heart of the system is a probability calculation that balances regional coherence with exploration variety:
+The heart of the current system is a simplified region queue approach that replaced complex probability calculations. Rather than dynamically calculating region transitions during gameplay, the system now uses pre-planned region sequences that maintain thematic coherence while ensuring smooth progression.
 
-- **15% base probability** for creating new regions
-- **+12% per distance unit** from the region center
-- **Maximum 80% probability** to ensure some regions always expand
-
-```typescript
-// Distance probability calculation from specs/world-generation-comprehensive.md:14
-const newRegionProbability = Math.min(0.15 + (0.12 * distanceFromCenter), 0.80);
-```
-
-This means rooms closer to a region's center are likely to remain within that region, while rooms at the periphery have higher chances of spawning new thematic areas.
+This approach eliminated the need for complex distance-based probability calculations while preserving the core benefit: players experience complete, thematically coherent regions before transitioning to new areas.
 
 ### Connection-Based Generation
 
@@ -56,19 +47,19 @@ const connectionResult = await this.db.run(
 
 ## Implementation Challenges
 
-### 1. The Visit-to-Lock Problem
+### 1. Eliminating Phantom Connections
 
-Early versions suffered from "phantom connections" where AI would generate connections to rooms that didn't exist yet. The solution was implementing a visit-to-lock mechanism:
+Early versions suffered from "phantom connections" where AI would generate connections to rooms that didn't exist yet. The solution was implementing connection-based generation where unfilled connections are created first, then filled by background processes:
 
 ```typescript
-// Visit-to-lock implementation from specs/world-generation-comprehensive.md:74
-await db.run(
-  'UPDATE rooms SET generation_processed = TRUE WHERE id = ? AND game_id = ?',
-  [roomId, gameId]
+// Connection-based generation from roomGenerationService.ts:343
+await this.db.run(
+  'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
+  [context.gameId, context.fromRoomId, null, context.direction, thematicConnectionName]
 );
 ```
 
-Once a player visits a room, its layout becomes locked, preventing retroactive changes that could create inconsistencies.
+This approach eliminated the need for complex state tracking while ensuring spatial consistency.
 
 ### 2. Race Conditions in Background Generation
 
@@ -89,7 +80,7 @@ if (updateResult.changes === 0) {
 
 ### 3. Ensuring Spatial Consistency
 
-The system needed to guarantee that every connection leads somewhere and every room has a way back. This required careful validation and mandatory return path creation:
+The system guarantees that every connection leads somewhere and every room has a way back. This required careful validation and mandatory return path creation:
 
 ```typescript
 // Mandatory return path from roomGenerationService.ts:378
@@ -145,11 +136,11 @@ The region-based system dramatically improves exploration coherence:
 The system handles generation efficiently through:
 
 - **Fire-and-forget background generation**: Non-blocking room creation
-- **Configurable limits**: Maximum rooms per game, generation cooldowns
-- **Database indexing**: Optimized queries for region and connection lookups
+- **Simplified architecture**: Region queue system replaced complex probability calculations
+- **Database indexing**: Optimized queries for region and connection lookups  
 - **Graceful fallbacks**: System continues functioning even when AI services are unavailable
 
-During validation testing, the system successfully generated 18 rooms from 6 starter rooms, creating 12 thematically coherent regions with perfect spatial consistency and no phantom connections.
+The current implementation eliminates technical debt from complex distance calculations and state tracking while maintaining all the benefits of thematic coherence and spatial consistency.
 
 ## Future Developments
 
@@ -160,20 +151,27 @@ While the core region system is complete, future phases will expand it further:
 - **Dynamic region evolution**: Regions that change based on player actions
 - **Cross-region narratives**: Story elements that span multiple thematic areas
 
-## Technical Debt and Lessons Learned
+## Evolution and Code Cleanup
 
-The biggest challenge was maintaining backwards compatibility while fundamentally changing the generation paradigm. Key lessons:
+The system underwent significant evolution, culminating in Phase 9 cleanup that simplified the architecture:
 
+**Removed Systems:**
+- Complex distance-based probability calculations
+- Visit-to-lock state tracking mechanisms
+- BFS proximity search algorithms
+- Multiple generation triggers and patterns
+
+**Key Lessons Learned:**
 1. **Connection-first design** prevents many spatial consistency issues
 2. **Atomic operations** are essential for concurrent generation
 3. **Rich AI context** produces significantly better content than generic prompts
-4. **Comprehensive validation** catches edge cases that manual testing misses
+4. **Simplified architectures** are more maintainable than complex probability systems
 
 ## Conclusion
 
-The region-based world generation system represents a significant evolution from random room generation to coherent world building. By combining AI content creation with structured probability mechanics, it creates exploration experiences that feel both planned and surprising.
+The region-based world generation system represents a significant evolution from random room generation to coherent world building. By combining AI content creation with a simplified region queue architecture, it creates exploration experiences that feel both planned and surprising.
 
-The system is now stable and handling the full complexity of multi-region world generation. Players exploring Shadow Kingdom can expect to discover well-crafted areas that tell environmental stories through their spatial relationships, rather than just random collections of interesting rooms.
+The system underwent extensive refinement, ultimately settling on a clean, maintainable architecture that eliminates technical debt while preserving all the benefits of thematic coherence. Players exploring Shadow Kingdom can expect to discover well-crafted areas that tell environmental stories through their spatial relationships, rather than just random collections of interesting rooms.
 
 This foundation enables the next phase of development: populating these regions with characters, items, and quests that respect and enhance the thematic coherence the generation system has established.
 
