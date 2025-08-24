@@ -80,6 +80,39 @@ export class RegionServicePrisma {
   }
 
   /**
+   * Find region by name within a game
+   */
+  async findRegionByName(gameId: number, name: string): Promise<Region | null> {
+    try {
+      const prismaRegion = await this.prisma.region.findFirst({
+        where: {
+          game_id: gameId,
+          name: name
+        }
+      });
+
+      if (!prismaRegion) {
+        return null;
+      }
+
+      return {
+        id: prismaRegion.id,
+        game_id: prismaRegion.game_id,
+        name: prismaRegion.name,
+        type: prismaRegion.type,
+        description: prismaRegion.description,
+        center_room_id: prismaRegion.center_room_id,
+        created_at: prismaRegion.created_at.toISOString()
+      };
+    } catch (error) {
+      if (this.debugLogging) {
+        console.error('Failed to find region by name:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
    * Get region by ID
    */
   async getRegion(regionId: number): Promise<Region | null> {
@@ -136,6 +169,25 @@ export class RegionServicePrisma {
         console.error('Failed to find region by room:', error);
       }
       return null;
+    }
+  }
+
+  /**
+   * Get the number of rooms currently in a region
+   */
+  async getRegionRoomCount(regionId: number): Promise<number> {
+    try {
+      const count = await this.prisma.room.count({
+        where: {
+          region_id: regionId
+        }
+      });
+      return count;
+    } catch (error) {
+      if (this.debugLogging) {
+        console.error('Failed to get region room count:', error);
+      }
+      return 0;
     }
   }
 

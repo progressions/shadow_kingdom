@@ -82,6 +82,13 @@ export class ItemServicePrisma {
   }
 
   /**
+   * List all items (alias for getAllItems for backward compatibility)
+   */
+  async listItems(): Promise<Item[]> {
+    return this.getAllItems();
+  }
+
+  /**
    * Get all items
    * @returns Array of all items
    */
@@ -127,6 +134,48 @@ export class ItemServicePrisma {
   // ============================================================================
   // INVENTORY OPERATIONS
   // ============================================================================
+
+  /**
+   * Place an item in a room
+   * @param roomId Room ID
+   * @param itemId Item ID
+   * @param quantity Quantity to place (default: 1)
+   */
+  async placeItemInRoom(roomId: number, itemId: number, quantity: number = 1): Promise<void> {
+    try {
+      // Check if the item already exists in the room
+      const existingRoomItem = await this.prisma.roomItem.findFirst({
+        where: {
+          room_id: roomId,
+          item_id: itemId
+        }
+      });
+
+      if (existingRoomItem) {
+        // Update quantity if item already exists
+        await this.prisma.roomItem.update({
+          where: { id: existingRoomItem.id },
+          data: {
+            quantity: existingRoomItem.quantity + quantity
+          }
+        });
+      } else {
+        // Create new room item entry
+        await this.prisma.roomItem.create({
+          data: {
+            room_id: roomId,
+            item_id: itemId,
+            quantity: quantity
+          }
+        });
+      }
+    } catch (error) {
+      if (this.debugLogging) {
+        console.error('Failed to place item in room:', error);
+      }
+      throw new Error('Failed to place item in room');
+    }
+  }
 
   /**
    * Get inventory items for a character
