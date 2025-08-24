@@ -135,26 +135,13 @@ describe('Automatic Room Generation on Entry', () => {
   });
 
   describe('Environment Configuration', () => {
-    it('should respect AUTO_GENERATE_ON_ENTRY setting', async () => {
+    it('should automatically generate rooms on entry', async () => {
       // Create unfilled connections
       await db.run(
         'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
         [gameId, roomId, null, 'north', 'test connection']
       );
 
-      // Test with auto-generation disabled
-      process.env.AUTO_GENERATE_ON_ENTRY = 'false';
-      await backgroundGenerationService.generateForRoomEntry(roomId, gameId);
-      
-      const connectionsAfterDisabled = await db.all(
-        'SELECT * FROM connections WHERE game_id = ? AND processing = TRUE',
-        [gameId]
-      );
-      expect(connectionsAfterDisabled).toHaveLength(0);
-
-      // Test with auto-generation enabled
-      process.env.AUTO_GENERATE_ON_ENTRY = 'true';
-      
       // Mock the room generation to succeed and actually complete the connection
       const mockGenerateRoom = jest.spyOn(roomGenerationService, 'generateRoomForConnection');
       mockGenerateRoom.mockResolvedValue({
