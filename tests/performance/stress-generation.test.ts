@@ -9,7 +9,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
 import { BackgroundGenerationService } from '../../src/services/backgroundGenerationService';
 import { ItemService } from '../../src/services/itemService';
@@ -33,7 +34,7 @@ describe('Room Generation Stress Tests', () => {
     // Create isolated test database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create test game
     const uniqueGameName = `Stress Test ${Date.now()}-${Math.random()}`;
@@ -310,7 +311,7 @@ describe('Room Generation Stress Tests', () => {
         for (let i = 0; i < connectionCount; i++) {
           const tempDb = new Database(':memory:');
           await tempDb.connect();
-          await initializeDatabase(tempDb);
+          await initializeTestDatabase(tempDb);
           databases.push(tempDb);
         }
 

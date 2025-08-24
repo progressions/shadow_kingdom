@@ -12,7 +12,7 @@ import { ItemService } from '../../src/services/itemService';
 import { CharacterService } from '../../src/services/characterService';
 import { FantasyLevelService } from '../../src/services/fantasyLevelService';
 import { GrokClient } from '../../src/ai/grokClient';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('Fallback Character Generation', () => {
   let db: Database;
@@ -22,7 +22,7 @@ describe('Fallback Character Generation', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create a test game and starting room
     await db.run('INSERT INTO games (id, name) VALUES (?, ?)', [1, 'Test Game']);

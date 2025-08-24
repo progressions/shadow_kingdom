@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { ItemService } from '../../src/services/itemService';
 import { GameStateManager } from '../../src/services/gameStateManager';
@@ -18,7 +18,7 @@ describe('Locked Connections E2E', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     mockTUI = new MockTUI();
     // Create GameController with a dummy command to prevent processInput from being called

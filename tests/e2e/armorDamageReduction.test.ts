@@ -6,7 +6,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { ItemService } from '../../src/services/itemService';
 import { EquipmentService } from '../../src/services/equipmentService';
@@ -60,7 +61,7 @@ describe('Armor Damage Reduction E2E', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     const uniqueGameName = `Armor E2E Test ${Date.now()}-${Math.random()}`;
     gameId = await createGameWithRooms(db, uniqueGameName);

@@ -8,7 +8,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterSentiment, CharacterType } from '../../src/types/character';
@@ -37,7 +38,7 @@ describe('Talk Command Sentiment Integration - Phase 7', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create a unique test game
     const uniqueGameName = `Talk Sentiment Test ${Date.now()}-${Math.random()}`;

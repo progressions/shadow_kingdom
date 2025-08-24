@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RoomConnectionValidator, RoomConnection } from '../../src/services/roomConnectionValidator';
 
 describe('RoomConnectionValidator', () => {
@@ -11,7 +11,7 @@ describe('RoomConnectionValidator', () => {
     // Use in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     validator = new RoomConnectionValidator(db);
 
     // Create a test game

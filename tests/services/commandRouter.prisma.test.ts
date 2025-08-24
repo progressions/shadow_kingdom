@@ -10,7 +10,7 @@ import { GrokClient } from '../../src/ai/grokClient';
 import { getNLPConfig } from '../../src/nlp/config';
 import { GameContext } from '../../src/nlp/types';
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { ItemService } from '../../src/services/itemService';
 import { CharacterService } from '../../src/services/characterService';
 import { GameStateManager } from '../../src/services/gameStateManager';
@@ -35,7 +35,7 @@ describe('CommandRouter (Prisma Integration)', () => {
     // Create in-memory database for CommandRouter/AICommandFallback
     testDb = new Database(':memory:');
     await testDb.connect();
-    await initializeDatabase(testDb);
+    await initializeTestDatabase(testDb);
     
     // Create mock Grok client
     mockGrokClient = {

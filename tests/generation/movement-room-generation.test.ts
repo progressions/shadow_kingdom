@@ -6,7 +6,8 @@
 
 import Database from '../../src/utils/database';
 import { GameController } from '../../src/gameController';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import * as readline from 'readline';
 
 // Mock readline to avoid interactive prompts
@@ -28,7 +29,7 @@ describe('Movement Room Generation Integration', () => {
     // Create isolated in-memory test database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create game controller
     gameController = new GameController(db);

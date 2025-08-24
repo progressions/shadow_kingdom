@@ -6,7 +6,7 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { ItemService } from '../../src/services/itemService';
 import { ItemType, EquipmentSlot } from '../../src/types/item';
 
@@ -18,7 +18,7 @@ describe('ItemService', () => {
     // Use in-memory database for test isolation
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create ItemService instance
     itemService = new ItemService(db);

@@ -3,7 +3,7 @@ import { Database } from '../../src/utils/database';
 import { CharacterService } from '../../src/services/characterService';
 import { GameStateManager } from '../../src/services/gameStateManager';
 import { CharacterType, CharacterSentiment } from '../../src/types/character';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('Sentiment-Based Character Blocking System', () => {
   let db: Database;
@@ -16,7 +16,7 @@ describe('Sentiment-Based Character Blocking System', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Initialize services
     characterService = new CharacterService(db);

@@ -12,6 +12,7 @@ import { ItemType } from '../types/item';
 export interface GeneratedItem {
   name: string;
   description: string;
+  extended_description?: string;
   isFixed: boolean;
 }
 
@@ -95,6 +96,7 @@ export class ItemGenerationService {
     const itemId = await this.itemService.createItem({
       name: item.name,
       description: item.description,
+      extended_description: item.extended_description,
       type: ItemType.MISC,
       weight: item.isFixed ? 999.0 : 0.5,  // Fixed items are "heavy"
       value: 0,  // No value for generated atmospheric items

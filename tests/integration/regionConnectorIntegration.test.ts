@@ -1,7 +1,7 @@
 import { RegionConnectorService } from '../../src/services/regionConnectorService';
 import { RegionPlannerService } from '../../src/services/regionPlannerService';
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { CompleteRegion, GeneratedRoom } from '../../src/types/regionConcept';
 
 describe('RegionConnectorService Integration', () => {
@@ -14,7 +14,7 @@ describe('RegionConnectorService Integration', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     regionConnectorService = new RegionConnectorService();
     regionPlannerService = new RegionPlannerService(db, { enableDebugLogging: false });

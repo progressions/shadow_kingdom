@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterType, getAttributeModifier, calculateMaxHealth } from '../../src/types/character';
 
@@ -11,7 +11,19 @@ describe('CharacterService', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
+    
+    // Ensure migrations have run for extended_description
+    try {
+      await db.run(`ALTER TABLE characters ADD COLUMN extended_description TEXT`);
+    } catch (error) {
+      // Column already exists, ignore
+    }
+    try {
+      await db.run(`ALTER TABLE items ADD COLUMN extended_description TEXT`);
+    } catch (error) {
+      // Column already exists, ignore
+    }
     
     characterService = new CharacterService(db);
 

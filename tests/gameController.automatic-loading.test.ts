@@ -6,6 +6,7 @@
  */
 
 import Database from '../src/utils/database';
+import { initializeTestDatabase } from './testUtils';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
 import { GameController } from '../src/gameController';
 import * as readline from 'readline';
@@ -26,7 +27,7 @@ describe('GameController Automatic Loading', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create mock readline interface
     mockRl = {

@@ -15,7 +15,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { LoggerService } from '../../src/services/loggerService';
 import { FileLogger } from '../../src/utils/fileLogger';
 import { LogFormatter } from '../../src/utils/logFormatter';
@@ -34,7 +35,7 @@ describe('Comprehensive Logging System End-to-End Tests', () => {
     // Use in-memory database for isolation
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create unique test game
     const uniqueGameName = `LogTest-${Date.now()}-${Math.random()}`;

@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { GameStateManager } from '../../src/services/gameStateManager';
 import { CharacterService } from '../../src/services/characterService';
@@ -17,7 +18,7 @@ describe('Region Phase 6: Complete Progression Flow (E2E)', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Initialize services
     gameStateManager = new GameStateManager(db);

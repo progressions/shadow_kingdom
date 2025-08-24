@@ -7,7 +7,7 @@ import Database from '../../src/utils/database';
 import { CharacterGenerationService } from '../../src/services/characterGenerationService';
 import { CharacterService } from '../../src/services/characterService';
 import { GrokClient } from '../../src/ai/grokClient';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('Character Generation Frequency Integration', () => {
   let db: Database;
@@ -18,7 +18,7 @@ describe('Character Generation Frequency Integration', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     characterService = new CharacterService(db);
     characterGenerationService = new CharacterGenerationService(db, characterService);

@@ -1,4 +1,5 @@
 import Database from '../src/utils/database';
+import { initializeTestDatabase } from './testUtils';
 import { initializeDatabase, createGameWithRooms, seedDatabase } from '../src/utils/initDb';
 
 describe('Game Management', () => {
@@ -7,7 +8,7 @@ describe('Game Management', () => {
   beforeEach(async () => {
     db = new Database(':memory:'); // Use in-memory database for tests
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
   });
 
   afterEach(async () => {
@@ -77,7 +78,7 @@ describe('Game Management', () => {
       const tempDbPath = `temp_unique_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.db`;
       const freshDb = new Database(tempDbPath);
       await freshDb.connect();
-      await initializeDatabase(freshDb);
+      await initializeTestDatabase(freshDb);
       
       const uniqueName = `Unique Name ${Date.now()}-${Math.random()}`;
       await createGameWithRooms(freshDb, uniqueName);
@@ -138,7 +139,7 @@ describe('Game Management', () => {
       const tempDbPath = `temp_seed_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.db`;
       const freshDb = new Database(tempDbPath);
       await freshDb.connect();
-      await initializeDatabase(freshDb);
+      await initializeTestDatabase(freshDb);
       
       // Check that the database starts empty
       const countBefore = await freshDb.get('SELECT COUNT(*) as count FROM games');

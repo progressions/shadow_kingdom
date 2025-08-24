@@ -10,7 +10,8 @@ import * as path from 'path';
 import { LoggerService } from '../../src/services/loggerService';
 // SessionInterface has been replaced with command interface
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('Logging System Integration Tests', () => {
   let testLogDirectory: string;

@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterSentiment, CharacterType } from '../../src/types/character';
 import { GrokClient, BehavioralDialogueContext } from '../../src/ai/grokClient';
@@ -20,7 +20,7 @@ describe('Phase 15: Character Behavioral Dialogue Fallbacks', () => {
     
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     characterService = new CharacterService(db);
     grokClient = new GrokClient({ mockMode: true });

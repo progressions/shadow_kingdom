@@ -3,7 +3,7 @@ import { GrokClient } from '../../src/ai/grokClient';
 import { GameContext } from '../../src/nlp/types';
 import { TUIInterface } from '../../src/ui/TUIInterface';
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 // Mock the GrokClient
 jest.mock('../../src/ai/grokClient');
@@ -19,7 +19,7 @@ describe('AICommandFallback', () => {
     // Create in-memory database
     mockDb = new Database(':memory:');
     await mockDb.connect();
-    await initializeDatabase(mockDb);
+    await initializeTestDatabase(mockDb);
 
     // Create mock GrokClient
     mockGrokClient = {

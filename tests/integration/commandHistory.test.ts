@@ -6,7 +6,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { HistoryManager } from '../../src/utils/historyManager';
 import * as fs from 'fs/promises';
@@ -40,7 +41,7 @@ describe('Command History Integration', () => {
     // Set up database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create a unique game
     const uniqueGameName = `History Test ${Date.now()}-${Math.random()}`;

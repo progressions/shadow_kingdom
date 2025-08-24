@@ -6,6 +6,7 @@
  */
 
 import Database from '../src/utils/database';
+import { initializeTestDatabase } from './testUtils';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
 import { GameController } from '../src/gameController';
 
@@ -23,7 +24,7 @@ describe('GameController Command Execution', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Mock process.exit to prevent test from actually exiting
     originalExit = process.exit;

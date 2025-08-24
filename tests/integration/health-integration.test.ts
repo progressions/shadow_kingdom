@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { CharacterService } from '../../src/services/characterService';
 import { HealthService } from '../../src/services/healthService';
 import { ActionValidator } from '../../src/services/actionValidator';
@@ -16,7 +17,7 @@ describe('Health System Integration', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create services
     characterService = new CharacterService(db);

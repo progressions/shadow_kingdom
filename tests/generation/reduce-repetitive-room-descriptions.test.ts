@@ -7,7 +7,7 @@
 
 import { GameController } from '../../src/gameController';
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { TUIInterface } from '../../src/ui/TUIInterface';
 import { MessageType } from '../../src/ui/MessageFormatter';
 

@@ -119,7 +119,6 @@ CHARACTER_GENERATION_FREQUENCY=40   # Percentage (0-100) of rooms that get chara
 - `src/services/backgroundGenerationService.ts` - Proactive generation system
 
 ### Data Layer
-- `src/utils/database.ts` - SQLite wrapper with async/await support
 - `src/utils/initDb.ts` - Database schema and migrations
 
 ### AI Integration

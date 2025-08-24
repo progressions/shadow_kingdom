@@ -13,7 +13,7 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RegionPlannerService } from '../../src/services/regionPlannerService';
 import { RegionConcept, GeneratedRoom, CompleteRegion } from '../../src/types/regionConcept';
 
@@ -30,7 +30,7 @@ describe('Region Planner Service End-to-End Tests', () => {
     
     db = new Database(testDbPath);
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     regionPlannerService = new RegionPlannerService(db, { enableDebugLogging: true });
 

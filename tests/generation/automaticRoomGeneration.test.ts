@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { BackgroundGenerationService } from '../../src/services/backgroundGenerationService';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
 import { GameStateManager } from '../../src/services/gameStateManager';
@@ -25,7 +25,7 @@ describe('Automatic Room Generation on Entry', () => {
     // Create in-memory database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Initialize services with test configuration
     grokClient = new GrokClient();
@@ -322,7 +322,7 @@ describe('Automatic Room Generation on Entry', () => {
     });
   });
 
-  describe.skip('Integration with Existing Systems (DISABLED - Phase 9 cleanup)', () => {
+  describe('Integration with Existing Systems', () => {
     // NOTE: findUnfilledConnections and findNearbyUnfilledConnections methods removed in Phase 9 cleanup
   });
 

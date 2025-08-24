@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RegionService } from '../../src/services/regionService';
 
 describe('Region Connection Service', () => {
@@ -11,7 +12,7 @@ describe('Region Connection Service', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     regionService = new RegionService(db, { enableDebugLogging: false });
     

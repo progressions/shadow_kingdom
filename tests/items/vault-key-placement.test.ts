@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('Vault Key and Stone Sentinel Placement', () => {
   let db: Database;
@@ -8,7 +9,7 @@ describe('Vault Key and Stone Sentinel Placement', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
   });
 
   afterEach(async () => {

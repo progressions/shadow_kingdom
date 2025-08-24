@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { MockTUI } from '../mocks/mockTUI';
 import { ItemService } from '../../src/services/itemService';
@@ -16,7 +17,7 @@ describe('Stats Command Armor Display', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     mockTUI = new MockTUI();
     gameController = new GameController(db, 'test', mockTUI);

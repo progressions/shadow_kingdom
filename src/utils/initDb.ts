@@ -246,6 +246,20 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
       // Column already exists, ignore error
     }
 
+    // Migration: Add extended_description column to characters if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE characters ADD COLUMN extended_description TEXT`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
+    // Migration: Add extended_description column to items if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE items ADD COLUMN extended_description TEXT`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
     // Migration: Convert is_hostile values to sentiment system (Phase 9)
     try {
       await db.run(`

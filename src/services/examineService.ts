@@ -202,17 +202,19 @@ export class ExamineService {
    * Generate character examination text
    */
   private getCharacterExamination(character: Character): string {
-    const dispositionText = character.type === 'enemy' ? 'hostile' : 'neutral';
+    // Use extended_description if available, otherwise fall back to description
+    let description = character.extended_description || character.description || `You see ${character.name}.`;
     
-    let description = character.description || `You see ${character.name}.`;
-    
-    // Add basic character information
-    description += `\n\nThis ${character.type} appears ${dispositionText} toward you.`;
-    
-    if (character.type === 'enemy') {
-      description += ' They seem ready for combat.';
-    } else if (character.type === 'npc') {
-      description += ' They might be willing to talk.';
+    // If using basic description, add disposition info
+    if (!character.extended_description) {
+      const dispositionText = character.type === 'enemy' ? 'hostile' : 'neutral';
+      description += `\n\nThis ${character.type} appears ${dispositionText} toward you.`;
+      
+      if (character.type === 'enemy') {
+        description += ' They seem ready for combat.';
+      } else if (character.type === 'npc') {
+        description += ' They might be willing to talk.';
+      }
     }
 
     return description;
@@ -223,15 +225,19 @@ export class ExamineService {
    */
   private getRoomItemExamination(roomItem: RoomItem): string {
     const item = roomItem.item;
-    let description = item.description || `You examine the ${item.name}.`;
+    
+    // Use extended_description if available, otherwise fall back to description
+    let description = item.extended_description || item.description || `You examine the ${item.name}.`;
 
-    // Add item type and condition information
-    if (item.type) {
-      description += `\n\nType: ${item.type}`;
-    }
+    // If using basic description, add item type and condition information
+    if (!item.extended_description) {
+      if (item.type) {
+        description += `\n\nType: ${item.type}`;
+      }
 
-    if (item.is_fixed) {
-      description += '\nThis item appears to be permanently fixed in place.';
+      if (item.is_fixed) {
+        description += '\nThis item appears to be permanently fixed in place.';
+      }
     }
 
     return description;
@@ -242,23 +248,32 @@ export class ExamineService {
    */
   private getInventoryItemExamination(inventoryItem: InventoryItem): string {
     const item = inventoryItem.item;
-    let description = item.description || `You examine your ${item.name}.`;
-
-    // Add detailed item information since it's in inventory
-    description += `\n\nType: ${item.type}`;
     
-    if (item.type === 'weapon' && item.value > 0) {
-      description += `\nDamage Bonus: +${item.value}`;
-    } else if (item.value > 0) {
-      description += `\nEstimated Value: ${item.value} gold`;
-    }
+    // Use extended_description if available, otherwise fall back to description
+    let description = item.extended_description || item.description || `You examine your ${item.name}.`;
 
-    if (item.armor_rating) {
-      description += `\nArmor Rating: ${item.armor_rating}`;
-    }
+    // If using basic description, add detailed item information since it's in inventory
+    if (!item.extended_description) {
+      description += `\n\nType: ${item.type}`;
+      
+      if (item.type === 'weapon' && item.value > 0) {
+        description += `\nDamage Bonus: +${item.value}`;
+      } else if (item.value > 0) {
+        description += `\nEstimated Value: ${item.value} gold`;
+      }
 
-    if (inventoryItem.quantity > 1) {
-      description += `\nQuantity: ${inventoryItem.quantity}`;
+      if (item.armor_rating) {
+        description += `\nArmor Rating: ${item.armor_rating}`;
+      }
+
+      if (inventoryItem.quantity > 1) {
+        description += `\nQuantity: ${inventoryItem.quantity}`;
+      }
+    } else {
+      // For extended descriptions, still show equipped status
+      if (inventoryItem.equipped) {
+        description += `\n\nThis item is currently equipped.`;
+      }
     }
 
     return description;

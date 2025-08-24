@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RegionService } from '../../src/services/regionService';
 import { Region } from '../../src/types/region';
 
@@ -12,7 +12,7 @@ describe('RegionService', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     regionService = new RegionService(db, { enableDebugLogging: false });
 

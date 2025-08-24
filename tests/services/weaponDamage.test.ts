@@ -6,7 +6,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { EquipmentService } from '../../src/services/equipmentService';
 import { ItemService } from '../../src/services/itemService';
 import { GameStateManager } from '../../src/services/gameStateManager';
@@ -32,7 +33,7 @@ describe('Weapon Damage Value System', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create a unique test game
     const uniqueGameName = `Weapon Damage Test ${Date.now()}-${Math.random()}`;

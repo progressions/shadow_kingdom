@@ -5,7 +5,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
 import { CharacterService } from '../../src/services/characterService';
 import { RegionService } from '../../src/services/regionService';
@@ -39,7 +40,7 @@ describe('AI Room Generation Sentiment Awareness - Phase 13', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create services
     characterService = new CharacterService(db);
