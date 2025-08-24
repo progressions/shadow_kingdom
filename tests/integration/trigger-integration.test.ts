@@ -5,7 +5,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { createGameWithRooms, initializeDatabase } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { EventTriggerService } from '../../src/services/eventTriggerService';
 import { CharacterService } from '../../src/services/characterService';
 import { ItemService } from '../../src/services/itemService';
@@ -53,7 +54,7 @@ describe('Trigger Integration Test', () => {
     await db.connect();
     
     // Initialize database schema
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create fresh world with triggered items
     const uniqueGameName = `Trigger Test ${Date.now()}-${Math.random()}`;

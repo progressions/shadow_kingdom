@@ -7,7 +7,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { CharacterService } from '../../src/services/characterService';
 import { UnifiedRoomDisplayService } from '../../src/services/unifiedRoomDisplayService';
 import { CharacterSentiment, CharacterType } from '../../src/types/character';
@@ -23,7 +24,7 @@ describe('Character Display Sentiment Indicators - Phase 8', () => {
     // Use in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create a unique test game
     const uniqueGameName = `Display Test ${Date.now()}-${Math.random()}`;

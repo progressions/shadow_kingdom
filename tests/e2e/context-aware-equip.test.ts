@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { ItemService } from '../../src/services/itemService';
 import { ItemType, EquipmentSlot } from '../../src/types/item';
@@ -15,7 +16,7 @@ describe('Context-Aware Equip Commands E2E', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     mockTUI = new MockTUI();
     gameController = new GameController(db, 'test', mockTUI);

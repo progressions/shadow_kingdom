@@ -6,7 +6,7 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { CharacterService } from '../../src/services/characterService';
 import { GameStateManager } from '../../src/services/gameStateManager';
 import { ServiceFactory } from '../../src/services/serviceFactory';
@@ -25,7 +25,7 @@ describe('Movement Escape System Integration', () => {
     // Initialize database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Initialize services with minimal TUI interface
     const mockTUI = {

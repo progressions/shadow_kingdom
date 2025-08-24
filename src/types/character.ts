@@ -30,7 +30,8 @@ export interface Character {
   id: number;
   game_id: number;
   name: string;
-  description?: string | null;   // Description for NPCs and enemies
+  description?: string | null;   // Brief description for NPCs and enemies
+  extended_description?: string | null;   // Detailed description for examine command
   type: CharacterType;
   current_room_id: number | null;
   strength: number;
@@ -50,7 +51,8 @@ export interface Character {
 export interface CreateCharacterData {
   game_id: number;
   name: string;
-  description?: string;        // Description for NPCs and enemies
+  description?: string;        // Brief description for NPCs and enemies
+  extended_description?: string;        // Detailed description for examine command
   type?: CharacterType;
   current_room_id?: number | null;
   strength?: number;

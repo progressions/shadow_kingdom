@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { ItemService } from '../../src/services/itemService';
 import { GameStateManager } from '../../src/services/gameStateManager';
 import { CharacterService } from '../../src/services/characterService';
@@ -14,7 +14,7 @@ describe('Locked Connections', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     itemService = new ItemService(db);
     gameStateManager = new GameStateManager(db);

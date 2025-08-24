@@ -7,7 +7,7 @@
 import Database from '../../src/utils/database';
 import { EventTriggerService, TriggerContext } from '../../src/services/eventTriggerService';
 import { Character, CharacterType, CharacterSentiment } from '../../src/types/character';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('EventTriggerService', () => {
   let db: Database;
@@ -18,7 +18,7 @@ describe('EventTriggerService', () => {
     // Create in-memory database for each test
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Initialize service
     eventTriggerService = new EventTriggerService(db);

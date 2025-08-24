@@ -1,4 +1,5 @@
 import Database from '../src/utils/database';
+import { initializeTestDatabase } from './testUtils';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
 
 describe('Database', () => {
@@ -7,7 +8,7 @@ describe('Database', () => {
   beforeEach(async () => {
     db = new Database(':memory:'); // Use in-memory database for tests
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
   });
 
   afterEach(async () => {

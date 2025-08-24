@@ -7,7 +7,7 @@ import Database from '../../src/utils/database';
 import { ItemGenerationService } from '../../src/services/itemGenerationService';
 import { ItemService } from '../../src/services/itemService';
 import { GrokClient } from '../../src/ai/grokClient';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('Item Generation Frequency Integration', () => {
   let db: Database;
@@ -18,7 +18,7 @@ describe('Item Generation Frequency Integration', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     itemService = new ItemService(db);
     itemGenerationService = new ItemGenerationService(db, itemService);

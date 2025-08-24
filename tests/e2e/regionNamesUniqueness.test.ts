@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 
 describe('Region Names Uniqueness E2E', () => {
@@ -11,7 +11,7 @@ describe('Region Names Uniqueness E2E', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     gameController = new GameController(db);
 

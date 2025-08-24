@@ -117,6 +117,7 @@ export class CharacterGenerationService {
       game_id: gameId,
       name: character.name,
       description: character.description,
+      extended_description: character.extended_description,
       type: characterType,
       current_room_id: roomId,
       // Use provided attributes or defaults

@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
 import { RoomConnectionValidator } from '../../src/services/roomConnectionValidator';
 import { GrokClient } from '../../src/ai/grokClient';
@@ -19,7 +19,7 @@ describe('Room Generation Validation E2E', () => {
     // Setup in-memory database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     connectionValidator = new RoomConnectionValidator(db);
 
     // Create test game

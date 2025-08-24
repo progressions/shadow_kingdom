@@ -2,7 +2,7 @@ import Database from '../../src/utils/database';
 import { HealthService } from '../../src/services/healthService';
 import { CharacterService } from '../../src/services/characterService';
 import { Character } from '../../src/types/character';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('HealthService', () => {
   let db: Database;
@@ -15,7 +15,7 @@ describe('HealthService', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     healthService = new HealthService(db);
     characterService = new CharacterService(db);

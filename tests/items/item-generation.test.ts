@@ -11,7 +11,7 @@ import { CharacterService } from '../../src/services/characterService';
 import { CharacterGenerationService } from '../../src/services/characterGenerationService';
 import { GrokClient } from '../../src/ai/grokClient';
 import { ItemType } from '../../src/types/item';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('AI Item Generation', () => {
   let db: Database;
@@ -24,7 +24,7 @@ describe('AI Item Generation', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create services
     itemService = new ItemService(db);

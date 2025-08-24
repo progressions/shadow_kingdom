@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { ActionValidator } from '../../src/services/actionValidator';
 import { CharacterService } from '../../src/services/characterService';
 import { Character, CharacterType } from '../../src/types/character';
@@ -16,7 +16,7 @@ describe('ActionValidator', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     characterService = new CharacterService(db);
     actionValidator = new ActionValidator(db, characterService);

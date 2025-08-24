@@ -6,7 +6,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { seedItems } from '../../src/utils/seedItems';
 import { ItemService } from '../../src/services/itemService';
 
@@ -18,7 +19,7 @@ describe('Ancient Stone Pedestal Placement', () => {
     // Use in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Seed items to ensure pedestal exists
     await seedItems(db);

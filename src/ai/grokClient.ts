@@ -39,7 +39,8 @@ export interface GeneratedRoom {
   }[];
   items?: {
     name: string;            // short name: "Brass Lamp"
-    description: string;     // examine text: "An ornate lamp casting warm light"
+    description: string;     // brief description for room listings
+    extended_description?: string; // detailed examine text
     isFixed: boolean;        // true for scenery, false for portable
   }[];
   characters?: GeneratedCharacter[]; // NPCs and enemies that inhabit this room
@@ -62,6 +63,7 @@ export interface GeneratedNPC {
 export interface GeneratedCharacter {
   name: string;
   description: string;
+  extended_description?: string;    // Detailed description for examine command
   type: 'npc' | 'enemy';           // Character type for database
   personality?: string;             // NPC personality/behavior
   level?: number;                   // Enemy level/difficulty
@@ -1063,10 +1065,10 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
     {"direction": "north", "name": "thematic connection"}
   ],
   "items": [
-    {"name": "Example Item", "description": "What you see when examining it", "isFixed": true}
+    {"name": "Example Item", "description": "Brief description", "extended_description": "Detailed examination text", "isFixed": true}
   ],
   "characters": [
-    {"name": "Character Name", "description": "Character appearance and demeanor", "type": "npc", "personality": "How they act", "initialDialogue": "First thing they say"}
+    {"name": "Character Name", "description": "Brief appearance", "extended_description": "Detailed examination text", "type": "npc", "personality": "How they act", "initialDialogue": "First thing they say"}
   ]
 }
 
@@ -1103,10 +1105,10 @@ RESPONSE FORMAT (ALL FIELDS REQUIRED):
     {"direction": "north", "name": "thematic connection"}
   ],
   "items": [
-    {"name": "Example Item", "description": "What you see when examining it", "isFixed": true}
+    {"name": "Example Item", "description": "Brief description", "extended_description": "Detailed examination text", "isFixed": true}
   ],
   "characters": [
-    {"name": "Character Name", "description": "Character appearance and demeanor", "type": "npc", "personality": "How they act", "initialDialogue": "First thing they say"}
+    {"name": "Character Name", "description": "Brief appearance", "extended_description": "Detailed examination text", "type": "npc", "personality": "How they act", "initialDialogue": "First thing they say"}
   ]
 }
 
@@ -1131,7 +1133,9 @@ ITEM GUIDELINES: This room should feel atmospheric and immersive without any int
 ITEM GUIDELINES:
 - Fixed items (isFixed: true): furniture, architectural features, heavy/large objects
 - Portable items (isFixed: false): small objects, books, tools, treasures
-- Keep names concise (2-4 words) and descriptions atmospheric (1-2 sentences)
+- Keep names concise (2-4 words)
+- "description": brief description for room listings (1-2 sentences)
+- "extended_description": detailed examination text for examine command (2-4 sentences)
 - Items should be objects naturally found in or mentioned in your room description`;
     }
   }
@@ -1146,6 +1150,8 @@ ITEM GUIDELINES:
 - "type": "npc" for friendly/neutral characters, "enemy" for hostile ones
 - Characters should fit the room's theme and atmosphere naturally
 - NPCs can provide information, services, or atmospheric storytelling
+- "description": brief appearance for room descriptions
+- "extended_description": detailed, immersive description for examine command (2-4 sentences)
 - "personality": short description like "Scholarly and cryptic" or "Gruff but helpful"
 - "initialDialogue": What they say when first met (one sentence)
 - Only include characters if they genuinely enhance the room experience`;

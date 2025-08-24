@@ -28,6 +28,7 @@ describe('ExamineService', () => {
         game_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         description TEXT,
+        extended_description TEXT,
         type TEXT DEFAULT 'player',
         current_room_id INTEGER,
         strength INTEGER DEFAULT 10,
@@ -47,6 +48,7 @@ describe('ExamineService', () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
+        extended_description TEXT,
         type TEXT NOT NULL,
         weight REAL DEFAULT 0.0,
         value INTEGER DEFAULT 0,
@@ -350,6 +352,149 @@ describe('ExamineService', () => {
 
       expect(result).toContain('You see Test Character.');
       expect(result).toContain('neutral toward you');
+    });
+  });
+
+  describe('extended_description functionality', () => {
+    it('should use extended_description for characters when available', () => {
+      const mockCharacter: Character = {
+        id: 1,
+        name: 'Ancient Guardian',
+        description: 'A spectral protector.',
+        extended_description: 'The Ancient Guardian stands nearly eight feet tall, its translucent form shimmering with ethereal energy. Wisps of silver light dance around its ancient armor, which bears heraldic symbols of a forgotten royal house.',
+        type: CharacterType.NPC,
+        game_id: 1,
+        current_room_id: 1,
+        max_health: 20,
+        current_health: 20,
+        strength: 12,
+        dexterity: 10,
+        intelligence: 14,
+        constitution: 12,
+        wisdom: 16,
+        charisma: 13,
+        sentiment: CharacterSentiment.INDIFFERENT,
+        created_at: new Date().toISOString()
+      };
+
+      const target = {
+        id: '1',
+        name: 'Ancient Guardian',
+        type: 'character' as const,
+        data: mockCharacter
+      };
+
+      const result = examineService.getExaminationText(target);
+
+      expect(result).toBe('The Ancient Guardian stands nearly eight feet tall, its translucent form shimmering with ethereal energy. Wisps of silver light dance around its ancient armor, which bears heraldic symbols of a forgotten royal house.');
+      expect(result).not.toContain('neutral toward you'); // No disposition when extended description is present
+    });
+
+    it('should use extended_description for items when available', () => {
+      const mockRoomItem: RoomItem = {
+        id: 1,
+        room_id: 1,
+        item_id: 1,
+        quantity: 1,
+        item: {
+          id: 1,
+          name: 'Iron Sword',
+          description: 'A well-crafted blade.',
+          extended_description: 'This finely crafted iron sword shows excellent workmanship. The blade is sharp and well-balanced, with intricate runes etched along its fuller. The leather-wrapped grip shows signs of use but remains sturdy.',
+          type: 'weapon' as any,
+          weight: 3.5,
+          value: 50,
+          stackable: false,
+          max_stack: 1,
+          equipment_slot: 'hand' as any,
+          is_fixed: false,
+          created_at: new Date().toISOString()
+        },
+        created_at: new Date().toISOString()
+      };
+
+      const target = {
+        id: 'room_item_1',
+        name: 'Iron Sword',
+        type: 'room_item' as const,
+        data: mockRoomItem
+      };
+
+      const result = examineService.getExaminationText(target);
+
+      expect(result).toBe('This finely crafted iron sword shows excellent workmanship. The blade is sharp and well-balanced, with intricate runes etched along its fuller. The leather-wrapped grip shows signs of use but remains sturdy.');
+      expect(result).not.toContain('Type: weapon'); // No type info when extended description is present
+    });
+
+    it('should fall back to description when extended_description is missing', () => {
+      const mockCharacter: Character = {
+        id: 1,
+        name: 'Simple Guard',
+        description: 'A basic guard.',
+        extended_description: null,
+        type: CharacterType.NPC,
+        game_id: 1,
+        current_room_id: 1,
+        max_health: 15,
+        current_health: 15,
+        strength: 11,
+        dexterity: 10,
+        intelligence: 10,
+        constitution: 11,
+        wisdom: 10,
+        charisma: 10,
+        sentiment: CharacterSentiment.INDIFFERENT,
+        created_at: new Date().toISOString()
+      };
+
+      const target = {
+        id: '1',
+        name: 'Simple Guard',
+        type: 'character' as const,
+        data: mockCharacter
+      };
+
+      const result = examineService.getExaminationText(target);
+
+      expect(result).toContain('A basic guard.');
+      expect(result).toContain('neutral toward you'); // Disposition info included for basic description
+    });
+
+    it('should show equipped status for inventory items with extended descriptions', () => {
+      const mockInventoryItem: InventoryItem = {
+        id: 1,
+        character_id: 1,
+        item_id: 1,
+        quantity: 1,
+        equipped: true,
+        equipped_slot: 'hand',
+        item: {
+          id: 1,
+          name: 'Magic Staff',
+          description: 'A mystical staff.',
+          extended_description: 'This ancient staff pulses with arcane energy, its crystal tip glowing with inner light. Carved runes spiral down its length, each one containing a fragment of forgotten wisdom.',
+          type: 'weapon' as any,
+          weight: 2.0,
+          value: 150,
+          stackable: false,
+          max_stack: 1,
+          is_fixed: false,
+          created_at: new Date().toISOString()
+        },
+        created_at: new Date().toISOString()
+      };
+
+      const target = {
+        id: 'inventory_item_1',
+        name: 'Magic Staff',
+        type: 'inventory_item' as const,
+        data: mockInventoryItem
+      };
+
+      const result = examineService.getExaminationText(target);
+
+      expect(result).toContain('This ancient staff pulses with arcane energy');
+      expect(result).toContain('This item is currently equipped.');
     });
   });
 });

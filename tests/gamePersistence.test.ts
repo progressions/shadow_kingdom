@@ -1,4 +1,5 @@
 import Database from '../src/utils/database';
+import { initializeTestDatabase } from './testUtils';
 import { initializeDatabase, createGameWithRooms } from '../src/utils/initDb';
 
 describe('Game State Persistence', () => {
@@ -7,7 +8,7 @@ describe('Game State Persistence', () => {
   beforeEach(async () => {
     db = new Database(':memory:'); // Use in-memory database for tests
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
   });
 
   afterEach(async () => {
@@ -120,7 +121,7 @@ describe('Game State Persistence', () => {
       const tempDbName = `temp_test_${Math.random().toString(36).substr(2, 9)}.db`;
       const tempDb = new Database(tempDbName);
       await tempDb.connect();
-      await initializeDatabase(tempDb);
+      await initializeTestDatabase(tempDb);
       
       const gameId = await createGameWithRooms(tempDb, `Persistence Test ${Date.now()}-${Math.random()}`);
       

@@ -8,7 +8,8 @@ import { CharacterService } from '../../src/services/characterService';
 import { CharacterGenerationService } from '../../src/services/characterGenerationService';
 import { FantasyLevelService } from '../../src/services/fantasyLevelService';
 import { GrokClient } from '../../src/ai/grokClient';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { Room, Connection, UnfilledConnection } from '../../src/services/gameStateManager';
 
 describe('Background Generation Integration', () => {
@@ -25,7 +26,7 @@ describe('Background Generation Integration', () => {
     // In-memory database with manually created test game (skip expensive Region 2 generation)
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create game manually without expensive AI generation
     const uniqueGameName = `BG Integration Test ${Date.now()}-${Math.random()}`;
@@ -194,30 +195,6 @@ describe('Background Generation Integration', () => {
   }
 
   describe('Primary Background Generation Flow', () => {
-    test.skip('should generate new rooms for unfilled connections (DISABLED - Phase 9 region generation changes)', async () => {
-      // Verify initial state: 6 starter rooms
-      const initialCount = await getRoomCount(testGameId);
-      expect(initialCount).toBe(6);
-      
-      // Verify initial unfilled connections exist
-      const initialUnfilled = await getUnfilledConnections(testGameId);
-      expect(initialUnfilled.length).toBeGreaterThan(0); // Should have expansion connections
-      
-      // Find entrance hall (Room 1)
-      const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
-      expect(entranceHall).not.toBeNull();
-      
-      // Execute background generation from entrance hall
-      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
-      
-      // Verify: Room count increased (new rooms generated for unfilled connections)
-      const finalCount = await getRoomCount(testGameId);
-      expect(finalCount).toBeGreaterThan(initialCount);
-      
-      // Verify: Background generation attempted (unfilled connections may or may not be filled)
-      const finalUnfilled = await getUnfilledConnections(testGameId);
-      expect(finalUnfilled.length).toBeLessThanOrEqual(initialUnfilled.length);
-    });
 
     test('should fill unfilled connections near current location', async () => {
       const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');

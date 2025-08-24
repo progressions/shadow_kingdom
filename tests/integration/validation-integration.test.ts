@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { ActionValidator } from '../../src/services/actionValidator';
 import { CharacterService } from '../../src/services/characterService';
 import { ItemService } from '../../src/services/itemService';
@@ -17,7 +18,7 @@ describe('Validation System Integration', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     characterService = new CharacterService(db);
     itemService = new ItemService(db);

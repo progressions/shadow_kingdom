@@ -5,7 +5,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { CharacterSentiment } from '../../src/types/character';
 import { CharacterService } from '../../src/services/characterService';
@@ -36,7 +37,7 @@ describe('Give Command Sentiment Improvement - Phase 11', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create services
     characterService = new CharacterService(db);

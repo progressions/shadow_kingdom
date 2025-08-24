@@ -1,5 +1,5 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RegionPlannerService } from '../../src/services/regionPlannerService';
 import { RegionConcept, GeneratedRoom, CompleteRegion } from '../../src/types/regionConcept';
 import { GrokClient } from '../../src/ai/grokClient';
@@ -13,7 +13,7 @@ describe('RegionPlannerService', () => {
     // Use in-memory database for tests
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     regionPlannerService = new RegionPlannerService(db, { enableDebugLogging: false });
 

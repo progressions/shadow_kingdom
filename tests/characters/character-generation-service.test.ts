@@ -8,7 +8,7 @@ import { CharacterGenerationService } from '../../src/services/characterGenerati
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterType } from '../../src/types/character';
 import { GeneratedCharacter } from '../../src/ai/grokClient';
-import { initializeDatabase } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('CharacterGenerationService', () => {
   let db: Database;
@@ -18,7 +18,7 @@ describe('CharacterGenerationService', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create services
     characterService = new CharacterService(db);

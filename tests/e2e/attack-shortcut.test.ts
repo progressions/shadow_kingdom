@@ -6,7 +6,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { GrokClient } from '../../src/ai/grokClient';
 import { CharacterType, CharacterSentiment } from '../../src/types/character';
@@ -79,7 +80,7 @@ describe('Attack Shortcut E2E Tests', () => {
     // Setup database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     // Create game
     const uniqueGameName = `E2E Attack Test ${Date.now()}-${Math.random()}`;

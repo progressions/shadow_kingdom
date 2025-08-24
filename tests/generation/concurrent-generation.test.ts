@@ -7,7 +7,8 @@
  */
 
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
 import { ItemService } from '../../src/services/itemService';
 import { ItemGenerationService } from '../../src/services/itemGenerationService';
@@ -34,7 +35,7 @@ describe('Concurrent Generation Race Conditions', () => {
     // Create isolated in-memory test database
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create test game with unique name
     const uniqueGameName = `Concurrent Test ${Date.now()}-${Math.random()}`;

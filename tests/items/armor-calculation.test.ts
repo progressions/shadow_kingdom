@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { EquipmentService } from '../../src/services/equipmentService';
 import { ItemService } from '../../src/services/itemService';
 import { CharacterService } from '../../src/services/characterService';
@@ -18,7 +19,7 @@ describe('Armor Calculation Unit Test', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create game and room
     gameId = await createGameWithRooms(db, `Armor Bug Test ${Date.now()}`);

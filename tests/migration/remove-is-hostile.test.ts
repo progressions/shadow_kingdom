@@ -9,6 +9,7 @@ import Database from '../../src/utils/database';
 import { initializeDatabase } from '../../src/utils/initDb';
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterSentiment, CharacterType } from '../../src/types/character';
+import { initializeTestDatabase } from '../testUtils';
 
 describe('Remove is_hostile Column - Phase 10', () => {
   let db: Database;
@@ -29,7 +30,7 @@ describe('Remove is_hostile Column - Phase 10', () => {
   describe('Database Schema Verification', () => {
     it('should not have is_hostile column in characters table after initialization', async () => {
       // Run full database initialization
-      await initializeDatabase(db);
+      await initializeTestDatabase(db);
 
       // Get table schema information
       const pragma = await db.all("PRAGMA table_info(characters)");
@@ -43,7 +44,7 @@ describe('Remove is_hostile Column - Phase 10', () => {
     });
 
     it('should still support all existing character operations without is_hostile', async () => {
-      await initializeDatabase(db);
+      await initializeTestDatabase(db);
       characterService = new CharacterService(db);
 
       // Create a character using only sentiment (no is_hostile)
@@ -64,7 +65,7 @@ describe('Remove is_hostile Column - Phase 10', () => {
     });
 
     it('should handle character queries without referencing is_hostile', async () => {
-      await initializeDatabase(db);
+      await initializeTestDatabase(db);
       characterService = new CharacterService(db);
 
       // Create characters with different sentiments
@@ -108,6 +109,7 @@ describe('Remove is_hostile Column - Phase 10', () => {
           game_id INTEGER NOT NULL,
           name TEXT NOT NULL,
           description TEXT,
+          extended_description TEXT,
           type TEXT DEFAULT 'player',
           current_room_id INTEGER,
           strength INTEGER DEFAULT 10,
@@ -144,7 +146,7 @@ describe('Remove is_hostile Column - Phase 10', () => {
 
   describe('Code Reference Verification', () => {
     it('should not reference is_hostile in any character operations', async () => {
-      await initializeDatabase(db);
+      await initializeTestDatabase(db);
       characterService = new CharacterService(db);
 
       // Test creating a character - should only use sentiment
@@ -169,7 +171,7 @@ describe('Remove is_hostile Column - Phase 10', () => {
     });
 
     it('should use sentiment for all behavioral decisions', async () => {
-      await initializeDatabase(db);
+      await initializeTestDatabase(db);
       characterService = new CharacterService(db);
 
       // Create characters with different sentiments

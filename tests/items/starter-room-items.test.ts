@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { ItemService } from '../../src/services/itemService';
 
 describe('Starter Room Item Placement', () => {
@@ -9,7 +10,7 @@ describe('Starter Room Item Placement', () => {
   beforeEach(async () => {
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     itemService = new ItemService(db);
   });
 

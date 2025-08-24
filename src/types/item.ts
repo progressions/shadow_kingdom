@@ -24,6 +24,7 @@ export interface Item {
   id: number;
   name: string;
   description: string;
+  extended_description?: string;
   type: ItemType;
   weight: number;
   value: number;

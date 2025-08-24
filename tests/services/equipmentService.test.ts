@@ -323,6 +323,7 @@ async function initializeTestSchema(db: Database): Promise<void> {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       description TEXT NOT NULL,
+      extended_description TEXT,
       type TEXT NOT NULL,
       weight REAL NOT NULL,
       value INTEGER NOT NULL,

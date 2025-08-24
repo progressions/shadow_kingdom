@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { RoomGenerationService } from '../../src/services/roomGenerationService';
 import { ItemService } from '../../src/services/itemService';
 import { ItemGenerationService } from '../../src/services/itemGenerationService';
@@ -20,7 +21,7 @@ describe('Duplicate Room Generation Race Condition Fix', () => {
     // Initialize database and services
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
     
     grokClient = new GrokClient({ mockMode: true });
     const regionService = new RegionService(db, { 

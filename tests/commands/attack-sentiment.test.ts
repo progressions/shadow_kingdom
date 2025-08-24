@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { GameController } from '../../src/gameController';
 import { CharacterService } from '../../src/services/characterService';
 import { CharacterSentiment, CharacterType } from '../../src/types/character';
@@ -29,7 +30,7 @@ describe('Attack Command Sentiment Update', () => {
     // Create in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
 
     // Create a unique test game
     const uniqueGameName = `Attack Sentiment Test ${Date.now()}-${Math.random()}`;

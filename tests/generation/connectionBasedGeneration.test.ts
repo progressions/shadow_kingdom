@@ -1,5 +1,6 @@
 import Database from '../../src/utils/database';
-import { initializeDatabase, createGameWithRooms } from '../../src/utils/initDb';
+import { createGameWithRooms } from '../../src/utils/initDb';
+import { initializeTestDatabase } from '../testUtils';
 import { Connection, UnfilledConnection, FilledConnection } from '../../src/services/gameStateManager';
 
 describe('Connection-Based Generation Schema', () => {
@@ -9,7 +10,7 @@ describe('Connection-Based Generation Schema', () => {
     // Use in-memory database for testing
     db = new Database(':memory:');
     await db.connect();
-    await initializeDatabase(db);
+    await initializeTestDatabase(db);
   });
 
   afterEach(async () => {
