@@ -23,13 +23,13 @@ describe('Starter Room Item Placement', () => {
     
     expect(gameId).toBeGreaterThan(0);
 
-    // Get all rooms for this game
+    // Get Region 1 starter rooms for this game (Region 2 is procedurally generated)
     const rooms = await db.all<any>(
-      'SELECT id, name FROM rooms WHERE game_id = ? ORDER BY name',
-      [gameId]
+      'SELECT id, name FROM rooms WHERE game_id = ? AND region_id = (SELECT MIN(id) FROM regions WHERE game_id = ?) ORDER BY name',
+      [gameId, gameId]
     );
     
-    expect(rooms).toHaveLength(6); // Should have 6 starter rooms
+    expect(rooms).toHaveLength(6); // Should have 6 starter rooms in Region 1
 
     // Expected items in each room (updated with armor additions)
     const expectedRoomItems = {

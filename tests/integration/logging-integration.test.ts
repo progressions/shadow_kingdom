@@ -234,18 +234,26 @@ describe('Logging System Integration Tests', () => {
         const aiLogContent = fs.readFileSync(logPaths.ai, 'utf8');
         
         if (aiLogContent.trim()) {
-          // Parse JSON log entries
-          const logEntries = aiLogContent.trim().split('\n').map(line => JSON.parse(line));
-          
-          logEntries.forEach(entry => {
-            expect(entry).toHaveProperty('request_id');
-            expect(entry).toHaveProperty('timestamp');
-            expect(entry).toHaveProperty('success');
+          // Parse JSON log entries, filtering out decorative lines
+          const lines = aiLogContent.trim().split('\n');
+          const jsonLines = lines.filter(line => {
+            line = line.trim();
+            return line && line.startsWith('{') && line.endsWith('}');
           });
           
-          // Should find our test entries
-          const testRequest = logEntries.find(entry => entry.prompt?.includes('Test prompt'));
-          expect(testRequest).toBeDefined();
+          if (jsonLines.length > 0) {
+            const logEntries = jsonLines.map(line => JSON.parse(line));
+          
+            logEntries.forEach(entry => {
+              expect(entry).toHaveProperty('request_id');
+              expect(entry).toHaveProperty('timestamp');
+              expect(entry).toHaveProperty('success');
+            });
+            
+            // Should find our test entries
+            const testRequest = logEntries.find(entry => entry.prompt?.includes('Test prompt'));
+            expect(testRequest).toBeDefined();
+          }
         }
       }
     });

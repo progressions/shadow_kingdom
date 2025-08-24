@@ -335,57 +335,8 @@ describe('Automatic Room Generation on Entry', () => {
     });
   });
 
-  describe('Integration with Existing Systems', () => {
-    it('should exclude processing connections from existing unfilled connection queries', async () => {
-      // Create one normal unfilled connection
-      await db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [gameId, roomId, null, 'north', 'normal connection']
-      );
-
-      // Create one processing connection
-      await db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name, processing) VALUES (?, ?, ?, ?, ?, ?)',
-        [gameId, roomId, null, 'south', 'processing connection', true]
-      );
-
-      const unfilledConnections = await backgroundGenerationService.findUnfilledConnections(gameId);
-      
-      expect(unfilledConnections).toHaveLength(1);
-      expect(unfilledConnections[0].name).toBe('normal connection');
-    });
-
-    it('should work with BFS nearby connection finding', async () => {
-      // Create another room connected to the first
-      const room2Result = await db.run(
-        'INSERT INTO rooms (game_id, name, description, region_id, region_distance) VALUES (?, ?, ?, ?, ?)',
-        [gameId, 'Room 2', 'Second room', 1, 1]
-      );
-      const room2Id = room2Result.lastID!;
-
-      // Connect room1 to room2
-      await db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [gameId, roomId, room2Id, 'east', 'to room 2']
-      );
-
-      // Add unfilled connection from room2
-      await db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
-        [gameId, room2Id, null, 'north', 'from room 2']
-      );
-
-      // Add processing connection from room2
-      await db.run(
-        'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name, processing) VALUES (?, ?, ?, ?, ?, ?)',
-        [gameId, room2Id, null, 'south', 'processing from room 2', true]
-      );
-
-      const nearbyConnections = await backgroundGenerationService.findNearbyUnfilledConnections(roomId, gameId);
-      
-      expect(nearbyConnections).toHaveLength(1);
-      expect(nearbyConnections[0].name).toBe('from room 2');
-    });
+  describe.skip('Integration with Existing Systems (DISABLED - Phase 9 cleanup)', () => {
+    // NOTE: findUnfilledConnections and findNearbyUnfilledConnections methods removed in Phase 9 cleanup
   });
 
   describe('Error Handling', () => {

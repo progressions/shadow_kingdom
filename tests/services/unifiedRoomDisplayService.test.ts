@@ -270,7 +270,7 @@ describe('UnifiedRoomDisplayService', () => {
 
       expect(mockBackgroundService.generateForRoomEntry).toHaveBeenCalledWith(1, 1);
       expect(mockBackgroundService.generateForRoomEntry).toHaveBeenCalledTimes(1);
-      expect(mockBackgroundService.triggerNextRegionGeneration).toHaveBeenCalledWith(1, 1);
+      expect(mockBackgroundService.triggerNextRegionGeneration).toHaveBeenCalledWith(1);
       expect(mockBackgroundService.triggerNextRegionGeneration).toHaveBeenCalledTimes(1);
     });
 
@@ -309,7 +309,7 @@ describe('UnifiedRoomDisplayService', () => {
       // Should still display room and not throw
       expect(mockOutput.displayRoomCalls).toHaveLength(1);
       // With the new fire-and-forget approach, we expect the specific error message
-      expect(consoleSpy).toHaveBeenCalledWith('Background pre-generation failed:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith('Region generation trigger failed:', expect.any(Error));
       
       consoleSpy.mockRestore();
     });

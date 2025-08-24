@@ -26,9 +26,9 @@ describe('Multi-Game Isolation', () => {
       const game1Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY name', [game1Id]);
       const game2Rooms = await db.all('SELECT * FROM rooms WHERE game_id = ? ORDER BY name', [game2Id]);
 
-      // Both games should have the same room structure (3 starter + 3 leaf nodes)
-      expect(game1Rooms).toHaveLength(6);
-      expect(game2Rooms).toHaveLength(6);
+      // Both games should have the same room structure (Region 1: 6 rooms + Region 2: 12 rooms)
+      expect(game1Rooms).toHaveLength(18);
+      expect(game2Rooms).toHaveLength(18);
 
       // But different room IDs
       const game1RoomIds = game1Rooms.map(r => r.id).sort();
@@ -36,12 +36,19 @@ describe('Multi-Game Isolation', () => {
       
       expect(game1RoomIds).not.toEqual(game2RoomIds);
 
-      // Same room names and descriptions
-      const game1RoomNames = game1Rooms.map(r => r.name).sort();
-      const game2RoomNames = game2Rooms.map(r => r.name).sort();
+      // Find the first (starting) region for each game
+      const game1RegionIds = [...new Set(game1Rooms.map(r => r.region_id))].sort();
+      const game2RegionIds = [...new Set(game2Rooms.map(r => r.region_id))].sort();
       
-      expect(game1RoomNames).toEqual(game2RoomNames);
-      expect(game1RoomNames).toEqual([
+      const game1StartRegionId = game1RegionIds[0];
+      const game2StartRegionId = game2RegionIds[0];
+      
+      // Both games should have the same starting region rooms (hardcoded)
+      const game1Region1Rooms = game1Rooms.filter(r => r.region_id === game1StartRegionId).map(r => r.name).sort();
+      const game2Region1Rooms = game2Rooms.filter(r => r.region_id === game2StartRegionId).map(r => r.name).sort();
+      
+      expect(game1Region1Rooms).toEqual(game2Region1Rooms);
+      expect(game1Region1Rooms).toEqual([
         'Ancient Crypt Entrance',
         'Grand Entrance Hall', 
         'Moonlit Courtyard Garden',
@@ -49,6 +56,14 @@ describe('Multi-Game Isolation', () => {
         'Scholar\'s Library',
         'Winding Tower Stairs'
       ]);
+      
+      // Region 2 rooms are procedurally generated, so they may differ between games
+      const game1Region2Id = game1RegionIds[1];
+      const game2Region2Id = game2RegionIds[1];
+      const game1Region2Rooms = game1Rooms.filter(r => r.region_id === game1Region2Id);
+      const game2Region2Rooms = game2Rooms.filter(r => r.region_id === game2Region2Id);
+      expect(game1Region2Rooms).toHaveLength(12);
+      expect(game2Region2Rooms).toHaveLength(12);
     });
 
     test('should create separate connection sets for different games', async () => {
@@ -61,7 +76,7 @@ describe('Multi-Game Isolation', () => {
 
       // Both games should have the same connection structure
       expect(game1Connections.length).toEqual(game2Connections.length);
-      expect(game1Connections.length).toBe(18); // 10 bidirectional + 1 secret passage + 7 unfilled expansion connections
+      expect(game1Connections.length).toBe(35); // Updated for Region 1 + Region 2 connections
 
       // But different connection IDs and room references
       const game1ConnectionIds = game1Connections.map(c => c.id).sort();
@@ -69,11 +84,9 @@ describe('Multi-Game Isolation', () => {
       
       expect(game1ConnectionIds).not.toEqual(game2ConnectionIds);
 
-      // Connection names should be the same
-      const game1ConnectionNames = game1Connections.map(c => c.name).sort();
-      const game2ConnectionNames = game2Connections.map(c => c.name).sort();
-      
-      expect(game1ConnectionNames).toEqual(game2ConnectionNames);
+      // Region 2 connections are procedurally generated, so connection names may differ
+      // Just verify both games have the expected number of connections
+      expect(game1Connections.length).toBe(game2Connections.length);
     });
 
     test('should maintain separate game states', async () => {
