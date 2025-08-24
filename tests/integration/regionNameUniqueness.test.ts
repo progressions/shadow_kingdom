@@ -9,7 +9,7 @@ import { CharacterGenerationService } from '../../src/services/characterGenerati
 import { CharacterService } from '../../src/services/characterService';
 import { FantasyLevelService } from '../../src/services/fantasyLevelService';
 
-describe('Region Name Uniqueness Integration', () => {
+describe.skip('Region Name Uniqueness Integration (DISABLED - Phase 9 cleanup removed old region generation)', () => {
   let db: Database;
   let grokClient: GrokClient;
   let regionService: RegionService;

@@ -343,7 +343,7 @@ export class GameController {
     // Emergency teleport command for debugging and escaping dead ends
     this.commandRouter.addCommand({
       name: 'teleport',
-      description: 'Emergency teleport to a specific room (debug command)',
+      description: 'Emergency teleport to a room by name (debug command)',
       handler: async (args) => await this.handleTeleport(args)
     });
 
@@ -2921,42 +2921,60 @@ export class GameController {
     }
 
     if (args.length === 0) {
-      this.tui.display('Usage: teleport <room_id> or teleport <room_name>', MessageType.SYSTEM);
+      this.tui.display('Usage: teleport <room_name>', MessageType.SYSTEM);
+      this.tui.display('Examples: teleport Library, teleport Entrance Hall, teleport Garden', MessageType.SYSTEM);
       this.tui.display('This is an emergency command for escaping dead-end rooms.', MessageType.SYSTEM);
       return;
     }
 
     const target = args.join(' ');
-    let targetRoom: any = null;
+    const session = this.gameStateManager.getCurrentSession();
+    
+    if (!session.gameId) {
+      this.tui.display('Error: No current game found.', MessageType.ERROR);
+      return;
+    }
 
     try {
-      // Try to parse as room ID first
-      const roomId = parseInt(target);
-      if (!isNaN(roomId)) {
+      // First, try exact name match within the current game
+      let targetRoom = await this.db.get<any>(
+        'SELECT * FROM rooms WHERE game_id = ? AND name = ?',
+        [session.gameId, target]
+      );
+
+      // If no exact match, try case-insensitive partial matching
+      if (!targetRoom) {
         targetRoom = await this.db.get<any>(
-          'SELECT * FROM rooms WHERE id = ?',
-          [roomId]
+          'SELECT * FROM rooms WHERE game_id = ? AND LOWER(name) LIKE LOWER(?)',
+          [session.gameId, `%${target}%`]
         );
       }
 
-      // If no room found by ID, try searching by name
+      // If still no match and target is a number, try room ID as fallback
       if (!targetRoom) {
-        targetRoom = await this.db.get<any>(
-          'SELECT * FROM rooms WHERE name LIKE ?',
-          [`%${target}%`]
-        );
+        const roomId = parseInt(target);
+        if (!isNaN(roomId)) {
+          targetRoom = await this.db.get<any>(
+            'SELECT * FROM rooms WHERE game_id = ? AND id = ?',
+            [session.gameId, roomId]
+          );
+        }
       }
 
       if (!targetRoom) {
+        // Show available rooms to help the user
+        const allRooms = await this.db.all<{name: string}>(
+          'SELECT name FROM rooms WHERE game_id = ? ORDER BY name',
+          [session.gameId]
+        );
+        
         this.tui.display(`Could not find room: "${target}"`, MessageType.ERROR);
-        this.tui.display('Try using a room ID number or partial room name.', MessageType.SYSTEM);
-        return;
-      }
-
-      // Update player's current room
-      const session = this.gameStateManager.getCurrentSession();
-      if (!session.gameId) {
-        this.tui.display('Error: No current game found.', MessageType.ERROR);
+        if (allRooms.length > 0) {
+          this.tui.display('Available rooms:', MessageType.SYSTEM);
+          allRooms.forEach(room => {
+            this.tui.display(`  • ${room.name}`, MessageType.SYSTEM);
+          });
+        }
         return;
       }
 
@@ -2965,9 +2983,16 @@ export class GameController {
 
       this.tui.display(`🌟 Emergency teleport successful!`, MessageType.SYSTEM);
       this.tui.display(`You have been teleported to: ${targetRoom.name}`, MessageType.NORMAL);
+      this.tui.display('', MessageType.NORMAL); // Add spacing
       
       // Show the new room automatically
-      await this.lookAround();
+      try {
+        await this.lookAround();
+      } catch (displayError) {
+        console.error('Error displaying room after teleport:', displayError);
+        this.tui.display('You are now in the room, but there was an issue displaying it.', MessageType.ERROR);
+        this.tui.display('Try using the "look" command.', MessageType.SYSTEM);
+      }
 
     } catch (error) {
       console.error('Error during teleport:', error);

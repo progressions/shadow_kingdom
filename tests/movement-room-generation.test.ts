@@ -34,7 +34,7 @@ describe('Movement Room Generation Integration', () => {
     gameController = new GameController(db);
     
     // Mock background generation to prevent fire-and-forget promises
-    jest.spyOn((gameController as any).backgroundGenerationService, 'preGenerateAdjacentRooms')
+    jest.spyOn((gameController as any).backgroundGenerationService, 'triggerNextRegionGeneration')
       .mockImplementation(async () => {
         // Do nothing - prevents fire-and-forget promises while testing movement
         return Promise.resolve();

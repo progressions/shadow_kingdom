@@ -218,8 +218,9 @@ export class UnifiedRoomDisplayService {
       
       // Trigger background generation for unfilled connections (fire-and-forget for non-blocking UX)
       // Background generation will mark TARGET rooms as processed after expanding them
-      backgroundGenerationService.preGenerateAdjacentRooms(roomId, gameId).catch(error => {
-        console.error('Background pre-generation failed:', error);
+      // Phase 9: Use new region queue system instead of old connection-based generation
+      backgroundGenerationService.triggerNextRegionGeneration(gameId).catch(error => {
+        console.error('Region generation trigger failed:', error);
       });
     } catch (error) {
       // Log error but don't break room display

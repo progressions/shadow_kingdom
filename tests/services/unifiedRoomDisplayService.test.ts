@@ -75,7 +75,7 @@ describe('UnifiedRoomDisplayService', () => {
     } as any;
 
     mockBackgroundService = {
-      preGenerateAdjacentRooms: jest.fn(),
+      triggerNextRegionGeneration: jest.fn(),
       generateForRoomEntry: jest.fn()
     } as any;
 
@@ -88,7 +88,7 @@ describe('UnifiedRoomDisplayService', () => {
     // Setup default return values
     mockItemService.getRoomItems.mockResolvedValue([]);
     mockCharacterService.getRoomCharacters.mockResolvedValue([]);
-    mockBackgroundService.preGenerateAdjacentRooms.mockResolvedValue();
+    mockBackgroundService.triggerNextRegionGeneration.mockResolvedValue();
     mockBackgroundService.generateForRoomEntry.mockResolvedValue();
   });
 
@@ -270,8 +270,8 @@ describe('UnifiedRoomDisplayService', () => {
 
       expect(mockBackgroundService.generateForRoomEntry).toHaveBeenCalledWith(1, 1);
       expect(mockBackgroundService.generateForRoomEntry).toHaveBeenCalledTimes(1);
-      expect(mockBackgroundService.preGenerateAdjacentRooms).toHaveBeenCalledWith(1, 1);
-      expect(mockBackgroundService.preGenerateAdjacentRooms).toHaveBeenCalledTimes(1);
+      expect(mockBackgroundService.triggerNextRegionGeneration).toHaveBeenCalledWith(1, 1);
+      expect(mockBackgroundService.triggerNextRegionGeneration).toHaveBeenCalledTimes(1);
     });
 
     test('should handle item service errors gracefully', async () => {
@@ -301,7 +301,7 @@ describe('UnifiedRoomDisplayService', () => {
     });
 
     test('should handle background generation errors gracefully', async () => {
-      mockBackgroundService.preGenerateAdjacentRooms.mockRejectedValue(new Error('Generation failed'));
+      mockBackgroundService.triggerNextRegionGeneration.mockRejectedValue(new Error('Generation failed'));
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
       await service.displayRoomComplete(testRoom, testConnections, 1, mockOutput, services);

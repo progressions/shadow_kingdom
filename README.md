@@ -162,15 +162,20 @@ The game uses a comprehensive SQLite database schema:
 - **`game_state`**: Current player position and session state
 
 #### Region System
-- **`regions`**: Thematic areas with types (mansion, forest, cave, town), descriptions, and center tracking
-- **Room Columns**: `region_id`, `region_distance` for distance-based probability transitions
-- **Database Triggers**: Automatic region center discovery when distance-0 rooms are created
+- **`regions`**: Complete thematic areas with pre-generated rooms, guardians, and progression
+- **`region_plans`**: AI-generated region concepts and room templates for queue system
+- **`region_room_templates`**: Individual room designs within each region plan
+- **`guardian_states`**: Track guardian combat state and key acquisition per region
 
 #### Key Relationships
 ```sql
--- Rooms belong to regions with distance from center
+-- Region queue system for proactive generation
+region_plans.game_id → games.id
+region_room_templates.region_plan_id → region_plans.id
+
+-- Rooms belong to instantiated regions
 rooms.region_id → regions.id
-rooms.region_distance → distance from region center (0 = center)
+regions.plan_id → region_plans.id
 
 -- Connections link rooms with dual addressing
 connections.from_room_id → rooms.id
@@ -178,17 +183,19 @@ connections.to_room_id → rooms.id
 connections.direction → cardinal direction (north, south, etc.)
 connections.name → thematic description (through crystal archway)
 
--- Games contain regions which contain rooms
-games.id → regions.game_id → rooms.region_id
+-- Guardian system tracks region progression
+guardian_states.region_id → regions.id
+guardian_states.game_id → games.id
 ```
 
 ### AI Integration
 
 The game uses Grok AI to generate:
-- **Regional Content**: Room names and descriptions that fit thematic region types
-- **Contextual Generation**: AI receives adjacent room descriptions and regional themes
+- **Complete Regions**: Two-phase generation of region concepts and individual room designs
+- **Guardian System**: AI creates thematic guardians, keys, and locked exits for progression
+- **Region Concepts**: High-level themes, atmospheres, and narrative elements for coherent areas
+- **Contextual Rooms**: Individual room generation using region concept as context
 - **Thematic Connections**: Atmospheric connection names that enhance immersion
-- **Distance-Based Transitions**: Probability-driven region changes based on distance from center
 - **Fallback Systems**: Graceful degradation when AI generation fails
 
 ## Development
@@ -246,10 +253,10 @@ src/
 ### Key Features Implementation
 
 #### Region-Based Generation
-- **Distance-Based Probability**: 15% base chance + 12% per distance unit for new region transitions
-- **Region Types**: mansion, forest, cave, town with specialized AI prompts
-- **Center Discovery**: Database triggers automatically mark region centers when distance-0 rooms created
-- **Thematic Coherence**: All rooms within region maintain consistent atmosphere
+- **Region Queue System**: Proactive complete region generation with 12 pre-connected rooms
+- **Region Types**: mansion, forest, cave, town with specialized AI prompts and guardian system
+- **Complete Region Design**: Each region has guardian, key, and locked exit progression
+- **Thematic Coherence**: All rooms within region maintain consistent atmosphere and narrative flow
 
 #### Dual Navigation System
 - **Cardinal Directions**: Traditional north/south/east/west movement
@@ -276,7 +283,6 @@ src/
 |----------|---------|-------------|
 | `GROK_API_KEY` | Required | API key for Grok AI |
 | `MAX_ROOMS_PER_GAME` | 100 | Maximum rooms per game |
-| `MAX_GENERATION_DEPTH` | 5 | Levels of background generation |
 | `GENERATION_COOLDOWN_MS` | 5000 | Cooldown between generations |
 | `AI_MOCK_MODE` | false | Use mock responses for testing |
 

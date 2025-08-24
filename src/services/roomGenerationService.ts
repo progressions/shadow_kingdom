@@ -89,7 +89,8 @@ export class RoomGenerationService {
 
       if (fromRoom.region_id && fromRoom.region_distance !== null) {
         // Check if we should create a new region or continue in current one
-        const shouldCreateNewRegion = await this.regionService.shouldCreateNewRegion(fromRoom.region_distance, fromRoom.region_id);
+        // Phase 9: Disable old region generation logic - region queue handles this now
+        const shouldCreateNewRegion = false;
         
         if (shouldCreateNewRegion) {
           // Generate new region with AI
@@ -115,7 +116,8 @@ export class RoomGenerationService {
           );
           
           regionId = newRegion.id;
-          regionDistance = this.regionService.generateRegionDistance(); // 2-7
+          // Phase 9: Use simplified distance logic
+          regionDistance = 1;
           
           if (this.isDebugEnabled()) {
             console.log(`🏛️ Created new region: ${generatedRegion.name} (${generatedRegion.type}) at distance ${regionDistance}`);
@@ -150,7 +152,8 @@ export class RoomGenerationService {
         );
         
         regionId = newRegion.id;
-        regionDistance = this.regionService.generateRegionDistance();
+        // Phase 9: Use simplified distance logic
+        regionDistance = 1;
         
         if (this.isDebugEnabled()) {
           console.log(`🏛️ Created first region: ${generatedRegion.name} (${generatedRegion.type})`);
@@ -626,7 +629,8 @@ export class RoomGenerationService {
 
       if (fromRoom.region_id && fromRoom.region_distance !== null) {
         // Check if we should create a new region or continue in current one
-        const shouldCreateNewRegion = await this.regionService.shouldCreateNewRegion(fromRoom.region_distance, fromRoom.region_id);
+        // Phase 9: Disable old region generation logic - region queue handles this now
+        const shouldCreateNewRegion = false;
         
         if (shouldCreateNewRegion) {
           // Generate new region with AI
@@ -652,7 +656,8 @@ export class RoomGenerationService {
           );
           
           regionId = newRegion.id;
-          regionDistance = this.regionService.generateRegionDistance(); // 2-7
+          // Phase 9: Use simplified distance logic
+          regionDistance = 1;
           
           if (this.isDebugEnabled()) {
             console.log(`🏛️ Created new region: ${generatedRegion.name} (${generatedRegion.type}) for connection`);
@@ -687,7 +692,8 @@ export class RoomGenerationService {
         );
         
         regionId = newRegion.id;
-        regionDistance = this.regionService.generateRegionDistance();
+        // Phase 9: Use simplified distance logic
+        regionDistance = 1;
         
         if (this.isDebugEnabled()) {
           console.log(`🏛️ Created first region: ${generatedRegion.name} (${generatedRegion.type}) for connection`);

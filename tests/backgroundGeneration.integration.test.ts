@@ -140,7 +140,7 @@ describe('Background Generation Integration', () => {
       expect(entranceHall).not.toBeNull();
       
       // Execute background generation from entrance hall
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       // Verify: Room count increased (new rooms generated for unfilled connections)
       const finalCount = await getRoomCount(testGameId);
@@ -168,7 +168,7 @@ describe('Background Generation Integration', () => {
       );
       expect(connection).not.toBeNull();
       
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       // Verify: Some unfilled connections from Tower Stairs should now be filled
       const finalUnfilledFromTower = await db.all(
@@ -187,7 +187,7 @@ describe('Background Generation Integration', () => {
       const initialCrypt = await findRoomByName(testGameId, 'Ancient Crypt Entrance');
       // Connection-based system - no generation_processed state
       
-      await backgroundGenerationService.preGenerateAdjacentRooms(library.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       const updatedCrypt = await findRoomByName(testGameId, 'Ancient Crypt Entrance');
       // Connection-based system - verify connections filled instead // SQLite stores as 1, not true
@@ -197,7 +197,7 @@ describe('Background Generation Integration', () => {
       const initialObservatory = await findRoomByName(testGameId, 'Observatory Steps');
       // Connection-based system - no generation_processed state
       
-      await backgroundGenerationService.preGenerateAdjacentRooms(garden.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       const updatedObservatory = await findRoomByName(testGameId, 'Observatory Steps');
       // Connection-based system - verify connections filled instead // SQLite stores as 1, not true
@@ -210,7 +210,7 @@ describe('Background Generation Integration', () => {
       // Get initial connection count for tower stairs
       const initialConnections = await getConnectionsForRoom(towerStairs.id);
       
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       // Verify: Connection-based system maintains consistent connection counts 
       const finalConnections = await getConnectionsForRoom(towerStairs.id);
@@ -227,7 +227,7 @@ describe('Background Generation Integration', () => {
       const initialCount = await getRoomCount(testGameId);
       const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
       
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       const finalCount = await getRoomCount(testGameId);
       expect(finalCount).toBe(initialCount); // No change
@@ -237,7 +237,7 @@ describe('Background Generation Integration', () => {
       process.env.MAX_ROOMS_PER_GAME = '7'; // Only 1 more room allowed
       
       const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       const finalCount = await getRoomCount(testGameId);
       expect(finalCount).toBeLessThanOrEqual(7);
@@ -250,7 +250,7 @@ describe('Background Generation Integration', () => {
       const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
       
       // Should not throw error - should handle gracefully
-      await expect(backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId))
+      await expect(backgroundGenerationService.triggerNextRegionGeneration(testGameId))
         .resolves.not.toThrow();
     });
 
@@ -260,11 +260,11 @@ describe('Background Generation Integration', () => {
       const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
       
       // First generation should work
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       const firstCount = await getRoomCount(testGameId);
       
       // Immediate second generation should be blocked by cooldown
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       const secondCount = await getRoomCount(testGameId);
       
       // Room count should be the same (second call blocked)
@@ -276,7 +276,7 @@ describe('Background Generation Integration', () => {
     test('should call AI generation with correct parameters', async () => {
       const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
       
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       // Verify AI was called (if generation happened)
       if (mockGrokClient.generateRoom.mock.calls.length > 0) {
@@ -298,7 +298,7 @@ describe('Background Generation Integration', () => {
       const entranceHall = await findRoomByName(testGameId, 'Grand Entrance Hall');
       const initialCount = await getRoomCount(testGameId);
       
-      await backgroundGenerationService.preGenerateAdjacentRooms(entranceHall.id, testGameId);
+      await backgroundGenerationService.triggerNextRegionGeneration(testGameId);
       
       const finalCount = await getRoomCount(testGameId);
       
