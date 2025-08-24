@@ -392,6 +392,23 @@ export class GameStateManager {
   }
 
   /**
+   * Get current character ID from game state
+   */
+  async getCurrentCharacterId(): Promise<number> {
+    if (!this.currentGameId) {
+      return 1; // Default character ID
+    }
+
+    try {
+      const gameState = await this.getGameState(this.currentGameId);
+      return gameState?.character_id || 1;
+    } catch (error) {
+      console.error('Failed to get current character ID:', error);
+      return 1; // Fallback to default
+    }
+  }
+
+  /**
    * Check if debug logging is enabled
    */
   private isDebugEnabled(): boolean {

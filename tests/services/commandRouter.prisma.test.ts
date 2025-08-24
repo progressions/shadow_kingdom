@@ -11,6 +11,9 @@ import { getNLPConfig } from '../../src/nlp/config';
 import { GameContext } from '../../src/nlp/types';
 import Database from '../../src/utils/database';
 import { initializeDatabase } from '../../src/utils/initDb';
+import { ItemService } from '../../src/services/itemService';
+import { CharacterService } from '../../src/services/characterService';
+import { GameStateManager } from '../../src/services/gameStateManager';
 import { 
   setupTestDatabase, 
   cleanupTestDatabase 
@@ -21,6 +24,9 @@ describe('CommandRouter (Prisma Integration)', () => {
   let mockGrokClient: GrokClient;
   let nlpEngine: UnifiedNLPEngine;
   let testDb: Database;
+  let mockItemService: ItemService;
+  let mockCharacterService: CharacterService;
+  let mockGameStateManager: GameStateManager;
 
   beforeEach(async () => {
     // Setup clean Prisma test environment
@@ -51,10 +57,24 @@ describe('CommandRouter (Prisma Integration)', () => {
       enableAIFallback: false // Disable AI to avoid external dependencies
     }, testDb);
     
+    // Create mock services
+    mockItemService = {} as jest.Mocked<ItemService>;
+    mockCharacterService = {} as jest.Mocked<CharacterService>;
+    mockGameStateManager = {} as jest.Mocked<GameStateManager>;
+
     // Create command router
-    commandRouter = new CommandRouter(nlpEngine, mockGrokClient, testDb, null, {
-      enableDebugLogging: false
-    });
+    commandRouter = new CommandRouter(
+      nlpEngine, 
+      mockGrokClient, 
+      testDb, 
+      mockItemService,
+      mockCharacterService,
+      mockGameStateManager,
+      null, 
+      {
+        enableDebugLogging: false
+      }
+    );
   });
 
   afterEach(async () => {
