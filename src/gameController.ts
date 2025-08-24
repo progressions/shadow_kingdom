@@ -340,6 +340,19 @@ export class GameController {
       handler: async () => await this.showRegionStats()
     });
 
+    // Emergency teleport command for debugging and escaping dead ends
+    this.commandRouter.addCommand({
+      name: 'teleport',
+      description: 'Emergency teleport to a specific room (debug command)',
+      handler: async (args) => await this.handleTeleport(args)
+    });
+
+    this.commandRouter.addCommand({
+      name: 'tp',
+      description: 'Emergency teleport (short alias for "teleport")',
+      handler: async (args) => await this.handleTeleport(args)
+    });
+
     // Item system commands
     this.commandRouter.addCommand({
       name: 'pickup',
@@ -2896,6 +2909,70 @@ export class GameController {
     );
     
     return foundCharacter || null;
+  }
+
+  /**
+   * Handle teleport command - emergency teleport to escape dead-ends
+   */
+  private async handleTeleport(args: string[]): Promise<void> {
+    if (!this.gameStateManager.isInGame()) {
+      this.tui.display('No game is currently loaded.', MessageType.SYSTEM);
+      return;
+    }
+
+    if (args.length === 0) {
+      this.tui.display('Usage: teleport <room_id> or teleport <room_name>', MessageType.SYSTEM);
+      this.tui.display('This is an emergency command for escaping dead-end rooms.', MessageType.SYSTEM);
+      return;
+    }
+
+    const target = args.join(' ');
+    let targetRoom: any = null;
+
+    try {
+      // Try to parse as room ID first
+      const roomId = parseInt(target);
+      if (!isNaN(roomId)) {
+        targetRoom = await this.db.get<any>(
+          'SELECT * FROM rooms WHERE id = ?',
+          [roomId]
+        );
+      }
+
+      // If no room found by ID, try searching by name
+      if (!targetRoom) {
+        targetRoom = await this.db.get<any>(
+          'SELECT * FROM rooms WHERE name LIKE ?',
+          [`%${target}%`]
+        );
+      }
+
+      if (!targetRoom) {
+        this.tui.display(`Could not find room: "${target}"`, MessageType.ERROR);
+        this.tui.display('Try using a room ID number or partial room name.', MessageType.SYSTEM);
+        return;
+      }
+
+      // Update player's current room
+      const session = this.gameStateManager.getCurrentSession();
+      if (!session.gameId) {
+        this.tui.display('Error: No current game found.', MessageType.ERROR);
+        return;
+      }
+
+      // Use the game state manager to move to the room (handles both state and DB updates)
+      await this.gameStateManager.moveToRoom(targetRoom.id);
+
+      this.tui.display(`🌟 Emergency teleport successful!`, MessageType.SYSTEM);
+      this.tui.display(`You have been teleported to: ${targetRoom.name}`, MessageType.NORMAL);
+      
+      // Show the new room automatically
+      await this.lookAround();
+
+    } catch (error) {
+      console.error('Error during teleport:', error);
+      this.tui.showError('Teleport failed', (error as Error)?.message);
+    }
   }
 
 }

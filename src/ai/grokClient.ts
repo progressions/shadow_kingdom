@@ -1,5 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
 import { MockAIEngine } from './mockAIEngine';
 import { LoggerService } from '../services/loggerService';
 import { RegionConcept, GeneratedRoom as RegionGeneratedRoom, RoomGenerationContext } from '../types/regionConcept';
@@ -257,6 +259,39 @@ export class GrokClient {
       creativityLevel: parseFloat(process.env.AI_MOCK_CREATIVITY || '0.3'),
       seed: process.env.AI_MOCK_SEED ? parseInt(process.env.AI_MOCK_SEED) : undefined
     });
+  }
+
+  /**
+   * Log Grok API request and response to grok_responses.log
+   */
+  private logGrokResponse(endpoint: string, request: any, response: any, error?: any): void {
+    const logPath = path.join(process.cwd(), 'grok_responses.log');
+    const timestamp = new Date().toISOString();
+    
+    const logEntry = {
+      timestamp,
+      endpoint,
+      request: {
+        model: request.model,
+        messages: request.messages,
+        max_tokens: request.max_tokens,
+        temperature: request.temperature
+      },
+      response: error ? { error: error.message } : {
+        content: response.data?.choices?.[0]?.message?.content,
+        usage: response.data?.usage,
+        finish_reason: response.data?.choices?.[0]?.finish_reason
+      },
+      success: !error
+    };
+
+    const logLine = JSON.stringify(logEntry, null, 2) + '\n' + '='.repeat(80) + '\n';
+    
+    try {
+      fs.appendFileSync(logPath, logLine);
+    } catch (writeError) {
+      console.error('Failed to write to grok_responses.log:', writeError);
+    }
   }
 
   async generateRoom(context: RoomContext): Promise<GeneratedRoom> {
@@ -900,30 +935,61 @@ If the command cannot be interpreted as a valid game action, return null.`;
 
       const content = response.data.choices[0].message.content;
       
-      // Log the successful response if LoggerService is available
+      // Log the successful response
+      const durationMs = Date.now() - startTime;
+      const tokenUsage = response.data.usage ? {
+        input: response.data.usage.prompt_tokens,
+        output: response.data.usage.completion_tokens
+      } : undefined;
+      
+      // Always log to grok_responses.log
+      const requestData = {
+        model: this.config.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a creative AI assistant helping to generate content for a text adventure game. Always respond with valid JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: this.config.maxTokens,
+        temperature: this.config.temperature
+      };
+      this.logGrokResponse('/chat/completions', requestData, response);
+      
+      // Also log to LoggerService if available
       if (this.loggerService && requestId) {
-        const durationMs = Date.now() - startTime;
-        const tokenUsage = response.data.usage ? {
-          input: response.data.usage.prompt_tokens,
-          output: response.data.usage.completion_tokens
-        } : undefined;
-        
         this.loggerService.logGrokResponse(requestId, {
           content: content,
           model: this.config.model,
           usage: response.data.usage
         }, tokenUsage, durationMs);
-      } else {
-        // Fallback to old logging method if LoggerService not available
-        const fs = require('fs');
-        const timestamp = new Date().toISOString();
-        const logEntry = `\n\n========= ${timestamp} =========\n${content}\n`;
-        fs.appendFileSync('grok_responses.log', logEntry);
       }
       
       return content;
     } catch (error) {
-      // Log the error if LoggerService is available
+      // Always log error to grok_responses.log
+      const requestData = {
+        model: this.config.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a creative AI assistant helping to generate content for a text adventure game. Always respond with valid JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: this.config.maxTokens,
+        temperature: this.config.temperature
+      };
+      this.logGrokResponse('/chat/completions', requestData, null, error);
+      
+      // Also log the error via LoggerService if available
       if (this.loggerService && requestId) {
         this.loggerService.logGrokError(requestId, error instanceof Error ? error : new Error(String(error)));
       }

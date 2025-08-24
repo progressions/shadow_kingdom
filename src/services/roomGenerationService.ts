@@ -815,8 +815,12 @@ export class RoomGenerationService {
         };
       }
 
-      // Create return connection (filled immediately)
+      // Create return connection (filled immediately) - CRITICAL: prevents dead ends
       const returnDirection = this.getReverseDirection(connection.direction);
+      if (this.isDebugEnabled()) {
+        console.log(`🔗 Creating return connection: ${connection.direction} -> ${returnDirection}`);
+      }
+      
       if (returnDirection) {
         // Find return connection name from AI response or generate complementary
         let returnConnectionName = 'back';
@@ -837,6 +841,12 @@ export class RoomGenerationService {
           'INSERT INTO connections (game_id, from_room_id, to_room_id, direction, name) VALUES (?, ?, ?, ?, ?)',
           [connection.game_id, newRoomId, connection.from_room_id, returnDirection, returnConnectionName]
         );
+        
+        if (this.isDebugEnabled()) {
+          console.log(`🔗 ✅ Return connection created: ${returnConnectionName} (${returnDirection})`);
+        }
+      } else {
+        console.error(`🚨 CRITICAL BUG: No return direction for "${connection.direction}" - room "${newRoom.name}" will be a DEAD END!`);
       }
 
       // Create other AI-specified connections as unfilled connections
