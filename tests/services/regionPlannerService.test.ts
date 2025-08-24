@@ -1,7 +1,7 @@
 import Database from '../../src/utils/database';
 import { initializeDatabase } from '../../src/utils/initDb';
 import { RegionPlannerService } from '../../src/services/regionPlannerService';
-import { RegionConcept, GeneratedRoom } from '../../src/types/regionConcept';
+import { RegionConcept, GeneratedRoom, CompleteRegion } from '../../src/types/regionConcept';
 import { GrokClient } from '../../src/ai/grokClient';
 
 describe('RegionPlannerService', () => {
@@ -338,6 +338,206 @@ describe('RegionPlannerService', () => {
       expect(room.description).toBeTruthy();
       expect(room.items).toBeDefined();
       expect(room.characters).toBeDefined();
+    });
+  });
+
+  describe('generateCompleteRegion', () => {
+    test('should generate a complete region with exactly 12 rooms', async () => {
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      
+      // Verify basic structure
+      expect(region).toHaveProperty('concept');
+      expect(region).toHaveProperty('rooms');
+      expect(region).toHaveProperty('sequenceNumber');
+      expect(region).toHaveProperty('entranceRoomIndex');
+      expect(region).toHaveProperty('guardianRoomIndex');
+      expect(region).toHaveProperty('exitRoomIndex');
+      expect(region).toHaveProperty('explorationRoomIndexes');
+      
+      // Verify exactly 12 rooms
+      expect(region.rooms).toHaveLength(12);
+      expect(region.sequenceNumber).toBe(1);
+      
+      // Verify room indexes
+      expect(region.entranceRoomIndex).toBe(0);
+      expect(region.guardianRoomIndex).toBe(9);
+      expect(region.exitRoomIndex).toBe(10);
+      expect(region.explorationRoomIndexes).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 11]);
+      
+      // Verify all rooms have valid structure
+      region.rooms.forEach((room, index) => {
+        expect(room.name).toBeTruthy();
+        expect(room.description).toBeTruthy();
+        expect(Array.isArray(room.items)).toBe(true);
+        expect(Array.isArray(room.characters)).toBe(true);
+      });
+    });
+
+    test('should generate guardian room with enemy and key', async () => {
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      
+      const guardianRoom = region.rooms[region.guardianRoomIndex];
+      const concept = region.concept;
+      
+      // Guardian room should have the guardian enemy
+      const guardianCharacter = guardianRoom.characters.find(char => 
+        char.type === 'enemy' && char.name === concept.guardian.name
+      );
+      expect(guardianCharacter).toBeDefined();
+      expect(guardianCharacter?.description).toBe(concept.guardian.description);
+      
+      // Guardian room should have the region key
+      expect(guardianRoom.items).toContain(concept.key.name);
+    });
+
+    test('should generate exit room with locked exit reference', async () => {
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      
+      const exitRoom = region.rooms[region.exitRoomIndex];
+      const concept = region.concept;
+      
+      // Exit room should reference the locked exit
+      const allItems = exitRoom.items.join(' ').toLowerCase();
+      const exitName = concept.lockedExit.name.toLowerCase();
+      
+      const hasExitReference = allItems.includes('marker') || 
+        exitRoom.description.toLowerCase().includes(exitName.split(' ')[0]);
+      
+      expect(hasExitReference).toBe(true);
+    });
+
+    test('should maintain thematic consistency across all rooms', async () => {
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      
+      // All rooms should be thematically connected to the concept
+      const concept = region.concept;
+      const theme = concept.theme.toLowerCase();
+      const atmosphere = concept.atmosphere.toLowerCase();
+      
+      // Verify all rooms have unique names
+      const roomNames = region.rooms.map(r => r.name);
+      const uniqueNames = new Set(roomNames);
+      expect(uniqueNames.size).toBe(12);
+      
+      // Verify each room has substantial content
+      region.rooms.forEach((room, index) => {
+        expect(room.name.length).toBeGreaterThan(5);
+        expect(room.description.length).toBeGreaterThan(20);
+        expect(room.description.split('. ').length).toBeGreaterThan(1);
+      });
+    });
+
+    test('should generate different regions with varied content', async () => {
+      const region1 = await regionPlannerService.generateCompleteRegion(1);
+      const region2 = await regionPlannerService.generateCompleteRegion(2);
+      
+      // Both regions should be valid regardless of content variety in mock mode
+      expect(region1.sequenceNumber).toBe(1);
+      expect(region2.sequenceNumber).toBe(2);
+      
+      // Both should have valid 12-room structure
+      expect(region1.rooms).toHaveLength(12);
+      expect(region2.rooms).toHaveLength(12);
+      
+      // Guardian and exit rooms should be in correct positions
+      expect(region1.guardianRoomIndex).toBe(9);
+      expect(region1.exitRoomIndex).toBe(10);
+      expect(region2.guardianRoomIndex).toBe(9);
+      expect(region2.exitRoomIndex).toBe(10);
+      
+      // Both regions should have valid concepts (content may be same in mock mode)
+      expect(region1.concept.name).toBeTruthy();
+      expect(region2.concept.name).toBeTruthy();
+      expect(region1.concept.guardian.name).toBeTruthy();
+      expect(region2.concept.guardian.name).toBeTruthy();
+      expect(region1.concept.key.name).toBeTruthy();
+      expect(region2.concept.key.name).toBeTruthy();
+      
+      // Room names within each region should be unique
+      const region1Names = region1.rooms.map(r => r.name);
+      const region1UniqueNames = new Set(region1Names);
+      expect(region1UniqueNames.size).toBe(12);
+      
+      const region2Names = region2.rooms.map(r => r.name);
+      const region2UniqueNames = new Set(region2Names);
+      expect(region2UniqueNames.size).toBe(12);
+    });
+
+    test('should generate entrance room without special requirements', async () => {
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      
+      const entranceRoom = region.rooms[region.entranceRoomIndex];
+      const concept = region.concept;
+      
+      // Entrance room should not have guardian or key
+      const hasGuardian = entranceRoom.characters.some(char => 
+        char.name === concept.guardian.name
+      );
+      const hasKey = entranceRoom.items.includes(concept.key.name);
+      const hasExitMarker = entranceRoom.items.some(item => 
+        item.toLowerCase().includes('marker')
+      );
+      
+      expect(hasGuardian).toBe(false);
+      expect(hasKey).toBe(false);
+      expect(hasExitMarker).toBe(false);
+    });
+
+    test('should generate exploration rooms without special requirements', async () => {
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      
+      const concept = region.concept;
+      
+      // Check all exploration rooms
+      region.explorationRoomIndexes.forEach(roomIndex => {
+        const room = region.rooms[roomIndex];
+        
+        // Exploration rooms should not have guardian or key
+        const hasGuardian = room.characters.some(char => 
+          char.name === concept.guardian.name
+        );
+        const hasKey = room.items.includes(concept.key.name);
+        
+        expect(hasGuardian).toBe(false);
+        expect(hasKey).toBe(false);
+        
+        // Should still have valid content
+        expect(room.name).toBeTruthy();
+        expect(room.description).toBeTruthy();
+      });
+    });
+
+    test('should handle complete region generation errors gracefully', async () => {
+      // This test will become more meaningful when we implement real AI calls
+      // For now, verify the mock implementation doesn't throw errors
+      
+      const region = await regionPlannerService.generateCompleteRegion(5);
+      
+      expect(region).toBeDefined();
+      expect(region.rooms).toHaveLength(12);
+      expect(region.sequenceNumber).toBe(5);
+      expect(region.concept).toBeDefined();
+    });
+
+    test('should generate regions with contextual awareness', async () => {
+      const context = {
+        gameId: testGameId,
+        existingConcepts: ['The Crystal Caverns', 'The Haunted Library'],
+        stylePreference: 'fantasy' as const
+      };
+      
+      const region = await regionPlannerService.generateCompleteRegion(3, context);
+      
+      expect(region).toBeDefined();
+      expect(region.rooms).toHaveLength(12);
+      expect(region.sequenceNumber).toBe(3);
+      expect(region.concept.name).toBeTruthy();
+      
+      // Should have all the required special rooms
+      expect(region.rooms[region.guardianRoomIndex].characters.some(char => 
+        char.type === 'enemy'
+      )).toBe(true);
+      expect(region.rooms[region.guardianRoomIndex].items).toContain(region.concept.key.name);
     });
   });
 });

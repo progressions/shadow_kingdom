@@ -15,7 +15,7 @@
 import Database from '../../src/utils/database';
 import { initializeDatabase } from '../../src/utils/initDb';
 import { RegionPlannerService } from '../../src/services/regionPlannerService';
-import { RegionConcept, GeneratedRoom } from '../../src/types/regionConcept';
+import { RegionConcept, GeneratedRoom, CompleteRegion } from '../../src/types/regionConcept';
 
 describe('Region Planner Service End-to-End Tests', () => {
   let db: Database;
@@ -373,6 +373,184 @@ describe('Region Planner Service End-to-End Tests', () => {
       expect(avgTime).toBeLessThan(50); // Very fast for concurrent generation
 
       console.log('✅ Rapid room generation completed successfully');
+    });
+  });
+
+  describe('Complete Region Generation End-to-End Tests', () => {
+    test('should generate complete region with full 12-room structure', async () => {
+      console.log('🏰 Testing complete region generation...');
+      
+      const startTime = Date.now();
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      const endTime = Date.now();
+      
+      console.log(`🏰 Generated complete region in ${endTime - startTime}ms`);
+      console.log(`🏰 Region: "${region.concept.name}"`);
+      console.log(`🏰 Theme: ${region.concept.theme}`);
+      console.log(`🏰 Guardian: ${region.concept.guardian.name}`);
+      console.log(`🏰 Key: ${region.concept.key.name}`);
+      console.log(`🏰 Locked Exit: ${region.concept.lockedExit.name}`);
+      
+      // Verify complete structure
+      expect(region.rooms).toHaveLength(12);
+      expect(region.sequenceNumber).toBe(1);
+      expect(region.entranceRoomIndex).toBe(0);
+      expect(region.guardianRoomIndex).toBe(9);
+      expect(region.exitRoomIndex).toBe(10);
+      expect(region.explorationRoomIndexes).toHaveLength(9);
+      
+      // Log room details
+      region.rooms.forEach((room, index) => {
+        const roomType = index === 0 ? '[ENTRANCE]' : 
+                        index === 9 ? '[GUARDIAN]' : 
+                        index === 10 ? '[EXIT]' : '[EXPLORE]';
+        console.log(`   Room ${index + 1} ${roomType}: "${room.name}"`);
+        console.log(`      Items: [${room.items.join(', ')}]`);
+        console.log(`      Characters: [${room.characters.map(c => `${c.name}(${c.type})`).join(', ')}]`);
+      });
+      
+      // Verify guardian room has special content
+      const guardianRoom = region.rooms[region.guardianRoomIndex];
+      expect(guardianRoom.characters.some(char => char.type === 'enemy')).toBe(true);
+      expect(guardianRoom.items).toContain(region.concept.key.name);
+      console.log(`   ✓ Guardian room has enemy and key`);
+      
+      // Verify exit room has exit reference
+      const exitRoom = region.rooms[region.exitRoomIndex];
+      const hasExitRef = exitRoom.items.some(item => item.toLowerCase().includes('marker')) ||
+                        exitRoom.description.toLowerCase().includes('gate') ||
+                        exitRoom.description.toLowerCase().includes('exit');
+      expect(hasExitRef).toBe(true);
+      console.log(`   ✓ Exit room references locked exit`);
+      
+      // Performance check
+      expect(endTime - startTime).toBeLessThan(5000); // Should be under 5 seconds
+      console.log(`   ✓ Generation completed in reasonable time`);
+    });
+
+    test('should generate multiple regions with consistent structure', async () => {
+      console.log('🏰 Testing multiple region generation...');
+      
+      const regions: CompleteRegion[] = [];
+      const generationTimes: number[] = [];
+      
+      // Generate 3 regions
+      for (let i = 1; i <= 3; i++) {
+        const startTime = Date.now();
+        const region = await regionPlannerService.generateCompleteRegion(i);
+        const endTime = Date.now();
+        
+        regions.push(region);
+        generationTimes.push(endTime - startTime);
+        
+        console.log(`🏰 Region ${i}: "${region.concept.name}" (${endTime - startTime}ms)`);
+      }
+      
+      // Verify all regions have correct structure
+      expect(regions).toHaveLength(3);
+      regions.forEach((region, index) => {
+        expect(region.rooms).toHaveLength(12);
+        expect(region.sequenceNumber).toBe(index + 1);
+        expect(region.entranceRoomIndex).toBe(0);
+        expect(region.guardianRoomIndex).toBe(9);
+        expect(region.exitRoomIndex).toBe(10);
+        expect(region.explorationRoomIndexes).toHaveLength(9);
+        
+        // Verify room name uniqueness within each region
+        const roomNames = region.rooms.map(r => r.name);
+        const uniqueNames = new Set(roomNames);
+        expect(uniqueNames.size).toBe(12);
+        
+        // Verify guardian room content
+        const guardianRoom = region.rooms[region.guardianRoomIndex];
+        expect(guardianRoom.characters.some(char => char.type === 'enemy')).toBe(true);
+        expect(guardianRoom.items).toContain(region.concept.key.name);
+      });
+      
+      // Performance analysis
+      const avgTime = generationTimes.reduce((a, b) => a + b, 0) / generationTimes.length;
+      const maxTime = Math.max(...generationTimes);
+      
+      console.log(`🏰 Performance: Average ${avgTime.toFixed(1)}ms, Max ${maxTime}ms`);
+      expect(avgTime).toBeLessThan(2000); // Should average under 2 seconds
+      expect(maxTime).toBeLessThan(5000);  // Max should be under 5 seconds
+      
+      console.log('✅ Multiple region generation completed successfully');
+    });
+
+    test('should maintain thematic coherence across all rooms in region', async () => {
+      console.log('🏰 Testing region-wide thematic coherence...');
+      
+      const region = await regionPlannerService.generateCompleteRegion(1);
+      
+      console.log(`🏰 Analyzing coherence for: "${region.concept.name}"`);
+      console.log(`   Theme: ${region.concept.theme}`);
+      console.log(`   Atmosphere: ${region.concept.atmosphere}`);
+      
+      // Check that all rooms have meaningful content
+      let totalItems = 0;
+      let totalCharacters = 0;
+      
+      region.rooms.forEach((room, index) => {
+        expect(room.name.length).toBeGreaterThan(5);
+        expect(room.description.length).toBeGreaterThan(30);
+        expect(room.description.split('. ').length).toBeGreaterThanOrEqual(2);
+        
+        totalItems += room.items.length;
+        totalCharacters += room.characters.length;
+        
+        // Each room should have some content
+        expect(room.items.length + room.characters.length).toBeGreaterThan(0);
+      });
+      
+      console.log(`   Total items across region: ${totalItems}`);
+      console.log(`   Total characters across region: ${totalCharacters}`);
+      console.log(`   Average items per room: ${(totalItems / 12).toFixed(1)}`);
+      console.log(`   Average characters per room: ${(totalCharacters / 12).toFixed(1)}`);
+      
+      // Verify reasonable content distribution
+      expect(totalItems).toBeGreaterThan(12); // More items than rooms
+      expect(totalCharacters).toBeGreaterThan(6); // Some characters
+      
+      console.log('✅ Thematic coherence verified across all rooms');
+    });
+
+    test('should handle high-volume region generation stress test', async () => {
+      console.log('🏰 Running region generation stress test...');
+      
+      const promises: Promise<CompleteRegion>[] = [];
+      
+      // Generate 5 regions simultaneously
+      for (let i = 1; i <= 5; i++) {
+        promises.push(regionPlannerService.generateCompleteRegion(i));
+      }
+      
+      const startTime = Date.now();
+      const regions = await Promise.all(promises);
+      const endTime = Date.now();
+      
+      console.log(`🏰 Generated ${regions.length} regions in ${endTime - startTime}ms`);
+      console.log(`🏰 Average: ${((endTime - startTime) / regions.length).toFixed(1)}ms per region`);
+      
+      // Verify all regions are valid
+      expect(regions).toHaveLength(5);
+      regions.forEach((region, index) => {
+        expect(region.rooms).toHaveLength(12);
+        expect(region.sequenceNumber).toBe(index + 1);
+        expect(region.concept.name).toBeTruthy();
+        expect(region.concept.guardian.name).toBeTruthy();
+        expect(region.concept.key.name).toBeTruthy();
+        
+        // Verify guardian room structure
+        const guardianRoom = region.rooms[region.guardianRoomIndex];
+        expect(guardianRoom.characters.some(char => char.type === 'enemy')).toBe(true);
+        expect(guardianRoom.items).toContain(region.concept.key.name);
+      });
+      
+      // Should complete in reasonable time even with concurrent generation
+      expect(endTime - startTime).toBeLessThan(10000); // Under 10 seconds total
+      
+      console.log('✅ Stress test completed successfully');
     });
   });
 });

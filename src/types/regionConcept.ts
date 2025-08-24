@@ -45,3 +45,13 @@ export interface RoomGenerationContext {
   includeGuardian?: boolean;
   includeLockedExit?: boolean;
 }
+
+export interface CompleteRegion {
+  concept: RegionConcept;
+  rooms: GeneratedRoom[]; // Array of 12 rooms
+  sequenceNumber: number; // 1, 2, 3, etc.
+  entranceRoomIndex: number; // Index 0 (Room 1)
+  guardianRoomIndex: number; // Index 9 (Room 10) 
+  exitRoomIndex: number; // Index 10 (Room 11)
+  explorationRoomIndexes: number[]; // Indexes [1,2,3,4,5,6,7,8,11] (Rooms 2-9,12)
+}
