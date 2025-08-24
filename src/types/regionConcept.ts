@@ -46,6 +46,13 @@ export interface RoomGenerationContext {
   includeLockedExit?: boolean;
 }
 
+export interface RoomConnection {
+  fromRoomId: number;
+  toRoomId: number;
+  direction: 'north' | 'south' | 'east' | 'west';
+  name: string; // "through the crystal archway"
+}
+
 export interface CompleteRegion {
   concept: RegionConcept;
   rooms: GeneratedRoom[]; // Array of 12 rooms
