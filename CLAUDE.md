@@ -196,3 +196,4 @@ npm run dev -- --cmd "examine iron sword"
 - Combat mechanics
 - Inventory and equipment
 - Advanced quest system
+- Remember that in SQLite, boolean values are stored as 0 for false and 1 for true.

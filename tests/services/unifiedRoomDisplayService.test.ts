@@ -308,7 +308,8 @@ describe('UnifiedRoomDisplayService', () => {
 
       // Should still display room and not throw
       expect(mockOutput.displayRoomCalls).toHaveLength(1);
-      expect(consoleSpy).toHaveBeenCalledWith('Error triggering background generation:', expect.any(Error));
+      // With the new fire-and-forget approach, we expect the specific error message
+      expect(consoleSpy).toHaveBeenCalledWith('Background pre-generation failed:', expect.any(Error));
       
       consoleSpy.mockRestore();
     });

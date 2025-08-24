@@ -45,6 +45,26 @@ export class BackgroundGenerationService {
         return;
       }
 
+      // Get current room's region info
+      const currentRoom = await this.db.get<any>(`
+        SELECT r.*, reg.name as region_name, reg.type as region_type
+        FROM rooms r
+        JOIN regions reg ON r.region_id = reg.id
+        WHERE r.id = ?
+      `, [roomId]);
+
+      if (!currentRoom) {
+        return; // Room not found
+      }
+
+      // Check if we've already generated the next region for this region
+      if (await this.hasGeneratedNextRegion(currentRoom.region_id, gameId)) {
+        if (this.isDebugEnabled()) {
+          console.log(`🚫 Skipping region generation - next region already generated for region ${currentRoom.region_id}`);
+        }
+        return;
+      }
+
       // Find unfilled connections that aren't already being processed
       const unfilledConnections = await this.db.all<UnfilledConnection>(`
         SELECT c.*, r.name as from_room_name 
@@ -72,7 +92,9 @@ export class BackgroundGenerationService {
       }
 
       // Fire and forget generation for each connection
-      const promises = connectionsToProcess.map(connection => this.generateConnectionWithProcessingFlag(connection));
+      const promises = connectionsToProcess.map(connection => 
+        this.generateConnectionWithProcessingFlag(connection, currentRoom.region_id)
+      );
       
       // In production mode, don't await - let them run in background
       if (this.options.disableBackgroundGeneration) {
@@ -97,7 +119,7 @@ export class BackgroundGenerationService {
   /**
    * Generate a room for a connection using processing flag to prevent duplicates
    */
-  private async generateConnectionWithProcessingFlag(connection: UnfilledConnection): Promise<void> {
+  private async generateConnectionWithProcessingFlag(connection: UnfilledConnection, sourceRegionId?: number): Promise<void> {
     try {
       // Mark as processing to prevent duplicates
       const updateResult = await this.db.run(
@@ -459,6 +481,36 @@ export class BackgroundGenerationService {
   async waitForBackgroundOperations(): Promise<void> {
     if (this.backgroundPromises.size > 0) {
       await Promise.all(Array.from(this.backgroundPromises));
+    }
+  }
+
+  /**
+   * Check if we've already generated a next region for the given region
+   */
+  private async hasGeneratedNextRegion(regionId: number, gameId: number): Promise<boolean> {
+    try {
+      // Count how many regions exist after the current one (chronologically)
+      const regionCreationTime = await this.db.get<{created_at: string}>(`
+        SELECT created_at FROM regions WHERE id = ?
+      `, [regionId]);
+
+      if (!regionCreationTime) {
+        return false;
+      }
+
+      // Count newer regions
+      const newerRegionsCount = await this.db.get<{count: number}>(`
+        SELECT COUNT(*) as count FROM regions 
+        WHERE game_id = ? AND created_at > ?
+      `, [gameId, regionCreationTime.created_at]);
+
+      // If there are newer regions, we've already generated the next region
+      return (newerRegionsCount?.count || 0) > 0;
+    } catch (error) {
+      if (this.isDebugEnabled()) {
+        console.error('Error checking if next region generated:', error);
+      }
+      return false;
     }
   }
 }
