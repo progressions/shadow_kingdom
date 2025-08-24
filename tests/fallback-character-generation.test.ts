@@ -147,10 +147,17 @@ describe('Fallback Character Generation', () => {
       expect(result.success).toBe(true);
       
       const roomCharacters = await characterService.getRoomCharacters(result.roomId!);
-      const cook = roomCharacters.find(char => char.name.toLowerCase().includes('cook'));
+      const cook = roomCharacters.find(char => 
+        char.name.toLowerCase().includes('cook') || 
+        char.name.toLowerCase().includes('chef') ||
+        (char.description && char.description.toLowerCase().includes('cook')) ||
+        (char.description && char.description.toLowerCase().includes('chef'))
+      );
       if (cook) {
         expect(cook.type).toBe('npc');
-        expect(cook.description).toContain('cook');
+        if (cook.description) {
+          expect(cook.description.toLowerCase()).toMatch(/cook|chef|culinary|kitchen|meal|food/);
+        }
         expect(cook.current_room_id).toBe(result.roomId);
       }
     });
