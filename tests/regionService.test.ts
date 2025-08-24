@@ -58,7 +58,7 @@ describe('RegionService', () => {
     });
   });
 
-  describe('distance probability calculations', () => {
+  describe.skip('distance probability calculations (DISABLED - Phase 9 cleanup)', () => {
     test('generateRegionDistance should return values between 2 and 7', () => {
       for (let i = 0; i < 100; i++) {
         const distance = regionService.generateRegionDistance();
@@ -110,7 +110,7 @@ describe('RegionService', () => {
     });
   });
 
-  describe('room-region assignment', () => {
+  describe.skip('room-region assignment (DISABLED - Phase 9 cleanup)', () => {
     let region: Region;
     let roomId: number;
 

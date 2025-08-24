@@ -10,7 +10,7 @@ export interface RegionServiceOptions {
 
 /**
  * RegionService manages region-based world generation and operations.
- * Implements distance-based probability for region transitions and AI context.
+ * Handles region CRUD operations and region instantiation for generated regions.
  */
 export class RegionService {
   private db: Database;
@@ -101,48 +101,8 @@ export class RegionService {
     );
   }
 
-  /**
-   * Generate a random region distance (2-7)
-   */
-  generateRegionDistance(): number {
-    return Math.floor(Math.random() * 6) + 2; // 2-7
-  }
 
-  /**
-   * Determine if a new region should be created based on current distance
-   * Uses distance-based probability: further from center = higher chance
-   */
-  async shouldCreateNewRegion(currentDistance: number, currentRegionId?: number): Promise<boolean> {
-    // If we have a current region, check its size first
-    if (currentRegionId) {
-      const regionSize = await this.getRegionRoomCount(currentRegionId);
-      const maxRegionSize = parseInt(process.env.MAX_REGION_SIZE || '10'); // Default 10 rooms max
-      
-      // Force new region creation if current region is at/over the limit
-      if (regionSize >= maxRegionSize) {
-        if (this.options.enableDebugLogging) {
-          console.log(`🚧 Region ${currentRegionId} has ${regionSize} rooms (limit: ${maxRegionSize}). Forcing new region.`);
-        }
-        return true;
-      }
-    }
-    
-    // Otherwise use normal probability-based logic
-    const probability = this.getNewRegionProbability(currentDistance);
-    return Math.random() < probability;
-  }
 
-  /**
-   * Calculate probability of creating new region based on distance
-   * Configurable via environment: base 5% + 8% per distance, capped at 60%
-   * Lower thresholds promote region consolidation over fragmentation
-   */
-  getNewRegionProbability(currentDistance: number): number {
-    const baseProbability = parseFloat(process.env.REGION_BASE_PROBABILITY || '0.05'); // 5% default (down from 15%)
-    const distanceMultiplier = parseFloat(process.env.REGION_DISTANCE_MULTIPLIER || '0.08'); // 8% per distance (down from 12%)
-    const maxProbability = parseFloat(process.env.REGION_MAX_PROBABILITY || '0.6'); // 60% cap (down from 80%)
-    return Math.min(maxProbability, baseProbability + (currentDistance * distanceMultiplier));
-  }
 
   /**
    * Get the number of rooms currently in a region
@@ -155,19 +115,6 @@ export class RegionService {
     return result?.count || 0;
   }
 
-  /**
-   * Assign a room to a region with specified distance
-   */
-  async assignRoomToRegion(roomId: number, regionId: number, distance: number): Promise<void> {
-    await this.db.run(
-      'UPDATE rooms SET region_id = ?, region_distance = ? WHERE id = ?',
-      [regionId, distance, roomId]
-    );
-
-    if (this.options.enableDebugLogging) {
-      console.log(`Assigned room ${roomId} to region ${regionId} at distance ${distance}`);
-    }
-  }
 
   /**
    * Get all rooms in a region, ordered by distance from center
