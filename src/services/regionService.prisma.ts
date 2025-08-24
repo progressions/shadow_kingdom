@@ -64,6 +64,22 @@ export class RegionServicePrisma {
   }
 
   /**
+   * Get all existing region names for a game (for AI prompting)
+   */
+  async getExistingRegionNames(gameId: number): Promise<string[]> {
+    const regions = await this.prisma.region.findMany({
+      where: {
+        game_id: gameId,
+        name: { not: null }
+      },
+      select: {
+        name: true
+      }
+    });
+    return regions.map(r => r.name!).filter(Boolean);
+  }
+
+  /**
    * Get region by ID
    */
   async getRegion(regionId: number): Promise<Region | null> {
