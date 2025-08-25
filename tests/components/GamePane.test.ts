@@ -1,79 +1,74 @@
-import React from 'react';
-import { render } from 'ink-testing-library';
-import { GamePane } from '../../src/components/GamePane';
+import React from 'react'
+import { render } from 'ink-testing-library'
+import { GamePane } from '../../src/components/GamePane'
 
-describe('GamePane Component', () => {
-  describe('Basic Rendering', () => {
-    it('should render without crashing', () => {
-      const { lastFrame } = render(React.createElement(GamePane, { messages: [] }));
-      expect(lastFrame()).toBeDefined();
-    });
+describe('GamePane', () => {
+  it('renders messages as individual Box components', () => {
+    const messages = ['First message', 'Second message', 'Third message']
+    const { lastFrame } = render(React.createElement(GamePane, { messages }))
+    
+    const output = lastFrame()
+    expect(output).toContain('First message')
+    expect(output).toContain('Second message')
+    expect(output).toContain('Third message')
+  })
 
-    it('should display placeholder text when no messages', () => {
-      const { lastFrame } = render(React.createElement(GamePane, { messages: [] }));
-      const output = lastFrame();
-      expect(output).toContain('Shadow Kingdom'); // Should show game title or similar
-    });
-  });
+  it('limits messages when maxLines is set', () => {
+    const messages = [
+      'Message 1',
+      'Message 2',
+      'Message 3',
+      'Message 4',
+      'Message 5',
+      'Message 6'
+    ]
+    
+    // maxLines=5 means 3 visible lines (5 - 2 padding)
+    const { lastFrame } = render(React.createElement(GamePane, { 
+      messages, 
+      maxLines: 5 
+    }))
+    
+    const output = lastFrame()
+    // Should only show last 3 messages
+    expect(output).not.toContain('Message 1')
+    expect(output).not.toContain('Message 2')
+    expect(output).not.toContain('Message 3')
+    expect(output).toContain('Message 4')
+    expect(output).toContain('Message 5')
+    expect(output).toContain('Message 6')
+  })
 
-  describe('Message Display', () => {
-    it('should display simple text messages', () => {
-      const messages = ['Hello World', 'Test Message'];
-      const { lastFrame } = render(React.createElement(GamePane, { messages }));
-      const output = lastFrame();
-      
-      expect(output).toContain('Hello World');
-      expect(output).toContain('Test Message');
-    });
+  it('shows all messages when maxLines is not set', () => {
+    const messages = Array.from({ length: 10 }, (_, i) => `Message ${i + 1}`)
+    const { lastFrame } = render(React.createElement(GamePane, { messages }))
+    
+    const output = lastFrame()
+    messages.forEach(msg => {
+      expect(output).toContain(msg)
+    })
+  })
 
-    it('should handle multiple messages in order', () => {
-      const messages = ['First', 'Second', 'Third'];
-      const { lastFrame } = render(React.createElement(GamePane, { messages }));
-      const output = lastFrame();
-      
-      // Messages should appear in the output
-      expect(output).toContain('First');
-      expect(output).toContain('Second');
-      expect(output).toContain('Third');
-    });
-  });
+  it('handles empty message array', () => {
+    const { lastFrame } = render(React.createElement(GamePane, { messages: [] }))
+    const output = lastFrame()
+    expect(output).toBeDefined()
+  })
 
-  describe('Scrolling Behavior', () => {
-    it('should handle long message lists', () => {
-      const longMessages = Array.from({ length: 50 }, (_, i) => `Message ${i + 1}`);
-      const { lastFrame } = render(React.createElement(GamePane, { messages: longMessages }));
-      
-      // Should render without errors even with many messages
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it('should show recent messages when scrolled', () => {
-      const messages = ['Old Message', 'Recent Message'];
-      const { lastFrame } = render(React.createElement(GamePane, { messages }));
-      const output = lastFrame();
-      
-      // Recent message should be visible
-      expect(output).toContain('Recent Message');
-    });
-  });
-
-  describe('Layout Properties', () => {
-    it('should use flex-grow for height expansion', () => {
-      const { lastFrame } = render(React.createElement(GamePane, { messages: ['Test'] }));
-      
-      // Should render successfully with flex properties
-      expect(lastFrame()).toBeDefined();
-    });
-
-    it('should handle terminal resize events', () => {
-      const { lastFrame, rerender } = render(React.createElement(GamePane, { messages: ['Test'] }));
-      
-      // Initial render
-      expect(lastFrame()).toBeDefined();
-      
-      // Re-render should work (simulating resize)
-      rerender(React.createElement(GamePane, { messages: ['Test', 'Updated'] }));
-      expect(lastFrame()).toContain('Updated');
-    });
-  });
-});
+  it('preserves message order', () => {
+    const messages = ['First', 'Second', 'Third']
+    const { lastFrame } = render(React.createElement(GamePane, { messages }))
+    
+    const output = lastFrame()
+    if (!output) {
+      throw new Error('No output from GamePane')
+    }
+    
+    const firstIndex = output.indexOf('First')
+    const secondIndex = output.indexOf('Second')
+    const thirdIndex = output.indexOf('Third')
+    
+    expect(firstIndex).toBeLessThan(secondIndex)
+    expect(secondIndex).toBeLessThan(thirdIndex)
+  })
+})

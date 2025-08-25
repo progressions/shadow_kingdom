@@ -19,11 +19,13 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines }) => {
     return messages;
   }, [messages, maxLines]);
   
-  const text = displayMessages.join('\n');
-  
   return (
-    <Box padding={1}>
-      <Text>{text}</Text>
+    <Box flexDirection="column" padding={1}>
+      {displayMessages.map((message, index) => (
+        <Box key={`msg-${index}-${message.substring(0, 10)}`}>
+          <Text>{message}</Text>
+        </Box>
+      ))}
     </Box>
   )
 }
