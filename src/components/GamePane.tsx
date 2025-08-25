@@ -27,15 +27,29 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) =
       
       <Box flexDirection="column" marginTop={1}>
         {displayMessages.length === 0 ? (
-          <Text color="gray">
-            Welcome to Shadow Kingdom! Type a command to begin...
-          </Text>
-        ) : (
-          displayMessages.map((message, index) => (
-            <Text key={index}>
-              {`> ${message}`}
+          <Box flexDirection="column">
+            <Text color="gray">
+              Welcome to Shadow Kingdom! Type a command to begin...
             </Text>
-          ))
+            <Box marginTop={1}>
+              <Text color="dim">
+                Try: help, hello, look, status
+              </Text>
+            </Box>
+          </Box>
+        ) : (
+          displayMessages.map((message, index) => {
+            const isCommand = message.startsWith('>')
+            
+            return (
+              <Text 
+                key={index}
+                color={isCommand ? "green" : "white"}
+              >
+                {isCommand ? message : `  ${message}`}
+              </Text>
+            )
+          })
         )}
       </Box>
     </Box>

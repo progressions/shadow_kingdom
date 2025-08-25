@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Box, useApp, useStdout } from 'ink'
+import { Box, useApp, useStdout, useInput } from 'ink'
 import { GamePane } from './GamePane'
 import { InputBar } from './InputBar'
 import { StatusPane } from './StatusPane'
@@ -10,6 +10,7 @@ export const InkTUI: React.FC = () => {
   const [terminalSize, setTerminalSize] = useState({ width: 80, height: 24 })
   const [statusContent, setStatusContent] = useState("Shadow Kingdom v1.0 - Ready (Use arrow keys for history)")
   const { stdout } = useStdout()
+  const { exit } = useApp()
 
   // Handle terminal resize events
   useEffect(() => {
@@ -34,17 +35,49 @@ export const InkTUI: React.FC = () => {
     }
   }, [stdout])
 
+  // Global keyboard shortcuts
+  useInput((input, key) => {
+    // Ctrl+C - Graceful exit
+    if (key.ctrl && input === 'c') {
+      exit()
+      return
+    }
+
+    // Ctrl+H - Help system
+    if (key.ctrl && input === 'h') {
+      setMessages(prev => [...prev, '> help'])
+      setMessages(prev => [...prev, 'Available commands: hello, look, help, status, info, reset, quit'])
+      setMessages(prev => [...prev, 'Global shortcuts: Ctrl+C (exit), Ctrl+H (help)'])
+      return
+    }
+  })
+
   const handleSubmit = (command: string) => {
-    // Echo the command back to the game pane
-    setMessages(prev => [...prev, command])
+    // Echo the command back to the game pane with ">" prefix
+    setMessages(prev => [...prev, `> ${command}`])
     
-    // Example: Update status content to demonstrate multi-line capability
+    // Handle game commands
+    if (command.toLowerCase() === 'hello') {
+      setMessages(prev => [...prev, 'Hello there, adventurer!'])
+    } else if (command.toLowerCase() === 'look') {
+      setMessages(prev => [...prev, 'You are standing in a dimly lit chamber with stone walls.'])
+    } else if (command.toLowerCase() === 'help') {
+      setMessages(prev => [...prev, 'Available commands: hello, look, help, status, info, reset, quit'])
+      setMessages(prev => [...prev, 'Global shortcuts: Ctrl+C (exit), Ctrl+H (help)'])
+    } else if (command.toLowerCase() === 'quit') {
+      setMessages(prev => [...prev, 'Goodbye, adventurer!'])
+      setTimeout(() => exit(), 1000) // Give time to see the message
+    } else if (command.trim() && !['status', 'info', 'reset'].includes(command.toLowerCase())) {
+      setMessages(prev => [...prev, `Unknown command: ${command}`])
+    }
+
+    // Handle status content updates
     if (command === 'status') {
       setStatusContent("Shadow Kingdom v1.0\nLocation: Starting Room\nHealth: 100/100")
     } else if (command === 'info') {
       setStatusContent("Shadow Kingdom v1.0\nPlayer: Adventure Seeker\nLocation: Entrance Hall\nItems: Iron Sword, Health Potion\nGold: 50")
     } else if (command === 'reset') {
-      setStatusContent("Shadow Kingdom v1.0 - Ready")
+      setStatusContent("Shadow Kingdom v1.0 - Ready (Use arrow keys for history)")
     }
   }
 
