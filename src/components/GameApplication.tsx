@@ -133,12 +133,14 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       if (currentRoom && navigationEngine) {
         try {
           const roomDescription = await navigationEngine.generateRoomDescription(currentRoom);
+          // Split room description into lines for proper display
+          const roomLines = roomDescription.split('\n');
           setMessages([
             '=== Shadow Kingdom ===',
             '',
             'Welcome to Shadow Kingdom! Type a command to begin...',
             '',
-            roomDescription
+            ...roomLines
           ]);
 
           // Get navigation hints
@@ -147,12 +149,14 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         } catch (error) {
           // Fallback room description
           const fallbackDescription = `**${currentRoom.name}**\n\n${currentRoom.description}`;
+          // Split fallback description into lines for proper display
+          const fallbackLines = fallbackDescription.split('\n');
           setMessages([
             '=== Shadow Kingdom ===',
             '',
             'Welcome to Shadow Kingdom! Type a command to begin...',
             '',
-            fallbackDescription
+            ...fallbackLines
           ]);
         }
       }
@@ -188,7 +192,9 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       const result = await commandRouter.executeCommand(command);
       
       if (result.success) {
-        setMessages(prev => [...prev, result.response]);
+        // Split response into lines for proper display
+        const responseLines = result.response.split('\n');
+        setMessages(prev => [...prev, ...responseLines]);
         
         // Handle quit command - exit immediately for programmatic mode
         if (result.metadata?.shouldExit) {
@@ -201,7 +207,9 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
           await updateGameState();
         }
       } else {
-        setMessages(prev => [...prev, result.response]);
+        // Split error response into lines for proper display
+        const errorLines = result.response.split('\n');
+        setMessages(prev => [...prev, ...errorLines]);
       }
 
       // Exit after programmatic command execution
@@ -225,7 +233,9 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       const result = await commandRouter.executeCommand(command);
       
       if (result.success) {
-        setMessages(prev => [...prev, result.response]);
+        // Split response into lines for proper display
+        const responseLines = result.response.split('\n');
+        setMessages(prev => [...prev, ...responseLines]);
         
         // Handle quit command
         if (result.metadata?.shouldExit) {
@@ -240,7 +250,9 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
           await updateGameState();
         }
       } else {
-        setMessages(prev => [...prev, result.response]);
+        // Split error response into lines for proper display
+        const errorLines = result.response.split('\n');
+        setMessages(prev => [...prev, ...errorLines]);
       }
 
     } catch (error) {
