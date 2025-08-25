@@ -6,37 +6,20 @@ interface GamePaneProps {
   maxLines?: number
 }
 
-export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) => {
-  // Simple display of messages - no header, no complex logic
-  const displayMessages = useMemo(() => {
-    const availableLines = Math.max(3, maxLines - 2);
-    if (messages.length <= availableLines) {
-      return messages;
-    }
-    return messages.slice(-availableLines);
-  }, [messages, maxLines])
+export const GamePane: React.FC<GamePaneProps> = ({ messages }) => {
+  // Just render ALL messages - let terminal handle scrolling naturally
+  const fullText = useMemo(() => {
+    return messages.map(message => {
+      const isCommand = message.startsWith('>');
+      const isHeader = message.includes('=== Shadow Kingdom ===');
+      // Add indentation for non-command/header lines
+      return (isCommand || isHeader) ? message : `  ${message}`;
+    }).join('\n');
+  }, [messages]);
 
   return (
-    <Box 
-      flexDirection="column" 
-      width="100%"
-      padding={1}
-    >
-      {displayMessages.map((message, index) => {
-        const isCommand = message.startsWith('>');
-        const isHeader = message.includes('=== Shadow Kingdom ===');
-        
-        return (
-          <Text 
-            key={index}
-            color={isHeader ? "cyan" : (isCommand ? "green" : "white")}
-            bold={isHeader}
-            wrap="wrap"
-          >
-            {isCommand || isHeader ? message : `  ${message}`}
-          </Text>
-        );
-      })}
+    <Box padding={1} width="100%">
+      <Text>{fullText}</Text>
     </Box>
   )
 }
