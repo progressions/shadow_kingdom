@@ -24,6 +24,7 @@ model Game {
   regions               Region[]
   connections           Connection[]
   characters            Character[]
+  items                 Item[]
   
   // Current room relation
   currentRoom           Room?        @relation("GameCurrentRoom", fields: [currentRoomId], references: [id])
@@ -53,6 +54,9 @@ model Room {
   
   // Character relations
   characters            Character[]
+  
+  // Item relations
+  items                 Item[]
   
   // Current room for games
   currentGameRooms      Game[]       @relation("GameCurrentRoom")
@@ -132,4 +136,28 @@ model Character {
   @@index([roomId])
   @@index([gameId, roomId])
   @@map("characters")
+}
+
+model Item {
+  id                    Int          @id @default(autoincrement())
+  gameId                Int          @map("game_id")
+  roomId                Int?         @map("room_id") // Null for loot items not yet placed
+  name                  String
+  description           String
+  extendedDescription   String?      @map("extended_description")
+  type                  String       // "weapon", "armor", "key", "consumable", etc.
+  hidden                Boolean      @default(false)
+  value                 Int?         // For consumables or general value
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  game                  Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  room                  Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  @@index([gameId])
+  @@index([roomId])
+  @@index([gameId, roomId])
+  @@index([type])
+  @@map("items")
 }

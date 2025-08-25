@@ -187,9 +187,47 @@ export class YamlWorldService {
 
         await prisma.connection.createMany({ data: connectionData });
 
-        // TODO: Create items and characters in Task 4
+        // Create items
         let itemCount = 0;
+        if (worldDef.items && worldDef.items.length > 0) {
+          const itemData: DatabaseItemData[] = worldDef.items.map(item => ({
+            gameId: game.id,
+            roomId: item.room_id ? roomIdMap.get(item.room_id) : undefined,
+            name: item.name,
+            description: item.description,
+            extendedDescription: item.extended_description,
+            type: item.type,
+            hidden: item.hidden || false,
+            value: item.value,
+          }));
+
+          await prisma.item.createMany({ data: itemData });
+          itemCount = worldDef.items.length;
+        }
+
+        // Create characters
         let characterCount = 0;
+        if (worldDef.characters && worldDef.characters.length > 0) {
+          const characterData: DatabaseCharacterData[] = worldDef.characters.map(character => ({
+            gameId: game.id,
+            roomId: roomIdMap.get(character.room_id)!,
+            name: character.name,
+            description: character.description,
+            sentiment: character.type === 'hostile' ? 'hostile' : 
+                      character.type === 'friendly' ? 'friendly' : 'neutral',
+            health: character.health || 20,
+            maxHealth: character.health || 20,
+            attack: character.attack || 5,
+            defense: character.defense || 1,
+            alive: true,
+            dialogueFriendly: character.dialogue?.friendly,
+            dialogueHostile: character.dialogue?.hostile,
+            dialogueDefeated: character.dialogue?.defeated,
+          }));
+
+          await prisma.character.createMany({ data: characterData });
+          characterCount = worldDef.characters.length;
+        }
 
         return {
           gameId: game.id,

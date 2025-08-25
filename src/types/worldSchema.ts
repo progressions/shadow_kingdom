@@ -39,12 +39,7 @@ export const ItemDefinitionSchema = z.object({
   extended_description: z.string().optional(),
   type: z.string().min(1, 'Item type is required'),
   hidden: z.boolean().optional().default(false),
-  examine_hint: z.string().optional(),
-  damage: z.number().optional(),
-  defense: z.number().optional(),
   value: z.number().optional(),
-  weight: z.number().optional().default(1),
-  effect: z.string().optional(),
 });
 
 export const DialogueSchema = z.object({
@@ -63,9 +58,7 @@ export const CharacterDefinitionSchema = z.object({
   health: z.number().optional(),
   attack: z.number().optional(),
   defense: z.number().optional(),
-  behavior: z.string().optional(),
   dialogue: DialogueSchema.optional(),
-  loot: z.array(ItemDefinitionSchema).optional(),
 });
 
 export const WorldDefinitionSchema = z.object({
@@ -150,25 +143,23 @@ export interface DatabaseItemData {
   extendedDescription?: string;
   type: string;
   hidden: boolean;
-  examineHint?: string;
-  damage?: number;
-  defense?: number;
   value?: number;
-  weight: number;
 }
 
 export interface DatabaseCharacterData {
   gameId: number;
-  roomId?: number;
+  roomId: number;
   name: string;
   description: string;
-  type: string;
-  health?: number;
-  attack?: number;
-  defense?: number;
-  behavior?: string;
-  dialogue?: string; // JSON string
-  loot?: string; // JSON string of ItemDefinition[]
+  sentiment: string;
+  health: number;
+  maxHealth: number;
+  attack: number;
+  defense: number;
+  alive: boolean;
+  dialogueFriendly?: string;
+  dialogueHostile?: string;
+  dialogueDefeated?: string;
 }
 
 // Constants for validation

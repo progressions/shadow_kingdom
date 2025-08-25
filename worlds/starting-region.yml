@@ -291,8 +291,7 @@ items:
     description: "A heavy iron key with intricate dragon engravings covering its bow and shaft."
     extended_description: "This key is surprisingly well-preserved despite its apparent age. Dragon motifs are carved into its ornate bow, and runic inscriptions run along the shaft that seem to shimmer in the light. The metal feels warm to the touch, as if imbued with ancient magic."
     type: "key"
-    hidden: true  # Player must search/examine to find it
-    examine_hint: "The desk drawer appears to be locked, but you notice it's slightly ajar and something metallic glints within."
+    hidden: true
     
   - id: "rusty_sword"
     room_id: "armory"
@@ -300,7 +299,7 @@ items:
     description: "A well-used iron sword with surface rust but a still-sharp blade."
     extended_description: "Despite the rust covering its surface, this sword has been well-maintained and the edge remains keen. The grip is wrapped in cracked leather, and the pommel bears the dragon sigil of the castle. It feels balanced and ready for combat."
     type: "weapon"
-    damage: 8
+    value: 8
     
   - id: "leather_armor"
     room_id: "armory"
@@ -308,7 +307,7 @@ items:
     description: "Flexible leather armor reinforced with iron studs along vital areas."
     extended_description: "This armor combines protection with mobility, featuring iron studs placed strategically over the chest and shoulders. The leather is supple despite its age, and the interior is lined with soft fabric. It bears the craftsmanship of the castle's former armorers."
     type: "armor"
-    defense: 3
+    value: 3
 
 # Characters in the world
 characters:
@@ -320,15 +319,6 @@ characters:
     health: 25
     attack: 6
     defense: 2
-    behavior: "guards_study"
     dialogue:
       hostile: "You seek the ancient key? None shall disturb the sacred knowledge and secrets of this study! Begone, intruder!"
       defeated: "The... secrets... are... yours... now... guard them... well..."
-    loot:
-      - id: "guardian_essence"
-        name: "Guardian's Essence"
-        description: "A glowing orb that pulses with spectral energy."
-        extended_description: "This ethereal sphere contains the concentrated essence of the castle's guardian spirit. It emanates a warm, protective aura and seems to whisper ancient words of warding. The energy within could be quite valuable."
-        type: "consumable"
-        effect: "restores_health"
-        value: 15
