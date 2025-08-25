@@ -46,19 +46,8 @@ async function testGameManagementPrisma() {
       }
     }
     
-    // Test 3: Check if game name exists
-    console.log('3. Testing gameNameExists()...');
-    const existsResult = await gameService.gameNameExists('NonExistentGame123');
-    console.log(`   🔍 NonExistentGame123 exists: ${existsResult}`);
-    
-    if (games.length > 0) {
-      const existsResult2 = await gameService.gameNameExists(games[0].name);
-      console.log(`   🔍 ${games[0].name} exists: ${existsResult2}`);
-    }
-    console.log('   ✅ gameNameExists() working\n');
-    
-    // Test 4: Get game statistics
-    console.log('4. Testing getGameStats()...');
+    // Test 3: Get game statistics
+    console.log('3. Testing getGameStats()...');
     const stats = await gameService.getGameStats();
     console.log(`   📈 Total games: ${stats.totalGames}`);
     console.log(`   📅 Recent games: ${stats.recentGames}`);

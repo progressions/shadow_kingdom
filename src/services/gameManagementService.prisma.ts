@@ -433,24 +433,6 @@ export class GameManagementServicePrisma {
   }
 
   /**
-   * Check if a game name exists
-   */
-  async gameNameExists(name: string): Promise<boolean> {
-    try {
-      const game = await this.prisma.game.findUnique({
-        where: { name: name.trim() },
-        select: { id: true }
-      });
-      return !!game;
-    } catch (error) {
-      if (this.isDebugEnabled()) {
-        console.error('Failed to check game name:', error);
-      }
-      return false;
-    }
-  }
-
-  /**
    * Format timestamp for display
    */
   formatTimestamp(timestamp: string): string {
