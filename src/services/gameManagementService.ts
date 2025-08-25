@@ -1,4 +1,6 @@
 import Database from '../utils/database';
+import { PrismaService } from './prismaService';
+import { PrismaClient } from '../generated/prisma';
 import { initializeDatabase, createGameWithRooms, createGameAutomatic } from '../utils/initDb';
 import { Game } from './gameStateManager';
 import { TUIInterface } from '../ui/TUIInterface';
@@ -22,12 +24,16 @@ export interface GameListItem {
  */
 export class GameManagementService {
   private options: GameManagementOptions;
+  private prisma: PrismaClient;
+  private db: Database;
 
   constructor(
-    private db: Database,
+    db: Database,
     private tui: TUIInterface,
     options: GameManagementOptions = {}
   ) {
+    this.db = db; // Keep for methods that still need it
+    this.prisma = PrismaService.getInstance().getClient();
     this.options = {
       enableDebugLogging: false,
       ...options
@@ -59,10 +65,23 @@ export class GameManagementService {
    */
   async getAllGames(): Promise<Game[]> {
     try {
-      const games = await this.db.all<Game>(
-        'SELECT id, name, created_at, last_played_at FROM games ORDER BY last_played_at DESC'
-      );
-      return games || [];
+      const games = await this.prisma.game.findMany({
+        orderBy: { lastPlayedAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          lastPlayedAt: true
+        }
+      });
+      
+      // Convert to expected format
+      return games.map(g => ({
+        id: g.id,
+        name: g.name,
+        created_at: g.createdAt.toISOString(),
+        last_played_at: g.lastPlayedAt.toISOString()
+      }));
     } catch (error) {
       if (this.isDebugEnabled()) {
         console.error('Failed to get games:', error);
@@ -210,13 +229,24 @@ export class GameManagementService {
    */
   async deleteGameById(gameId: number): Promise<{ success: boolean; error?: string }> {
     try {
-      // Delete related data manually (since foreign keys might not be enabled)
-      await this.db.run('DELETE FROM connections WHERE game_id = ?', [gameId]);
-      await this.db.run('DELETE FROM game_state WHERE game_id = ?', [gameId]);
-      await this.db.run('DELETE FROM rooms WHERE game_id = ?', [gameId]);
+      // Prisma will handle cascade deletion based on schema relations
+      // But we'll delete related data explicitly to be safe
+      await this.prisma.connection.deleteMany({
+        where: { gameId }
+      });
+      
+      await this.prisma.gameState.deleteMany({
+        where: { gameId }
+      });
+      
+      await this.prisma.room.deleteMany({
+        where: { gameId }
+      });
       
       // Finally delete the game
-      await this.db.run('DELETE FROM games WHERE id = ?', [gameId]);
+      await this.prisma.game.delete({
+        where: { id: gameId }
+      });
       
       return { success: true };
 
@@ -233,11 +263,25 @@ export class GameManagementService {
    */
   async getGameById(gameId: number): Promise<Game | null> {
     try {
-      const game = await this.db.get<Game>(
-        'SELECT id, name, created_at, last_played_at FROM games WHERE id = ?',
-        [gameId]
-      );
-      return game || null;
+      const game = await this.prisma.game.findUnique({
+        where: { id: gameId },
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          lastPlayedAt: true
+        }
+      });
+      
+      if (!game) return null;
+      
+      // Convert to expected format
+      return {
+        id: game.id,
+        name: game.name,
+        created_at: game.createdAt.toISOString(),
+        last_played_at: game.lastPlayedAt.toISOString()
+      };
     } catch (error) {
       if (this.isDebugEnabled()) {
         console.error('Failed to get game by ID:', error);
