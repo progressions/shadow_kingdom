@@ -32,7 +32,7 @@ export class GameManagementService {
     private tui: TUIInterface,
     options: GameManagementOptions = {}
   ) {
-    this.db = db; // Keep for methods that still need it
+    this.db = db; // Still needed for initDb utility functions
     this.prisma = PrismaService.getInstance().getClient();
     this.options = {
       enableDebugLogging: false,
@@ -337,21 +337,31 @@ export class GameManagementService {
    */
   async getGameStats(): Promise<{ totalGames: number; recentGames: number; oldestGame?: string }> {
     try {
-      const totalResult = await this.db.get('SELECT COUNT(*) as count FROM games');
-      const totalGames = totalResult?.count || 0;
+      // Count total games
+      const totalGames = await this.prisma.game.count();
 
-      const recentResult = await this.db.get(
-        'SELECT COUNT(*) as count FROM games WHERE last_played_at > datetime(\'now\', \'-7 days\')'
-      );
-      const recentGames = recentResult?.count || 0;
+      // Count games played in the last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentGames = await this.prisma.game.count({
+        where: {
+          lastPlayedAt: {
+            gt: sevenDaysAgo
+          }
+        }
+      });
 
       let oldestGame: string | undefined;
       if (totalGames > 0) {
-        const oldestResult = await this.db.get<Game>(
-          'SELECT name, created_at FROM games ORDER BY created_at ASC LIMIT 1'
-        );
+        const oldestResult = await this.prisma.game.findFirst({
+          orderBy: { createdAt: 'asc' },
+          select: {
+            name: true,
+            createdAt: true
+          }
+        });
         if (oldestResult) {
-          oldestGame = `${oldestResult.name} (${this.formatTimestamp(oldestResult.created_at)})`;
+          oldestGame = `${oldestResult.name} (${this.formatTimestamp(oldestResult.createdAt.toISOString())})`;
         }
       }
 
