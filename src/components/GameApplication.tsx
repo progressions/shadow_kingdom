@@ -200,8 +200,15 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
   // Handle interactive command submission - JUST ECHO
   const handleCommandSubmit = useCallback(async (command: string): Promise<void> => {
-    // Just add the command to messages. That's it.
-    setMessages(prev => [...prev, `> ${command}`]);
+    // Add 5 lines of text, then echo the command
+    setMessages(prev => [...prev, 
+      'This is a line of text.',
+      'This is a line of text.',
+      'This is a line of text.',
+      'This is a line of text.',
+      'This is a line of text.',
+      `> ${command}`
+    ]);
   }, []);
 
   // Update game state after room changes
@@ -338,7 +345,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     <Box flexDirection="column" height="100%" width="100%">
       {/* Game Pane - fills available height */}
       <Box height={gameAreaHeight} width="100%">
-        <GamePane messages={messages} />
+        <GamePane messages={messages} maxLines={gameAreaHeight} />
       </Box>
       
       {/* Spacer to push bottom bars down */}

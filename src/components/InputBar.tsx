@@ -35,7 +35,7 @@ export const InputBar: React.FC<InputBarProps> = ({
       if (historyIndex > 0) {
         const newIndex = historyIndex - 1
         setHistoryIndex(newIndex)
-        setValue(commandHistory[newIndex])
+        setValue(commandHistory[newIndex] || '')
       }
       return
     }
@@ -45,10 +45,10 @@ export const InputBar: React.FC<InputBarProps> = ({
       if (historyIndex < commandHistory.length - 1) {
         const newIndex = historyIndex + 1
         setHistoryIndex(newIndex)
-        setValue(commandHistory[newIndex])
+        setValue(commandHistory[newIndex] || '')
       } else if (historyIndex === commandHistory.length - 1) {
         setHistoryIndex(commandHistory.length)
-        setValue(currentInput)
+        setValue(currentInput || '')
       }
       return
     }
@@ -87,6 +87,10 @@ export const InputBar: React.FC<InputBarProps> = ({
   }, [value, historyIndex, commandHistory.length])
 
   const handleSubmit = (submittedValue: string) => {
+    // Guard against undefined or null
+    if (!submittedValue) {
+      submittedValue = ''
+    }
     const trimmedValue = submittedValue.trim()
     
     onSubmit(submittedValue)
