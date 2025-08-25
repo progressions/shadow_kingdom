@@ -5,6 +5,7 @@ import { seedItems } from './seedItems.prisma';
 import { seedGameTriggers } from './seedGameTriggers.prisma';
 import { ensureCharacterIdColumn } from './ensureCharacterIdColumn.prisma';
 import { addStarterItemValidations } from './addStarterItemValidations.prisma';
+import { seedDatabase as seedDatabasePrisma } from './seedDatabase.prisma';
 import { CharacterService } from '../services/characterService';
 import { CharacterGenerationService } from '../services/characterGenerationService';
 import type { CreateCharacterData } from '../types/character';
@@ -1239,20 +1240,7 @@ export async function createGameAutomatic(db: Database, tui?: TUIInterface): Pro
 }
 
 export async function seedDatabase(db: Database, tui?: TUIInterface): Promise<void> {
-  try {
-    // Check if any games already exist
-    const existingGames = await db.get<{ count: number }>(
-      'SELECT COUNT(*) as count FROM games'
-    );
-
-    if (existingGames && existingGames.count > 0) {
-      return;
-    }
-
-    // Create a default game with the initial world
-    await createGameWithRooms(db, 'Demo Game');
-  } catch (error) {
-    throw error;
-  }
+  // Call the Prisma version
+  return seedDatabasePrisma(db, tui);
 }
 
