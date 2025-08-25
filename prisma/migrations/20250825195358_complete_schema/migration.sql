@@ -55,6 +55,45 @@ CREATE TABLE "connections" (
     CONSTRAINT "connections_to_room_id_fkey" FOREIGN KEY ("to_room_id") REFERENCES "rooms" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "characters" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "game_id" INTEGER NOT NULL,
+    "room_id" INTEGER NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "sentiment" TEXT NOT NULL,
+    "health" INTEGER NOT NULL DEFAULT 20,
+    "max_health" INTEGER NOT NULL DEFAULT 20,
+    "attack" INTEGER NOT NULL DEFAULT 5,
+    "defense" INTEGER NOT NULL DEFAULT 1,
+    "alive" BOOLEAN NOT NULL DEFAULT true,
+    "dialogue_friendly" TEXT,
+    "dialogue_hostile" TEXT,
+    "dialogue_defeated" TEXT,
+    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME NOT NULL,
+    CONSTRAINT "characters_game_id_fkey" FOREIGN KEY ("game_id") REFERENCES "games" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "characters_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "rooms" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "items" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "game_id" INTEGER NOT NULL,
+    "room_id" INTEGER,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "extended_description" TEXT,
+    "type" TEXT NOT NULL,
+    "hidden" BOOLEAN NOT NULL DEFAULT false,
+    "value" INTEGER,
+    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME NOT NULL,
+    CONSTRAINT "items_game_id_fkey" FOREIGN KEY ("game_id") REFERENCES "games" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "items_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "rooms" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE INDEX "rooms_game_id_idx" ON "rooms"("game_id");
 
@@ -84,3 +123,24 @@ CREATE INDEX "connections_game_id_from_room_id_idx" ON "connections"("game_id", 
 
 -- CreateIndex
 CREATE UNIQUE INDEX "connections_from_room_id_direction_key" ON "connections"("from_room_id", "direction");
+
+-- CreateIndex
+CREATE INDEX "characters_game_id_idx" ON "characters"("game_id");
+
+-- CreateIndex
+CREATE INDEX "characters_room_id_idx" ON "characters"("room_id");
+
+-- CreateIndex
+CREATE INDEX "characters_game_id_room_id_idx" ON "characters"("game_id", "room_id");
+
+-- CreateIndex
+CREATE INDEX "items_game_id_idx" ON "items"("game_id");
+
+-- CreateIndex
+CREATE INDEX "items_room_id_idx" ON "items"("room_id");
+
+-- CreateIndex
+CREATE INDEX "items_game_id_room_id_idx" ON "items"("game_id", "room_id");
+
+-- CreateIndex
+CREATE INDEX "items_type_idx" ON "items"("type");

@@ -88,6 +88,10 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
       // Initialize services in dependency order
       const prismaService = PrismaService.getInstance();
+      
+      // Initialize database if needed (create, schema, seed)
+      await prismaService.initialize();
+      
       const gameStateManager = new GameStateManager(prismaService);
       const gameEngine = new GameEngine(prismaService, gameStateManager);
       const navigationEngine = new RoomNavigationEngine(gameStateManager, prismaService);
