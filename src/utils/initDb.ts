@@ -4,6 +4,7 @@ import { MessageType } from '../ui/MessageFormatter';
 import { seedItems } from './seedItems.prisma';
 import { seedGameTriggers } from './seedGameTriggers.prisma';
 import { ensureCharacterIdColumn } from './ensureCharacterIdColumn.prisma';
+import { addStarterItemValidations } from './addStarterItemValidations.prisma';
 import { CharacterService } from '../services/characterService';
 import { CharacterGenerationService } from '../services/characterGenerationService';
 import type { CreateCharacterData } from '../types/character';
@@ -1136,7 +1137,7 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
     }
 
     // Add validations to specific starter items
-    await addStarterItemValidations(db, gameId, entranceId, tui);
+    await addStarterItemValidations(gameId, entranceId, tui);
 
     // Add event triggers for interactive gameplay
     await seedGameTriggers({
@@ -1229,85 +1230,6 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
  * @param entranceId Grand Entrance Hall room ID
  * @param tui Optional TUI interface for output
  */
-async function addStarterItemValidations(db: Database, gameId: number, entranceId: number, tui?: TUIInterface): Promise<void> {
-  try {
-    // 1. Ancient Key - Add "sticky" curse (can't be dropped)
-    const ancientKey = await db.get<any>('SELECT id FROM items WHERE name = ?', ['Ancient Key']);
-    if (ancientKey) {
-      // Check if curse already exists
-      const existingCurse = await db.get<any>('SELECT id FROM item_curses WHERE item_id = ?', [ancientKey.id]);
-      if (!existingCurse) {
-        await db.run(`
-          INSERT INTO item_curses (item_id, curse_type, prevents_actions, curse_message)
-          VALUES (?, ?, ?, ?)
-        `, [
-          ancientKey.id,
-          'sticky',
-          '["drop"]',
-          'The Ancient Key seems bound to you by mysterious forces. You cannot drop it.'
-        ]);
-        
-        if (tui) {
-          tui.display('Added sticky curse to Ancient Key (prevents dropping)', MessageType.SYSTEM);
-        }
-      } else if (tui) {
-        tui.display('Ancient Key already has a curse', MessageType.SYSTEM);
-      }
-    }
-
-    // 2. Ancient Stone Pedestal - Add action condition (must be present to rest in Grand Entrance Hall)
-    const stonePedestal = await db.get<any>('SELECT id FROM items WHERE name = ?', ['Ancient Stone Pedestal']);
-    if (stonePedestal) {
-      await db.run(`
-        INSERT INTO action_conditions (entity_type, entity_id, action_type, condition_type, condition_data, failure_message, hint_message, priority)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        'room',
-        entranceId,
-        'rest',
-        'item_in_room',
-        `{"item_id": ${stonePedestal.id}, "required": true}`,
-        'The mystical energy from the Ancient Stone Pedestal is required for safe rest in this hall.',
-        'Find the Ancient Stone Pedestal to rest peacefully here.',
-        1
-      ]);
-      
-      if (tui) {
-        tui.display('Added rest requirement for Ancient Stone Pedestal in Grand Entrance Hall', MessageType.SYSTEM);
-      }
-    }
-
-    // 3. Iron Helmet - Add "heavy" curse (prevents rest when equipped)
-    const ironHelmet = await db.get<any>('SELECT id FROM items WHERE name = ?', ['Iron Helmet']);
-    if (ironHelmet) {
-      // Check if curse already exists
-      const existingCurse = await db.get<any>('SELECT id FROM item_curses WHERE item_id = ?', [ironHelmet.id]);
-      if (!existingCurse) {
-        await db.run(`
-          INSERT INTO item_curses (item_id, curse_type, prevents_actions, curse_message)
-          VALUES (?, ?, ?, ?)
-        `, [
-          ironHelmet.id,
-          'heavy',
-          '["rest"]',
-          'The Iron Helmet is too heavy and uncomfortable to rest while wearing. You must remove it first.'
-        ]);
-        
-        if (tui) {
-          tui.display('Added heavy curse to Iron Helmet (prevents rest when equipped)', MessageType.SYSTEM);
-        }
-      } else if (tui) {
-        tui.display('Iron Helmet already has a curse', MessageType.SYSTEM);
-      }
-    }
-
-  } catch (error) {
-    if (tui) {
-      tui.display(`Error adding starter item validations: ${error}`, MessageType.ERROR);
-    }
-    // Don't throw - validations are optional enhancements
-  }
-}
 
 /**
  * Create a new game automatically with timestamp name - no user input required
