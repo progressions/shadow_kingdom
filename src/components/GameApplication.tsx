@@ -274,7 +274,8 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     // Add navigation hints
     if (navigationHints && navigationHints.length > 0) {
       statusLines.push('---');
-      statusLines.push(...navigationHints.slice(0, 2)); // Show max 2 hints
+      // Show all navigation hints to prevent truncation
+      statusLines.push(...navigationHints);
     }
 
     setStatusInfo({ statusLines });

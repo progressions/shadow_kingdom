@@ -13,20 +13,20 @@ interface StatusPaneProps {
 }
 
 export const StatusPane: React.FC<StatusPaneProps> = ({ status, statusInfo, statusLines }) => {
-  // Calculate dynamic height based on content
+  // Calculate dynamic height based on content with minimum height
   const contentHeight = useMemo(() => {
+    let height = 1;
     if (statusLines) {
-      return statusLines.length
-    }
-    if (status) {
+      height = Math.max(2, statusLines.length)
+    } else if (status) {
       // Count newlines in status string + 1
-      return status.split('\n').length
-    }
-    if (statusInfo) {
+      height = Math.max(1, status.split('\n').length)
+    } else if (statusInfo) {
       // Count number of info items
-      return Math.max(1, Object.keys(statusInfo).length)
+      height = Math.max(1, Object.keys(statusInfo).length)
     }
-    return 1
+    // Ensure minimum height and maximum reasonable height
+    return Math.min(Math.max(1, height), 10);
   }, [status, statusInfo, statusLines])
 
   return (
@@ -35,25 +35,27 @@ export const StatusPane: React.FC<StatusPaneProps> = ({ status, statusInfo, stat
       paddingX={1}
       width="100%"
       flexDirection="column"
+      flexShrink={0}
+      minWidth={0}
     >
       {statusLines ? (
         // Render array of status lines
         statusLines.map((line, index) => (
-          <Text key={index} color="yellow">
+          <Text key={index} color="yellow" wrap="wrap">
             {line}
           </Text>
         ))
       ) : status ? (
         // Handle multi-line status string
         status.split('\n').map((line, index) => (
-          <Text key={index} color="yellow">
+          <Text key={index} color="yellow" wrap="wrap">
             {line}
           </Text>
         ))
       ) : statusInfo ? (
         // Render structured info as separate lines
         Object.entries(statusInfo).map(([key, value]) => (
-          <Text key={key} color="blue">
+          <Text key={key} color="blue" wrap="wrap">
             {key === 'version' ? value : `${key}: ${value}`}
           </Text>
         ))
