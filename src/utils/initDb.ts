@@ -2,8 +2,7 @@ import Database from './database';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 import { seedItems } from './seedItems';
-import { seedEventTriggers } from './seedTriggers';
-import { seedGameTriggers } from './seedGameTriggers';
+import { seedGameTriggers } from './seedGameTriggers.prisma';
 import { CharacterService } from '../services/characterService';
 import { CharacterGenerationService } from '../services/characterGenerationService';
 import type { CreateCharacterData } from '../types/character';
@@ -1211,7 +1210,7 @@ export async function createGameWithRooms(db: Database, customName?: string, tui
     await addStarterItemValidations(db, gameId, entranceId, tui);
 
     // Add event triggers for interactive gameplay
-    await seedGameTriggers(db, {
+    await seedGameTriggers({
       gameId,
       entranceRoomId: entranceId,
       libraryRoomId: libraryId,
