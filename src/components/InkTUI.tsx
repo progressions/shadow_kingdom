@@ -6,8 +6,9 @@ import { StatusPane } from './StatusPane'
 
 export const InkTUI: React.FC = () => {
   const [messages, setMessages] = useState<string[]>([])
+  const [commandHistory, setCommandHistory] = useState<string[]>(['help', 'look', 'status'])
   const [terminalSize, setTerminalSize] = useState({ width: 80, height: 24 })
-  const [statusContent, setStatusContent] = useState("Shadow Kingdom v1.0 - Ready")
+  const [statusContent, setStatusContent] = useState("Shadow Kingdom v1.0 - Ready (Use arrow keys for history)")
   const { stdout } = useStdout()
 
   // Handle terminal resize events
@@ -47,6 +48,10 @@ export const InkTUI: React.FC = () => {
     }
   }
 
+  const handleHistoryUpdate = (newHistory: string[]) => {
+    setCommandHistory(newHistory)
+  }
+
   // Calculate status height dynamically
   const statusHeight = useMemo(() => {
     return statusContent.split('\n').length
@@ -72,6 +77,8 @@ export const InkTUI: React.FC = () => {
         <InputBar 
           onSubmit={handleSubmit}
           placeholder="Enter command..."
+          commandHistory={commandHistory}
+          onHistoryUpdate={handleHistoryUpdate}
         />
         <StatusPane status={statusContent} />
       </Box>
