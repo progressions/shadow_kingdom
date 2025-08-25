@@ -128,7 +128,7 @@ expect(lastFrame()).toContain('expected output');
 
 ### Required
 ```bash
-DATABASE_URL=file:./data/db/shadow_kingdom.db
+DATABASE_URL=file:./data/shadow_kingdom.db
 ```
 
 ### Optional Development

@@ -8,6 +8,7 @@ import { GameStateManager } from '../services/gameStateManager';
 import { CommandRouter } from '../services/commandRouter';
 import { RoomNavigationEngine } from '../services/roomNavigationEngine';
 import { PrismaService } from '../services/prismaService';
+import { LoggingService, MessageType } from '../services/loggingService';
 
 interface GameApplicationProps {
   programmaticCommand?: string;
@@ -49,17 +50,49 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     commandRouter: CommandRouter | null;
     navigationEngine: RoomNavigationEngine | null;
     prismaService: PrismaService | null;
+    loggingService: LoggingService | null;
   }>({
     gameEngine: null,
     gameStateManager: null,
     commandRouter: null,
     navigationEngine: null,
     prismaService: null,
+    loggingService: null,
   });
 
   // Hooks
   const { exit } = useApp();
   const { stdout } = useStdout();
+
+  // Helper function to add messages with logging
+  // Don't use useCallback here to avoid dependency issues
+  const addMessage = (message: string | string[], type: MessageType = 'RESPONSE'): void => {
+    const messages = Array.isArray(message) ? message : [message];
+    
+    // Update UI state
+    setMessages(prev => [...prev, ...messages]);
+    
+    // Debug output
+    if (process.env.DEBUG_LOGGING === 'true') {
+      console.log(`[DEBUG-APP] addMessage called with ${messages.length} messages, type: ${type}`);
+      console.log(`[DEBUG-APP] loggingService exists: ${!!servicesRef.current.loggingService}`);
+    }
+    
+    // Log to file if logging service is available
+    // Access ref directly to get current value
+    if (servicesRef.current.loggingService && servicesRef.current.loggingService.isEnabled()) {
+      // Join multi-line messages for logging
+      const logMessage = messages.join('\n');
+      servicesRef.current.loggingService.logMessage(logMessage, type).catch(error => {
+        if (debugMode) {
+          console.warn('Failed to log message:', error);
+        }
+      });
+    } else if (process.env.DEBUG_LOGGING === 'true') {
+      console.log('[DEBUG-APP] Logging service not available or disabled');
+      console.log('[DEBUG-APP] servicesRef.current:', servicesRef.current);
+    }
+  };
 
   // Handle terminal resize
   useEffect(() => {
@@ -86,6 +119,10 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     try {
       setGameState(prev => ({ ...prev, isLoading: true, error: null }));
 
+      // Initialize logging service first
+      const loggingService = LoggingService.getInstance();
+      await loggingService.logSessionStart();
+
       // Initialize services in dependency order
       const prismaService = PrismaService.getInstance();
       
@@ -104,6 +141,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         commandRouter,
         navigationEngine,
         prismaService,
+        loggingService,
       };
 
       // Initialize game engine
@@ -134,12 +172,12 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       });
 
       // Just show a simple welcome message
-      setMessages([
+      addMessage([
         '=== Shadow Kingdom ===',
         '',
         'Type something and it will echo back.',
         ''
-      ]);
+      ], 'SYSTEM');
 
       // Update status
       updateStatusDisplay(session, currentRoom);
@@ -152,6 +190,12 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to initialize game:', error);
+      
+      // Log the error
+      const { loggingService } = servicesRef.current;
+      if (loggingService && loggingService.isEnabled()) {
+        await loggingService.logMessage(`Failed to start game: ${errorMessage}`, 'ERROR');
+      }
       
       setGameState(prev => ({
         ...prev,
@@ -167,14 +211,13 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     if (!commandRouter) return;
 
     try {
-      setMessages(prev => [...prev, `> ${command}`]);
+      addMessage(`> ${command}`, 'COMMAND');
       
       const result = await commandRouter.executeCommand(command);
       
       if (result.success) {
-        // Split response into lines for proper display
-        const responseLines = result.response.split('\n');
-        setMessages(prev => [...prev, ...responseLines]);
+        // Log and display response
+        addMessage(result.response, 'RESPONSE');
         
         // Handle quit command - exit immediately for programmatic mode
         if (result.metadata?.shouldExit) {
@@ -187,9 +230,8 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
           await updateGameState();
         }
       } else {
-        // Split error response into lines for proper display
-        const errorLines = result.response.split('\n');
-        setMessages(prev => [...prev, ...errorLines]);
+        // Log and display error
+        addMessage(result.response, 'ERROR');
       }
 
       // Exit after programmatic command execution
@@ -197,23 +239,25 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      setMessages(prev => [...prev, `Error: ${errorMsg}`]);
+      addMessage(`Error: ${errorMsg}`, 'ERROR');
       setTimeout(() => exit(), 100);
     }
   }, [exit]);
 
   // Handle interactive command submission - JUST ECHO
   const handleCommandSubmit = useCallback(async (command: string): Promise<void> => {
-    // Add 5 lines of text, then echo the command
-    setMessages(prev => [...prev, 
+    // Log the command
+    addMessage(`> ${command}`, 'COMMAND');
+    
+    // Add echo lines (these are responses)
+    addMessage([
       'This is a line of text.',
       'This is a line of text.',
       'This is a line of text.',
       'This is a line of text.',
-      'This is a line of text.',
-      `> ${command}`
-    ]);
-  }, []);
+      'This is a line of text.'
+    ], 'RESPONSE');
+  }, [addMessage]);
 
   // Update game state after room changes
   const updateGameState = useCallback(async (): Promise<void> => {
@@ -275,13 +319,23 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
     // Cleanup on unmount
     return () => {
-      const { gameEngine, gameStateManager, navigationEngine, prismaService } = servicesRef.current;
+      const { gameEngine, gameStateManager, navigationEngine, prismaService, loggingService } = servicesRef.current;
+      
+      // Log session end before cleanup
+      if (loggingService) {
+        loggingService.logSessionEnd().catch(error => {
+          if (debugMode) {
+            console.error('Failed to log session end:', error);
+          }
+        });
+      }
       
       Promise.all([
         gameStateManager?.shutdown?.(),
         navigationEngine?.cleanup?.(),
         gameEngine?.shutdown?.(),
         prismaService?.disconnect?.(),
+        loggingService?.shutdown?.(),
       ]).catch(error => {
         if (debugMode) {
           console.error('Cleanup error:', error);

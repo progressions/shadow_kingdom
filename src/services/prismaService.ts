@@ -46,14 +46,14 @@ export class PrismaService {
   }
 
   private async checkAndInitializeDatabase(): Promise<void> {
-    // Get database path from environment - must match what Prisma uses
-    const dbUrl = process.env.SHADOW_KINGDOM_DB || process.env.DATABASE_URL || 'file:./prisma/dev.db';
+    // Use a fixed database location relative to project root
+    const projectRoot = process.cwd();
+    const dbPath = path.join(projectRoot, 'data', 'shadow_kingdom.db');
+    const dbUrl = `file:${dbPath}`;
     
-    // Extract the actual file path from the URL
-    let dbPath = dbUrl.replace('file:', '');
-    if (!path.isAbsolute(dbPath)) {
-      dbPath = path.join(process.cwd(), dbPath);
-    }
+    // Log the path for debugging
+    console.log('Using database at:', dbPath);
+    
     const fullDbPath = dbPath;
     const dbDir = path.dirname(fullDbPath);
 
@@ -69,10 +69,10 @@ export class PrismaService {
     
     if (!dbExists) {
       console.log('Database not found. Creating new database...');
-      // Apply migrations to create database with schema
+      // Apply schema to create database
       try {
         console.log('Applying database schema...');
-        execSync('npx prisma migrate deploy', { 
+        execSync('npx prisma db push --skip-generate', { 
           stdio: 'inherit',
           env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl }
         });
@@ -95,7 +95,7 @@ export class PrismaService {
         if (error?.message?.includes('no such table')) {
           console.log('Database schema missing. Applying schema...');
           try {
-            execSync('npx prisma migrate deploy', { 
+            execSync('npx prisma db push --skip-generate', { 
               stdio: 'inherit',
               env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl }
             });
