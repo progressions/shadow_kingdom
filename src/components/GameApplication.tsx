@@ -178,6 +178,12 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       if (result.success) {
         setMessages(prev => [...prev, result.response]);
         
+        // Handle quit command - exit immediately for programmatic mode
+        if (result.metadata?.shouldExit) {
+          setTimeout(() => exit(), 100);
+          return;
+        }
+        
         // Update state if room changed
         if (result.metadata?.roomChanged) {
           await updateGameState();
@@ -208,6 +214,14 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       
       if (result.success) {
         setMessages(prev => [...prev, result.response]);
+        
+        // Handle quit command
+        if (result.metadata?.shouldExit) {
+          setTimeout(() => {
+            process.exit(0);
+          }, 1500); // Give time to show the goodbye message
+          return;
+        }
         
         // Update state if room changed
         if (result.metadata?.roomChanged) {

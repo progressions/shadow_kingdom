@@ -15,7 +15,7 @@ export interface GameCommand {
 }
 
 export interface ParsedCommand {
-  type: 'movement' | 'examination' | 'unknown';
+  type: 'movement' | 'examination' | 'system' | 'unknown';
   action?: string;
   direction?: string;
   target?: string;
@@ -35,6 +35,7 @@ export interface CommandExecutionResult {
   metadata?: {
     roomChanged?: boolean;
     newRoomId?: number;
+    shouldExit?: boolean;
   };
 }
 
@@ -80,6 +81,10 @@ export class CommandRouter {
 
   private examinationPatterns = {
     actions: ['look', 'examine', 'inspect', 'check', 'search', 'study', 'view']
+  };
+
+  private systemPatterns = {
+    quit: ['quit', 'exit', 'q', 'bye', 'goodbye', 'leave']
   };
 
   constructor(
@@ -146,6 +151,12 @@ export class CommandRouter {
     const examinationResult = this.parseExaminationCommand(words, input);
     if (examinationResult.confidence > 0) {
       return examinationResult;
+    }
+
+    // Try to parse as system command
+    const systemResult = this.parseSystemCommand(words, input);
+    if (systemResult.confidence > 0) {
+      return systemResult;
     }
 
     // Unknown command
@@ -261,6 +272,29 @@ export class CommandRouter {
   }
 
   /**
+   * Parse system commands (quit, help, etc.)
+   */
+  private parseSystemCommand(words: string[], raw: string): ParsedCommand {
+    const action = words[0];
+
+    // Check for quit command
+    if (this.systemPatterns.quit.includes(action)) {
+      return {
+        type: 'system',
+        action: 'quit',
+        raw,
+        confidence: 1.0
+      };
+    }
+
+    return {
+      type: 'unknown',
+      raw,
+      confidence: 0
+    };
+  }
+
+  /**
    * Validate a parsed command against current game state
    */
   async validateCommand(parsedCommand: ParsedCommand): Promise<CommandValidationResult> {
@@ -279,6 +313,11 @@ export class CommandRouter {
           isValid: false,
           error: 'No current room available'
         };
+      }
+
+      // System commands are always valid (they don't require game state)
+      if (parsedCommand.type === 'system') {
+        return { isValid: true };
       }
 
       // Validate movement commands
@@ -383,6 +422,8 @@ export class CommandRouter {
         return await this.executeMovementCommand(parsedCommand);
       } else if (parsedCommand.type === 'examination') {
         return await this.executeExaminationCommand(parsedCommand);
+      } else if (parsedCommand.type === 'system') {
+        return await this.executeSystemCommand(parsedCommand);
       }
 
       return {
@@ -483,6 +524,35 @@ export class CommandRouter {
       return {
         success: false,
         response: 'Unable to examine that. Please try again.'
+      };
+    }
+  }
+
+  /**
+   * Execute system commands (quit, help, etc.)
+   */
+  private async executeSystemCommand(parsedCommand: ParsedCommand): Promise<CommandExecutionResult> {
+    try {
+      if (parsedCommand.action === 'quit') {
+        return {
+          success: true,
+          response: 'Thanks for playing Shadow Kingdom! Goodbye!',
+          metadata: {
+            shouldExit: true
+          }
+        };
+      }
+
+      return {
+        success: false,
+        response: 'Unknown system command.'
+      };
+
+    } catch (error) {
+      console.error('System command error:', error);
+      return {
+        success: false,
+        response: 'System command failed. Please try again.'
       };
     }
   }
