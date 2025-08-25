@@ -2,6 +2,10 @@ import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
+
+// Load local .env file
+dotenv.config();
 
 export class PrismaService {
   private static instance: PrismaService | null = null;
@@ -9,6 +13,12 @@ export class PrismaService {
   private initialized: boolean = false;
 
   private constructor() {
+    // Use our specific database URL, falling back to DATABASE_URL if needed
+    const dbUrl = process.env.SHADOW_KINGDOM_DB || process.env.DATABASE_URL || 'file:./prisma/dev.db';
+    
+    // Set DATABASE_URL for Prisma to use
+    process.env.DATABASE_URL = dbUrl;
+    
     this.client = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
     });
@@ -36,10 +46,15 @@ export class PrismaService {
   }
 
   private async checkAndInitializeDatabase(): Promise<void> {
-    // Get database path from environment
-    const dbUrl = process.env.DATABASE_URL || 'file:./prisma/db/dev.db';
-    const dbPath = dbUrl.replace('file:', '').replace(/^\.\//, '');
-    const fullDbPath = path.join(process.cwd(), dbPath);
+    // Get database path from environment - must match what Prisma uses
+    const dbUrl = process.env.SHADOW_KINGDOM_DB || process.env.DATABASE_URL || 'file:./prisma/dev.db';
+    
+    // Extract the actual file path from the URL
+    let dbPath = dbUrl.replace('file:', '');
+    if (!path.isAbsolute(dbPath)) {
+      dbPath = path.join(process.cwd(), dbPath);
+    }
+    const fullDbPath = dbPath;
     const dbDir = path.dirname(fullDbPath);
 
     // Ensure database directory exists
@@ -59,7 +74,7 @@ export class PrismaService {
         console.log('Applying database schema...');
         execSync('npx prisma migrate deploy', { 
           stdio: 'inherit',
-          env: { ...process.env, DATABASE_URL: dbUrl }
+          env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl }
         });
         console.log('Database created successfully');
         needsSeeding = true;
@@ -82,7 +97,7 @@ export class PrismaService {
           try {
             execSync('npx prisma migrate deploy', { 
               stdio: 'inherit',
-              env: { ...process.env, DATABASE_URL: dbUrl }
+              env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl }
             });
             console.log('Schema applied successfully');
             needsSeeding = true;
