@@ -249,7 +249,7 @@ export async function seedItems(tui?: TUIInterface, prismaClient?: PrismaClient)
             value: itemData.value,
             stackable: itemData.stackable,
             maxStack: itemData.max_stack,
-            armorRating: itemData.armor_rating || 0,
+            armorRating: itemData.armor_rating ?? null,
             equipmentSlot: itemData.equipment_slot,
             isFixed: itemData.is_fixed || false
           }

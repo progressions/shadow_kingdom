@@ -176,7 +176,7 @@ model Item {
   value               Int      @default(0)
   stackable           Boolean  @default(false)
   maxStack            Int      @default(1) @map("max_stack")
-  armorRating         Int      @default(0) @map("armor_rating")
+  armorRating         Int?     @default(0) @map("armor_rating")
   equipmentSlot       String?  @map("equipment_slot")
   isFixed             Boolean  @default(false) @map("is_fixed")
   createdAt           DateTime @default(now()) @map("created_at")
