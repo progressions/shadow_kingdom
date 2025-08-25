@@ -20,19 +20,21 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) =
       flexGrow={1}
       width="100%"
       padding={1}
+      flexShrink={0}
+      minWidth={0}
     >
       <Text color="cyan" bold>
         === Shadow Kingdom ===
       </Text>
       
-      <Box flexDirection="column" marginTop={1}>
+      <Box flexDirection="column" marginTop={1} width="100%" minWidth={0}>
         {displayMessages.length === 0 ? (
           <Box flexDirection="column">
-            <Text color="gray">
+            <Text color="gray" wrap="wrap">
               Welcome to Shadow Kingdom! Type a command to begin...
             </Text>
             <Box marginTop={1}>
-              <Text color="dim">
+              <Text color="dim" wrap="wrap">
                 Try: help, hello, look, status
               </Text>
             </Box>
@@ -42,12 +44,14 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) =
             const isCommand = message.startsWith('>')
             
             return (
-              <Text 
-                key={index}
-                color={isCommand ? "green" : "white"}
-              >
-                {isCommand ? message : `  ${message}`}
-              </Text>
+              <Box key={index} width="100%" minWidth={0}>
+                <Text 
+                  color={isCommand ? "green" : "white"}
+                  wrap="wrap"
+                >
+                  {isCommand ? message : `  ${message}`}
+                </Text>
+              </Box>
             )
           })
         )}
