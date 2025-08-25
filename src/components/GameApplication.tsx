@@ -133,7 +133,13 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       if (currentRoom && navigationEngine) {
         try {
           const roomDescription = await navigationEngine.generateRoomDescription(currentRoom);
-          setMessages([roomDescription]);
+          setMessages([
+            '=== Shadow Kingdom ===',
+            '',
+            'Welcome to Shadow Kingdom! Type a command to begin...',
+            '',
+            roomDescription
+          ]);
 
           // Get navigation hints
           const hints = await navigationEngine.getNavigationHints();
@@ -141,7 +147,13 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         } catch (error) {
           // Fallback room description
           const fallbackDescription = `**${currentRoom.name}**\n\n${currentRoom.description}`;
-          setMessages([fallbackDescription]);
+          setMessages([
+            '=== Shadow Kingdom ===',
+            '',
+            'Welcome to Shadow Kingdom! Type a command to begin...',
+            '',
+            fallbackDescription
+          ]);
         }
       }
 

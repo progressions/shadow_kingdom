@@ -7,23 +7,13 @@ interface GamePaneProps {
 }
 
 export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) => {
-  // Create all content as a single array, including header
-  const allContent = useMemo(() => {
-    const content = ['=== Shadow Kingdom ===', ''];
-    
-    if (messages.length === 0) {
-      content.push('Welcome to Shadow Kingdom! Type a command to begin...', '');
-      content.push('Try: help, hello, look, status');
-    } else {
-      content.push(...messages);
+  // Simple display of messages - no header, no complex logic
+  const displayMessages = useMemo(() => {
+    const availableLines = Math.max(3, maxLines - 2);
+    if (messages.length <= availableLines) {
+      return messages;
     }
-    
-    // Simple truncation - show the most recent content that fits
-    const availableLines = Math.max(5, maxLines - 2); // Reserve minimal space for padding
-    if (content.length <= availableLines) {
-      return content;
-    }
-    return content.slice(-availableLines);
+    return messages.slice(-availableLines);
   }, [messages, maxLines])
 
   return (
@@ -32,14 +22,9 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) =
       width="100%"
       padding={1}
     >
-      {allContent.map((line, index) => {
-        const isHeader = line === '=== Shadow Kingdom ===';
-        const isCommand = line.startsWith('>');
-        const isEmpty = line === '';
-        
-        if (isEmpty) {
-          return <Text key={index}> </Text>;
-        }
+      {displayMessages.map((message, index) => {
+        const isCommand = message.startsWith('>');
+        const isHeader = message.includes('=== Shadow Kingdom ===');
         
         return (
           <Text 
@@ -48,7 +33,7 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) =
             bold={isHeader}
             wrap="wrap"
           >
-            {isCommand || isHeader ? line : `  ${line}`}
+            {isCommand || isHeader ? message : `  ${message}`}
           </Text>
         );
       })}
