@@ -10,6 +10,7 @@ import { getPrismaClient } from './prismaService';
 import { 
   Character, 
   CharacterType, 
+  CharacterSentiment,
   CreateCharacterData, 
   CharacterAttributes,
   getAttributeModifier,
@@ -51,21 +52,21 @@ export class CharacterServicePrisma {
 
     const result = await this.prisma.character.create({
       data: {
-        game_id: data.game_id,
+        gameId: data.game_id,
         name: data.name,
         description: data.description || null,
         type: data.type || CharacterType.PLAYER,
-        current_room_id: data.current_room_id || null,
+        currentRoomId: data.current_room_id || null,
         strength: attributes.strength,
         dexterity: attributes.dexterity,
         intelligence: attributes.intelligence,
         constitution: attributes.constitution,
         wisdom: attributes.wisdom,
         charisma: attributes.charisma,
-        max_health: maxHealth,
-        current_health: maxHealth, // Start at full health
-        is_hostile: data.is_hostile ?? (data.type === CharacterType.ENEMY ? true : false), // Enemies are hostile by default
-        dialogue_response: data.dialogue_response || null
+        maxHealth: maxHealth,
+        currentHealth: maxHealth, // Start at full health
+        isHostile: (data as any).is_hostile ?? (data.type === CharacterType.ENEMY ? true : false), // Enemies are hostile by default
+        dialogueResponse: (data as any).dialogue_response || null
       }
     });
 
@@ -84,23 +85,24 @@ export class CharacterServicePrisma {
 
     return {
       id: character.id,
-      game_id: character.game_id,
+      game_id: character.gameId,
       name: character.name,
-      description: character.description,
+      description: character.description || undefined,
       type: character.type as CharacterType,
-      current_room_id: character.current_room_id,
+      current_room_id: character.currentRoomId,
       strength: character.strength,
       dexterity: character.dexterity,
       intelligence: character.intelligence,
       constitution: character.constitution,
       wisdom: character.wisdom,
       charisma: character.charisma,
-      max_health: character.max_health,
-      current_health: character.current_health,
-      is_hostile: character.is_hostile,
-      is_dead: character.is_dead,
-      dialogue_response: character.dialogue_response,
-      created_at: character.created_at.toISOString()
+      max_health: character.maxHealth,
+      current_health: character.currentHealth,
+      is_hostile: character.isHostile,
+      is_dead: character.isDead,
+      dialogue_response: character.dialogueResponse || undefined,
+      created_at: character.createdAt.toISOString(),
+      sentiment: CharacterSentiment.INDIFFERENT // Add default sentiment
     };
   }
 
@@ -110,31 +112,32 @@ export class CharacterServicePrisma {
   async getGameCharacters(gameId: number, type?: CharacterType): Promise<Character[]> {
     const characters = await this.prisma.character.findMany({
       where: {
-        game_id: gameId,
+        gameId: gameId,
         ...(type && { type })
       },
-      orderBy: { created_at: 'asc' }
+      orderBy: { createdAt: 'asc' }
     });
 
     return characters.map(character => ({
       id: character.id,
-      game_id: character.game_id,
+      game_id: character.gameId,
       name: character.name,
-      description: character.description,
+      description: character.description || undefined,
       type: character.type as CharacterType,
-      current_room_id: character.current_room_id,
+      current_room_id: character.currentRoomId,
       strength: character.strength,
       dexterity: character.dexterity,
       intelligence: character.intelligence,
       constitution: character.constitution,
       wisdom: character.wisdom,
       charisma: character.charisma,
-      max_health: character.max_health,
-      current_health: character.current_health,
-      is_hostile: character.is_hostile,
-      is_dead: character.is_dead,
-      dialogue_response: character.dialogue_response,
-      created_at: character.created_at.toISOString()
+      max_health: character.maxHealth,
+      current_health: character.currentHealth,
+      is_hostile: character.isHostile,
+      is_dead: character.isDead,
+      dialogue_response: character.dialogueResponse || undefined,
+      created_at: character.createdAt.toISOString(),
+      sentiment: CharacterSentiment.INDIFFERENT // Add default sentiment
     }));
   }
 
@@ -144,7 +147,7 @@ export class CharacterServicePrisma {
   async getPlayerCharacter(gameId: number): Promise<Character | null> {
     const character = await this.prisma.character.findFirst({
       where: {
-        game_id: gameId,
+        gameId: gameId,
         type: CharacterType.PLAYER
       }
     });
@@ -153,23 +156,24 @@ export class CharacterServicePrisma {
 
     return {
       id: character.id,
-      game_id: character.game_id,
+      game_id: character.gameId,
       name: character.name,
-      description: character.description,
+      description: character.description || undefined,
       type: character.type as CharacterType,
-      current_room_id: character.current_room_id,
+      current_room_id: character.currentRoomId,
       strength: character.strength,
       dexterity: character.dexterity,
       intelligence: character.intelligence,
       constitution: character.constitution,
       wisdom: character.wisdom,
       charisma: character.charisma,
-      max_health: character.max_health,
-      current_health: character.current_health,
-      is_hostile: character.is_hostile,
-      is_dead: character.is_dead,
-      dialogue_response: character.dialogue_response,
-      created_at: character.created_at.toISOString()
+      max_health: character.maxHealth,
+      current_health: character.currentHealth,
+      is_hostile: character.isHostile,
+      is_dead: character.isDead,
+      dialogue_response: character.dialogueResponse || undefined,
+      created_at: character.createdAt.toISOString(),
+      sentiment: CharacterSentiment.INDIFFERENT // Add default sentiment
     };
   }
 
@@ -179,7 +183,7 @@ export class CharacterServicePrisma {
   async getRoomCharacters(roomId: number, excludeType?: CharacterType): Promise<Character[]> {
     const characters = await this.prisma.character.findMany({
       where: {
-        current_room_id: roomId,
+        currentRoomId: roomId,
         ...(excludeType && { type: { not: excludeType } })
       },
       orderBy: { name: 'asc' }
@@ -187,23 +191,24 @@ export class CharacterServicePrisma {
 
     return characters.map(character => ({
       id: character.id,
-      game_id: character.game_id,
+      game_id: character.gameId,
       name: character.name,
-      description: character.description,
+      description: character.description || undefined,
       type: character.type as CharacterType,
-      current_room_id: character.current_room_id,
+      current_room_id: character.currentRoomId,
       strength: character.strength,
       dexterity: character.dexterity,
       intelligence: character.intelligence,
       constitution: character.constitution,
       wisdom: character.wisdom,
       charisma: character.charisma,
-      max_health: character.max_health,
-      current_health: character.current_health,
-      is_hostile: character.is_hostile,
-      is_dead: character.is_dead,
-      dialogue_response: character.dialogue_response,
-      created_at: character.created_at.toISOString()
+      max_health: character.maxHealth,
+      current_health: character.currentHealth,
+      is_hostile: character.isHostile,
+      is_dead: character.isDead,
+      dialogue_response: character.dialogueResponse || undefined,
+      created_at: character.createdAt.toISOString(),
+      sentiment: CharacterSentiment.INDIFFERENT // Add default sentiment
     }));
   }
 
@@ -238,7 +243,7 @@ export class CharacterServicePrisma {
   async moveCharacter(characterId: number, roomId: number | null): Promise<void> {
     await this.prisma.character.update({
       where: { id: characterId },
-      data: { current_room_id: roomId }
+      data: { currentRoomId: roomId }
     });
   }
 
@@ -248,30 +253,31 @@ export class CharacterServicePrisma {
   async getHostileCharacters(roomId: number): Promise<Character[]> {
     const characters = await this.prisma.character.findMany({
       where: {
-        current_room_id: roomId,
-        is_hostile: true
+        currentRoomId: roomId,
+        isHostile: true
       }
     });
 
     return characters.map(character => ({
       id: character.id,
-      game_id: character.game_id,
+      game_id: character.gameId,
       name: character.name,
-      description: character.description,
+      description: character.description || undefined,
       type: character.type as CharacterType,
-      current_room_id: character.current_room_id,
+      current_room_id: character.currentRoomId,
       strength: character.strength,
       dexterity: character.dexterity,
       intelligence: character.intelligence,
       constitution: character.constitution,
       wisdom: character.wisdom,
       charisma: character.charisma,
-      max_health: character.max_health,
-      current_health: character.current_health,
-      is_hostile: character.is_hostile,
-      is_dead: character.is_dead,
-      dialogue_response: character.dialogue_response,
-      created_at: character.created_at.toISOString()
+      max_health: character.maxHealth,
+      current_health: character.currentHealth,
+      is_hostile: character.isHostile,
+      is_dead: character.isDead,
+      dialogue_response: character.dialogueResponse || undefined,
+      created_at: character.createdAt.toISOString(),
+      sentiment: CharacterSentiment.INDIFFERENT // Add default sentiment
     }));
   }
 
@@ -281,8 +287,8 @@ export class CharacterServicePrisma {
   async hasHostileCharacters(roomId: number): Promise<boolean> {
     const count = await this.prisma.character.count({
       where: {
-        current_room_id: roomId,
-        is_hostile: true
+        currentRoomId: roomId,
+        isHostile: true
       }
     });
 
@@ -295,7 +301,7 @@ export class CharacterServicePrisma {
   async setCharacterHostility(characterId: number, isHostile: boolean): Promise<void> {
     await this.prisma.character.update({
       where: { id: characterId },
-      data: { is_hostile: isHostile }
+      data: { isHostile: isHostile }
     });
   }
 
@@ -305,7 +311,7 @@ export class CharacterServicePrisma {
   async updateCharacterHealth(characterId: number, currentHealth: number): Promise<void> {
     await this.prisma.character.update({
       where: { id: characterId },
-      data: { current_health: currentHealth }
+      data: { currentHealth: currentHealth }
     });
   }
 
@@ -316,15 +322,15 @@ export class CharacterServicePrisma {
     const character = await this.prisma.character.findUnique({
       where: { id: characterId },
       select: {
-        current_health: true,
-        max_health: true
+        currentHealth: true,
+        maxHealth: true
       }
     });
 
     if (!character) return null;
 
-    const current = character.current_health || 0;
-    const max = character.max_health || 0;
+    const current = character.currentHealth || 0;
+    const max = character.maxHealth || 0;
     const percentage = max > 0 ? Math.round((current / max) * 100) : 0;
 
     return { current, max, percentage };
@@ -385,8 +391,8 @@ export class CharacterServicePrisma {
     await this.prisma.character.update({
       where: { id: characterId },
       data: {
-        is_dead: true,
-        current_health: 0
+        isDead: true,
+        currentHealth: 0
       }
     });
   }
@@ -406,7 +412,7 @@ export class CharacterServicePrisma {
   async getCharacterCount(gameId: number, type?: CharacterType): Promise<number> {
     return await this.prisma.character.count({
       where: {
-        game_id: gameId,
+        gameId: gameId,
         ...(type && { type })
       }
     });

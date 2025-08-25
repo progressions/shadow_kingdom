@@ -21,7 +21,7 @@ import { CharacterServicePrisma } from './characterService.prisma';
 
 export class ActionValidatorPrisma {
   private prisma: PrismaClient;
-
+  
   constructor(
     private characterService?: CharacterServicePrisma,
     prismaClient?: PrismaClient
@@ -43,300 +43,409 @@ export class ActionValidatorPrisma {
   ): Promise<ValidationResult> {
     try {
       // Phase 1: Check character death state first (fastest check)
-      if (character.is_dead) {
-        return {
-          allowed: false,
-          reason: 'Character is dead and cannot perform actions',
-          priority: 'blocking'
-        };
+      const deathCheck = this.checkDeathState(action, character);
+      if (!deathCheck.allowed) {
+        return deathCheck;
       }
 
-      // Phase 2: Check for room-level restrictions
-      const roomValidation = await this.validateRoomConditions(action, character, context);
-      if (!roomValidation.allowed) {
-        return roomValidation;
-      }
-
-      // Phase 3: Check character-specific restrictions (status effects, conditions)
-      const characterValidation = await this.validateCharacterConditions(action, character, context);
-      if (!characterValidation.allowed) {
-        return characterValidation;
-      }
-
-      // Phase 4: Check item-specific restrictions (curses, requirements)
+      // Phase 2: Check for item curses if action involves an item
       if (context.itemId) {
-        const itemValidation = await this.validateItemConditions(action, character, context);
-        if (!itemValidation.allowed) {
-          return itemValidation;
+        const curseCheck = await this.checkItemCurses(context.itemId, action);
+        if (!curseCheck.allowed) {
+          return curseCheck;
         }
       }
 
-      // Phase 5: Check action-specific rules
-      const actionValidation = await this.validateActionSpecificRules(action, character, context);
-      if (!actionValidation.allowed) {
-        return actionValidation;
+      // Phase 3: Check for action conditions based on context
+      const conditionCheck = await this.checkActionConditions(action, context);
+      if (!conditionCheck.allowed) {
+        return conditionCheck;
       }
 
-      // All checks passed
-      return {
-        allowed: true,
-        reason: 'Action validated successfully',
-        priority: 'none'
-      };
+      // Future phases will add additional validation checks here:
+      // - Phase 4: Hostile presence validation
+      // - Phase 5: Generic condition system extensions
+
+      // If we reach here, action is allowed
+      return { allowed: true };
 
     } catch (error) {
-      console.error('ActionValidator error:', error);
+      console.error('Error in action validation:', error);
       return {
         allowed: false,
-        reason: 'Validation system error',
-        priority: 'blocking'
+        reason: 'An unexpected error occurred while validating the action.',
+        hint: 'Please try again or contact support if the issue persists.'
       };
     }
   }
 
   /**
-   * Validate room-level conditions (hostility, environmental effects)
+   * Phase 1: Check if character is dead and prevent most actions
+   * @param action Action being attempted
+   * @param character Character attempting action
+   * @returns ValidationResult for death state
    */
-  private async validateRoomConditions(
-    action: string,
-    character: Character,
-    context: ActionContext
-  ): Promise<ValidationResult> {
-    try {
-      // Check for hostile characters blocking movement
-      if (action === 'move' && context.roomId) {
-        const hostileCharacters = await this.characterService?.getHostileCharacters(character.current_room_id || 0);
-        if (hostileCharacters && hostileCharacters.length > 0) {
-          return {
-            allowed: false,
-            reason: 'Hostile enemies prevent movement. Defeat them first or use combat actions.',
-            priority: 'blocking',
-            metadata: {
-              hostileCount: hostileCharacters.length,
-              hostileNames: hostileCharacters.map(h => h.name)
-            }
-          };
-        }
-      }
-
-      // Check for cursed items preventing certain actions
-      if (context.itemId) {
-        const curse = await this.prisma.$queryRaw<ItemCurse[]>`
-          SELECT * FROM item_curses 
-          WHERE item_id = ${context.itemId} AND is_active = true
-        `;
-        
-        if (curse.length > 0) {
-          const blockedActions = curse.flatMap(c => c.blocked_actions ? c.blocked_actions.split(',') : []);
-          if (blockedActions.includes(action)) {
-            return {
-              allowed: false,
-              reason: `Item is cursed and prevents ${action} actions`,
-              priority: 'blocking'
-            };
-          }
-        }
-      }
-
-      return { allowed: true, reason: 'Room conditions satisfied', priority: 'none' };
-    } catch (error) {
-      console.error('Room validation error:', error);
-      return { allowed: true, reason: 'Room validation skipped due to error', priority: 'none' };
+  private checkDeathState(action: string, character: Character): ValidationResult {
+    // Handle null/undefined character
+    if (!character) {
+      return {
+        allowed: false,
+        reason: "Character not found.",
+        hint: "Please check your game session."
+      };
     }
+
+    // If character has is_dead field and it's true, block most actions
+    if (character.is_dead) {
+      // Allow certain actions even when dead (future: respawn, help, etc.)
+      const allowedWhenDead = ['help', 'quit', 'save', 'load', 'respawn'];
+      
+      if (!allowedWhenDead.includes(action)) {
+        return {
+          allowed: false,
+          reason: "You can't do that while dead!",
+          hint: "You must wait for respawn or load a saved game."
+        };
+      }
+    }
+
+    return { allowed: true };
   }
 
   /**
-   * Validate character-specific conditions (health, status effects)
+   * Phase 2: Check for hostiles blocking rest (placeholder for future implementation)
    */
-  private async validateCharacterConditions(
-    action: string,
+  private async checkHostilesBlockingRest(roomId: number): Promise<ValidationResult> {
+    // TODO: Implement in Phase 2
+    // Query room_hostiles table for entities blocking rest
+    return { allowed: true };
+  }
+
+  /**
+   * Phase 2: Check for hostiles blocking movement (placeholder for future implementation)
+   */
+  private async checkMovementBlockers(
     character: Character,
+    direction: string,
     context: ActionContext
   ): Promise<ValidationResult> {
-    try {
-      // Health-based restrictions
-      const healthPercentage = character.max_health ? 
-        Math.round((character.current_health || 0) / character.max_health * 100) : 100;
+    // TODO: Implement in Phase 2  
+    // Query room_hostiles table for entities blocking specific directions
+    return { allowed: true };
+  }
 
-      // Prevent strenuous actions when critically wounded
-      if (healthPercentage < 10 && ['attack', 'move', 'run'].includes(action)) {
+  /**
+   * Phase 2: Check for item curses preventing actions
+   */
+  private async checkItemCurses(
+    itemId: number,
+    action: string
+  ): Promise<ValidationResult> {
+    try {
+      const curse = await this.prisma.itemCurse.findUnique({
+        where: { itemId }
+      });
+
+      if (!curse) {
+        return { allowed: true };
+      }
+
+      // Parse the prevented actions (stored as JSON array)
+      const preventedActions = JSON.parse(curse.preventsActions);
+      
+      if (preventedActions.includes(action)) {
         return {
           allowed: false,
-          reason: 'Character is too wounded to perform strenuous actions',
-          priority: 'warning'
+          reason: curse.curseMessage,
+          hint: curse.removalCondition || 'This curse cannot be easily removed.',
+          blocker: curse
         };
       }
 
-      // Check for action-specific conditions from database
-      if (context.roomId || context.itemId) {
-        const conditions = await this.getActionConditions(action, context);
-        for (const condition of conditions) {
-          const conditionMet = await this.evaluateCondition(condition, character, context);
-          if (!conditionMet) {
-            return {
-              allowed: false,
-              reason: condition.failure_message || `${condition.condition_type} requirement not met`,
-              priority: condition.is_blocking ? 'blocking' : 'warning'
-            };
-          }
-        }
-      }
-
-      return { allowed: true, reason: 'Character conditions satisfied', priority: 'none' };
+      return { allowed: true };
     } catch (error) {
-      console.error('Character validation error:', error);
-      return { allowed: true, reason: 'Character validation skipped due to error', priority: 'none' };
+      console.error('Error checking item curses:', error);
+      return { allowed: true }; // Fail open for robustness
     }
   }
 
   /**
-   * Get action conditions from database
+   * Phase 3: Check for items blocking rest (placeholder for future implementation)
    */
-  private async getActionConditions(action: string, context: ActionContext): Promise<ActionCondition[]> {
+  private async checkItemsBlockingRest(
+    characterId: number,
+    roomId: number
+  ): Promise<ValidationResult> {
+    // TODO: Implement in Phase 3
+    // Check inventory for disturbing items that prevent rest
+    return { allowed: true };
+  }
+
+  /**
+   * Phase 3: Check for action conditions based on context
+   */
+  private async checkActionConditions(
+    action: string,
+    context: ActionContext
+  ): Promise<ValidationResult> {
     try {
-      return await this.prisma.$queryRaw<ActionCondition[]>`
-        SELECT * FROM action_conditions 
-        WHERE action_type = ${action} 
-        AND (target_room_id IS NULL OR target_room_id = ${context.roomId || null})
-        AND (target_item_id IS NULL OR target_item_id = ${context.itemId || null})
-        AND is_active = true
-      `;
+      // Get conditions that apply to this action and context
+      const conditions = await this.getActionConditions(action, context);
+      
+      for (const condition of conditions) {
+        const conditionResult = await this.evaluateCondition(condition, context);
+        if (!conditionResult.allowed) {
+          return conditionResult;
+        }
+      }
+      
+      return { allowed: true };
     } catch (error) {
-      console.error('Failed to fetch action conditions:', error);
+      console.error('Error checking action conditions:', error);
+      return { allowed: true }; // Fail open for robustness
+    }
+  }
+
+  /**
+   * Phase 3: Get generic action conditions
+   */
+  private async getActionConditions(
+    action: string,
+    context: ActionContext
+  ): Promise<ActionCondition[]> {
+    try {
+      const conditions = await this.prisma.actionCondition.findMany({
+        where: {
+          actionType: action,
+          OR: [
+            {
+              entityType: 'room',
+              entityId: context.roomId
+            },
+            {
+              entityType: 'global'
+            }
+          ]
+        },
+        orderBy: { priority: 'asc' }
+      });
+
+      // Convert Prisma model to ActionCondition interface
+      return conditions.map(c => ({
+        id: c.id,
+        entity_type: c.entityType,
+        entity_id: c.entityId,
+        action_type: c.actionType,
+        condition_type: c.conditionType,
+        condition_data: c.conditionData || undefined,
+        failure_message: c.failureMessage,
+        hint_message: c.hintMessage || undefined,
+        priority: c.priority,
+        created_at: c.createdAt.toISOString()
+      }));
+    } catch (error) {
+      console.error('Error getting action conditions:', error);
       return [];
     }
   }
 
   /**
-   * Evaluate a specific condition
+   * Phase 3: Evaluate a single condition
    */
   private async evaluateCondition(
     condition: ActionCondition,
-    character: Character,
     context: ActionContext
-  ): Promise<boolean> {
+  ): Promise<ValidationResult> {
     try {
       switch (condition.condition_type) {
-        case ConditionType.MIN_HEALTH:
-          const healthPercentage = character.max_health ? 
-            Math.round((character.current_health || 0) / character.max_health * 100) : 100;
-          return healthPercentage >= (condition.condition_value || 0);
-
-        case ConditionType.HAS_ITEM:
-          if (!context.characterId || !condition.condition_value) return false;
-          const itemInRoom = await this.prisma.$queryRaw<any[]>`
-            SELECT 1 FROM inventory_items 
-            WHERE character_id = ${context.characterId} 
-            AND item_id = ${condition.condition_value}
-            LIMIT 1
-          `;
-          return itemInRoom.length > 0;
-
-        case ConditionType.ATTRIBUTE_MIN:
-          // Would need attribute checking logic here
-          return true; // Placeholder
-
-        case ConditionType.NOT_IN_COMBAT:
-          // Check if character is currently in combat
-          const hostileCount = await this.characterService?.hasHostileCharacters(character.current_room_id || 0);
-          return !hostileCount;
-
+        case 'item_in_room':
+          return await this.evaluateItemInRoomCondition(condition, context);
+        
+        case 'item_required':
+          return await this.evaluateItemRequiredCondition(condition, context);
+        
+        case 'item_forbidden':
+          return await this.evaluateItemForbiddenCondition(condition, context);
+        
         default:
-          return true;
+          console.warn(`Unknown condition type: ${condition.condition_type}`);
+          return { allowed: true }; // Unknown conditions don't block
       }
     } catch (error) {
-      console.error('Condition evaluation error:', error);
-      return true; // Fail open for safety
+      console.error('Error evaluating condition:', error);
+      return { allowed: true }; // Fail open for robustness
     }
   }
 
   /**
-   * Validate item-specific conditions
+   * Evaluate item_in_room condition - check if specific item is present in room
    */
-  private async validateItemConditions(
-    action: string,
-    character: Character,
+  private async evaluateItemInRoomCondition(
+    condition: ActionCondition,
     context: ActionContext
   ): Promise<ValidationResult> {
     try {
-      if (!context.itemId) return { allowed: true, reason: 'No item context', priority: 'none' };
+      const conditionData = JSON.parse(condition.condition_data || '{}');
+      const requiredItemId = conditionData.item_id;
+      const required = conditionData.required !== false; // Default to true
 
-      // Check if character actually has the item for actions that require possession
-      if (['use', 'equip', 'drop'].includes(action) && context.characterId) {
-        const characterItem = await this.prisma.$queryRaw<any[]>`
-          SELECT 1 FROM inventory_items 
-          WHERE character_id = ${context.characterId} 
-          AND item_id = ${context.itemId}
-          LIMIT 1
-        `;
-        
-        if (characterItem.length === 0) {
-          return {
-            allowed: false,
-            reason: 'Character does not possess this item',
-            priority: 'blocking'
-          };
-        }
+      if (!requiredItemId) {
+        return { allowed: true }; // Malformed condition
       }
 
-      // Check if item can be picked up for pickup actions
-      if (action === 'pickup' && context.roomId) {
-        const characterItem = await this.prisma.$queryRaw<any[]>`
-          SELECT 1 FROM room_items 
-          WHERE room_id = ${context.roomId} 
-          AND item_id = ${context.itemId}
-          LIMIT 1
-        `;
-        
-        if (characterItem.length === 0) {
-          return {
-            allowed: false,
-            reason: 'Item is not available in this location',
-            priority: 'blocking'
-          };
+      // Check if item is in the room
+      const itemInRoom = await this.prisma.roomItem.findFirst({
+        where: {
+          roomId: context.roomId,
+          itemId: requiredItemId
         }
+      });
+
+      const itemPresent = !!itemInRoom;
+
+      if (required && !itemPresent) {
+        return {
+          allowed: false,
+          reason: condition.failure_message,
+          hint: condition.hint_message
+        };
       }
 
-      return { allowed: true, reason: 'Item conditions satisfied', priority: 'none' };
+      if (!required && itemPresent) {
+        return {
+          allowed: false,
+          reason: condition.failure_message,
+          hint: condition.hint_message
+        };
+      }
+
+      return { allowed: true };
     } catch (error) {
-      console.error('Item validation error:', error);
-      return { allowed: true, reason: 'Item validation skipped due to error', priority: 'none' };
+      console.error('Error evaluating item_in_room condition:', error);
+      return { allowed: true };
     }
   }
 
   /**
-   * Validate action-specific rules
+   * Evaluate item_required condition - check if character has specific item
    */
-  private async validateActionSpecificRules(
-    action: string,
-    character: Character,
+  private async evaluateItemRequiredCondition(
+    condition: ActionCondition,
     context: ActionContext
   ): Promise<ValidationResult> {
-    // Most action-specific rules would be implemented here
-    // For now, returning allowed for all actions
-    return { allowed: true, reason: 'Action-specific rules satisfied', priority: 'none' };
+    try {
+      const conditionData = JSON.parse(condition.condition_data || '{}');
+      const requiredItemId = conditionData.item_id;
+
+      if (!requiredItemId) {
+        return { allowed: true }; // Malformed condition
+      }
+
+      // Check if character has the item
+      const characterItem = await this.prisma.characterInventory.findFirst({
+        where: {
+          characterId: context.characterId,
+          itemId: requiredItemId
+        }
+      });
+
+      if (!characterItem) {
+        return {
+          allowed: false,
+          reason: condition.failure_message,
+          hint: condition.hint_message
+        };
+      }
+
+      return { allowed: true };
+    } catch (error) {
+      console.error('Error evaluating item_required condition:', error);
+      return { allowed: true };
+    }
   }
 
   /**
-   * Quick check if character can move (used for optimization)
+   * Evaluate item_forbidden condition - check if character doesn't have specific item
    */
-  async canMove(character: Character): Promise<boolean> {
-    const result = await this.canPerformAction('move', character, { 
-      characterId: character.id,
-      roomId: character.current_room_id 
-    });
-    return result.allowed;
+  private async evaluateItemForbiddenCondition(
+    condition: ActionCondition,
+    context: ActionContext
+  ): Promise<ValidationResult> {
+    try {
+      const conditionData = JSON.parse(condition.condition_data || '{}');
+      const forbiddenItemId = conditionData.item_id;
+
+      if (!forbiddenItemId) {
+        return { allowed: true }; // Malformed condition
+      }
+
+      // Check if character has the forbidden item
+      const characterItem = await this.prisma.characterInventory.findFirst({
+        where: {
+          characterId: context.characterId,
+          itemId: forbiddenItemId
+        }
+      });
+
+      if (characterItem) {
+        return {
+          allowed: false,
+          reason: condition.failure_message,
+          hint: condition.hint_message
+        };
+      }
+
+      return { allowed: true };
+    } catch (error) {
+      console.error('Error evaluating item_forbidden condition:', error);
+      return { allowed: true };
+    }
   }
 
   /**
-   * Quick check if character can attack (used for optimization)
+   * Utility method to build action context from current game state
+   * This will be used by GameController to create context objects
    */
-  async canAttack(character: Character, targetId?: number): Promise<boolean> {
-    const result = await this.canPerformAction('attack', character, {
-      characterId: character.id,
-      roomId: character.current_room_id,
-      targetId
-    });
-    return result.allowed;
+  static buildActionContext(
+    roomId: number,
+    characterId: number,
+    options: {
+      itemId?: number;
+      direction?: string;
+      targetId?: number;
+      additionalData?: Record<string, any>;
+    } = {}
+  ): ActionContext {
+    return {
+      roomId,
+      characterId,
+      itemId: options.itemId,
+      direction: options.direction,
+      targetId: options.targetId,
+      additionalData: options.additionalData
+    };
+  }
+
+  /**
+   * Utility method to create a standard "blocked" result
+   */
+  static createBlockedResult(
+    reason: string,
+    hint?: string,
+    blocker?: any
+  ): ValidationResult {
+    return {
+      allowed: false,
+      reason,
+      hint,
+      blocker
+    };
+  }
+
+  /**
+   * Utility method to create a standard "allowed" result
+   */
+  static createAllowedResult(): ValidationResult {
+    return { allowed: true };
   }
 }

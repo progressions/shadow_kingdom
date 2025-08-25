@@ -42,6 +42,7 @@ export interface Character {
   charisma: number;
   max_health: number | null;
   current_health: number | null;
+  is_hostile?: boolean | null;  // Hostility state
   is_dead?: boolean | null;  // Death state for action validation
   sentiment: CharacterSentiment; // New sentiment system
   dialogue_response?: string | null;   // Custom dialogue response

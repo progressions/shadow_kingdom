@@ -189,23 +189,27 @@ model Item {
 }
 
 model Character {
-  id              Int      @id @default(autoincrement())
-  gameId          Int      @map("game_id")
-  name            String
-  type            String   @default("player")
-  currentRoomId   Int?     @map("current_room_id")
-  strength        Int      @default(10)
-  dexterity       Int      @default(10)
-  intelligence    Int      @default(10)
-  constitution    Int      @default(10)
-  wisdom          Int      @default(10)
-  charisma        Int      @default(10)
-  maxHealth       Int?     @map("max_health")
-  currentHealth   Int?     @map("current_health")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id                Int      @id @default(autoincrement())
+  gameId            Int      @map("game_id")
+  name              String
+  description       String?
+  type              String   @default("player")
+  currentRoomId     Int?     @map("current_room_id")
+  strength          Int      @default(10)
+  dexterity         Int      @default(10)
+  intelligence      Int      @default(10)
+  constitution      Int      @default(10)
+  wisdom            Int      @default(10)
+  charisma          Int      @default(10)
+  maxHealth         Int?     @map("max_health")
+  currentHealth     Int?     @map("current_health")
+  isHostile         Boolean  @default(false) @map("is_hostile")
+  isDead            Boolean  @default(false) @map("is_dead")
+  dialogueResponse  String?  @map("dialogue_response")
+  createdAt         DateTime @default(now()) @map("created_at")
   
-  game            Game     @relation(fields: [gameId], references: [id])
-  inventory       CharacterInventory[]
+  game              Game     @relation(fields: [gameId], references: [id])
+  inventory         CharacterInventory[]
   
   @@map("characters")
 }

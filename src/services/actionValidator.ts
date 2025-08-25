@@ -3,6 +3,8 @@
  * 
  * Validates whether actions can be performed based on game state, character conditions,
  * environmental factors, and item properties. Acts as a gatekeeper before actions execute.
+ * 
+ * This is now a wrapper around ActionValidatorPrisma for backward compatibility.
  */
 
 import Database from '../utils/database';
@@ -17,12 +19,20 @@ import {
   ItemCurse 
 } from '../types/validation';
 import { CharacterService } from './characterService';
+import { ActionValidatorPrisma } from './actionValidator.prisma';
+import { CharacterServicePrisma } from './characterService.prisma';
 
 export class ActionValidator {
+  private prismaValidator: ActionValidatorPrisma;
+  
   constructor(
     private db: Database,
     private characterService?: CharacterService
-  ) {}
+  ) {
+    // Create a Prisma character service wrapper if we have a legacy one
+    const charServicePrisma = this.characterService ? new CharacterServicePrisma() : undefined;
+    this.prismaValidator = new ActionValidatorPrisma(charServicePrisma);
+  }
 
   /**
    * Main validation method - checks if an action can be performed
@@ -36,42 +46,7 @@ export class ActionValidator {
     character: Character,
     context: ActionContext
   ): Promise<ValidationResult> {
-    try {
-      // Phase 1: Check character death state first (fastest check)
-      const deathCheck = this.checkDeathState(action, character);
-      if (!deathCheck.allowed) {
-        return deathCheck;
-      }
-
-      // Phase 2: Check for item curses if action involves an item
-      if (context.itemId) {
-        const curseCheck = await this.checkItemCurses(context.itemId, action);
-        if (!curseCheck.allowed) {
-          return curseCheck;
-        }
-      }
-
-      // Phase 3: Check for action conditions based on context
-      const conditionCheck = await this.checkActionConditions(action, context);
-      if (!conditionCheck.allowed) {
-        return conditionCheck;
-      }
-
-      // Future phases will add additional validation checks here:
-      // - Phase 4: Hostile presence validation
-      // - Phase 5: Generic condition system extensions
-
-      // If we reach here, action is allowed
-      return { allowed: true };
-
-    } catch (error) {
-      console.error('Error in action validation:', error);
-      return {
-        allowed: false,
-        reason: 'An unexpected error occurred while validating the action.',
-        hint: 'Please try again or contact support if the issue persists.'
-      };
-    }
+    return this.prismaValidator.canPerformAction(action, character, context);
   }
 
   /**
