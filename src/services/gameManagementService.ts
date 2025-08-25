@@ -295,10 +295,10 @@ export class GameManagementService {
    */
   async updateLastPlayed(gameId: number): Promise<boolean> {
     try {
-      await this.db.run(
-        'UPDATE games SET last_played_at = datetime(\'now\') WHERE id = ?',
-        [gameId]
-      );
+      await this.prisma.game.update({
+        where: { id: gameId },
+        data: { lastPlayedAt: new Date() }
+      });
       return true;
     } catch (error) {
       if (this.isDebugEnabled()) {
@@ -313,10 +313,9 @@ export class GameManagementService {
    */
   async gameNameExists(name: string): Promise<boolean> {
     try {
-      const game = await this.db.get<Game>(
-        'SELECT id FROM games WHERE name = ?',
-        [name.trim()]
-      );
+      const game = await this.prisma.game.findFirst({
+        where: { name: name.trim() }
+      });
       return !!game;
     } catch (error) {
       if (this.isDebugEnabled()) {
