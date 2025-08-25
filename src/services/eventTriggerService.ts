@@ -6,7 +6,7 @@
  * where actions have dynamic consequences beyond their immediate effects.
  */
 
-import Database from '../utils/database';
+import { PrismaService } from './prismaService';
 import { Character } from '../types/character';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
@@ -105,10 +105,14 @@ interface Item {
 }
 
 export class EventTriggerService {
+  private prisma: any; // PrismaClient instance
   private activeTriggers = new Set<number>(); // Prevent infinite loops
   private actionExecutedTriggers = new Map<string, Set<number>>(); // Track triggers per action
 
-  constructor(private db: Database, private tui?: TUIInterface) {}
+  constructor(db: any, private tui?: TUIInterface) {
+    // db parameter kept for backward compatibility but not used
+    this.prisma = PrismaService.getInstance().getClient();
+  }
 
   /**
    * Main trigger processing method
@@ -203,14 +207,32 @@ export class EventTriggerService {
 
     query += ' ORDER BY priority ASC, id ASC';
 
-    const triggers = await this.db.all<EventTrigger>(query, params);
+    // Use Prisma instead of raw SQL
+    const triggers = await this.prisma.eventTrigger.findMany({
+      where: {
+        eventType,
+        entityType,
+        entityId: entityId,
+        enabled: true
+      },
+      orderBy: [
+        { priority: 'asc' },
+        { id: 'asc' }
+      ]
+    }) as any[];
 
     // Also get global triggers that match the event type
-    const globalTriggers = await this.db.all<EventTrigger>(`
-      SELECT * FROM event_triggers 
-      WHERE event_type = ? AND entity_type = 'global' AND enabled = TRUE
-      ORDER BY priority ASC, id ASC
-    `, [eventType]);
+    const globalTriggers = await this.prisma.eventTrigger.findMany({
+      where: {
+        eventType,
+        entityType: 'global',
+        enabled: true
+      },
+      orderBy: [
+        { priority: 'asc' },
+        { id: 'asc' }
+      ]
+    }) as any[];
 
     // Combine and sort by priority
     const allTriggers = [...triggers, ...globalTriggers];
@@ -252,11 +274,13 @@ export class EventTriggerService {
     console.log(`Executing trigger: ${trigger.name} (ID: ${trigger.id})`);
 
     // Get effects for this trigger
-    const effects = await this.db.all<TriggerEffect>(`
-      SELECT * FROM trigger_effects 
-      WHERE trigger_id = ? 
-      ORDER BY effect_order ASC, id ASC
-    `, [trigger.id]);
+    const effects = await this.prisma.triggerEffect.findMany({
+      where: { triggerId: trigger.id },
+      orderBy: [
+        { effectOrder: 'asc' },
+        { id: 'asc' }
+      ]
+    });
 
     const appliedEffects: string[] = [];
 
@@ -353,17 +377,15 @@ export class EventTriggerService {
       ? new Date(Date.now() + durationSeconds * 1000).toISOString()
       : null;
 
-    await this.db.run(`
-      INSERT INTO character_status_effects 
-      (character_id, status_type, source_trigger_id, effect_data, expires_at)
-      VALUES (?, ?, ?, ?, ?)
-    `, [
-      characterId,
-      statusType,
-      sourceTrigger,
-      JSON.stringify(effectData),
-      expiresAt
-    ]);
+    await this.prisma.characterStatusEffect.create({
+      data: {
+        characterId,
+        statusType,
+        sourceTriggerId: sourceTrigger,
+        effectData: JSON.stringify(effectData),
+        expiresAt: expiresAt ? new Date(expiresAt) : null
+      }
+    });
 
     console.log(`[TRIGGER] Applied status effect: ${statusType} to character ${characterId}`);
   }
@@ -372,12 +394,13 @@ export class EventTriggerService {
    * Update trigger execution count and timestamp
    */
   private async updateTriggerExecution(triggerId: number): Promise<void> {
-    await this.db.run(`
-      UPDATE event_triggers 
-      SET execution_count = execution_count + 1,
-          last_executed = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [triggerId]);
+    await this.prisma.eventTrigger.update({
+      where: { id: triggerId },
+      data: {
+        executionCount: { increment: 1 },
+        lastExecuted: new Date()
+      }
+    });
   }
 
   /**
@@ -388,23 +411,21 @@ export class EventTriggerService {
     context: TriggerContext,
     appliedEffects: string[]
   ): Promise<void> {
-    await this.db.run(`
-      INSERT INTO trigger_history 
-      (trigger_id, character_id, room_id, event_type, event_data, effects_applied)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      trigger.id,
-      context.character.id,
-      context.room?.id || null,
-      trigger.event_type,
-      JSON.stringify({
-        entityType: trigger.entity_type,
-        entityId: trigger.entity_id,
-        itemId: context.item?.id,
-        eventData: context.eventData
-      }),
-      JSON.stringify(appliedEffects)
-    ]);
+    await this.prisma.triggerHistory.create({
+      data: {
+        triggerId: trigger.id,
+        characterId: context.character.id,
+        roomId: context.room?.id || null,
+        eventType: trigger.event_type,
+        eventData: JSON.stringify({
+          entityType: trigger.entity_type,
+          entityId: trigger.entity_id,
+          itemId: context.item?.id,
+          eventData: context.eventData
+        }),
+        effectsApplied: JSON.stringify(appliedEffects)
+      }
+    });
   }
 
   /**
@@ -423,23 +444,21 @@ export class EventTriggerService {
       cooldownSeconds?: number;
     } = {}
   ): Promise<number> {
-    const result = await this.db.run(`
-      INSERT INTO event_triggers 
-      (name, description, entity_type, entity_id, event_type, priority, enabled, max_executions, cooldown_seconds)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      name,
-      options.description || null,
-      entityType,
-      entityId,
-      eventType,
-      options.priority || 0,
-      options.enabled !== false,
-      options.maxExecutions || null,
-      options.cooldownSeconds || null
-    ]);
+    const result = await this.prisma.eventTrigger.create({
+      data: {
+        name,
+        description: options.description || null,
+        entityType,
+        entityId,
+        eventType,
+        priority: options.priority || 0,
+        enabled: options.enabled !== false,
+        maxExecutions: options.maxExecutions || null,
+        cooldownSeconds: options.cooldownSeconds || null
+      }
+    });
 
-    return result.lastID!;
+    return result.id;
   }
 
   /**
@@ -458,57 +477,73 @@ export class EventTriggerService {
       message?: string;
     } = {}
   ): Promise<number> {
-    const result = await this.db.run(`
-      INSERT INTO trigger_effects 
-      (trigger_id, effect_order, effect_type, target_type, target_specifier, effect_data, delay_seconds, duration_seconds, message)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      triggerId,
-      options.order || 0,
-      effectType,
-      targetType,
-      options.targetSpecifier || null,
-      JSON.stringify(effectData),
-      options.delaySeconds || 0,
-      options.durationSeconds || null,
-      options.message || null
-    ]);
+    const result = await this.prisma.triggerEffect.create({
+      data: {
+        triggerId,
+        effectOrder: options.order || 0,
+        effectType,
+        targetType,
+        targetSpecifier: options.targetSpecifier || null,
+        effectData: JSON.stringify(effectData),
+        delaySeconds: options.delaySeconds || 0,
+        durationSeconds: options.durationSeconds || null,
+        message: options.message || null
+      }
+    });
 
-    return result.lastID!;
+    return result.id;
   }
 
   /**
    * Get active status effects for a character
    */
   async getActiveStatusEffects(characterId: number): Promise<CharacterStatusEffect[]> {
-    return await this.db.all<CharacterStatusEffect>(`
-      SELECT * FROM character_status_effects
-      WHERE character_id = ?
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
-      ORDER BY created_at DESC
-    `, [characterId]);
+    const now = new Date();
+    return await this.prisma.characterStatusEffect.findMany({
+      where: {
+        characterId,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    }) as CharacterStatusEffect[];
   }
 
   /**
    * Remove expired status effects
    */
   async cleanupExpiredStatusEffects(): Promise<void> {
-    await this.db.run(`
-      DELETE FROM character_status_effects
-      WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')
-    `);
+    const now = new Date();
+    await this.prisma.characterStatusEffect.deleteMany({
+      where: {
+        expiresAt: {
+          not: null,
+          lte: now
+        }
+      }
+    });
   }
 
   /**
    * Get trigger execution history
    */
   async getTriggerHistory(limit: number = 50): Promise<TriggerHistory[]> {
-    return await this.db.all<TriggerHistory>(`
-      SELECT h.*, t.name as trigger_name
-      FROM trigger_history h
-      JOIN event_triggers t ON h.trigger_id = t.id
-      ORDER BY h.execution_time DESC
-      LIMIT ?
-    `, [limit]);
+    const history = await this.prisma.triggerHistory.findMany({
+      take: limit,
+      orderBy: { executionTime: 'desc' },
+      include: {
+        trigger: {
+          select: { name: true }
+        }
+      }
+    });
+    
+    // Map to match expected format
+    return history.map((h: any) => ({
+      ...h,
+      trigger_name: h.trigger?.name
+    })) as TriggerHistory[];
   }
 }

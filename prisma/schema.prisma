@@ -92,3 +92,88 @@ model Region {
   @@index([gameId])
   @@map("regions")
 }
+
+model EventTrigger {
+  id               Int      @id @default(autoincrement())
+  name             String
+  description      String?
+  entityType       String   @map("entity_type")
+  entityId         Int?     @map("entity_id")
+  eventType        String   @map("event_type")
+  priority         Int      @default(0)
+  enabled          Boolean  @default(true)
+  maxExecutions    Int?     @map("max_executions")
+  executionCount   Int      @default(0) @map("execution_count")
+  cooldownSeconds  Int?     @map("cooldown_seconds")
+  lastExecuted     DateTime? @map("last_executed")
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  conditions       TriggerCondition[]
+  effects          TriggerEffect[]
+  history          TriggerHistory[]
+  statusEffects    CharacterStatusEffect[]
+  
+  @@map("event_triggers")
+}
+
+model TriggerCondition {
+  id                 Int      @id @default(autoincrement())
+  triggerId          Int      @map("trigger_id")
+  conditionOrder     Int      @default(0) @map("condition_order")
+  conditionType      String   @map("condition_type")
+  comparisonOperator String?  @map("comparison_operator")
+  conditionValue     String   @map("condition_value")
+  logicOperator      String   @default("AND") @map("logic_operator")
+  createdAt          DateTime @default(now()) @map("created_at")
+  
+  trigger            EventTrigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  
+  @@map("trigger_conditions")
+}
+
+model TriggerEffect {
+  id               Int      @id @default(autoincrement())
+  triggerId        Int      @map("trigger_id")
+  effectOrder      Int      @default(0) @map("effect_order")
+  effectType       String   @map("effect_type")
+  targetType       String   @map("target_type")
+  targetSpecifier  String?  @map("target_specifier")
+  effectData       String   @map("effect_data")
+  delaySeconds     Int      @default(0) @map("delay_seconds")
+  durationSeconds  Int?     @map("duration_seconds")
+  message          String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  trigger          EventTrigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  
+  @@map("trigger_effects")
+}
+
+model TriggerHistory {
+  id              Int      @id @default(autoincrement())
+  triggerId       Int      @map("trigger_id")
+  characterId     Int?     @map("character_id")
+  roomId          Int?     @map("room_id")
+  eventType       String   @map("event_type")
+  eventData       String?  @map("event_data")
+  effectsApplied  String?  @map("effects_applied")
+  executionTime   DateTime @default(now()) @map("execution_time")
+  
+  trigger         EventTrigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  
+  @@map("trigger_history")
+}
+
+model CharacterStatusEffect {
+  id               Int      @id @default(autoincrement())
+  characterId      Int      @map("character_id")
+  statusType       String   @map("status_type")
+  sourceTriggerId  Int?     @map("source_trigger_id")
+  effectData       String?  @map("effect_data")
+  expiresAt        DateTime? @map("expires_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  sourceTrigger    EventTrigger? @relation(fields: [sourceTriggerId], references: [id])
+  
+  @@map("character_status_effects")
+}

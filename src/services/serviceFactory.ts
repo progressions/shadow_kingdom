@@ -196,9 +196,8 @@ export class ServiceFactory {
     const actionValidator = new ActionValidatorPrisma(characterService);
     const healthService = new HealthServicePrisma();
     const examineService = new ExamineServicePrisma(characterService, itemService);
-    // Note: Some services still need legacy Database for now
-    const db = new Database('placeholder'); // TODO: Remove when all services migrated
-    const eventTriggerService = new EventTriggerService(db, tui);
+    // EventTriggerService now uses Prisma internally
+    const eventTriggerService = new EventTriggerService(null, tui);
     const fantasyLevelService = new FantasyLevelService();
     const loggerService = new LoggerService();
     
