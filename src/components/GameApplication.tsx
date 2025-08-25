@@ -129,37 +129,13 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         gameSession: session,
       });
 
-      // Show initial room description
-      if (currentRoom && navigationEngine) {
-        try {
-          const roomDescription = await navigationEngine.generateRoomDescription(currentRoom);
-          // Split room description into lines for proper display
-          const roomLines = roomDescription.split('\n');
-          setMessages([
-            '=== Shadow Kingdom ===',
-            '',
-            'Welcome to Shadow Kingdom! Type a command to begin...',
-            '',
-            ...roomLines
-          ]);
-
-          // Get navigation hints
-          const hints = await navigationEngine.getNavigationHints();
-          setNavigationHints(hints);
-        } catch (error) {
-          // Fallback room description
-          const fallbackDescription = `**${currentRoom.name}**\n\n${currentRoom.description}`;
-          // Split fallback description into lines for proper display
-          const fallbackLines = fallbackDescription.split('\n');
-          setMessages([
-            '=== Shadow Kingdom ===',
-            '',
-            'Welcome to Shadow Kingdom! Type a command to begin...',
-            '',
-            ...fallbackLines
-          ]);
-        }
-      }
+      // Just show a simple welcome message
+      setMessages([
+        '=== Shadow Kingdom ===',
+        '',
+        'Type something and it will echo back.',
+        ''
+      ]);
 
       // Update status
       updateStatusDisplay(session, currentRoom);
@@ -222,48 +198,11 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     }
   }, [exit]);
 
-  // Handle interactive command submission
+  // Handle interactive command submission - JUST ECHO
   const handleCommandSubmit = useCallback(async (command: string): Promise<void> => {
-    const { commandRouter } = servicesRef.current;
-    if (!commandRouter || !command.trim()) return;
-
-    try {
-      setMessages(prev => [...prev, `> ${command}`]);
-      
-      const result = await commandRouter.executeCommand(command);
-      
-      if (result.success) {
-        // Split response into lines for proper display
-        const responseLines = result.response.split('\n');
-        setMessages(prev => [...prev, ...responseLines]);
-        
-        // Handle quit command
-        if (result.metadata?.shouldExit) {
-          setTimeout(() => {
-            process.exit(0);
-          }, 1500); // Give time to show the goodbye message
-          return;
-        }
-        
-        // Update state if room changed
-        if (result.metadata?.roomChanged) {
-          await updateGameState();
-        }
-      } else {
-        // Split error response into lines for proper display
-        const errorLines = result.response.split('\n');
-        setMessages(prev => [...prev, ...errorLines]);
-      }
-
-    } catch (error) {
-      const errorMsg = 'An error occurred while processing your command. Please try again.';
-      setMessages(prev => [...prev, errorMsg]);
-      
-      if (debugMode) {
-        console.error('Command execution error:', error);
-      }
-    }
-  }, [debugMode]);
+    // Just add the command to messages. That's it.
+    setMessages(prev => [...prev, `> ${command}`]);
+  }, []);
 
   // Update game state after room changes
   const updateGameState = useCallback(async (): Promise<void> => {

@@ -7,19 +7,12 @@ interface GamePaneProps {
 }
 
 export const GamePane: React.FC<GamePaneProps> = ({ messages }) => {
-  // Just render ALL messages - let terminal handle scrolling naturally
-  const fullText = useMemo(() => {
-    return messages.map(message => {
-      const isCommand = message.startsWith('>');
-      const isHeader = message.includes('=== Shadow Kingdom ===');
-      // Add indentation for non-command/header lines
-      return (isCommand || isHeader) ? message : `  ${message}`;
-    }).join('\n');
-  }, [messages]);
-
+  // Dead simple - just join and display
+  const text = messages.join('\n');
+  
   return (
-    <Box padding={1} width="100%">
-      <Text>{fullText}</Text>
+    <Box padding={1}>
+      <Text>{text}</Text>
     </Box>
   )
 }
