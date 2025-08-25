@@ -9,8 +9,8 @@ interface GamePaneProps {
 export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) => {
   // Calculate which messages to display (show most recent)
   const displayMessages = useMemo(() => {
-    // More conservative calculation to prevent overflow
-    const availableLines = Math.max(3, maxLines - 5); // Reserve more space for header and margins
+    // More conservative calculation to prevent overflow - account for header
+    const availableLines = Math.max(2, maxLines - 6); // Reserve space for header, margins, and welcome text
     if (messages.length <= availableLines) {
       return messages
     }
@@ -25,38 +25,41 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) =
       flexShrink={0}
       minWidth={0}
     >
-      <Text color="cyan" bold>
-        === Shadow Kingdom ===
-      </Text>
-      
-      <Box flexDirection="column" marginTop={1} width="100%" minWidth={0}>
-        {displayMessages.length === 0 ? (
-          <Box flexDirection="column">
-            <Text color="gray" wrap="wrap">
-              Welcome to Shadow Kingdom! Type a command to begin...
-            </Text>
-            <Box marginTop={1}>
-              <Text color="dim" wrap="wrap">
-                Try: help, hello, look, status
+      <Box flexDirection="column" width="100%" minWidth={0}>
+        {/* Header - now part of scrolling content */}
+        <Text color="cyan" bold>
+          === Shadow Kingdom ===
+        </Text>
+        
+        <Box marginTop={1}>
+          {displayMessages.length === 0 ? (
+            <Box flexDirection="column">
+              <Text color="gray" wrap="wrap">
+                Welcome to Shadow Kingdom! Type a command to begin...
               </Text>
-            </Box>
-          </Box>
-        ) : (
-          displayMessages.map((message, index) => {
-            const isCommand = message.startsWith('>')
-            
-            return (
-              <Box key={index} width="100%" minWidth={0}>
-                <Text 
-                  color={isCommand ? "green" : "white"}
-                  wrap="wrap"
-                >
-                  {isCommand ? message : `  ${message}`}
+              <Box marginTop={1}>
+                <Text color="dim" wrap="wrap">
+                  Try: help, hello, look, status
                 </Text>
               </Box>
-            )
-          })
-        )}
+            </Box>
+          ) : (
+            displayMessages.map((message, index) => {
+              const isCommand = message.startsWith('>')
+              
+              return (
+                <Box key={index} width="100%" minWidth={0}>
+                  <Text 
+                    color={isCommand ? "green" : "white"}
+                    wrap="wrap"
+                  >
+                    {isCommand ? message : `  ${message}`}
+                  </Text>
+                </Box>
+              )
+            })
+          )}
+        </Box>
       </Box>
     </Box>
   )
