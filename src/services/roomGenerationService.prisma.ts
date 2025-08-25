@@ -3,6 +3,7 @@ import { getPrismaClient } from './prismaService';
 import { GrokClient, RegionGenerationContext } from '../ai/grokClient';
 import { Room, Connection, UnfilledConnection } from './gameStateManager';
 import { RegionServicePrisma } from './regionService.prisma';
+import { RoomConnectionValidatorPrisma } from './roomConnectionValidator.prisma';
 import { Region } from '../types/region';
 
 export interface RoomGenerationOptions {
@@ -40,6 +41,7 @@ export interface GenerationLimits {
 export class RoomGenerationServicePrisma {
   private prisma: PrismaClient;
   private options: RoomGenerationOptions;
+  private connectionValidator: RoomConnectionValidatorPrisma;
 
   constructor(
     private grokClient: GrokClient,
@@ -51,6 +53,7 @@ export class RoomGenerationServicePrisma {
       ...options
     };
     this.prisma = getPrismaClient();
+    this.connectionValidator = new RoomConnectionValidatorPrisma(this.prisma);
   }
 
   /**
