@@ -7,6 +7,8 @@
  */
 
 import Database from '../utils/database';
+import { PrismaService } from './prismaService';
+import { PrismaClient } from '../generated/prisma';
 import { CharacterService } from './characterService';
 import { ItemService } from './itemService';
 import { Character } from '../types/character';
@@ -22,11 +24,15 @@ export interface ExaminableTarget {
 }
 
 export class ExamineService {
+  private prisma: PrismaClient;
+
   constructor(
-    private db: Database,
+    private db: Database, // Keep for backward compatibility
     private characterService: CharacterService,
     private itemService: ItemService
-  ) {}
+  ) {
+    this.prisma = PrismaService.getInstance().getClient();
+  }
 
   /**
    * Find an examinable target by name in the current context
@@ -171,12 +177,21 @@ export class ExamineService {
   ): Promise<ExaminableTarget | null> {
     try {
       // Get connections from this room
-      const connections = await this.db.all<Connection>(`
-        SELECT * FROM connections 
-        WHERE from_room_id = ?
-      `, [roomId]);
+      const connections = await this.prisma.connection.findMany({
+        where: { fromRoomId: roomId }
+      });
 
-      const connection = connections.find(conn => {
+      // Convert to expected format
+      const formattedConnections = connections.map(conn => ({
+        id: conn.id,
+        game_id: conn.gameId,
+        from_room_id: conn.fromRoomId,
+        to_room_id: conn.toRoomId,
+        direction: conn.direction,
+        name: conn.name || undefined
+      })) as Connection[];
+
+      const connection = formattedConnections.find(conn => {
         const direction = conn.direction.toLowerCase();
         return direction.includes(targetName) || 
                targetName.includes(direction) ||
