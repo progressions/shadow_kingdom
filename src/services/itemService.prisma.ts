@@ -43,10 +43,10 @@ export class ItemServicePrisma {
         weight: item.weight,
         value: item.value,
         stackable: item.stackable,
-        max_stack: item.max_stack,
-        armor_rating: item.armor_rating,
-        equipment_slot: item.equipment_slot,
-        is_fixed: item.is_fixed || false
+        maxStack: item.max_stack,
+        armorRating: item.armor_rating,
+        equipmentSlot: item.equipment_slot,
+        isFixed: item.is_fixed || false
       }
     });
     
@@ -69,15 +69,15 @@ export class ItemServicePrisma {
       id: result.id,
       name: result.name,
       description: result.description,
-      type: result.type,
+      type: result.type as any,
       weight: result.weight,
       value: result.value,
       stackable: result.stackable,
-      max_stack: result.max_stack,
-      armor_rating: result.armor_rating,
-      equipment_slot: result.equipment_slot,
-      is_fixed: result.is_fixed,
-      created_at: result.created_at.toISOString()
+      max_stack: result.maxStack,
+      armor_rating: result.armorRating,
+      equipment_slot: result.equipmentSlot as any,
+      is_fixed: result.isFixed,
+      created_at: result.createdAt.toISOString()
     };
   }
 
@@ -101,15 +101,15 @@ export class ItemServicePrisma {
       id: result.id,
       name: result.name,
       description: result.description,
-      type: result.type,
+      type: result.type as any,
       weight: result.weight,
       value: result.value,
       stackable: result.stackable,
-      max_stack: result.max_stack,
-      armor_rating: result.armor_rating,
-      equipment_slot: result.equipment_slot,
-      is_fixed: result.is_fixed,
-      created_at: result.created_at.toISOString()
+      max_stack: result.maxStack,
+      armor_rating: result.armorRating,
+      equipment_slot: result.equipmentSlot as any,
+      is_fixed: result.isFixed,
+      created_at: result.createdAt.toISOString()
     }));
   }
 
@@ -181,16 +181,16 @@ export class ItemServicePrisma {
    * @returns Array of inventory items with item details
    */
   async getInventoryItems(characterId: number): Promise<InventoryItem[]> {
-    const results = await this.prisma.inventoryItem.findMany({
-      where: { character_id: characterId },
+    const results = await this.prisma.characterInventory.findMany({
+      where: { characterId },
       include: {
         item: true
       }
     });
 
-    return results.map(result => ({
-      character_id: result.character_id,
-      item_id: result.item_id,
+    return results.map((result: any) => ({
+      character_id: result.characterId,
+      item_id: result.itemId,
       quantity: result.quantity,
       item: {
         id: result.item.id,
@@ -200,11 +200,11 @@ export class ItemServicePrisma {
         weight: result.item.weight,
         value: result.item.value,
         stackable: result.item.stackable,
-        max_stack: result.item.max_stack,
-        armor_rating: result.item.armor_rating,
-        equipment_slot: result.item.equipment_slot,
-        is_fixed: result.item.is_fixed,
-        created_at: result.item.created_at.toISOString()
+        max_stack: result.item.maxStack,
+        armor_rating: result.item.armorRating,
+        equipment_slot: result.item.equipmentSlot,
+        is_fixed: result.item.isFixed,
+        created_at: result.item.createdAt.toISOString()
       }
     }));
   }
@@ -216,16 +216,18 @@ export class ItemServicePrisma {
    */
   async getRoomItems(roomId: number): Promise<RoomItem[]> {
     const results = await this.prisma.roomItem.findMany({
-      where: { room_id: roomId },
+      where: { roomId },
       include: {
         item: true
       }
     });
 
     return results.map(result => ({
-      room_id: result.room_id,
-      item_id: result.item_id,
+      id: result.id,
+      room_id: result.roomId,
+      item_id: result.itemId,
       quantity: result.quantity,
+      created_at: result.createdAt.toISOString(),
       item: {
         id: result.item.id,
         name: result.item.name,
@@ -234,11 +236,11 @@ export class ItemServicePrisma {
         weight: result.item.weight,
         value: result.item.value,
         stackable: result.item.stackable,
-        max_stack: result.item.max_stack,
-        armor_rating: result.item.armor_rating,
-        equipment_slot: result.item.equipment_slot,
-        is_fixed: result.item.is_fixed,
-        created_at: result.item.created_at.toISOString()
+        max_stack: result.item.maxStack,
+        armor_rating: result.item.armorRating,
+        equipment_slot: result.item.equipmentSlot,
+        is_fixed: result.item.isFixed,
+        created_at: result.item.createdAt.toISOString()
       }
     }));
   }
@@ -523,7 +525,7 @@ export class ItemServicePrisma {
 
     return {
       character_id: result.character_id,
-      item_id: result.item_id,
+      item_id: result.itemId,
       quantity: result.quantity,
       item: {
         id: result.item.id,
@@ -533,11 +535,11 @@ export class ItemServicePrisma {
         weight: result.item.weight,
         value: result.item.value,
         stackable: result.item.stackable,
-        max_stack: result.item.max_stack,
-        armor_rating: result.item.armor_rating,
-        equipment_slot: result.item.equipment_slot,
-        is_fixed: result.item.is_fixed,
-        created_at: result.item.created_at.toISOString()
+        max_stack: result.item.maxStack,
+        armor_rating: result.item.armorRating,
+        equipment_slot: result.item.equipmentSlot,
+        is_fixed: result.item.isFixed,
+        created_at: result.item.createdAt.toISOString()
       }
     };
   }
@@ -559,8 +561,9 @@ export class ItemServicePrisma {
     if (!result) return null;
 
     return {
-      room_id: result.room_id,
-      item_id: result.item_id,
+      id: result.id,
+      room_id: result.roomId,
+      item_id: result.itemId,
       quantity: result.quantity,
       item: {
         id: result.item.id,
@@ -570,11 +573,11 @@ export class ItemServicePrisma {
         weight: result.item.weight,
         value: result.item.value,
         stackable: result.item.stackable,
-        max_stack: result.item.max_stack,
-        armor_rating: result.item.armor_rating,
-        equipment_slot: result.item.equipment_slot,
-        is_fixed: result.item.is_fixed,
-        created_at: result.item.created_at.toISOString()
+        max_stack: result.item.maxStack,
+        armor_rating: result.item.armorRating,
+        equipment_slot: result.item.equipmentSlot,
+        is_fixed: result.item.isFixed,
+        created_at: result.item.createdAt.toISOString()
       }
     };
   }
@@ -618,7 +621,7 @@ export class ItemServicePrisma {
    * @returns Array of inventory items with item details
    */
   async getCharacterInventory(characterId: number): Promise<InventoryItem[]> {
-    const results = await this.prisma.inventoryItem.findMany({
+    const results = await this.prisma.characterInventory.findMany({
       where: { characterId: characterId },
       include: {
         item: true

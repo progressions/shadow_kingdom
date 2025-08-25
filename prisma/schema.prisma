@@ -21,6 +21,7 @@ model Game {
   connections  Connection[]
   gameState    GameState?
   regions      Region[]
+  characters   Character[]
   
   @@map("games")
 }
@@ -39,6 +40,7 @@ model Room {
   connectionsFrom Connection[] @relation("FromRoom")
   connectionsTo   Connection[] @relation("ToRoom")
   gameStates      GameState[]
+  roomItems       RoomItem[]
   
   @@index([gameId])
   @@index([regionId])
@@ -162,6 +164,77 @@ model TriggerHistory {
   trigger         EventTrigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
   
   @@map("trigger_history")
+}
+
+model Item {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  description         String
+  extendedDescription String?  @map("extended_description")
+  type                String
+  weight              Float    @default(0.0)
+  value               Int      @default(0)
+  stackable           Boolean  @default(false)
+  maxStack            Int      @default(1) @map("max_stack")
+  armorRating         Int      @default(0) @map("armor_rating")
+  equipmentSlot       String?  @map("equipment_slot")
+  isFixed             Boolean  @default(false) @map("is_fixed")
+  createdAt           DateTime @default(now()) @map("created_at")
+  
+  roomItems           RoomItem[]
+  inventoryItems      CharacterInventory[]
+  
+  @@map("items")
+}
+
+model Character {
+  id              Int      @id @default(autoincrement())
+  gameId          Int      @map("game_id")
+  name            String
+  type            String   @default("player")
+  currentRoomId   Int?     @map("current_room_id")
+  strength        Int      @default(10)
+  dexterity       Int      @default(10)
+  intelligence    Int      @default(10)
+  constitution    Int      @default(10)
+  wisdom          Int      @default(10)
+  charisma        Int      @default(10)
+  maxHealth       Int?     @map("max_health")
+  currentHealth   Int?     @map("current_health")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  game            Game     @relation(fields: [gameId], references: [id])
+  inventory       CharacterInventory[]
+  
+  @@map("characters")
+}
+
+model CharacterInventory {
+  id            Int      @id @default(autoincrement())
+  characterId   Int      @map("character_id")
+  itemId        Int      @map("item_id")
+  quantity      Int      @default(1)
+  equipped      Boolean  @default(false)
+  equippedSlot  String?  @map("equipped_slot")
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  character     Character @relation(fields: [characterId], references: [id])
+  item          Item      @relation(fields: [itemId], references: [id])
+  
+  @@map("character_inventory")
+}
+
+model RoomItem {
+  id         Int      @id @default(autoincrement())
+  roomId     Int      @map("room_id")
+  itemId     Int      @map("item_id")
+  quantity   Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  room       Room     @relation(fields: [roomId], references: [id])
+  item       Item     @relation(fields: [itemId], references: [id])
+  
+  @@map("room_items")
 }
 
 model CharacterStatusEffect {
