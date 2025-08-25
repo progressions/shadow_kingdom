@@ -4,195 +4,209 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Shadow Kingdom is a fully functional AI-powered text adventure game built with TypeScript and Node.js featuring region-based world generation. Players explore a dynamically generated fantasy kingdom where AI creates rooms, descriptions, and atmospheric connections within thematically coherent regions using Grok AI.
+Shadow Kingdom is an AI-powered text adventure game built with TypeScript, Node.js, and React Ink. It features a sophisticated TUI (Terminal User Interface) with dual-mode operation: interactive gameplay and programmatic command execution for automation/testing. The game uses Prisma ORM with SQLite for data persistence and supports YAML-based world seeding.
 
 ## Development Commands
 
 ```bash
-# Development
+# Core Development
 npm install              # Install dependencies
-npm run dev              # Run development server with hot reload
 npm run build            # Build TypeScript to JavaScript
+npm run dev              # Start development server
 npm start               # Run built application
+
+# Database Operations (Prisma)
+npm run db:generate     # Generate Prisma client
+npm run db:push         # Push schema changes to database  
+npm run db:migrate      # Create and apply migrations
+npm run db:studio       # Open Prisma Studio GUI
+npm run db:reset        # Reset database
+npm run db:seed         # Seed world from YAML files
 
 # Testing
 npm test                # Run all tests with Jest
-npm run test:watch      # Watch mode for tests
+npm run test:watch      # Run tests in watch mode
 npm run test:coverage   # Generate coverage report
 
-# Playing the Game
-npm run dev                # Start interactive game
+# Run specific test files
+npm test -- tests/services/gameEngine.test.ts
+npm test -- tests/integration/tuiIntegration.test.ts
 
-# Programmatic Testing Interface
-AI_DEBUG_LOGGING=false npm run dev -- --cmd "look"          # Execute single command
-AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north"       # Execute with debug logging
+# Game Execution Modes
+npm run dev                                    # Interactive TUI mode
+npm run dev -- --cmd "look" --debug          # Programmatic command with debug
+AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north"  # Environment debug flag
 ```
 
 ## Architecture Overview
 
-**Core Services:**
-- **GameController** (`src/gameController.ts`): Main game logic and TUI interface
-- **RegionService** (`src/services/regionService.ts`): Region-based world generation with distance probability
-- **GrokClient** (`src/ai/grokClient.ts`): AI integration with fallback systems and mock mode
-- **BackgroundGenerationService**: Proactive room generation triggered by player movement
+### Core Service Layer
+The application follows a service-oriented architecture with dependency injection:
 
-**Key Systems:**
-- **Visit-to-Lock Mechanism**: Prevents phantom connections, maintains spatial consistency
-- **Connection-Based Generation**: Pre-creates unfilled connections that background generation fills
-- **Region-Based World**: Distance-based probability for thematic coherence (15% base + 12% per distance)
-- **AI Character Generation**: Automatically creates NPCs and enemies during room generation with fallback keyword matching
+- **GameEngine** (`src/services/gameEngine.ts`): Game initialization, launch sequences, and error recovery
+- **GameStateManager** (`src/services/gameStateManager.ts`): Session state management and room transitions  
+- **CommandRouter** (`src/services/commandRouter.ts`): Command parsing, routing, and execution
+- **RoomNavigationEngine** (`src/services/roomNavigationEngine.ts`): Movement validation, room transitions, interactive elements
+- **PrismaService** (`src/services/prismaService.ts`): Database abstraction with connection management
+- **YamlWorldService** (`src/services/yamlWorldService.ts`): YAML-based world seeding and validation
 
-## Development Patterns
+### TUI Component Layer (React Ink)
+Modern React-based terminal interface:
 
-### Database Operations - CRITICAL REQUIREMENT
-**⚠️ MANDATORY: ALL DATABASE ACCESS MUST USE PRISMA ONLY**
+- **GameApplication** (`src/components/GameApplication.tsx`): Main application component orchestrating all services
+- **GamePane** (`src/components/GamePane.tsx`): Game output and message display  
+- **InputBar** (`src/components/InputBar.tsx`): Command input with history navigation
+- **StatusPane** (`src/components/StatusPane.tsx`): Dynamic status display with flexible layouts
 
-Every single database operation MUST go through Prisma ORM. No exceptions. Do not create legacy SQL-based services.
+### Service Integration Pattern
+Services are initialized in dependency order and injected via constructors:
 
 ```typescript
-// ✅ CORRECT - Use Prisma services only
-const room = await this.prismaService.room.findFirst({ where: { id: roomId } });
-const connections = await this.prismaService.connection.findMany({ where: { gameId } });
-
-// ❌ FORBIDDEN - Direct SQL or legacy database wrappers
-const room = await this.db.get<Room>('SELECT * FROM rooms WHERE id = ?', [roomId]);
+const prismaService = PrismaService.getInstance();
+const gameStateManager = new GameStateManager(prismaService);
+const gameEngine = new GameEngine(prismaService, gameStateManager);
+const navigationEngine = new RoomNavigationEngine(gameStateManager, prismaService);
+const commandRouter = new CommandRouter(gameStateManager, prismaService);
 ```
 
-### AI Integration Patterns
-All AI calls include fallback handling:
+### Dual-Mode Operation
+The entry point (`src/index.ts`) supports both interactive TUI and programmatic execution:
+- **Interactive Mode**: Full TUI with GamePane, InputBar, StatusPane
+- **Programmatic Mode**: Single command execution for automation/testing
+
+## Database Architecture (Prisma + SQLite)
+
+**Critical Requirement: ALL database access MUST use Prisma ORM only. No direct SQL queries.**
+
+### Core Schema
+- **Game**: Game sessions with metadata and current state
+- **Room**: Generated rooms with descriptions and region assignments  
+- **Connection**: Uni-directional room links with optional descriptions
+- **Region**: Thematic areas for world coherence
+- **Character**: NPCs with dialogue and combat stats
+- **Item**: Game objects with types and properties
+
+### Key Relationships
+```sql
+-- Room navigation system
+connections.from_room_id → rooms.id
+connections.to_room_id → rooms.id (nullable for unfilled connections)
+
+-- Region-based world organization  
+rooms.region_id → regions.id
+regions.game_id → games.id
+
+-- Game state tracking
+games.current_room_id → rooms.id
+```
+
+## Testing Architecture
+
+### Test Organization
+- `tests/components/` - TUI component tests with ink-testing-library
+- `tests/services/` - Unit tests for service layer
+- `tests/integration/` - End-to-end integration tests
+- `tests/performance/` - Performance benchmarks
+
+### Key Testing Patterns
 ```typescript
-try {
-  const result = await this.grokClient.generateRoom(context);
-  return result;
-} catch (error) {
-  return this.getFallbackContent(context);
-}
+// Service mocking pattern for integration tests
+jest.mock('../../src/services/gameEngine');
+(GameEngine as jest.MockedClass<typeof GameEngine>).mockImplementation(() => mockGameEngine);
+
+// Ink component testing
+const { lastFrame, stdin } = render(React.createElement(Component));
+expect(lastFrame()).toContain('expected output');
 ```
 
-### Command System
-**Menu commands:**
-```typescript
-this.commandRouter.addMenuCommand({
-  name: 'commandname',
-  description: 'Description',
-  handler: async () => await this.handleCommand()
-});
-```
-
-**Game commands:**
-```typescript
-this.commandRouter.addGameCommand({
-  name: 'commandname', 
-  description: 'Description',
-  handler: async (args) => await this.handleCommand(args)
-});
-```
+### Test Configuration
+- **Serial execution**: `maxWorkers: 1` to avoid database conflicts
+- **Module reset**: `resetModules: true` for test isolation  
+- **In-memory databases**: Tests use `:memory:` SQLite for isolation
 
 ## Environment Configuration
 
-Required:
+### Required
 ```bash
-GROK_API_KEY=your_grok_api_key_here
+DATABASE_URL=file:./data/db/shadow_kingdom.db
 ```
 
-Optional:
+### Optional Development
 ```bash
-AI_MOCK_MODE=true                    # Use mock responses for testing
-AI_DEBUG_LOGGING=true                # Enable debug output
-MAX_ROOMS_PER_GAME=100              # Maximum rooms per game
-GENERATION_COOLDOWN_MS=10000        # Cooldown between generations
-
-# Character Generation Control
-CHARACTER_GENERATION_FREQUENCY=40   # Percentage (0-100) of rooms that get character generation requests
+AI_DEBUG_LOGGING=true                    # Enable detailed debug output
+AI_MOCK_MODE=true                        # Use mock AI responses
+GAME_ENGINE_SKIP_MENU=true               # Auto-launch for TUI integration
 ```
 
-## Key Files and Locations
+## Key Development Patterns
 
-### Core Game Logic
-- `src/gameController.ts` - Main game controller with dual-mode operation
-- `src/services/gameStateManager.ts` - Game state and session management
-- `src/services/commandRouter.ts` - Command registration and routing
-
-### World Generation System
-- `src/services/regionService.ts` - Region management and probability logic
-- `src/services/roomGenerationService.ts` - Room creation with region integration
-- `src/services/backgroundGenerationService.ts` - Proactive generation system
-
-### Data Layer
-- `src/utils/initDb.ts` - Database schema and migrations
-
-### AI Integration
-- `src/ai/grokClient.ts` - Grok AI integration with fallback systems
-
-### Testing Infrastructure
-- `tests/` - Jest test suite with comprehensive coverage
-- `tests/CLAUDE.md` - Test execution guidelines and patterns
-
-## Documentation Reference
-
-- **specs/world-generation-comprehensive.md** - Complete world generation system documentation
-- **specs/rpg-systems-comprehensive.md** - Future RPG systems design
-- **docs/BACKGROUND_GENERATION_SYSTEM.md** - Detailed background generation guide
-- **archive/completed-issues/** - Completed feature implementations and resolved issues
-- **archive/documentation/** - Comprehensive specs and detailed technical documentation
-
-## Game Testing and Development Interface
-
-### Interactive Mode
-Start the game in interactive mode with a text-based interface:
-```bash
-npm run dev
+### Component Communication
+TUI components use props and callbacks for state management:
+```typescript
+<GamePane messages={messages} maxLines={gameAreaHeight} />
+<InputBar 
+  onSubmit={handleCommandSubmit}
+  commandHistory={commandHistory}
+  onHistoryUpdate={setCommandHistory}
+/>
 ```
 
-Navigate using commands like `go north`, `look`, `examine sword`, `pickup key`, `inventory`, etc.
+### Error Handling
+Comprehensive error boundaries with graceful fallbacks:
+- Loading states during service initialization
+- Error states with user-friendly messages  
+- Service recovery mechanisms
 
-### Programmatic Command Interface
-Execute single commands programmatically for testing and development:
-
-```bash
-# Basic command execution (quiet logging)
-AI_DEBUG_LOGGING=false npm run dev -- --cmd "look"
-
-# Command execution with debug logging (shows AI generation details)
-AI_DEBUG_LOGGING=true npm run dev -- --cmd "go north"
-
-# Common test commands
-npm run dev -- --cmd "go south"
-npm run dev -- --cmd "pickup ancient key"
-npm run dev -- --cmd "inventory"
-npm run dev -- --cmd "examine iron sword"
+### Command System
+Commands registered with CommandRouter:
+```typescript
+this.commandRouter.addGameCommand({
+  name: 'look',
+  description: 'Examine your surroundings', 
+  handler: async () => await this.handleLookCommand()
+});
 ```
 
-**Key Parameters:**
-- `--cmd`: The game command to execute
-- `AI_DEBUG_LOGGING`: Set to `true` to see detailed AI generation logs, `false` for clean output
+## Current Known Issues
 
-**Output Logging:**
-- Game responses and state changes are logged to the development log
-- AI generation details (prompts, responses, fallbacks) shown when debug logging is enabled
-- Session state changes and room generation events are tracked
-- Use this interface to test command behaviors and observe system responses
+### Runtime Issues
+- **GameEngine launch failures**: "All recovery attempts failed" during initialization
+- **Database connection issues**: May require schema investigation or migration fixes
 
-## Common Development Tasks
+### Test Issues  
+- **Integration test limitations**: Some command processing tests fail due to stdin simulation vs InputBar component mismatch
+- **Mocking complexity**: Service dependency injection requires careful mock setup
 
-**Adding new commands**: Update GameController with command handlers
-**Database schema changes**: Update `initDb.ts` with migration logic and TypeScript interfaces
-**AI features**: Extend GrokClient with new generation methods and fallback handling
-**Testing**: Use Jest with isolated test databases (`:memory:`) for reliable testing
+## File Structure Highlights
 
-## System Status
+```
+src/
+├── components/          # React Ink TUI components
+│   ├── GameApplication.tsx    # Main integrated application
+│   ├── GamePane.tsx          # Game output display
+│   ├── InputBar.tsx          # Command input with history  
+│   └── StatusPane.tsx        # Dynamic status display
+├── services/            # Core business logic services
+│   ├── gameEngine.ts         # Game initialization & launch
+│   ├── gameStateManager.ts   # Session & state management
+│   ├── commandRouter.ts      # Command system
+│   ├── roomNavigationEngine.ts # Movement & interactions
+│   ├── prismaService.ts      # Database abstraction
+│   └── yamlWorldService.ts   # World seeding
+└── index.ts            # Entry point with CLI parsing
 
-✅ **Core Systems Complete:**
-- Region-based world generation with distance probability
-- Connection-based generation eliminating phantom connections
-- Visit-to-lock mechanism ensuring spatial consistency
-- Background generation with 4+ rooms per trigger
-- Session interface for programmatic access
-- Comprehensive test suite (802/802 tests passing)
+tests/
+├── integration/         # End-to-end tests including TUI integration
+├── services/           # Service unit tests
+└── components/         # Component tests with ink-testing-library
+```
 
-🚧 **Future Development:**
-- Character progression system
-- Combat mechanics
-- Inventory and equipment
-- Advanced quest system
-- Remember that in SQLite, boolean values are stored as 0 for false and 1 for true.
+## Development Workflow
+
+1. **Service Changes**: Update service classes with proper dependency injection
+2. **Component Changes**: Follow React Ink patterns with props/callbacks
+3. **Database Changes**: Update Prisma schema, run migrations, regenerate client
+4. **Testing**: Run relevant test suites, ensure mocking is properly configured
+5. **Integration**: Test both interactive and programmatic modes
+
+Remember: This codebase prioritizes service-oriented architecture with clear separation between business logic (services) and presentation (TUI components). All database operations must go through Prisma ORM.
