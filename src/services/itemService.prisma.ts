@@ -611,4 +611,95 @@ export class ItemServicePrisma {
     const maxItems = this.getMaxInventoryItems();
     return `Items: ${currentCount}/${maxItems}`;
   }
+
+  /**
+   * Get a character's inventory
+   * @param characterId Character ID
+   * @returns Array of inventory items with item details
+   */
+  async getCharacterInventory(characterId: number): Promise<InventoryItem[]> {
+    const results = await this.prisma.inventoryItem.findMany({
+      where: { characterId: characterId },
+      include: {
+        item: true
+      },
+      orderBy: [
+        { item: { type: 'asc' } },
+        { item: { name: 'asc' } }
+      ]
+    });
+
+    return results.map(row => ({
+      id: row.id,
+      character_id: row.characterId,
+      item_id: row.itemId,
+      quantity: row.quantity,
+      equipped: row.equipped,
+      equipped_slot: row.equippedSlot,
+      created_at: row.createdAt.toISOString(),
+      item: {
+        id: row.item.id,
+        name: row.item.name,
+        description: row.item.description,
+        type: row.item.type,
+        weight: row.item.weight,
+        value: row.item.value,
+        stackable: row.item.stackable,
+        max_stack: row.item.maxStack,
+        armor_rating: row.item.armorRating,
+        equipment_slot: row.item.equipmentSlot,
+        is_fixed: row.item.isFixed,
+        created_at: row.item.createdAt.toISOString()
+      }
+    }));
+  }
+
+  /**
+   * Check if character has an item by partial name match
+   * @param characterId Character ID
+   * @param itemName Partial item name to search for
+   * @returns True if character has the item
+   */
+  async hasItemByPartialName(characterId: number, itemName: string): Promise<boolean> {
+    const inventory = await this.getCharacterInventory(characterId);
+    return inventory.some(inventoryItem => 
+      inventoryItem.item.name.toLowerCase().includes(itemName.toLowerCase())
+    );
+  }
+
+  /**
+   * Add an item directly to character's inventory (for testing purposes)
+   * @param characterId Character ID
+   * @param itemId Item ID
+   * @param quantity Quantity to add (default: 1)
+   */
+  async addItemToCharacter(characterId: number, itemId: number, quantity: number = 1): Promise<void> {
+    // Check if item already exists in inventory
+    const existingItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        characterId: characterId,
+        itemId: itemId
+      }
+    });
+
+    if (existingItem) {
+      // Update quantity if item exists
+      await this.prisma.inventoryItem.update({
+        where: { id: existingItem.id },
+        data: {
+          quantity: existingItem.quantity + quantity
+        }
+      });
+    } else {
+      // Create new inventory item
+      await this.prisma.inventoryItem.create({
+        data: {
+          characterId: characterId,
+          itemId: itemId,
+          quantity: quantity,
+          equipped: false
+        }
+      });
+    }
+  }
 }
