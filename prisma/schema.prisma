@@ -23,6 +23,7 @@ model Game {
   rooms                 Room[]
   regions               Region[]
   connections           Connection[]
+  characters            Character[]
   
   // Current room relation
   currentRoom           Room?        @relation("GameCurrentRoom", fields: [currentRoomId], references: [id])
@@ -49,6 +50,9 @@ model Room {
   // Connection relations - uni-directional
   connectionsFrom       Connection[] @relation("ConnectionFromRoom")
   connectionsTo         Connection[] @relation("ConnectionToRoom")
+  
+  // Character relations
+  characters            Character[]
   
   // Current room for games
   currentGameRooms      Game[]       @relation("GameCurrentRoom")
@@ -100,4 +104,32 @@ model Connection {
   @@index([gameId, fromRoomId])
   @@unique([fromRoomId, direction], name: "unique_room_direction")
   @@map("connections")
+}
+
+model Character {
+  id                    Int          @id @default(autoincrement())
+  gameId                Int          @map("game_id")
+  roomId                Int          @map("room_id")
+  name                  String
+  description           String
+  sentiment             String       // "hostile", "aggressive", "neutral", "friendly", "devoted"
+  health                Int          @default(20)
+  maxHealth             Int          @default(20) @map("max_health")
+  attack                Int          @default(5)
+  defense               Int          @default(1)
+  alive                 Boolean      @default(true)
+  dialogueFriendly      String?      @map("dialogue_friendly")
+  dialogueHostile       String?      @map("dialogue_hostile")
+  dialogueDefeated      String?      @map("dialogue_defeated")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  game                  Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  room                  Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  @@index([gameId])
+  @@index([roomId])
+  @@index([gameId, roomId])
+  @@map("characters")
 }

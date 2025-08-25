@@ -1,0 +1,72 @@
+# Example Castle - Simple 3-room demonstration world
+# This shows the basic YAML structure for creating game worlds
+
+world:
+  name: "Example Castle"
+  description: "A simple 3-room castle for demonstration purposes"
+
+regions:
+  - id: "castle_demo"
+    name: "Demo Castle"
+    theme: "medieval_castle"
+    description: "A small demonstration castle"
+
+rooms:
+  - id: "entrance"
+    region_id: "castle_demo"
+    name: "Castle Entrance"
+    description: "You stand before a simple wooden door leading into a small castle."
+    extended_description: "The entrance is modest but welcoming, with a sturdy oak door and stone walls covered in ivy."
+    starting_room: true
+    
+  - id: "hall"
+    region_id: "castle_demo"
+    name: "Main Hall"
+    description: "A cozy hall with a fireplace and wooden furniture."
+    extended_description: "The hall feels lived-in and comfortable, with chairs arranged around a crackling fireplace."
+    
+  - id: "tower"
+    region_id: "castle_demo"  
+    name: "Tower Room"
+    description: "A round tower room with windows overlooking the countryside."
+    extended_description: "From the tower windows, you can see rolling hills and distant forests stretching to the horizon."
+
+connections:
+  # Entrance <-> Hall
+  - from: "entrance"
+    to: "hall"
+    direction: "north"
+    description: "through the main doorway"
+    
+  - from: "hall"
+    to: "entrance"
+    direction: "south"
+    description: "back to the entrance"
+    
+  # Hall <-> Tower
+  - from: "hall"
+    to: "tower"
+    direction: "up"
+    description: "up the spiral staircase"
+    
+  - from: "tower"
+    to: "hall"
+    direction: "down" 
+    description: "down the spiral staircase"
+
+items:
+  - id: "demo_key"
+    room_id: "hall"
+    name: "Brass Key"
+    description: "A simple brass key lying on the mantelpiece."
+    type: "key"
+
+characters:
+  - id: "friendly_guard"
+    room_id: "tower"
+    name: "Castle Guard"
+    description: "A friendly guard keeping watch from the tower."
+    type: "friendly"
+    health: 20
+    dialogue:
+      friendly: "Welcome to our humble castle! The view from here is quite nice."

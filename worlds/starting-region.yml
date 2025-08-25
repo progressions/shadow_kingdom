@@ -1,0 +1,334 @@
+# Shadow Kingdom - Starting Region: Ancient Castle Grounds
+# A complete 12-room starting world with locked expansion point
+
+world:
+  name: "Ancient Castle Grounds"
+  description: "A mysterious castle complex with hidden secrets and ancient guardians"
+
+regions:
+  - id: "castle_main"
+    name: "Castle Main"  
+    theme: "medieval_castle"
+    description: "The primary castle structure with grand halls and chambers"
+    
+  - id: "castle_grounds"
+    name: "Castle Grounds"
+    theme: "medieval_courtyard" 
+    description: "The outer areas and defensive structures of the castle"
+
+rooms:
+  # ===============================
+  # CASTLE MAIN REGION (8 rooms)
+  # ===============================
+  
+  - id: "entrance_hall"
+    region_id: "castle_main"
+    name: "Grand Entrance Hall"
+    description: "You stand in a magnificent hall with towering stone pillars supporting a vaulted ceiling. Faded tapestries hang from the walls, and dust motes dance in shafts of light."
+    extended_description: "The entrance hall stretches impressively upward, with intricate stone carvings depicting ancient battles adorning the column bases. A worn red carpet leads deeper into the castle, and you notice scorch marks on some of the pillars, hinting at past conflicts."
+    starting_room: true
+    
+  - id: "throne_room"
+    region_id: "castle_main" 
+    name: "Abandoned Throne Room"
+    description: "A vast chamber dominated by an empty stone throne carved from black granite. Dust motes dance in shafts of light from high windows, and the air feels heavy with forgotten authority."
+    extended_description: "The throne room speaks of former grandeur, with its high vaulted ceiling and ornate columns. The throne itself bears mysterious runes etched into its armrests, and behind it hangs a tattered banner displaying a dragon sigil. The marble floor shows wear patterns where countless petitioners once knelt."
+    
+  - id: "great_hall"
+    region_id: "castle_main"
+    name: "Great Hall"
+    description: "Long wooden tables stretch across this cavernous dining hall, their surfaces scarred and stained by countless meals. A massive stone fireplace dominates the far wall, cold and filled with ash."
+    extended_description: "The great hall could once seat hundreds of guests. The oak tables bear knife marks and wine stains, while rusty weapons and heraldic shields still hang from wall mounts. Iron chandeliers hang dark overhead, and the fireplace hearth is large enough to roast an entire boar."
+    
+  - id: "library"
+    region_id: "castle_main"
+    name: "Dusty Library"
+    description: "Towering bookshelves line the walls from floor to ceiling, filled with ancient tomes and scrolls. The air is thick with the scent of aged parchment and slowly decaying knowledge."
+    extended_description: "Most books are too damaged to read, their pages cracked and yellowed with age. However, some astronomy and history texts remain intact on the higher shelves, protected from moisture. A reading desk sits near a narrow window, and a brass telescope points toward the stars."
+    
+  - id: "armory"
+    region_id: "castle_main"
+    name: "Castle Armory"
+    description: "Weapon racks and armor stands fill this rectangular stone chamber, though most of the equipment has long since rusted or been claimed by time and neglect."
+    extended_description: "The armory still contains some serviceable weapons among the rust and decay. Shield emblems on the walls show a dragon sigil matching the throne room banner. A heavy oak chest in the corner appears to have been forced open long ago, its contents long since plundered."
+    
+  - id: "chapel"
+    region_id: "castle_main"
+    name: "Sacred Chapel"
+    description: "A small stone chapel with tall stained glass windows casting colored light across worn wooden pews. An altar stands at the far end, draped with faded cloth."
+    extended_description: "The chapel's altar holds a stone basin filled with stagnant water that might once have been holy. Religious symbols are carved into every available surface, and votive candle stubs line the windowsills. The atmosphere feels both peaceful and ominous, as if ancient prayers still echo in the stones."
+    
+  - id: "kitchen"
+    region_id: "castle_main"
+    name: "Castle Kitchen"
+    description: "A large kitchen built for feeding many people, with a massive stone hearth and heavy wooden preparation tables. Copper pots and iron hooks hang from overhead beams."
+    extended_description: "The kitchen clearly served dozens of people daily. A butcher block table shows countless knife marks, and dried herbs still hang from the rafters, somehow preserved. The pantry door stands slightly ajar, revealing empty shelves within, and a well provides access to fresh water."
+    
+  - id: "study"
+    region_id: "castle_main"
+    name: "Scholar's Study"  
+    description: "A private study filled with maps, scrolls, and arcane instruments scattered across a large oak desk. A circular window provides the only light, and the air smells of old parchment and mysterious experiments."
+    extended_description: "Maps of the surrounding lands cover the walls, marked with cryptic symbols and notations in an archaic script. Alchemical equipment sits on shelves alongside astronomical charts, and a brass telescope points toward the window. The desk drawer appears to be locked, but you notice it's slightly ajar."
+
+  # ===============================
+  # CASTLE GROUNDS REGION (4 rooms)  
+  # ===============================
+  
+  - id: "courtyard"
+    region_id: "castle_grounds"
+    name: "Inner Courtyard"
+    description: "An open stone courtyard surrounded by high castle walls, with a dry fountain at its center now covered in climbing ivy. Guard towers loom at each corner, their windows dark and watchful."
+    extended_description: "The courtyard once served as the castle's bustling heart. Guard towers overlook from each corner with arrow slits visible in their walls, and the fountain's basin is cracked, with moss growing between the flagstones. Training dummies made of straw and wood still stand against one wall."
+    
+  - id: "guard_tower"
+    region_id: "castle_grounds" 
+    name: "Watch Tower"
+    description: "A tall stone tower offering commanding views of the castle grounds and surrounding countryside. Narrow windows provide glimpses in all directions, and the wind whistles through arrow loops."
+    extended_description: "The tower served as the castle's primary lookout point and last line of defense. A spiral staircase leads to higher levels, and arrow loops face in all cardinal directions. Old torches remain in wall sconces, and a bell rope hangs from above, though the bell itself is cracked and silent."
+    
+  - id: "stable"
+    region_id: "castle_grounds"
+    name: "Abandoned Stables"
+    description: "Stone stables with wooden stall doors hanging open on rusted hinges. Old hay still fills some of the feeding troughs, and the air carries the faint scent of horses long departed."
+    extended_description: "The stables could house dozens of warhorses and riding mounts. Bridles and saddles hang from wooden pegs, their leather cracked and brittle with age. A tack room in the back contains grooming supplies and horseshoes, while hay lofts above remain partially filled with moldering fodder."
+    
+  - id: "gatehouse" 
+    region_id: "castle_grounds"
+    name: "Castle Gatehouse"
+    description: "A heavily fortified gatehouse that once controlled access to the castle grounds. Heavy wooden doors stand partially open, and chains hang from a mechanism above that once operated a portcullis."
+    extended_description: "The gatehouse is heavily fortified with murder holes above the entrance and thick iron-bound doors. A winch mechanism once controlled a massive portcullis, now rusted in place. Guard chambers on either side contain old weapon racks and arrow slits facing both inward and outward."
+
+connections:
+  # =====================================
+  # ENTRANCE HALL CONNECTIONS (3 exits)
+  # =====================================
+  
+  # Entrance Hall -> Throne Room (north)
+  - from: "entrance_hall"
+    to: "throne_room"
+    direction: "north" 
+    description: "through the ornate archway adorned with carved dragons"
+    
+  # Throne Room -> Entrance Hall (south)
+  - from: "throne_room"
+    to: "entrance_hall"
+    direction: "south"
+    description: "back through the ornate dragon archway"
+    
+  # Entrance Hall -> Great Hall (east)
+  - from: "entrance_hall"
+    to: "great_hall"
+    direction: "east"
+    description: "through wide double doors of dark oak"
+    
+  # Great Hall -> Entrance Hall (west)
+  - from: "great_hall"
+    to: "entrance_hall"
+    direction: "west" 
+    description: "back through the double doors to the entrance"
+
+  # Entrance Hall -> Courtyard (south)
+  - from: "entrance_hall"
+    to: "courtyard"
+    direction: "south"
+    description: "through the main entrance to the courtyard"
+    
+  # Courtyard -> Entrance Hall (north)
+  - from: "courtyard"
+    to: "entrance_hall"
+    direction: "north"
+    description: "back through the main entrance into the castle"
+
+  # =====================================
+  # THRONE ROOM CONNECTIONS (1 additional exit)
+  # =====================================
+  
+  # Throne Room -> Library (west)
+  - from: "throne_room"
+    to: "library"
+    direction: "west"
+    description: "through a carved wooden door marked with scholarly symbols"
+    
+  # Library -> Throne Room (east)
+  - from: "library" 
+    to: "throne_room"
+    direction: "east"
+    description: "back through the scholar-marked door"
+
+  # =====================================
+  # GREAT HALL CONNECTIONS (2 additional exits)
+  # =====================================
+  
+  # Great Hall -> Kitchen (north)
+  - from: "great_hall"
+    to: "kitchen"
+    direction: "north"
+    description: "through the service entrance used by castle staff"
+    
+  # Kitchen -> Great Hall (south)
+  - from: "kitchen"
+    to: "great_hall"
+    direction: "south"
+    description: "back through the service entrance"
+    
+  # Great Hall -> Armory (east)
+  - from: "great_hall"
+    to: "armory"
+    direction: "east"
+    description: "through a reinforced door bound with iron"
+    
+  # Armory -> Great Hall (west)
+  - from: "armory"
+    to: "great_hall"
+    direction: "west"
+    description: "back through the reinforced iron-bound door"
+
+  # =====================================
+  # LIBRARY CONNECTIONS (1 additional exit)
+  # =====================================
+  
+  # Library -> Study (north)
+  - from: "library" 
+    to: "study"
+    direction: "north"
+    description: "up a narrow spiral staircase to the upper study"
+    
+  # Study -> Library (south)
+  - from: "study"
+    to: "library"
+    direction: "south"
+    description: "down the narrow spiral staircase"
+
+  # =====================================
+  # KITCHEN CONNECTIONS (1 additional exit)
+  # =====================================
+  
+  # Kitchen -> Chapel (west)
+  - from: "kitchen"
+    to: "chapel"
+    direction: "west"
+    description: "through a plain wooden door used by the castle staff"
+    
+  # Chapel -> Kitchen (east)
+  - from: "chapel"
+    to: "kitchen"
+    direction: "east" 
+    description: "back through the plain staff door"
+
+  # =====================================
+  # ARMORY CONNECTIONS (1 additional exit)
+  # =====================================
+  
+  # Armory -> Guard Tower (north)
+  - from: "armory"
+    to: "guard_tower"
+    direction: "north"
+    description: "up stone steps leading to the watchtower"
+    
+  # Guard Tower -> Armory (south)
+  - from: "guard_tower"
+    to: "armory"
+    direction: "south"
+    description: "down the stone steps from the tower"
+
+  # =====================================
+  # COURTYARD CONNECTIONS (3 additional exits)
+  # =====================================
+  
+  # Courtyard -> Stable (west)
+  - from: "courtyard"
+    to: "stable"
+    direction: "west"
+    description: "through the stable doors marked by horseshoe symbols"
+    
+  # Stable -> Courtyard (east)
+  - from: "stable"
+    to: "courtyard"
+    direction: "east"
+    description: "back through the horseshoe-marked stable doors"
+
+  # Courtyard -> Gatehouse (south)
+  - from: "courtyard"
+    to: "gatehouse"
+    direction: "south"
+    description: "toward the heavily fortified castle gate"
+    
+  # Gatehouse -> Courtyard (north)
+  - from: "gatehouse"
+    to: "courtyard"
+    direction: "north"
+    description: "back toward the castle courtyard"
+
+  # Guard Tower -> Courtyard (west)
+  - from: "guard_tower"
+    to: "courtyard"
+    direction: "west"
+    description: "down to the main courtyard from the tower"
+    
+  # Courtyard -> Guard Tower (east) - this connects courtyard to guard tower
+  - from: "courtyard"
+    to: "guard_tower"
+    direction: "east"
+    description: "up to the watchtower for a better view"
+
+  # =====================================
+  # LOCKED UNFILLED CONNECTION (expansion point)
+  # =====================================
+  
+  # Gatehouse -> [Future World] (LOCKED & UNFILLED)
+  - from: "gatehouse"
+    to: null  # This will be filled by AI generation later
+    direction: "south"
+    description: "through the sealed iron gate that blocks further passage"
+    locked: true
+    required_key: "ancient_iron_key"
+
+# Items placed in the world
+items:
+  - id: "ancient_iron_key"
+    room_id: "study"
+    name: "Ancient Iron Key"
+    description: "A heavy iron key with intricate dragon engravings covering its bow and shaft."
+    extended_description: "This key is surprisingly well-preserved despite its apparent age. Dragon motifs are carved into its ornate bow, and runic inscriptions run along the shaft that seem to shimmer in the light. The metal feels warm to the touch, as if imbued with ancient magic."
+    type: "key"
+    hidden: true  # Player must search/examine to find it
+    examine_hint: "The desk drawer appears to be locked, but you notice it's slightly ajar and something metallic glints within."
+    
+  - id: "rusty_sword"
+    room_id: "armory"
+    name: "Rusty Iron Sword"
+    description: "A well-used iron sword with surface rust but a still-sharp blade."
+    extended_description: "Despite the rust covering its surface, this sword has been well-maintained and the edge remains keen. The grip is wrapped in cracked leather, and the pommel bears the dragon sigil of the castle. It feels balanced and ready for combat."
+    type: "weapon"
+    damage: 8
+    
+  - id: "leather_armor"
+    room_id: "armory"
+    name: "Studded Leather Armor"
+    description: "Flexible leather armor reinforced with iron studs along vital areas."
+    extended_description: "This armor combines protection with mobility, featuring iron studs placed strategically over the chest and shoulders. The leather is supple despite its age, and the interior is lined with soft fabric. It bears the craftsmanship of the castle's former armorers."
+    type: "armor"
+    defense: 3
+
+# Characters in the world
+characters:
+  - id: "castle_guardian"
+    room_id: "study"
+    name: "Spectral Guardian"
+    description: "A ghostly figure in ancient scholar's robes materializes near the desk, its ethereal form crackling with protective magic around the hidden key."
+    type: "hostile"
+    health: 25
+    attack: 6
+    defense: 2
+    behavior: "guards_study"
+    dialogue:
+      hostile: "You seek the ancient key? None shall disturb the sacred knowledge and secrets of this study! Begone, intruder!"
+      defeated: "The... secrets... are... yours... now... guard them... well..."
+    loot:
+      - id: "guardian_essence"
+        name: "Guardian's Essence"
+        description: "A glowing orb that pulses with spectral energy."
+        extended_description: "This ethereal sphere contains the concentrated essence of the castle's guardian spirit. It emanates a warm, protective aura and seems to whisper ancient words of warding. The energy within could be quite valuable."
+        type: "consumable"
+        effect: "restores_health"
+        value: 15
