@@ -361,7 +361,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     <Box flexDirection="column" height="100%" width="100%">
       {/* Game Pane - fills available height */}
       <Box height={gameAreaHeight} width="100%">
-        <GamePane messages={messages} maxLines={Math.max(5, gameAreaHeight - 2)} />
+        <GamePane messages={messages} maxLines={Math.max(3, gameAreaHeight - 4)} />
       </Box>
       
       {/* Spacer to push bottom bars down */}

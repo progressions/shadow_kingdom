@@ -9,15 +9,17 @@ interface GamePaneProps {
 export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines = 20 }) => {
   // Calculate which messages to display (show most recent)
   const displayMessages = useMemo(() => {
-    if (messages.length <= maxLines - 3) { // Reserve space for header and welcome text
+    // More conservative calculation to prevent overflow
+    const availableLines = Math.max(3, maxLines - 5); // Reserve more space for header and margins
+    if (messages.length <= availableLines) {
       return messages
     }
-    return messages.slice(-(maxLines - 3))
+    return messages.slice(-availableLines)
   }, [messages, maxLines])
   return (
     <Box 
       flexDirection="column" 
-      flexGrow={1}
+      height="100%"
       width="100%"
       padding={1}
       flexShrink={0}
