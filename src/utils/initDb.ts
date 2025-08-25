@@ -1,7 +1,7 @@
 import Database from './database';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
-import { seedItems } from './seedItems';
+import { seedItems } from './seedItems.prisma';
 import { seedGameTriggers } from './seedGameTriggers.prisma';
 import { CharacterService } from '../services/characterService';
 import { CharacterGenerationService } from '../services/characterGenerationService';
@@ -631,7 +631,7 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     await ensureCharacterIdColumn(db, tui);
 
     // Seed items table with initial items if empty
-    await seedItems(db, tui);
+    await seedItems(tui);
 
     if (tui) {
       tui.display('Database tables initialized successfully', MessageType.SYSTEM);

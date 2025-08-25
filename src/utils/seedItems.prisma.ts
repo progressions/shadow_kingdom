@@ -9,10 +9,12 @@
  * - For WEAPON items: Represents additional damage points added to attacks
  * - For ARMOR items: Represents armor points that reduce incoming damage
  * - For other items: Represents monetary value in copper pieces
+ * 
+ * Prisma version - uses Prisma ORM for database operations
  */
 
-import Database from './database';
-import { ItemService } from '../services/itemService';
+import { PrismaClient } from '../generated/prisma';
+import { getPrismaClient } from '../services/prismaService';
 import { ItemType, EquipmentSlot, CreateItemData } from '../types/item';
 import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
@@ -213,18 +215,18 @@ const SEED_ITEMS: CreateItemData[] = [
 
 /**
  * Seed the items table with basic items if it's empty
- * @param db Database instance
  * @param tui Optional TUI interface for output
+ * @param prismaClient Optional Prisma client instance
  */
-export async function seedItems(db: Database, tui?: TUIInterface): Promise<void> {
+export async function seedItems(tui?: TUIInterface, prismaClient?: PrismaClient): Promise<void> {
+  const prisma = prismaClient || getPrismaClient();
+  
   try {
-    const itemService = new ItemService(db);
-    
     // Check if items already exist
-    const existingItems = await itemService.listItems();
-    if (existingItems.length > 0) {
+    const existingItemsCount = await prisma.item.count();
+    if (existingItemsCount > 0) {
       if (tui) {
-        tui.display(`Skipping item seeding - ${existingItems.length} items already exist`, MessageType.SYSTEM);
+        tui.display(`Skipping item seeding - ${existingItemsCount} items already exist`, MessageType.SYSTEM);
       }
       return;
     }
@@ -237,11 +239,25 @@ export async function seedItems(db: Database, tui?: TUIInterface): Promise<void>
     let createdCount = 0;
     for (const itemData of SEED_ITEMS) {
       try {
-        const itemId = await itemService.createItem(itemData);
+        const item = await prisma.item.create({
+          data: {
+            name: itemData.name,
+            description: itemData.description,
+            extendedDescription: itemData.extended_description,
+            type: itemData.type,
+            weight: itemData.weight,
+            value: itemData.value,
+            stackable: itemData.stackable,
+            maxStack: itemData.max_stack,
+            armorRating: itemData.armor_rating || 0,
+            equipmentSlot: itemData.equipment_slot,
+            isFixed: itemData.is_fixed || false
+          }
+        });
         createdCount++;
         
         if (tui) {
-          tui.display(`Created item: ${itemData.name} (ID: ${itemId})`, MessageType.SYSTEM);
+          tui.display(`Created item: ${itemData.name} (ID: ${item.id})`, MessageType.SYSTEM);
         }
       } catch (error) {
         if (tui) {
