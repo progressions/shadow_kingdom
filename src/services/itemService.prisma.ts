@@ -146,8 +146,8 @@ export class ItemServicePrisma {
       // Check if the item already exists in the room
       const existingRoomItem = await this.prisma.roomItem.findFirst({
         where: {
-          room_id: roomId,
-          item_id: itemId
+          roomId: roomId,
+          itemId: itemId
         }
       });
 
@@ -163,16 +163,14 @@ export class ItemServicePrisma {
         // Create new room item entry
         await this.prisma.roomItem.create({
           data: {
-            room_id: roomId,
-            item_id: itemId,
+            roomId: roomId,
+            itemId: itemId,
             quantity: quantity
           }
         });
       }
     } catch (error) {
-      if (this.debugLogging) {
-        console.error('Failed to place item in room:', error);
-      }
+      console.error('Failed to place item in room:', error);
       throw new Error('Failed to place item in room');
     }
   }
@@ -579,5 +577,38 @@ export class ItemServicePrisma {
         created_at: result.item.created_at.toISOString()
       }
     };
+  }
+
+  /**
+   * Get the number of distinct items in character's inventory
+   * @param characterId Character ID
+   * @returns Number of distinct items (not quantities)
+   */
+  async getInventoryItemCount(characterId: number): Promise<number> {
+    const count = await this.prisma.inventoryItem.count({
+      where: { characterId: characterId }
+    });
+    return count;
+  }
+
+  /**
+   * Check if character can add another item to their inventory
+   * @param characterId Character ID
+   * @returns True if character can carry more items
+   */
+  async canAddItemToInventory(characterId: number): Promise<boolean> {
+    const currentCount = await this.getInventoryItemCount(characterId);
+    return currentCount < this.getMaxInventoryItems();
+  }
+
+  /**
+   * Get inventory status string showing current/max items
+   * @param characterId Character ID
+   * @returns Status string like "Items: 7/10"
+   */
+  async getInventoryStatus(characterId: number): Promise<string> {
+    const currentCount = await this.getInventoryItemCount(characterId);
+    const maxItems = this.getMaxInventoryItems();
+    return `Items: ${currentCount}/${maxItems}`;
   }
 }

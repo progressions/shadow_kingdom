@@ -69,7 +69,7 @@ export class RegionServicePrisma {
   async getExistingRegionNames(gameId: number): Promise<string[]> {
     const regions = await this.prisma.region.findMany({
       where: {
-        game_id: gameId,
+        gameId: gameId,
         name: { not: null }
       },
       select: {
@@ -86,7 +86,7 @@ export class RegionServicePrisma {
     try {
       const prismaRegion = await this.prisma.region.findFirst({
         where: {
-          game_id: gameId,
+          gameId: gameId,
           name: name
         }
       });
@@ -97,15 +97,15 @@ export class RegionServicePrisma {
 
       return {
         id: prismaRegion.id,
-        game_id: prismaRegion.game_id,
+        game_id: prismaRegion.gameId,
         name: prismaRegion.name,
         type: prismaRegion.type,
         description: prismaRegion.description,
-        center_room_id: prismaRegion.center_room_id,
-        created_at: prismaRegion.created_at.toISOString()
+        center_room_id: prismaRegion.centerRoomId,
+        created_at: prismaRegion.createdAt.toISOString()
       };
     } catch (error) {
-      if (this.debugLogging) {
+      if (this.options?.enableDebugLogging) {
         console.error('Failed to find region by name:', error);
       }
       return null;
@@ -179,12 +179,12 @@ export class RegionServicePrisma {
     try {
       const count = await this.prisma.room.count({
         where: {
-          region_id: regionId
+          regionId: regionId
         }
       });
       return count;
     } catch (error) {
-      if (this.debugLogging) {
+      if (this.options?.enableDebugLogging) {
         console.error('Failed to get region room count:', error);
       }
       return 0;
