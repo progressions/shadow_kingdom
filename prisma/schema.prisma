@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id                    Int          @id @default(autoincrement())
+  currentRoomId         Int?         @map("current_room_id")
+  maxRoomsPerGame       Int          @default(100) @map("max_rooms_per_game")
+  roomCount             Int          @default(0) @map("room_count")
+  generationCooldownMs  Int          @default(10000) @map("generation_cooldown_ms")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  rooms                 Room[]
+  regions               Region[]
+  connections           Connection[]
+  
+  // Current room relation
+  currentRoom           Room?        @relation("GameCurrentRoom", fields: [currentRoomId], references: [id])
+  
+  @@map("games")
+}
+
+model Room {
+  id                    Int          @id @default(autoincrement())
+  gameId                Int          @map("game_id")
+  regionId              Int?         @map("region_id")
+  name                  String
+  description           String
+  extendedDescription   String?      @map("extended_description")
+  visited               Boolean      @default(false)
+  locked                Boolean      @default(false)
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  game                  Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  region                Region?      @relation(fields: [regionId], references: [id])
+  
+  // Connection relations - uni-directional
+  connectionsFrom       Connection[] @relation("ConnectionFromRoom")
+  connectionsTo         Connection[] @relation("ConnectionToRoom")
+  
+  // Current room for games
+  currentGameRooms      Game[]       @relation("GameCurrentRoom")
+  
+  @@index([gameId])
+  @@index([regionId])
+  @@index([gameId, regionId])
+  @@map("rooms")
+}
+
+model Region {
+  id                    Int          @id @default(autoincrement())
+  gameId                Int          @map("game_id")
+  name                  String
+  theme                 String
+  description           String?
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  game                  Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  rooms                 Room[]
+  
+  @@index([gameId])
+  @@index([gameId, theme])
+  @@map("regions")
+}
+
+model Connection {
+  id                    Int          @id @default(autoincrement())
+  gameId                Int          @map("game_id")
+  fromRoomId            Int          @map("from_room_id")
+  toRoomId              Int?         @map("to_room_id") // Null for unfilled connections
+  direction             String       // "north", "south", "east", "west", etc.
+  description           String?      // e.g., "through the arched doorway"
+  locked                Boolean      @default(false)
+  requiredKey           String?      @map("required_key") // Key item ID required to unlock
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  game                  Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  fromRoom              Room         @relation("ConnectionFromRoom", fields: [fromRoomId], references: [id], onDelete: Cascade)
+  toRoom                Room?        @relation("ConnectionToRoom", fields: [toRoomId], references: [id], onDelete: Cascade)
+  
+  @@index([gameId])
+  @@index([fromRoomId])
+  @@index([toRoomId])
+  @@index([gameId, fromRoomId])
+  @@unique([fromRoomId, direction], name: "unique_room_direction")
+  @@map("connections")
+}
