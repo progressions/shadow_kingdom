@@ -512,7 +512,7 @@ export class CommandRouter {
       }
 
       if (exits.length > 0) {
-        description += `\n\nExits: ${exits.join(', ')}`;
+        description += `\n\n→ Available exits: ${exits.join(', ')}`;
       } else {
         description += '\n\nThere are no obvious exits.';
       }

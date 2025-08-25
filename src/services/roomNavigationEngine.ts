@@ -337,7 +337,7 @@ export class RoomNavigationEngine {
           .sort()
           .join(', ');
         
-        description += `\n\nExits: ${exitList}`;
+        description += `\n\n→ Available exits: ${exitList}`;
       } else {
         description += '\n\nThere are no obvious exits.';
       }
