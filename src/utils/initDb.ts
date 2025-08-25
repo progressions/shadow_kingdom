@@ -3,6 +3,7 @@ import { TUIInterface } from '../ui/TUIInterface';
 import { MessageType } from '../ui/MessageFormatter';
 import { seedItems } from './seedItems.prisma';
 import { seedGameTriggers } from './seedGameTriggers.prisma';
+import { ensureCharacterIdColumn } from './ensureCharacterIdColumn.prisma';
 import { CharacterService } from '../services/characterService';
 import { CharacterGenerationService } from '../services/characterGenerationService';
 import type { CreateCharacterData } from '../types/character';
@@ -628,7 +629,7 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
     await ensureProcessingColumn(db, tui);
 
     // Ensure character_id column exists in game_state table
-    await ensureCharacterIdColumn(db, tui);
+    await ensureCharacterIdColumn(tui);
 
     // Seed items table with initial items if empty
     await seedItems(tui);
@@ -644,78 +645,6 @@ export async function initializeDatabase(db: Database, tui?: TUIInterface): Prom
   }
 }
 
-export async function migrateExistingData(db: Database, tui?: TUIInterface): Promise<void> {
-  try {
-    // Check if the old schema exists (rooms table without game_id column)
-    const hasOldSchema = await db.get<{ count: number }>(
-      `SELECT COUNT(*) as count FROM pragma_table_info('rooms') 
-       WHERE name = 'game_id'`
-    );
-
-    // If game_id column doesn't exist, we need to migrate
-    if (!hasOldSchema || hasOldSchema.count === 0) {
-      if (tui) {
-        tui.display('Migrating database from old schema...', MessageType.SYSTEM);
-      } else {
-      }
-      
-      // Check if there are existing rooms to migrate
-      const existingRooms = await db.get<{ count: number }>(
-        'SELECT COUNT(*) as count FROM rooms'
-      );
-
-      if (!existingRooms || existingRooms.count === 0) {
-        if (tui) {
-          tui.display('No existing data to migrate', MessageType.SYSTEM);
-        } else {
-        }
-        return;
-      }
-
-      // Create a default game for existing data
-      const result = await db.run(
-        'INSERT INTO games (name, created_at, last_played_at) VALUES (?, ?, ?)',
-        ['Default Game', new Date().toISOString(), new Date().toISOString()]
-      );
-
-      const defaultGameId = result.lastID;
-
-      // Add game_id column to rooms table
-      await db.run('ALTER TABLE rooms ADD COLUMN game_id INTEGER');
-      
-      // Add game_id column to connections table
-      await db.run('ALTER TABLE connections ADD COLUMN game_id INTEGER');
-
-      // Update existing rooms to use the default game
-      await db.run('UPDATE rooms SET game_id = ?', [defaultGameId]);
-
-      // Update existing connections to use the default game
-      await db.run('UPDATE connections SET game_id = ?', [defaultGameId]);
-
-      // Create game state for the default game (assume player starts in room 1)
-      await db.run(
-        'INSERT INTO game_state (game_id, current_room_id) VALUES (?, ?)',
-        [defaultGameId, 1]
-      );
-
-      if (tui) {
-        tui.display('Data migration completed successfully', MessageType.SYSTEM);
-      } else {
-      }
-    } else {
-      if (tui) {
-        tui.display('Database already has new schema, no migration needed', MessageType.SYSTEM);
-      } else {
-      }
-    }
-  } catch (error) {
-    if (tui) {
-      tui.display(`Error migrating existing data: ${error}`, MessageType.ERROR);
-    } else {
-    }
-    throw error;
-  }
-}
 
 
 async function ensureConnectionDirectionColumn(db: Database, tui?: TUIInterface): Promise<void> {
@@ -1405,31 +1334,3 @@ export async function seedDatabase(db: Database, tui?: TUIInterface): Promise<vo
   }
 }
 
-async function ensureCharacterIdColumn(db: Database, tui?: TUIInterface): Promise<void> {
-  try {
-    // Skip complex column additions for in-memory databases (they're already created with correct schema)
-    if (db.getDbPath() === ':memory:') {
-      return;
-    }
-
-    // Check if character_id column exists in game_state table
-    const characterIdExists = await db.get<{ count: number }>(`
-      SELECT COUNT(*) as count FROM pragma_table_info('game_state') 
-      WHERE name = 'character_id'
-    `);
-
-    if (!characterIdExists || characterIdExists.count === 0) {
-      // Add the character_id column
-      await db.run('ALTER TABLE game_state ADD COLUMN character_id INTEGER');
-      
-      if (tui) {
-        tui.display('Added character_id column to game_state table', MessageType.SYSTEM);
-      }
-    }
-  } catch (error) {
-    if (tui) {
-      tui.display(`Error ensuring character_id column: ${error}`, MessageType.ERROR);
-    }
-    throw error;
-  }
-}
