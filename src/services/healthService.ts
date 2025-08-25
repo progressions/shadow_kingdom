@@ -1,4 +1,5 @@
-import Database from '../utils/database';
+import { PrismaService } from './prismaService';
+import { PrismaClient } from '../generated/prisma';
 import { Character, calculateMaxHealth } from '../types/character';
 
 export interface HealthStatus {
@@ -10,16 +11,20 @@ export interface HealthStatus {
 }
 
 export class HealthService {
-  constructor(private db: Database) {}
+  private prisma: PrismaClient;
+  
+  constructor(db: any) {
+    // db parameter kept for backward compatibility but not used
+    this.prisma = PrismaService.getInstance().getClient();
+  }
 
   /**
    * Initialize health values for a character based on their constitution
    */
   async initializeHealth(characterId: number): Promise<void> {
-    const character = await this.db.get<Character>(
-      'SELECT * FROM characters WHERE id = ?',
-      [characterId]
-    );
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId }
+    }) as Character | null;
 
     if (!character) {
       throw new Error('Character not found');
@@ -27,31 +32,35 @@ export class HealthService {
 
     const maxHealth = calculateMaxHealth(character.constitution);
     
-    await this.db.run(
-      `UPDATE characters 
-       SET max_health = ?, current_health = ?, is_dead = FALSE 
-       WHERE id = ?`,
-      [maxHealth, maxHealth, characterId]
-    );
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: {
+        maxHealth: maxHealth,
+        currentHealth: maxHealth
+      }
+    });
   }
 
   /**
    * Get current health status for a character
    */
   async getHealthStatus(characterId: number): Promise<HealthStatus> {
-    const character = await this.db.get<Character>(
-      'SELECT max_health, current_health, is_dead FROM characters WHERE id = ?',
-      [characterId]
-    );
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: {
+        maxHealth: true,
+        currentHealth: true
+      }
+    });
 
     if (!character) {
       throw new Error('Character not found');
     }
 
-    const current = character.current_health || 0;
-    const maximum = character.max_health || 0;
+    const current = character.currentHealth || 0;
+    const maximum = character.maxHealth || 0;
     const percentage = maximum > 0 ? Math.round((current / maximum) * 100) : 0;
-    const isDead = character.is_dead || current <= 0;
+    const isDead = current <= 0;
 
     let status: 'healthy' | 'injured' | 'critical' | 'dead';
     if (isDead) {
@@ -81,26 +90,27 @@ export class HealthService {
       throw new Error('Damage must be non-negative');
     }
 
-    const character = await this.db.get<Character>(
-      'SELECT max_health, current_health FROM characters WHERE id = ?',
-      [characterId]
-    );
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: {
+        maxHealth: true,
+        currentHealth: true
+      }
+    });
 
     if (!character) {
       throw new Error('Character not found');
     }
 
-    const currentHealth = character.current_health || 0;
+    const currentHealth = character.currentHealth || 0;
     const newHealth = Math.max(0, currentHealth - damage);
-    const isDead = newHealth <= 0;
 
-    // Update both current health and death state
-    await this.db.run(
-      `UPDATE characters 
-       SET current_health = ?, is_dead = ? 
-       WHERE id = ?`,
-      [newHealth, isDead, characterId]
-    );
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: {
+        currentHealth: newHealth
+      }
+    });
 
     return this.getHealthStatus(characterId);
   }
@@ -113,30 +123,33 @@ export class HealthService {
       throw new Error('Healing must be non-negative');
     }
 
-    const character = await this.db.get<Character>(
-      'SELECT max_health, current_health, is_dead FROM characters WHERE id = ?',
-      [characterId]
-    );
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: {
+        maxHealth: true,
+        currentHealth: true
+      }
+    });
 
     if (!character) {
       throw new Error('Character not found');
     }
 
+    const currentHealth = character.currentHealth || 0;
+    const maxHealth = character.maxHealth || 0;
+    
     // Can't heal dead characters
-    if (character.is_dead) {
+    if (currentHealth <= 0) {
       throw new Error('Cannot heal dead characters');
     }
-
-    const currentHealth = character.current_health || 0;
-    const maxHealth = character.max_health || 0;
     const newHealth = Math.min(maxHealth, currentHealth + healing);
 
-    await this.db.run(
-      `UPDATE characters 
-       SET current_health = ? 
-       WHERE id = ?`,
-      [newHealth, characterId]
-    );
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: {
+        currentHealth: newHealth
+      }
+    });
 
     return this.getHealthStatus(characterId);
   }
@@ -145,28 +158,31 @@ export class HealthService {
    * Perform full healing (rest)
    */
   async restoreToFull(characterId: number): Promise<HealthStatus> {
-    const character = await this.db.get<Character>(
-      'SELECT max_health, is_dead FROM characters WHERE id = ?',
-      [characterId]
-    );
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: {
+        maxHealth: true,
+        currentHealth: true
+      }
+    });
 
     if (!character) {
       throw new Error('Character not found');
     }
 
     // Can't heal dead characters
-    if (character.is_dead) {
+    if ((character.currentHealth || 0) <= 0) {
       throw new Error('Cannot heal dead characters');
     }
 
-    const maxHealth = character.max_health || 0;
+    const maxHealth = character.maxHealth || 0;
 
-    await this.db.run(
-      `UPDATE characters 
-       SET current_health = ? 
-       WHERE id = ?`,
-      [maxHealth, characterId]
-    );
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: {
+        currentHealth: maxHealth
+      }
+    });
 
     return this.getHealthStatus(characterId);
   }
@@ -199,30 +215,34 @@ export class HealthService {
    * Check if character needs health initialization
    */
   async needsHealthInitialization(characterId: number): Promise<boolean> {
-    const character = await this.db.get<Character>(
-      'SELECT max_health FROM characters WHERE id = ?',
-      [characterId]
-    );
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: { maxHealth: true }
+    });
 
-    return !character || character.max_health === null;
+    return !character || character.maxHealth === null;
   }
 
   /**
    * Recalculate max health if constitution changed
    */
   async recalculateMaxHealth(characterId: number): Promise<void> {
-    const character = await this.db.get<Character>(
-      'SELECT constitution, max_health, current_health FROM characters WHERE id = ?',
-      [characterId]
-    );
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: {
+        constitution: true,
+        maxHealth: true,
+        currentHealth: true
+      }
+    });
 
     if (!character) {
       throw new Error('Character not found');
     }
 
     const newMaxHealth = calculateMaxHealth(character.constitution);
-    const oldMaxHealth = character.max_health || 0;
-    const currentHealth = character.current_health || 0;
+    const oldMaxHealth = character.maxHealth || 0;
+    const currentHealth = character.currentHealth || 0;
 
     // If max health increased, maintain the same ratio of current to max
     // If max health decreased, reduce current health proportionally
@@ -232,11 +252,12 @@ export class HealthService {
       newCurrentHealth = Math.round(newMaxHealth * healthRatio);
     }
 
-    await this.db.run(
-      `UPDATE characters 
-       SET max_health = ?, current_health = ? 
-       WHERE id = ?`,
-      [newMaxHealth, newCurrentHealth, characterId]
-    );
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: {
+        maxHealth: newMaxHealth,
+        currentHealth: newCurrentHealth
+      }
+    });
   }
 }
