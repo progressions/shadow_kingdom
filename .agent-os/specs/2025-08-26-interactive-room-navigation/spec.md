@@ -2,7 +2,7 @@
 
 > Spec: Interactive Room Navigation
 > Created: 2025-08-26
-> Status: Planning
+> Status: Completed
 
 ## Overview
 
