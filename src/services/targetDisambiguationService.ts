@@ -54,7 +54,9 @@ export class TargetDisambiguationService {
     take: 'item',
     pickup: 'item',
     get: 'item',
-    drop: 'item',
+    drop: 'inventory',
+    discard: 'inventory',
+    put: 'inventory',
     attack: 'character',
     fight: 'character',
     kill: 'character',
@@ -71,6 +73,7 @@ export class TargetDisambiguationService {
     t: 'take',
     p: 'pickup',
     g: 'get',
+    d: 'drop',
     n: 'go north',
     s: 'go south',
     e: 'go east',
@@ -141,11 +144,114 @@ export class TargetDisambiguationService {
 
     // Handle "all" keyword
     if (targetString.toLowerCase() === 'all') {
+      // For inventory commands, get inventory items
+      if (targetType === 'inventory') {
+        return this.resolveInventoryTargets(true);
+      }
       return this.resolveAllTargets(targetType, context);
     }
 
     // Handle specific target
+    if (targetType === 'inventory') {
+      return this.resolveInventoryTargets(false, targetString);
+    }
     return this.resolveSpecificTarget(targetString, targetType, context);
+  }
+
+  /**
+   * Resolve inventory targets for drop commands
+   */
+  private async resolveInventoryTargets(all: boolean, targetString?: string): Promise<TargetResolution> {
+    // Get current inventory
+    const inventoryIds = this.gameStateManager.getInventory();
+    
+    if (inventoryIds.length === 0) {
+      return {
+        targets: [],
+        confidence: 0.2,
+        issue: "You're not carrying anything to drop",
+      };
+    }
+
+    // Fetch item details
+    const items = await this.prismaService.client.item.findMany({
+      where: {
+        id: { in: inventoryIds }
+      }
+    });
+
+    if (all) {
+      // Return all inventory items
+      return {
+        targets: items.map(item => ({
+          type: 'item' as const,
+          id: item.id,
+          name: item.name,
+        })),
+        confidence: 0.95,
+      };
+    }
+
+    // Find specific item in inventory
+    if (!targetString) {
+      return {
+        targets: [],
+        confidence: 0.1,
+        issue: 'No target specified for drop',
+      };
+    }
+
+    const normalizedTarget = targetString.toLowerCase().trim();
+    
+    // Try exact match
+    const exactMatch = items.find(item => 
+      item.name.toLowerCase() === normalizedTarget
+    );
+    
+    if (exactMatch) {
+      return {
+        targets: [{
+          type: 'item' as const,
+          id: exactMatch.id,
+          name: exactMatch.name,
+        }],
+        confidence: 1.0,
+      };
+    }
+
+    // Try partial match
+    const partialMatches = items.filter(item =>
+      item.name.toLowerCase().includes(normalizedTarget) ||
+      normalizedTarget.includes(item.name.toLowerCase())
+    );
+
+    if (partialMatches.length === 1) {
+      return {
+        targets: [{
+          type: 'item' as const,
+          id: partialMatches[0].id,
+          name: partialMatches[0].name,
+        }],
+        confidence: 0.85,
+      };
+    } else if (partialMatches.length > 1) {
+      return {
+        targets: partialMatches.map(item => ({
+          type: 'item' as const,
+          id: item.id,
+          name: item.name,
+        })),
+        confidence: 0.6,
+        issue: 'Multiple matches found in inventory',
+        suggestions: partialMatches.map(item => item.name),
+      };
+    }
+
+    return {
+      targets: [],
+      confidence: 0.1,
+      issue: `You don't have a "${targetString}" to drop`,
+    };
   }
 
   /**
@@ -330,7 +436,7 @@ export class TargetDisambiguationService {
     const verb = words[0];
     
     // Check if this is a known command verb
-    const knownVerbs = ['take', 'pickup', 'get', 'drop', 'attack', 'fight', 
+    const knownVerbs = ['take', 'pickup', 'get', 'drop', 'discard', 'put', 'attack', 'fight', 
                        'talk', 'speak', 'go', 'move', 'walk', 'look', 'examine'];
     
     if (!knownVerbs.includes(verb)) {

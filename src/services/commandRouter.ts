@@ -1,7 +1,7 @@
 import { GameStateManager } from './gameStateManager';
 import { PrismaService } from './prismaService';
 import { TargetDisambiguationService } from './targetDisambiguationService';
-import { Room } from '@prisma/client';
+import { Room, Item, Character } from '@prisma/client';
 
 export interface MenuCommand {
   name: string;
@@ -16,7 +16,7 @@ export interface GameCommand {
 }
 
 export interface ParsedCommand {
-  type: 'movement' | 'examination' | 'system' | 'pickup' | 'unknown';
+  type: 'movement' | 'examination' | 'system' | 'pickup' | 'drop' | 'unknown';
   action?: string;
   direction?: string;
   target?: string;
@@ -82,20 +82,27 @@ export class CommandRouter {
   };
 
   private examinationPatterns = {
-    actions: ['look', 'examine', 'inspect', 'check', 'search', 'study', 'view']
+    actions: ['look', 'examine', 'inspect', 'check', 'search', 'study', 'view'],
+    aliases: {
+      'l': 'look',
+      'x': 'examine'
+    } as Record<string, string>
   };
 
   private systemPatterns = {
     quit: ['quit', 'exit', 'q', 'bye', 'goodbye', 'leave'],
-    help: ['help', 'h', '?', 'commands', 'instructions']
+    help: ['help', 'h', '?', 'commands', 'instructions'],
+    inventory: ['inventory', 'inv', 'i', 'items', 'carrying']
   };
 
-  private pickupPatterns = {
-    actions: ['take', 'pickup', 'get', 'grab', 'pick', 'collect'],
+  private itemPatterns = {
+    pickupActions: ['take', 'pickup', 'get', 'grab', 'pick', 'collect'],
+    dropActions: ['drop', 'discard', 'put', 'throw', 'leave'],
     aliases: {
       't': 'take',
       'p': 'pickup',
-      'g': 'get'
+      'g': 'get',
+      'd': 'drop'
     } as Record<string, string>
   };
 
@@ -152,10 +159,18 @@ export class CommandRouter {
     const commands: Array<{ name: string; description?: string }> = [];
     
     // Add pickup commands
-    this.pickupPatterns.actions.forEach(action => {
+    this.itemPatterns.pickupActions.forEach(action => {
       commands.push({ 
         name: action, 
         description: `Pick up items (${action} <item> or ${action} all)` 
+      });
+    });
+    
+    // Add drop commands
+    this.itemPatterns.dropActions.forEach(action => {
+      commands.push({ 
+        name: action, 
+        description: `Drop items (${action} <item> or ${action} all)` 
       });
     });
     
@@ -196,14 +211,21 @@ export class CommandRouter {
     const words = normalized.split(/\s+/);
 
     // Check for command aliases first
-    if (words.length > 0 && this.pickupPatterns.aliases[words[0]]) {
-      words[0] = this.pickupPatterns.aliases[words[0]];
+    if (words.length > 0) {
+      // Check item aliases
+      if (this.itemPatterns.aliases[words[0]]) {
+        words[0] = this.itemPatterns.aliases[words[0]];
+      }
+      // Check examination aliases
+      else if (this.examinationPatterns.aliases[words[0]]) {
+        words[0] = this.examinationPatterns.aliases[words[0]];
+      }
     }
 
-    // Try to parse as pickup command first (higher priority)
-    const pickupResult = this.parsePickupCommand(words, input);
-    if (pickupResult.confidence > 0) {
-      return pickupResult;
+    // Try to parse as item command first (pickup/drop - higher priority)
+    const itemResult = this.parseItemCommand(words, input);
+    if (itemResult.confidence > 0) {
+      return itemResult;
     }
 
     // Try to parse as movement command
@@ -337,16 +359,19 @@ export class CommandRouter {
   }
 
   /**
-   * Parse pickup commands (take, get, pickup)
+   * Parse item commands (take, get, pickup, drop, etc.)
    */
-  private parsePickupCommand(words: string[], raw: string): ParsedCommand {
+  private parseItemCommand(words: string[], raw: string): ParsedCommand {
     const action = words[0];
 
-    if (this.pickupPatterns.actions.includes(action)) {
+    const isPickup = this.itemPatterns.pickupActions.includes(action);
+    const isDrop = this.itemPatterns.dropActions.includes(action);
+
+    if (isPickup || isDrop) {
       if (words.length === 1) {
-        // Command without target, e.g., just "take"
+        // Command without target, e.g., just "take" or "drop"
         return {
-          type: 'pickup',
+          type: isPickup ? 'pickup' : 'drop',
           action,
           raw,
           confidence: 0.3
@@ -358,7 +383,7 @@ export class CommandRouter {
       
       // For now, return parsed command - actual disambiguation will happen in execution
       return {
-        type: 'pickup',
+        type: isPickup ? 'pickup' : 'drop',
         action,
         target,
         raw,
@@ -394,6 +419,16 @@ export class CommandRouter {
       return {
         type: 'system',
         action: 'help',
+        raw,
+        confidence: 1.0
+      };
+    }
+
+    // Check for inventory command
+    if (this.systemPatterns.inventory.includes(action)) {
+      return {
+        type: 'system',
+        action: 'inventory',
         raw,
         confidence: 1.0
       };
@@ -470,6 +505,11 @@ export class CommandRouter {
         return { isValid: true };
       }
 
+      // Validate drop commands (always valid if there's a session)
+      if (parsedCommand.type === 'drop') {
+        return { isValid: true };
+      }
+
       // Unknown commands are invalid
       if (parsedCommand.type === 'unknown') {
         return {
@@ -521,6 +561,15 @@ export class CommandRouter {
       // Parse the command
       const parsedCommand = this.parseCommand(sanitizedInput);
 
+      // Debug logging
+      if (process.env.DEBUG_COMMANDS === 'true') {
+        console.log('CommandRouter.executeCommand:', {
+          input,
+          sanitizedInput,
+          parsedCommand
+        });
+      }
+
       if (parsedCommand.type === 'unknown') {
         const suggestions = this.getSuggestions(sanitizedInput);
         const suggestionText = suggestions.length > 0 
@@ -549,6 +598,8 @@ export class CommandRouter {
         return await this.executeExaminationCommand(parsedCommand);
       } else if (parsedCommand.type === 'pickup') {
         return await this.executePickupCommand(parsedCommand);
+      } else if (parsedCommand.type === 'drop') {
+        return await this.executeDropCommand(parsedCommand);
       } else if (parsedCommand.type === 'system') {
         return await this.executeSystemCommand(parsedCommand);
       }
@@ -638,11 +689,70 @@ export class CommandRouter {
           response: description
         };
       } else {
-        // Examining specific target
-        // For now, return a generic response - this can be expanded later
+        // Examining specific target - check items and characters
+        const targetName = parsedCommand.target.toLowerCase();
+        
+        // First check inventory items
+        const inventoryIds = this.gameStateManager.getInventory();
+        if (inventoryIds.length > 0) {
+          const inventoryItems = await this.prismaService.client.item.findMany({
+            where: { id: { in: inventoryIds } }
+          });
+          
+          const inventoryMatch = this.findExaminationTarget(targetName, inventoryItems);
+          if (inventoryMatch) {
+            return {
+              success: true,
+              response: this.formatItemExamination(inventoryMatch as Item, true)
+            };
+          }
+        }
+        
+        // Check items in room
+        const roomItems = await this.prismaService.client.item.findMany({
+          where: { roomId: currentRoom.id }
+        });
+        
+        const itemMatch = this.findExaminationTarget(targetName, roomItems);
+        if (itemMatch) {
+          return {
+            success: true,
+            response: this.formatItemExamination(itemMatch as Item, false)
+          };
+        }
+        
+        // Check characters in room
+        const roomCharacters = await this.prismaService.client.character.findMany({
+          where: { roomId: currentRoom.id }
+        });
+        
+        const characterMatch = this.findExaminationTarget(targetName, roomCharacters);
+        if (characterMatch) {
+          return {
+            success: true,
+            response: this.formatCharacterExamination(characterMatch as Character)
+          };
+        }
+        
+        // Check for ambiguous matches
+        const allTargets = [...roomItems, ...roomCharacters];
+        const partialMatches = allTargets.filter(target =>
+          target.name.toLowerCase().includes(targetName) || 
+          targetName.includes(target.name.toLowerCase())
+        );
+        
+        if (partialMatches.length > 1) {
+          const matchNames = partialMatches.map(m => m.name);
+          return {
+            success: true,
+            response: `Which did you mean? ${matchNames.join(', ')}`
+          };
+        }
+        
+        // No matches found
         return {
           success: true,
-          response: `You examine the ${parsedCommand.target}, but find nothing special about it.`
+          response: `There's nothing here called "${parsedCommand.target}".`
         };
       }
 
@@ -653,6 +763,70 @@ export class CommandRouter {
         response: 'Unable to examine that. Please try again.'
       };
     }
+  }
+
+  /**
+   * Find an examination target by name (exact or partial match)
+   */
+  private findExaminationTarget(targetName: string, entities: Array<{name: string, [key: string]: any}>): any {
+    // Try exact match first
+    const exactMatch = entities.find(e => e.name.toLowerCase() === targetName);
+    if (exactMatch) return exactMatch;
+    
+    // Try partial match
+    const partialMatches = entities.filter(e =>
+      e.name.toLowerCase().includes(targetName) || 
+      targetName.includes(e.name.toLowerCase())
+    );
+    
+    // Return single partial match if unambiguous
+    if (partialMatches.length === 1) {
+      return partialMatches[0];
+    }
+    
+    return null;
+  }
+
+  /**
+   * Format item examination output
+   */
+  private formatItemExamination(item: Item, inInventory: boolean): string {
+    let response = `**${item.name}**\n\n${item.description}`;
+    
+    if (item.extendedDescription) {
+      response += `\n\n${item.extendedDescription}`;
+    }
+    
+    // Add context about location
+    if (inInventory) {
+      response += '\n\n(In your inventory)';
+    }
+    
+    // Add value information if valuable
+    if (item.value && item.value > 0) {
+      response += `\n\nValue: ${item.value} gold`;
+    }
+    
+    return response;
+  }
+
+  /**
+   * Format character examination output
+   */
+  private formatCharacterExamination(character: Character): string {
+    let response = `**${character.name}**\n\n${character.description}`;
+    
+    // Add sentiment and health info for hostile characters
+    if (character.sentiment === 'hostile') {
+      response += `\n\n⚔️ Hostile - Health: ${character.health}/${character.maxHealth}`;
+      response += `\nAttack: ${character.attack} | Defense: ${character.defense}`;
+    } else if (character.sentiment === 'friendly') {
+      response += '\n\n👋 Appears friendly';
+    } else if (character.sentiment === 'neutral') {
+      response += '\n\n😐 Seems neutral';
+    }
+    
+    return response;
   }
 
   /**
@@ -839,6 +1013,10 @@ export class CommandRouter {
         };
       }
 
+      if (parsedCommand.action === 'inventory') {
+        return await this.executeInventoryCommand();
+      }
+
       return {
         success: false,
         response: 'Unknown system command.'
@@ -851,6 +1029,248 @@ export class CommandRouter {
         response: 'System command failed. Please try again.'
       };
     }
+  }
+
+  /**
+   * Execute drop command
+   */
+  private async executeDropCommand(parsedCommand: ParsedCommand): Promise<CommandExecutionResult> {
+    try {
+      // Use TargetDisambiguationService to resolve the target
+      const parseResult = await this.targetDisambiguationService.parseCommand(parsedCommand.raw);
+      
+      if (!parseResult.success || !parseResult.command) {
+        // Command couldn't be parsed - return helpful error
+        const partialMatches = parseResult.failureContext?.partialMatches;
+        if (partialMatches && partialMatches.length > 0) {
+          const bestMatch = partialMatches[0];
+          if (bestMatch.issue) {
+            return {
+              success: false,
+              response: bestMatch.issue
+            };
+          }
+        }
+        return {
+          success: false,
+          response: "I don't understand what you want to drop."
+        };
+      }
+
+      const command = parseResult.command;
+      
+      // Check if no targets were found
+      if (!command.targetIds || command.targetIds.length === 0) {
+        if (command.target === 'all') {
+          return {
+            success: false,
+            response: "You're not carrying anything to drop."
+          };
+        }
+        return {
+          success: false,
+          response: `You don't have a ${command.target} to drop.`
+        };
+      }
+
+      // Get current room
+      const currentRoom = this.gameStateManager.getCurrentRoom();
+      if (!currentRoom) {
+        return {
+          success: false,
+          response: 'Error: No current room set.'
+        };
+      }
+
+      // Fetch the items to drop
+      const items = await this.prismaService.client.item.findMany({
+        where: {
+          id: { in: command.targetIds }
+        }
+      });
+
+      if (items.length === 0) {
+        return {
+          success: false,
+          response: `You don't have a ${command.target}.`
+        };
+      }
+
+      // Drop items
+      const droppedItems: string[] = [];
+
+      // If dropping multiple items, use batch update
+      if (items.length > 1) {
+        try {
+          // Use updateMany for bulk operations
+          await this.prismaService.client.item.updateMany({
+            where: { id: { in: command.targetIds } },
+            data: { roomId: currentRoom.id }
+          });
+
+          // Remove all items from inventory
+          for (const item of items) {
+            await this.gameStateManager.removeFromInventory(item.id);
+            droppedItems.push(item.name);
+          }
+        } catch (error) {
+          console.error('Failed to drop items:', error);
+          return {
+            success: false,
+            response: 'Failed to drop items. Please try again.'
+          };
+        }
+      } else if (items.length === 1) {
+        // Single item - use regular update
+        try {
+          await this.prismaService.client.item.update({
+            where: { id: items[0].id },
+            data: { roomId: currentRoom.id }
+          });
+          await this.gameStateManager.removeFromInventory(items[0].id);
+          droppedItems.push(items[0].name);
+        } catch (error) {
+          console.error('Failed to drop item:', error);
+          return {
+            success: false,
+            response: 'Failed to drop the item. Please try again.'
+          };
+        }
+      }
+
+      // Generate response message
+      if (droppedItems.length === 0) {
+        return {
+          success: false,
+          response: "Couldn't drop any items."
+        };
+      }
+
+      let response = '';
+      if (command.target === 'all' && droppedItems.length > 1) {
+        response = `You drop everything: ${droppedItems.join(', ')}.`;
+      } else if (droppedItems.length === 1) {
+        response = `You drop the ${droppedItems[0]}.`;
+      } else {
+        response = `You drop: ${droppedItems.join(', ')}.`;
+      }
+
+      return {
+        success: true,
+        response
+      };
+
+    } catch (error) {
+      console.error('Drop command error:', error);
+      return {
+        success: false,
+        response: 'Failed to drop the item. Please try again.'
+      };
+    }
+  }
+
+  /**
+   * Execute inventory command
+   */
+  private async executeInventoryCommand(): Promise<CommandExecutionResult> {
+    try {
+      // Get current inventory item IDs
+      const inventoryIds = this.gameStateManager.getInventory();
+      const inventoryCount = this.gameStateManager.getInventoryCount();
+      
+      // Handle empty inventory
+      if (inventoryIds.length === 0) {
+        return {
+          success: true,
+          response: 'You are not carrying anything.'
+        };
+      }
+
+      // Fetch item details from database
+      const items = await this.prismaService.client.item.findMany({
+        where: {
+          id: { in: inventoryIds }
+        },
+        orderBy: [
+          { type: 'asc' },
+          { name: 'asc' }
+        ]
+      });
+
+      // Build inventory display
+      let response = `\nInventory (${inventoryCount}/10):\n`;
+      response += '═'.repeat(20) + '\n\n';
+
+      // Group items by type for better organization
+      const itemsByType = new Map<string, typeof items>();
+      
+      items.forEach(item => {
+        const type = item.type || 'misc';
+        if (!itemsByType.has(type)) {
+          itemsByType.set(type, []);
+        }
+        itemsByType.get(type)!.push(item);
+      });
+
+      // Display items by type
+      const typeOrder = ['weapon', 'armor', 'consumable', 'key', 'misc'];
+      const sortedTypes = Array.from(itemsByType.keys()).sort((a, b) => {
+        const aIndex = typeOrder.indexOf(a);
+        const bIndex = typeOrder.indexOf(b);
+        if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      });
+
+      sortedTypes.forEach(type => {
+        const typeItems = itemsByType.get(type)!;
+        if (typeItems.length > 0) {
+          // Capitalize type name
+          const typeName = type.charAt(0).toUpperCase() + type.slice(1) + 's';
+          response += `${typeName}:\n`;
+          
+          typeItems.forEach(item => {
+            const article = this.getArticle(item.name);
+            response += `  • ${article} ${item.name}`;
+            if (item.description) {
+              response += ` - ${item.description}`;
+            }
+            response += '\n';
+          });
+          
+          response += '\n';
+        }
+      });
+
+      // Add capacity warning if nearly full
+      if (inventoryCount === 10) {
+        response += 'Your inventory is completely full!\n';
+      } else if (inventoryCount >= 9) {
+        response += 'Your inventory is almost full!\n';
+      }
+
+      return {
+        success: true,
+        response
+      };
+
+    } catch (error) {
+      console.error('Inventory command error:', error);
+      return {
+        success: false,
+        response: 'Error checking inventory. Please try again.'
+      };
+    }
+  }
+
+  /**
+   * Get appropriate article (a/an) for a word
+   */
+  private getArticle(word: string): string {
+    if (!word) return 'a';
+    const vowels = ['a', 'e', 'i', 'o', 'u'];
+    return vowels.includes(word[0].toLowerCase()) ? 'an' : 'a';
   }
 
   /**

@@ -66,6 +66,15 @@ export class GameStateManager {
         throw new GameStateManagerError(`Current room ${game.currentRoomId} not found`, 'ROOM_NOT_FOUND', true);
       }
 
+      // Load inventory - items with null roomId belonging to this game
+      const inventoryItems = await this.prismaService.client.item.findMany({
+        where: { 
+          gameId: game.id,
+          roomId: null 
+        }
+      });
+      const inventoryIds = inventoryItems.map(item => item.id);
+
       const now = new Date();
       this.currentSession = {
         gameId: game.id,
@@ -74,7 +83,7 @@ export class GameStateManager {
         lastSaved: now,
         sessionStartTime: now,
         movementHistory: [],
-        inventory: [],
+        inventory: inventoryIds,
       };
 
       // Mark the starting room as visited
