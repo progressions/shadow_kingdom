@@ -19,6 +19,9 @@ describe('Room Display System', () => {
     const mockRoomFindUnique = jest.fn();
     const mockRoomUpdate = jest.fn();
     const mockGameUpdate = jest.fn();
+    
+    // Set default return values for mocks
+    mockItemFindMany.mockResolvedValue([]);
 
     mockPrismaService = {
       client: {

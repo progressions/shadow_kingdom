@@ -14,7 +14,7 @@ jest.mock('../../src/services/loggingService', () => {
     flush: jest.fn().mockResolvedValue(undefined),
   };
 
-  const MockLoggingService = jest.fn().mockImplementation(() => mockInstance);
+  const MockLoggingService = jest.fn().mockImplementation(() => mockInstance) as any;
   MockLoggingService.getInstance = jest.fn().mockReturnValue(mockInstance);
 
   return {

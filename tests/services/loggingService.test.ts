@@ -1,3 +1,6 @@
+// Unmock the LoggingService for this test file since we want to test the actual implementation
+jest.unmock('../../src/services/loggingService');
+
 import { LoggingService } from '../../src/services/loggingService';
 import * as fs from 'fs/promises';
 import * as path from 'path';
