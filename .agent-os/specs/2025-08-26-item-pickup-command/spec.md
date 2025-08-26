@@ -2,7 +2,7 @@
 
 > Spec: Item Pickup Command
 > Created: 2025-08-26
-> Status: Planning
+> Status: Completed
 
 ## Overview
 
