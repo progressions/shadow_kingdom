@@ -2,7 +2,7 @@
 
 > Spec: Room Table Database Setup with YAML World Seeding
 > Created: 2025-08-25
-> Status: Planning
+> Status: Completed
 
 ## Overview
 

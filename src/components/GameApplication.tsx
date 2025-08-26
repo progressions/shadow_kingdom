@@ -9,6 +9,8 @@ import { CommandRouter } from '../services/commandRouter';
 import { RoomNavigationEngine } from '../services/roomNavigationEngine';
 import { PrismaService } from '../services/prismaService';
 import { LoggingService, MessageType } from '../services/loggingService';
+import { Message, createMessage } from '../types/Message';
+import { addMessagesToBuffer, getBufferStats } from '../utils/messageBuffer';
 
 interface GameApplicationProps {
   programmaticCommand?: string;
@@ -37,7 +39,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   });
 
   // UI state
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [statusInfo, setStatusInfo] = useState<any>({});
   const [navigationHints, setNavigationHints] = useState<string[]>([]);
@@ -67,14 +69,29 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   // Helper function to add messages with logging
   // Don't use useCallback here to avoid dependency issues
   const addMessage = (message: string | string[], type: MessageType = 'RESPONSE'): void => {
-    const messages = Array.isArray(message) ? message : [message];
+    const messageStrings = Array.isArray(message) ? message : [message];
     
-    // Update UI state
-    setMessages(prev => [...prev, ...messages]);
+    // Update UI state with scrollback buffer management
+    setMessages(prev => {
+      // Create Message objects for new messages
+      const messageObjects = messageStrings.map(content => createMessage(content));
+      // Use buffer utility for automatic trimming
+      const updatedMessages = addMessagesToBuffer(prev, messageObjects);
+      
+      // Log buffer stats in debug mode
+      if (debugMode) {
+        const stats = getBufferStats(updatedMessages);
+        if (stats.isFull) {
+          console.log('[DEBUG] Message buffer is full, trimming old messages');
+        }
+      }
+      
+      return updatedMessages;
+    });
     
     // Debug output
     if (process.env.DEBUG_LOGGING === 'true') {
-      console.log(`[DEBUG-APP] addMessage called with ${messages.length} messages, type: ${type}`);
+      console.log(`[DEBUG-APP] addMessage called with ${messageStrings.length} messages, type: ${type}`);
       console.log(`[DEBUG-APP] loggingService exists: ${!!servicesRef.current.loggingService}`);
     }
     
@@ -82,7 +99,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     // Access ref directly to get current value
     if (servicesRef.current.loggingService && servicesRef.current.loggingService.isEnabled()) {
       // Join multi-line messages for logging
-      const logMessage = messages.join('\n');
+      const logMessage = messageStrings.join('\n');
       servicesRef.current.loggingService.logMessage(logMessage, type).catch(error => {
         if (debugMode) {
           console.warn('Failed to log message:', error);
@@ -449,7 +466,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   if (programmaticCommand) {
     return (
       <Box flexDirection="column" height="100%" width="100%">
-        <GamePane messages={messages} />
+        <GamePane messages={messages} maxLines={gameAreaHeight} />
       </Box>
     );
   }
@@ -457,12 +474,12 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   return (
     <Box flexDirection="column" height="100%" width="100%">
       {/* Game Pane - fills remaining space */}
-      <Box flexGrow={1} width="100%" flexDirection="column">
-        <GamePane messages={messages} />
+      <Box flexGrow={1} width="100%" flexDirection="column" flexShrink={1}>
+        <GamePane messages={messages} maxLines={gameAreaHeight} />
       </Box>
       
       {/* Bottom section - Input Bar and Status Pane */}
-      <Box flexShrink={0} width="100%" flexDirection="column">
+      <Box flexShrink={0} width="100%" flexDirection="column" flexGrow={0}>
         <InputBar 
           onSubmit={handleCommandSubmit}
           placeholder="Enter command..."

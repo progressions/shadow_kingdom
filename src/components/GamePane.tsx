@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react'
 import { Box, Text } from 'ink'
+import { Message } from '../types/Message'
 
 interface GamePaneProps {
-  messages: string[]
+  messages: Message[]
   maxLines?: number
   width?: number
 }
@@ -20,29 +21,30 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width })
   }, [messages, maxLines]);
   
   // Process messages to handle special formatting
-  const formatMessage = (message: string) => {
+  const formatMessage = (message: Message) => {
+    const content = message.content;
     // Check for headers (lines with === or lines that are all caps)
-    if (message.includes('===') || message === message.toUpperCase()) {
-      return { text: message, color: 'cyan', bold: true };
+    if (content.includes('===') || content === content.toUpperCase()) {
+      return { text: content, color: 'cyan', bold: true };
     }
     // Check for error messages
-    if (message.startsWith('Error:') || message.startsWith('Unable to')) {
-      return { text: message, color: 'red' };
+    if (content.startsWith('Error:') || content.startsWith('Unable to')) {
+      return { text: content, color: 'red' };
     }
     // Check for commands (lines starting with >)
-    if (message.startsWith('> ')) {
-      return { text: message, color: 'green', dimColor: true };
+    if (content.startsWith('> ')) {
+      return { text: content, color: 'green', dimColor: true };
     }
     // Check for exits line
-    if (message.startsWith('Exits:')) {
-      return { text: message, color: 'yellow' };
+    if (content.startsWith('Exits:')) {
+      return { text: content, color: 'yellow' };
     }
     // Check for items/characters headers
-    if (message.startsWith('You can see:') || message.startsWith('Also here:')) {
-      return { text: message, color: 'magenta' };
+    if (content.startsWith('You can see:') || content.startsWith('Also here:')) {
+      return { text: content, color: 'magenta' };
     }
     // Default formatting
-    return { text: message, color: undefined };
+    return { text: content, color: undefined };
   };
   
   return (
@@ -50,7 +52,7 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width })
       {displayMessages.map((message, index) => {
         const formatted = formatMessage(message);
         return (
-          <Box key={`msg-${index}-${message.substring(0, 10)}`}>
+          <Box key={message.id}>
             <Text 
               color={formatted.color} 
               bold={formatted.bold}
