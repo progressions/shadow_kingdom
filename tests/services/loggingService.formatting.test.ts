@@ -8,6 +8,20 @@ import winston from 'winston';
 
 // Mock fs and winston
 jest.mock('fs/promises');
+jest.mock('fs', () => ({
+  existsSync: jest.fn().mockReturnValue(true),
+  mkdirSync: jest.fn(),
+}));
+
+// Create mockLogger outside so tests can access it
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+  close: jest.fn(),
+};
+
 jest.mock('winston', () => {
   const mockFormat: any = {
     combine: jest.fn(),
@@ -27,14 +41,6 @@ jest.mock('winston', () => {
     })),
   };
 
-  const mockLogger = {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    close: jest.fn(),
-  };
-
   return {
     createLogger: jest.fn(() => mockLogger),
     format: mockFormat,
@@ -46,7 +52,6 @@ describe('LoggingService - Formatting', () => {
   beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
   afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
   let service: LoggingService;
-  let mockLogger: any;
   let capturedFormatter: any;
 
   beforeEach(() => {
@@ -60,7 +65,6 @@ describe('LoggingService - Formatting', () => {
     });
     
     service = LoggingService.getInstance();
-    mockLogger = (winston.createLogger as jest.Mock).mock.results[0].value;
   });
 
   afterEach(() => {

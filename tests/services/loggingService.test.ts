@@ -7,6 +7,19 @@ import * as path from 'path';
 import winston from 'winston';
 
 jest.mock('fs/promises');
+jest.mock('fs', () => ({
+  existsSync: jest.fn().mockReturnValue(true),
+  mkdirSync: jest.fn(),
+}));
+// Create mockLogger outside so tests can access it
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+  close: jest.fn(),
+};
+
 jest.mock('winston', () => {
   const mockFormat: any = {
     combine: jest.fn(),
@@ -24,14 +37,6 @@ jest.mock('winston', () => {
     File: jest.fn().mockImplementation(() => ({
       format: mockFormat,
     })),
-  };
-
-  const mockLogger = {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    close: jest.fn(),
   };
 
   return {
@@ -55,13 +60,11 @@ describe('LoggingService', () => {
     // Disable logging after tests
     delete process.env.FORCE_LOG_IN_TESTS;
   });
-  let mockLogger: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset singleton instance by accessing private property
     (LoggingService as any).instance = undefined;
-    mockLogger = winston.createLogger();
     service = LoggingService.getInstance();
   });
 
