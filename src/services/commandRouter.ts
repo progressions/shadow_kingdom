@@ -1341,7 +1341,10 @@ export class CommandRouter {
     const normalized = input.toLowerCase().trim();
 
     // Check common commands
-    const commonCommands = ['look', 'examine', 'go', 'north', 'south', 'east', 'west', 'up', 'down'];
+    const commonCommands = [
+      'look', 'examine', 'go', 'north', 'south', 'east', 'west', 'up', 'down',
+      'inventory', 'take', 'drop', 'get', 'pickup', 'help'
+    ];
     
     for (const command of commonCommands) {
       if (this.levenshteinDistance(normalized, command) <= 2) {
@@ -1412,10 +1415,18 @@ export class CommandRouter {
     helpSections.push('  down, d      - Move down');
     helpSections.push('');
     
+    helpSections.push('ITEMS:');
+    helpSections.push('  take, get, pickup - Pick up an item');
+    helpSections.push('  drop, put    - Drop an item');
+    helpSections.push('  inventory, inv, i - View your inventory');
+    helpSections.push('  take all     - Pick up everything in the room');
+    helpSections.push('  drop all     - Drop everything you\'re carrying');
+    helpSections.push('');
+    
     helpSections.push('EXPLORATION:');
-    helpSections.push('  look         - Examine your surroundings');
+    helpSections.push('  look, l      - Examine your surroundings');
     helpSections.push('  look [item]  - Examine something specific');
-    helpSections.push('  examine [item] - Same as look');
+    helpSections.push('  examine, x   - Same as look');
     helpSections.push('');
     
     helpSections.push('SYSTEM:');
@@ -1423,7 +1434,7 @@ export class CommandRouter {
     helpSections.push('  quit         - Exit the game');
     helpSections.push('');
     
-    helpSections.push('TIP: You can also use natural language like "go to the north" or "walk east"');
+    helpSections.push('TIP: You can use shortcuts like "i" for inventory, "l" for look, etc.');
     
     return helpSections.join('\n');
   }
