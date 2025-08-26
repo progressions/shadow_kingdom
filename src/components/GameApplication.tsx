@@ -10,6 +10,7 @@ import { RoomNavigationEngine } from '../services/roomNavigationEngine';
 import { PrismaService } from '../services/prismaService';
 import { LoggingService, MessageType } from '../services/loggingService';
 import { Message, createMessage } from '../types/Message';
+import { addMessagesToBuffer, getBufferStats } from '../utils/messageBuffer';
 
 interface GameApplicationProps {
   programmaticCommand?: string;
@@ -65,9 +66,6 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   const { exit } = useApp();
   const { stdout } = useStdout();
 
-  // Constants for scrollback buffer management
-  const MAX_SCROLLBACK = 500;
-
   // Helper function to add messages with logging
   // Don't use useCallback here to avoid dependency issues
   const addMessage = (message: string | string[], type: MessageType = 'RESPONSE'): void => {
@@ -77,13 +75,18 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     setMessages(prev => {
       // Create Message objects for new messages
       const messageObjects = messageStrings.map(content => createMessage(content));
-      const newMessages = [...prev, ...messageObjects];
-      // Trim buffer if it exceeds MAX_SCROLLBACK
-      if (newMessages.length > MAX_SCROLLBACK) {
-        // Keep only the most recent MAX_SCROLLBACK messages
-        return newMessages.slice(-MAX_SCROLLBACK);
+      // Use buffer utility for automatic trimming
+      const updatedMessages = addMessagesToBuffer(prev, messageObjects);
+      
+      // Log buffer stats in debug mode
+      if (debugMode) {
+        const stats = getBufferStats(updatedMessages);
+        if (stats.isFull) {
+          console.log('[DEBUG] Message buffer is full, trimming old messages');
+        }
       }
-      return newMessages;
+      
+      return updatedMessages;
     });
     
     // Debug output
