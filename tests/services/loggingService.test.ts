@@ -1,54 +1,61 @@
 // Unmock the LoggingService for this test file since we want to test the actual implementation
 jest.unmock('../../src/services/loggingService');
 
-import { LoggingService } from '../../src/services/loggingService';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import winston from 'winston';
-
 jest.mock('fs/promises');
 jest.mock('fs', () => ({
   existsSync: jest.fn().mockReturnValue(true),
   mkdirSync: jest.fn(),
 }));
-// Create mockLogger outside so tests can access it
-const mockLogger = {
-  info: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  debug: jest.fn(),
-  close: jest.fn(),
-};
 
-jest.mock('winston', () => {
-  const mockFormat: any = {
-    combine: jest.fn(),
-    timestamp: jest.fn(),
-    printf: jest.fn(),
-    errors: jest.fn(),
-  };
-  
-  mockFormat.combine.mockReturnValue(mockFormat);
-  mockFormat.timestamp.mockReturnValue(mockFormat);
-  mockFormat.printf.mockReturnValue(mockFormat);
-  mockFormat.errors.mockReturnValue(mockFormat);
+// Create mockLogger functions
+const mockLoggerInfo = jest.fn();
+const mockLoggerError = jest.fn();
+const mockLoggerWarn = jest.fn();
+const mockLoggerDebug = jest.fn();
+const mockLoggerClose = jest.fn();
 
-  const mockTransports = {
-    File: jest.fn().mockImplementation(() => ({
-      format: mockFormat,
-    })),
-  };
+jest.mock('winston', () => ({
+  createLogger: jest.fn(() => ({
+    info: mockLoggerInfo,
+    error: mockLoggerError,
+    warn: mockLoggerWarn,
+    debug: mockLoggerDebug,
+    close: mockLoggerClose,
+  })),
+  format: {
+    combine: jest.fn().mockReturnValue({}),
+    timestamp: jest.fn().mockReturnValue({}),
+    printf: jest.fn().mockReturnValue({}),
+    errors: jest.fn().mockReturnValue({}),
+  },
+  transports: {
+    File: jest.fn().mockImplementation(() => ({})),
+  },
+}));
 
-  return {
-    createLogger: jest.fn(() => mockLogger),
-    format: mockFormat,
-    transports: mockTransports,
-  };
-});
+import { LoggingService } from '../../src/services/loggingService';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import winston from 'winston';
 
 describe('LoggingService', () => {
-  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
-  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
+  let originalLogEnabled: string | undefined;
+  
+  beforeAll(() => { 
+    originalLogEnabled = process.env.LOG_ENABLED;
+    process.env.LOG_ENABLED = 'true';  // Override test setup
+    process.env.FORCE_LOG_IN_TESTS = 'true'; 
+  });
+  
+  afterAll(() => { 
+    delete process.env.FORCE_LOG_IN_TESTS;
+    // Restore original value
+    if (originalLogEnabled !== undefined) {
+      process.env.LOG_ENABLED = originalLogEnabled;
+    } else {
+      delete process.env.LOG_ENABLED;
+    }
+  });
   let service: LoggingService;
   
   beforeAll(() => {
@@ -62,7 +69,12 @@ describe('LoggingService', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Clear mock call history but not implementations
+    mockLoggerInfo.mockClear();
+    mockLoggerError.mockClear();
+    mockLoggerWarn.mockClear();
+    mockLoggerDebug.mockClear();
+    mockLoggerClose.mockClear();
     // Reset singleton instance by accessing private property
     (LoggingService as any).instance = undefined;
     service = LoggingService.getInstance();
@@ -99,8 +111,16 @@ describe('LoggingService', () => {
     });
 
     it('should log session start marker', async () => {
+      // Debug: Check if service is properly configured
+      const enabled = service.isEnabled();
+      const logger = (service as any).logger;
+      if (!enabled || !logger) {
+        console.log('Service enabled?', enabled);
+        console.log('Logger exists?', !!logger);
+      }
+      
       await service.logSessionStart();
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         expect.stringContaining('SESSION START'),
         expect.objectContaining({
           type: 'SYSTEM',
@@ -111,7 +131,7 @@ describe('LoggingService', () => {
 
     it('should log session end marker', async () => {
       await service.logSessionEnd();
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         expect.stringContaining('SESSION END'),
         expect.objectContaining({
           type: 'SYSTEM',
@@ -128,7 +148,7 @@ describe('LoggingService', () => {
       const message = 'You are in a dark forest.';
       await service.logMessage(message, 'ROOM');
       
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         message,
         expect.objectContaining({
           type: 'ROOM',
@@ -141,7 +161,7 @@ describe('LoggingService', () => {
       const message = 'look';
       await service.logMessage(message, 'COMMAND');
       
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         message,
         expect.objectContaining({
           type: 'COMMAND',
@@ -154,7 +174,7 @@ describe('LoggingService', () => {
       const message = 'You see a wooden chest.';
       await service.logMessage(message, 'RESPONSE');
       
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         message,
         expect.objectContaining({
           type: 'RESPONSE',
@@ -167,7 +187,7 @@ describe('LoggingService', () => {
       const message = 'Command not recognized.';
       await service.logMessage(message, 'ERROR');
       
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(mockLoggerError).toHaveBeenCalledWith(
         message,
         expect.objectContaining({
           type: 'ERROR',
@@ -180,7 +200,7 @@ describe('LoggingService', () => {
       const message = 'Game saved.';
       await service.logMessage(message, 'SYSTEM');
       
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         message,
         expect.objectContaining({
           type: 'SYSTEM',
@@ -193,7 +213,7 @@ describe('LoggingService', () => {
       const message = 'Line 1\nLine 2\nLine 3';
       await service.logMessage(message, 'RESPONSE');
       
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         message,
         expect.objectContaining({
           type: 'RESPONSE',
@@ -279,11 +299,11 @@ describe('LoggingService', () => {
   afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should close logger on shutdown', async () => {
       await service.shutdown();
-      expect(mockLogger.close).toHaveBeenCalled();
+      expect(mockLoggerClose).toHaveBeenCalled();
     });
 
     it('should handle shutdown errors gracefully', async () => {
-      mockLogger.close.mockImplementation(() => {
+      mockLoggerClose.mockImplementation(() => {
         throw new Error('Close failed');
       });
 

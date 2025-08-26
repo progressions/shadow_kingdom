@@ -1,11 +1,6 @@
 // Unmock the LoggingService for this test file since we want to test the actual implementation
 jest.unmock('../../src/services/loggingService');
 
-import { LoggingService, MessageType } from '../../src/services/loggingService';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import winston from 'winston';
-
 // Mock fs and winston
 jest.mock('fs/promises');
 jest.mock('fs', () => ({
@@ -13,49 +8,65 @@ jest.mock('fs', () => ({
   mkdirSync: jest.fn(),
 }));
 
-// Create mockLogger outside so tests can access it
-const mockLogger = {
-  info: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  debug: jest.fn(),
-  close: jest.fn(),
-};
+// Create mockLogger functions
+const mockLoggerInfo = jest.fn();
+const mockLoggerError = jest.fn();
+const mockLoggerWarn = jest.fn();
+const mockLoggerDebug = jest.fn();
+const mockLoggerClose = jest.fn();
 
-jest.mock('winston', () => {
-  const mockFormat: any = {
-    combine: jest.fn(),
-    timestamp: jest.fn(),
-    printf: jest.fn(),
-    errors: jest.fn(),
-  };
-  
-  mockFormat.combine.mockReturnValue(mockFormat);
-  mockFormat.timestamp.mockReturnValue(mockFormat);
-  mockFormat.printf.mockReturnValue(mockFormat);
-  mockFormat.errors.mockReturnValue(mockFormat);
+jest.mock('winston', () => ({
+  createLogger: jest.fn(() => ({
+    info: mockLoggerInfo,
+    error: mockLoggerError,
+    warn: mockLoggerWarn,
+    debug: mockLoggerDebug,
+    close: mockLoggerClose,
+  })),
+  format: {
+    combine: jest.fn().mockReturnValue({}),
+    timestamp: jest.fn().mockReturnValue({}),
+    printf: jest.fn().mockReturnValue({}),
+    errors: jest.fn().mockReturnValue({}),
+  },
+  transports: {
+    File: jest.fn().mockImplementation(() => ({})),
+  },
+}));
 
-  const mockTransports = {
-    File: jest.fn().mockImplementation(() => ({
-      format: mockFormat,
-    })),
-  };
-
-  return {
-    createLogger: jest.fn(() => mockLogger),
-    format: mockFormat,
-    transports: mockTransports,
-  };
-});
+import { LoggingService, MessageType } from '../../src/services/loggingService';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import winston from 'winston';
 
 describe('LoggingService - Formatting', () => {
-  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
-  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
+  let originalLogEnabled: string | undefined;
+  
+  beforeAll(() => { 
+    originalLogEnabled = process.env.LOG_ENABLED;
+    process.env.LOG_ENABLED = 'true';  // Override test setup
+    process.env.FORCE_LOG_IN_TESTS = 'true'; 
+  });
+  
+  afterAll(() => { 
+    delete process.env.FORCE_LOG_IN_TESTS;
+    // Restore original value
+    if (originalLogEnabled !== undefined) {
+      process.env.LOG_ENABLED = originalLogEnabled;
+    } else {
+      delete process.env.LOG_ENABLED;
+    }
+  });
   let service: LoggingService;
   let capturedFormatter: any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Clear mock call history but not implementations
+    mockLoggerInfo.mockClear();
+    mockLoggerError.mockClear();
+    mockLoggerWarn.mockClear();
+    mockLoggerDebug.mockClear();
+    mockLoggerClose.mockClear();
     (LoggingService as any).instance = undefined;
     
     // Capture the format function
@@ -194,7 +205,7 @@ describe('LoggingService - Formatting', () => {
     it('should format session start marker distinctively', async () => {
       await service.logSessionStart();
       
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         '=== SESSION START ===',
         expect.objectContaining({
           type: 'SYSTEM',
@@ -206,7 +217,7 @@ describe('LoggingService - Formatting', () => {
     it('should format session end marker distinctively', async () => {
       await service.logSessionEnd();
       
-      expect(mockLogger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         '=== SESSION END ===',
         expect.objectContaining({
           type: 'SYSTEM',
@@ -244,7 +255,7 @@ describe('LoggingService - Formatting', () => {
       await service.logMessage('Message 1', 'RESPONSE');
       await service.logMessage('Message 2', 'COMMAND');
       
-      const calls = mockLogger.info.mock.calls;
+      const calls = mockLoggerInfo.mock.calls;
       calls.forEach((call: any[]) => {
         expect(call[1].sessionId).toBe(sessionId);
       });
