@@ -562,6 +562,15 @@ export class CommandRouter {
    */
   async formatRoomDescription(room: Room): Promise<string> {
     try {
+      // Use the enhanced room display from GameStateManager
+      const roomInfo = await this.gameStateManager.getCurrentRoomInfo();
+      
+      // If we got a valid room info, return it
+      if (roomInfo && !roomInfo.startsWith('Error') && !roomInfo.startsWith('No active game session')) {
+        return roomInfo;
+      }
+      
+      // Fallback to basic formatting if getCurrentRoomInfo fails
       const connections = await this.prismaService.client.connection.findMany({
         where: { fromRoomId: room.id }
       });

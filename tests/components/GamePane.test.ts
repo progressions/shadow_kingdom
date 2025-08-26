@@ -23,17 +23,17 @@ describe('GamePane', () => {
       'Message 6'
     ]
     
-    // maxLines=5 means 3 visible lines (5 - 2 padding)
+    // maxLines=5 means 5 visible lines (no padding subtraction)
     const { lastFrame } = render(React.createElement(GamePane, { 
       messages, 
       maxLines: 5 
     }))
     
     const output = lastFrame()
-    // Should only show last 3 messages
+    // Should only show last 5 messages
     expect(output).not.toContain('Message 1')
-    expect(output).not.toContain('Message 2')
-    expect(output).not.toContain('Message 3')
+    expect(output).toContain('Message 2')
+    expect(output).toContain('Message 3')
     expect(output).toContain('Message 4')
     expect(output).toContain('Message 5')
     expect(output).toContain('Message 6')

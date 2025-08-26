@@ -171,13 +171,21 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         gameSession: session,
       });
 
-      // Just show a simple welcome message
+      // Show welcome message and initial room
       addMessage([
         '=== Shadow Kingdom ===',
         '',
-        'Type something and it will echo back.',
+        'Welcome to your adventure! Type "help" for available commands.',
         ''
       ], 'SYSTEM');
+      
+      // Display the initial room description
+      if (currentRoom) {
+        const roomInfo = await gameStateManager.getCurrentRoomInfo();
+        // Split room info into individual lines to handle display properly
+        const roomLines = roomInfo.split('\n');
+        roomLines.forEach(line => addMessage(line, 'RESPONSE'));
+      }
 
       // Update status
       updateStatusDisplay(session, currentRoom);
@@ -205,6 +213,54 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     }
   }, [programmaticCommand, debugMode]);
 
+  // Update game state after room changes
+  const updateGameState = useCallback(async (): Promise<void> => {
+    const { gameStateManager, navigationEngine } = servicesRef.current;
+    if (!gameStateManager || !navigationEngine) return;
+
+    try {
+      const session = gameStateManager.getCurrentSession();
+      const currentRoom = gameStateManager.getCurrentRoom();
+
+      setGameState(prev => ({
+        ...prev,
+        currentRoom,
+        gameSession: session,
+      }));
+
+      // Update navigation hints
+      let hints: string[] = [];
+      if (currentRoom) {
+        hints = await navigationEngine.getNavigationHints();
+        setNavigationHints(hints);
+      }
+
+      // Update status display directly here to avoid circular dependency
+      if (!session || !currentRoom) {
+        setStatusInfo({ status: 'No active session' });
+      } else {
+        const statusLines = [
+          `Shadow Kingdom - Game ${session.gameId}`,
+          `Location: ${currentRoom.name}`,
+          `Region: ${currentRoom.regionId || 'Unknown'}`,
+        ];
+
+        // Add navigation hints
+        if (hints && hints.length > 0) {
+          statusLines.push('---');
+          statusLines.push(...hints);
+        }
+
+        setStatusInfo({ statusLines });
+      }
+
+    } catch (error) {
+      if (debugMode) {
+        console.error('Error updating game state:', error);
+      }
+    }
+  }, [debugMode]);
+
   // Handle programmatic command execution
   const handleProgrammaticCommand = useCallback(async (command: string): Promise<void> => {
     const { commandRouter } = servicesRef.current;
@@ -216,8 +272,9 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       const result = await commandRouter.executeCommand(command);
       
       if (result.success) {
-        // Log and display response
-        addMessage(result.response, 'RESPONSE');
+        // Log and display response - split into lines for proper display
+        const responseLines = result.response.split('\n');
+        responseLines.forEach(line => addMessage(line, 'RESPONSE'));
         
         // Handle quit command - exit immediately for programmatic mode
         if (result.metadata?.shouldExit) {
@@ -244,51 +301,49 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     }
   }, [exit]);
 
-  // Handle interactive command submission - JUST ECHO
+  // Handle interactive command submission
   const handleCommandSubmit = useCallback(async (command: string): Promise<void> => {
-    // Log the command
-    addMessage(`> ${command}`, 'COMMAND');
-    
-    // Add echo lines (these are responses)
-    addMessage([
-      'This is a line of text.',
-      'This is a line of text.',
-      'This is a line of text.',
-      'This is a line of text.',
-      'This is a line of text.'
-    ], 'RESPONSE');
-  }, [addMessage]);
-
-  // Update game state after room changes
-  const updateGameState = useCallback(async (): Promise<void> => {
-    const { gameStateManager, navigationEngine } = servicesRef.current;
-    if (!gameStateManager || !navigationEngine) return;
+    const { commandRouter, gameStateManager } = servicesRef.current;
+    if (!commandRouter || !gameStateManager) {
+      addMessage('Game services not available. Please wait...', 'ERROR');
+      return;
+    }
 
     try {
-      const session = gameStateManager.getCurrentSession();
-      const currentRoom = gameStateManager.getCurrentRoom();
-
-      setGameState(prev => ({
-        ...prev,
-        currentRoom,
-        gameSession: session,
-      }));
-
-      // Update navigation hints
-      if (currentRoom) {
-        const hints = await navigationEngine.getNavigationHints();
-        setNavigationHints(hints);
+      // Log the command
+      addMessage(`> ${command}`, 'COMMAND');
+      
+      // Execute the command through the router
+      const result = await commandRouter.executeCommand(command);
+      
+      if (result.success) {
+        // Display the response - split into lines for proper display
+        const responseLines = result.response.split('\n');
+        responseLines.forEach(line => addMessage(line, 'RESPONSE'));
+        
+        // Handle quit command
+        if (result.metadata?.shouldExit) {
+          setTimeout(() => exit(), 100);
+          return;
+        }
+        
+        // Update state if room changed
+        if (result.metadata?.roomChanged) {
+          await updateGameState();
+        }
+      } else {
+        // Display error message
+        addMessage(result.response, 'ERROR');
       }
-
-      // Update status display
-      updateStatusDisplay(session, currentRoom);
-
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      addMessage(`Error: ${errorMsg}`, 'ERROR');
+      
       if (debugMode) {
-        console.error('Error updating game state:', error);
+        console.error('Command execution error:', error);
       }
     }
-  }, [debugMode]);
+  }, [addMessage, exit, updateGameState, debugMode]);
 
   // Update status display
   const updateStatusDisplay = useCallback((session: any, room: any): void => {
@@ -401,13 +456,10 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
   return (
     <Box flexDirection="column" height="100%" width="100%">
-      {/* Game Pane - fills available height */}
-      <Box height={gameAreaHeight} width="100%">
-        <GamePane messages={messages} maxLines={gameAreaHeight} />
+      {/* Game Pane - fills remaining space */}
+      <Box flexGrow={1} width="100%" flexDirection="column">
+        <GamePane messages={messages} />
       </Box>
-      
-      {/* Spacer to push bottom bars down */}
-      <Box flexGrow={1} />
       
       {/* Bottom section - Input Bar and Status Pane */}
       <Box flexShrink={0} width="100%" flexDirection="column">

@@ -226,6 +226,56 @@ export class RoomNavigationEngine {
   }
 
   /**
+   * Format room exits for display with descriptions and lock status
+   */
+  async formatRoomExits(roomId: number, connections?: Connection[]): Promise<string> {
+    try {
+      // Use provided connections or fetch them
+      const roomConnections = connections || await this.prismaService.client.connection.findMany({
+        where: { fromRoomId: roomId },
+        orderBy: { direction: 'asc' }
+      });
+
+      if (!roomConnections || roomConnections.length === 0) {
+        return 'There are no obvious exits.';
+      }
+
+      // Sort directions in a logical order (cardinal then intercardinal)
+      const directionOrder = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'];
+      const sortedConnections = roomConnections.sort((a, b) => {
+        const aIndex = directionOrder.indexOf(a.direction);
+        const bIndex = directionOrder.indexOf(b.direction);
+        if (aIndex === -1 && bIndex === -1) return a.direction.localeCompare(b.direction);
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      });
+
+      const exitList = sortedConnections.map(conn => {
+        let exitStr = conn.direction;
+        
+        // Handle locked exits
+        if (conn.locked) {
+          if (conn.description) {
+            exitStr += ` (locked, ${conn.description})`;
+          } else {
+            exitStr += ' (locked)';
+          }
+        } else if (conn.description) {
+          exitStr += ` (${conn.description})`;
+        }
+        
+        return exitStr;
+      }).join(', ');
+
+      return `Exits: ${exitList}`;
+    } catch (error) {
+      console.error('Error formatting room exits:', error);
+      return 'Unable to determine available exits.';
+    }
+  }
+
+  /**
    * Perform the actual movement to a new room
    */
   async performMovement(connection: Connection): Promise<MovementResult> {

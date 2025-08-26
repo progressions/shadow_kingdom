@@ -86,6 +86,114 @@ export class GameStateManager {
   }
 
   /**
+   * Get formatted information about the current room including exits and contents
+   */
+  async getCurrentRoomInfo(): Promise<string> {
+    try {
+      if (!this.currentSession) {
+        return 'No active game session. Please start or load a game.';
+      }
+
+      const room = this.currentSession.currentRoom;
+      if (!room) {
+        return 'No current room. Please start or load a game.';
+      }
+      
+      let display = '';
+
+      // Room name
+      display += `\n${room.name}\n`;
+      display += '='.repeat(room.name?.length || 0) + '\n\n';
+
+      // Room description
+      display += `${room.description}\n`;
+
+      // Extended description if room has been visited and has one
+      if (room.visited && room.extendedDescription) {
+        display += `\n${room.extendedDescription}\n`;
+      }
+
+      // Get available exits
+      const connections = await this.prismaService.client.connection.findMany({
+        where: { 
+          fromRoomId: room.id,
+          gameId: this.currentSession.gameId
+        },
+        orderBy: { direction: 'asc' }
+      });
+
+      // Format exits
+      display += '\n';
+      if (connections.length > 0) {
+        const exitList = connections.map(conn => {
+          let exitStr = conn.direction;
+          if (conn.locked) {
+            exitStr += ' (locked';
+            if (conn.description) {
+              exitStr += `, ${conn.description}`;
+            }
+            exitStr += ')';
+          } else if (conn.description) {
+            exitStr += ` (${conn.description})`;
+          }
+          return exitStr;
+        }).join(', ');
+        
+        display += `Exits: ${exitList}\n`;
+      } else {
+        display += 'There are no obvious exits.\n';
+      }
+
+      // Get items in the room
+      const items = await this.prismaService.client.item.findMany({
+        where: { 
+          roomId: room.id,
+          gameId: this.currentSession.gameId
+        }
+      });
+
+      if (items.length > 0) {
+        display += '\nYou can see:\n';
+        items.forEach(item => {
+          const article = this.getArticle(item.name);
+          display += `  ${article} ${item.name}\n`;
+        });
+      }
+
+      // Get characters in the room
+      const characters = await this.prismaService.client.character.findMany({
+        where: { 
+          roomId: room.id,
+          gameId: this.currentSession.gameId
+        }
+      });
+
+      if (characters.length > 0) {
+        display += '\nAlso here:\n';
+        characters.forEach(char => {
+          const article = this.getArticle(char.name);
+          display += `  ${article} ${char.name}\n`;
+        });
+      }
+
+      return display;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('getCurrentRoomInfo error:', error);
+      return `Error getting room information: ${errorMessage}`;
+    }
+  }
+
+  /**
+   * Get the appropriate article (a/an) for a noun
+   */
+  private getArticle(noun: string): string {
+    const vowels = ['a', 'e', 'i', 'o', 'u'];
+    const firstLetter = noun.charAt(0).toLowerCase();
+    return vowels.includes(firstLetter) ? 'an' : 'a';
+  }
+
+  /**
    * Set the current room and update the game state with automatic persistence
    */
   async setCurrentRoom(roomId: number): Promise<Room> {

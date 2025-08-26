@@ -19,6 +19,7 @@ describe('CommandRouter', () => {
       setCurrentRoom: jest.fn(),
       hasActiveSession: jest.fn(),
       getCurrentSession: jest.fn(),
+      getCurrentRoomInfo: jest.fn(),
     } as any;
 
     mockPrismaService = {
@@ -334,6 +335,9 @@ describe('CommandRouter', () => {
         
         (mockPrismaService.client.connection.findMany as jest.Mock).mockResolvedValue(mockConnections);
         (mockGameStateManager.setCurrentRoom as jest.Mock).mockResolvedValue(mockTargetRoom);
+        (mockGameStateManager.getCurrentRoomInfo as jest.Mock).mockResolvedValue(
+          '\nNorth Room\n==========\n\nA room to the north.\n\nExits: south'
+        );
 
         const result = await commandRouter.executeCommand('go north');
         
@@ -344,6 +348,10 @@ describe('CommandRouter', () => {
       });
 
       it('should execute look commands', async () => {
+        (mockGameStateManager.getCurrentRoomInfo as jest.Mock).mockResolvedValue(
+          '\nTest Room\n=========\n\nA test room.\n\nExits: north'
+        );
+        
         const result = await commandRouter.executeCommand('look');
         
         expect(result.success).toBe(true);
