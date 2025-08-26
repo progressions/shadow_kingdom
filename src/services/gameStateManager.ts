@@ -7,6 +7,14 @@ export interface GameSession {
   currentRoom: Room;
   lastSaved: Date;
   sessionStartTime: Date;
+  movementHistory: MovementHistoryEntry[];
+}
+
+export interface MovementHistoryEntry {
+  fromRoomId: number;
+  toRoomId: number;
+  direction: string;
+  timestamp: Date;
 }
 
 export interface GameStateManagerError extends Error {
@@ -29,6 +37,9 @@ export class GameStateManager {
   private currentSession: GameSession | null = null;
   private autoSaveEnabled: boolean = true;
   private saveInterval: NodeJS.Timeout | null = null;
+  private readonly maxHistorySize: number = 50;
+  private roomCache: Map<number, { room: Room; cachedAt: Date }> = new Map();
+  private readonly cacheExpiry: number = 5 * 60 * 1000; // 5 minutes
 
   constructor(private readonly prismaService: PrismaService) {
     // Setup auto-save if enabled
@@ -61,6 +72,7 @@ export class GameStateManager {
         currentRoom,
         lastSaved: now,
         sessionStartTime: now,
+        movementHistory: [],
       };
 
       // Mark the starting room as visited
@@ -196,16 +208,26 @@ export class GameStateManager {
   /**
    * Set the current room and update the game state with automatic persistence
    */
-  async setCurrentRoom(roomId: number): Promise<Room> {
+  async setCurrentRoom(roomId: number, direction?: string): Promise<Room> {
     try {
       if (!this.currentSession) {
         throw new GameStateManagerError('No active game session', 'NO_ACTIVE_SESSION', false);
       }
 
-      // Get the new room
-      const newRoom = await this.prismaService.client.room.findUnique({
-        where: { id: roomId },
-      });
+      // Try to get room from cache first
+      let newRoom = this.getRoomFromCache(roomId);
+      
+      if (!newRoom) {
+        // Get the new room from database
+        newRoom = await this.prismaService.client.room.findUnique({
+          where: { id: roomId },
+        });
+        
+        // Add to cache if found
+        if (newRoom) {
+          this.addRoomToCache(newRoom);
+        }
+      }
 
       if (!newRoom) {
         throw new GameStateManagerError(`Room ${roomId} not found`, 'ROOM_NOT_FOUND', true);
@@ -231,6 +253,16 @@ export class GameStateManager {
 
       // Mark room as visited
       await this.markRoomVisited(roomId);
+
+      // Track movement history if direction is provided
+      if (direction) {
+        this.addMovementToHistory({
+          fromRoomId: this.currentSession.currentRoomId,
+          toRoomId: roomId,
+          direction,
+          timestamp: now
+        });
+      }
 
       // Update session
       this.currentSession.currentRoomId = roomId;
@@ -397,6 +429,91 @@ export class GameStateManager {
       clearInterval(this.saveInterval);
       this.saveInterval = null;
     }
+  }
+
+  /**
+   * Add a movement to the history
+   */
+  private addMovementToHistory(entry: MovementHistoryEntry): void {
+    if (!this.currentSession) {
+      return;
+    }
+
+    // Add to history
+    this.currentSession.movementHistory.push(entry);
+
+    // Trim history if it exceeds max size
+    if (this.currentSession.movementHistory.length > this.maxHistorySize) {
+      this.currentSession.movementHistory = this.currentSession.movementHistory.slice(-this.maxHistorySize);
+    }
+  }
+
+  /**
+   * Add a room to the cache
+   */
+  private addRoomToCache(room: Room): void {
+    this.roomCache.set(room.id, {
+      room,
+      cachedAt: new Date()
+    });
+    
+    // Clean up old entries if cache is getting large
+    if (this.roomCache.size > 50) {
+      this.cleanupCache();
+    }
+  }
+
+  /**
+   * Get a room from cache if it exists and is not expired
+   */
+  private getRoomFromCache(roomId: number): Room | null {
+    const cached = this.roomCache.get(roomId);
+    if (!cached) {
+      return null;
+    }
+    
+    // Check if cache entry is expired
+    const now = new Date();
+    if (now.getTime() - cached.cachedAt.getTime() > this.cacheExpiry) {
+      this.roomCache.delete(roomId);
+      return null;
+    }
+    
+    return cached.room;
+  }
+
+  /**
+   * Clean up expired cache entries
+   */
+  private cleanupCache(): void {
+    const now = new Date();
+    for (const [roomId, entry] of this.roomCache.entries()) {
+      if (now.getTime() - entry.cachedAt.getTime() > this.cacheExpiry) {
+        this.roomCache.delete(roomId);
+      }
+    }
+  }
+
+  /**
+   * Clear the entire room cache
+   */
+  clearRoomCache(): void {
+    this.roomCache.clear();
+  }
+
+  /**
+   * Get the movement history
+   */
+  getMovementHistory(): MovementHistoryEntry[] {
+    return this.currentSession?.movementHistory || [];
+  }
+
+  /**
+   * Get the last N movements
+   */
+  getRecentMovements(count: number = 10): MovementHistoryEntry[] {
+    const history = this.getMovementHistory();
+    return history.slice(-count);
   }
 
   /**

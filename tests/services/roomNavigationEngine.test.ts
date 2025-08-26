@@ -344,7 +344,7 @@ describe('RoomNavigationEngine', () => {
         expect(result.success).toBe(true);
         expect(result.newRoom).toEqual(mockTargetRoom);
         expect(result.movementDescription).toContain('You move north through the archway');
-        expect(mockGameStateManager.setCurrentRoom).toHaveBeenCalledWith(101);
+        expect(mockGameStateManager.setCurrentRoom).toHaveBeenCalledWith(101, 'north');
       });
 
       it('should generate appropriate movement description', async () => {

@@ -288,7 +288,7 @@ export class RoomNavigationEngine {
       }
 
       // Move to the new room using GameStateManager
-      const newRoom = await this.gameStateManager.setCurrentRoom(connection.toRoomId);
+      const newRoom = await this.gameStateManager.setCurrentRoom(connection.toRoomId, connection.direction);
 
       // Generate movement description
       const movementDescription = this.generateMovementDescription(connection);

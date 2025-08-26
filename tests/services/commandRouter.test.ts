@@ -344,7 +344,7 @@ describe('CommandRouter', () => {
         expect(result.success).toBe(true);
         expect(result.response).toContain('North Room');
         expect(result.response).toContain('A room to the north');
-        expect(mockGameStateManager.setCurrentRoom).toHaveBeenCalledWith(456);
+        expect(mockGameStateManager.setCurrentRoom).toHaveBeenCalledWith(456, 'north');
       });
 
       it('should execute look commands', async () => {

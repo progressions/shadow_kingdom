@@ -84,7 +84,8 @@ export class CommandRouter {
   };
 
   private systemPatterns = {
-    quit: ['quit', 'exit', 'q', 'bye', 'goodbye', 'leave']
+    quit: ['quit', 'exit', 'q', 'bye', 'goodbye', 'leave'],
+    help: ['help', 'h', '?', 'commands', 'instructions']
   };
 
   constructor(
@@ -287,6 +288,16 @@ export class CommandRouter {
       };
     }
 
+    // Check for help command
+    if (this.systemPatterns.help.includes(action)) {
+      return {
+        type: 'system',
+        action: 'help',
+        raw,
+        confidence: 1.0
+      };
+    }
+
     return {
       type: 'unknown',
       raw,
@@ -473,7 +484,7 @@ export class CommandRouter {
       }
       
       // Move to the new room
-      const newRoom = await this.gameStateManager.setCurrentRoom(connection.toRoomId);
+      const newRoom = await this.gameStateManager.setCurrentRoom(connection.toRoomId, parsedCommand.direction);
       
       // Format the room description
       const description = await this.formatRoomDescription(newRoom);
@@ -540,6 +551,13 @@ export class CommandRouter {
           metadata: {
             shouldExit: true
           }
+        };
+      }
+
+      if (parsedCommand.action === 'help') {
+        return {
+          success: true,
+          response: this.getHelpText()
         };
       }
 
@@ -673,6 +691,43 @@ export class CommandRouter {
     }
 
     return matrix[b.length][a.length];
+  }
+
+  /**
+   * Get help text showing available commands
+   */
+  private getHelpText(): string {
+    const helpSections = [];
+    
+    helpSections.push('\n=== SHADOW KINGDOM COMMANDS ===\n');
+    
+    helpSections.push('MOVEMENT:');
+    helpSections.push('  north, n     - Move north');
+    helpSections.push('  south, s     - Move south');
+    helpSections.push('  east, e      - Move east');
+    helpSections.push('  west, w      - Move west');
+    helpSections.push('  northeast, ne - Move northeast');
+    helpSections.push('  northwest, nw - Move northwest');
+    helpSections.push('  southeast, se - Move southeast');
+    helpSections.push('  southwest, sw - Move southwest');
+    helpSections.push('  up, u        - Move up');
+    helpSections.push('  down, d      - Move down');
+    helpSections.push('');
+    
+    helpSections.push('EXPLORATION:');
+    helpSections.push('  look         - Examine your surroundings');
+    helpSections.push('  look [item]  - Examine something specific');
+    helpSections.push('  examine [item] - Same as look');
+    helpSections.push('');
+    
+    helpSections.push('SYSTEM:');
+    helpSections.push('  help, h, ?   - Show this help message');
+    helpSections.push('  quit         - Exit the game');
+    helpSections.push('');
+    
+    helpSections.push('TIP: You can also use natural language like "go to the north" or "walk east"');
+    
+    return helpSections.join('\n');
   }
 
   /**

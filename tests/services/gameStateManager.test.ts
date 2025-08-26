@@ -155,6 +155,7 @@ describe('GameStateManager', () => {
           currentRoom: mockStartingRoom,
           lastSaved: expect.any(Date),
           sessionStartTime: expect.any(Date),
+          movementHistory: [],
         });
       });
     });
