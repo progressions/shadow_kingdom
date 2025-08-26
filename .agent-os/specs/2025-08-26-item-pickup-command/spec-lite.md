@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement a comprehensive item pickup system with take/pickup/get commands supporting "all" targeting through intelligent disambiguation. The system includes a centralized target resolution service that interprets "all" based on command context (take all = all items), handles partial name matching, and integrates with inventory management to enable efficient item collection with clear feedback.

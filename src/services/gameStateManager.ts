@@ -8,6 +8,7 @@ export interface GameSession {
   lastSaved: Date;
   sessionStartTime: Date;
   movementHistory: MovementHistoryEntry[];
+  inventory: number[]; // Array of item IDs
 }
 
 export interface MovementHistoryEntry {
@@ -73,6 +74,7 @@ export class GameStateManager {
         lastSaved: now,
         sessionStartTime: now,
         movementHistory: [],
+        inventory: [],
       };
 
       // Mark the starting room as visited
@@ -88,6 +90,13 @@ export class GameStateManager {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new GameStateManagerError(`Failed to initialize game: ${errorMessage}`, 'INITIALIZATION_FAILED', false);
     }
+  }
+
+  /**
+   * Check if there's an active session
+   */
+  hasActiveSession(): boolean {
+    return this.currentSession !== null;
   }
 
   /**
@@ -302,13 +311,6 @@ export class GameStateManager {
    */
   getCurrentSession(): GameSession | null {
     return this.currentSession;
-  }
-
-  /**
-   * Check if there's an active session
-   */
-  hasActiveSession(): boolean {
-    return this.currentSession !== null;
   }
 
   /**
@@ -566,6 +568,95 @@ export class GameStateManager {
       this.currentSession = null;
     } catch (error) {
       console.warn('Error during GameStateManager shutdown:', error);
+    }
+  }
+
+  /**
+   * Add an item to the player's inventory
+   */
+  async addToInventory(itemId: number): Promise<boolean> {
+    if (!this.currentSession) {
+      throw new GameStateManagerError('No active game session', 'NO_SESSION', false);
+    }
+
+    // Check if item already in inventory
+    if (this.currentSession.inventory.includes(itemId)) {
+      return false;
+    }
+
+    // Check capacity (max 10 items)
+    if (this.currentSession.inventory.length >= 10) {
+      return false;
+    }
+
+    // Add item to inventory
+    this.currentSession.inventory.push(itemId);
+    
+    // Trigger auto-save
+    if (this.autoSaveEnabled) {
+      await this.saveGameState();
+    }
+
+    return true;
+  }
+
+  /**
+   * Remove an item from inventory (for drop command, future)
+   */
+  async removeFromInventory(itemId: number): Promise<boolean> {
+    if (!this.currentSession) {
+      throw new GameStateManagerError('No active game session', 'NO_SESSION', false);
+    }
+
+    const index = this.currentSession.inventory.indexOf(itemId);
+    if (index === -1) {
+      return false;
+    }
+
+    this.currentSession.inventory.splice(index, 1);
+    
+    // Trigger auto-save
+    if (this.autoSaveEnabled) {
+      await this.saveGameState();
+    }
+
+    return true;
+  }
+
+  /**
+   * Get the current inventory
+   */
+  getInventory(): number[] {
+    if (!this.currentSession) {
+      return [];
+    }
+    return [...this.currentSession.inventory]; // Return a copy
+  }
+
+  /**
+   * Get the current inventory count
+   */
+  getInventoryCount(): number {
+    if (!this.currentSession) {
+      return 0;
+    }
+    return this.currentSession.inventory.length;
+  }
+
+  /**
+   * Remove an item from a room (helper for pickup)
+   * This is handled by updating the item's roomId in the database
+   */
+  async removeFromRoom(roomId: number, itemId: number): Promise<boolean> {
+    try {
+      await this.prismaService.client.item.update({
+        where: { id: itemId },
+        data: { roomId: null }
+      });
+      return true;
+    } catch (error) {
+      console.error(`Failed to remove item ${itemId} from room ${roomId}:`, error);
+      return false;
     }
   }
 }

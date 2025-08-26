@@ -1,5 +1,6 @@
 import { GameStateManager } from './gameStateManager';
 import { PrismaService } from './prismaService';
+import { TargetDisambiguationService } from './targetDisambiguationService';
 import { Room } from '@prisma/client';
 
 export interface MenuCommand {
@@ -15,10 +16,11 @@ export interface GameCommand {
 }
 
 export interface ParsedCommand {
-  type: 'movement' | 'examination' | 'system' | 'unknown';
+  type: 'movement' | 'examination' | 'system' | 'pickup' | 'unknown';
   action?: string;
   direction?: string;
   target?: string;
+  targetIds?: number[];
   raw: string;
   confidence: number;
 }
@@ -88,10 +90,26 @@ export class CommandRouter {
     help: ['help', 'h', '?', 'commands', 'instructions']
   };
 
+  private pickupPatterns = {
+    actions: ['take', 'pickup', 'get', 'grab', 'pick', 'collect'],
+    aliases: {
+      't': 'take',
+      'p': 'pickup',
+      'g': 'get'
+    } as Record<string, string>
+  };
+
+  private targetDisambiguationService: TargetDisambiguationService;
+
   constructor(
     private readonly gameStateManager: GameStateManager,
     private readonly prismaService: PrismaService
-  ) {}
+  ) {
+    this.targetDisambiguationService = new TargetDisambiguationService(
+      prismaService,
+      gameStateManager
+    );
+  }
 
   /**
    * Register a menu command
@@ -128,6 +146,41 @@ export class CommandRouter {
   }
 
   /**
+   * Get all available commands (for testing)
+   */
+  getAllCommands(): Array<{ name: string; description?: string }> {
+    const commands: Array<{ name: string; description?: string }> = [];
+    
+    // Add pickup commands
+    this.pickupPatterns.actions.forEach(action => {
+      commands.push({ 
+        name: action, 
+        description: `Pick up items (${action} <item> or ${action} all)` 
+      });
+    });
+    
+    // Add system commands
+    commands.push({ name: 'quit', description: 'Exit the game' });
+    commands.push({ name: 'help', description: 'Show help' });
+    commands.push({ name: 'look', description: 'Examine surroundings' });
+    
+    // Add movement commands
+    Object.keys(this.movementPatterns.directions).forEach(dir => {
+      commands.push({ name: dir, description: `Go ${dir}` });
+    });
+    
+    return commands;
+  }
+
+  /**
+   * Process a command (wrapper for executeCommand, for testing compatibility)
+   */
+  async processCommand(input: string): Promise<{ message: string }> {
+    const result = await this.executeCommand(input);
+    return { message: result.response };
+  }
+
+  /**
    * Parse natural language command input
    */
   parseCommand(input: string): ParsedCommand {
@@ -141,6 +194,17 @@ export class CommandRouter {
 
     const normalized = input.trim().toLowerCase();
     const words = normalized.split(/\s+/);
+
+    // Check for command aliases first
+    if (words.length > 0 && this.pickupPatterns.aliases[words[0]]) {
+      words[0] = this.pickupPatterns.aliases[words[0]];
+    }
+
+    // Try to parse as pickup command first (higher priority)
+    const pickupResult = this.parsePickupCommand(words, input);
+    if (pickupResult.confidence > 0) {
+      return pickupResult;
+    }
 
     // Try to parse as movement command
     const movementResult = this.parseMovementCommand(words, input);
@@ -273,6 +337,43 @@ export class CommandRouter {
   }
 
   /**
+   * Parse pickup commands (take, get, pickup)
+   */
+  private parsePickupCommand(words: string[], raw: string): ParsedCommand {
+    const action = words[0];
+
+    if (this.pickupPatterns.actions.includes(action)) {
+      if (words.length === 1) {
+        // Command without target, e.g., just "take"
+        return {
+          type: 'pickup',
+          action,
+          raw,
+          confidence: 0.3
+        };
+      }
+
+      // Has target specified
+      const target = words.slice(1).join(' ');
+      
+      // For now, return parsed command - actual disambiguation will happen in execution
+      return {
+        type: 'pickup',
+        action,
+        target,
+        raw,
+        confidence: 0.9
+      };
+    }
+
+    return {
+      type: 'unknown',
+      raw,
+      confidence: 0
+    };
+  }
+
+  /**
    * Parse system commands (quit, help, etc.)
    */
   private parseSystemCommand(words: string[], raw: string): ParsedCommand {
@@ -364,10 +465,23 @@ export class CommandRouter {
         return { isValid: true };
       }
 
+      // Validate pickup commands (always valid if there's a session)
+      if (parsedCommand.type === 'pickup') {
+        return { isValid: true };
+      }
+
       // Unknown commands are invalid
+      if (parsedCommand.type === 'unknown') {
+        return {
+          isValid: false,
+          error: 'Command not recognized'
+        };
+      }
+
+      // Default case (shouldn't happen but TypeScript needs it)
       return {
         isValid: false,
-        error: 'Command not recognized'
+        error: 'Command type not handled'
       };
 
     } catch (error) {
@@ -433,6 +547,8 @@ export class CommandRouter {
         return await this.executeMovementCommand(parsedCommand);
       } else if (parsedCommand.type === 'examination') {
         return await this.executeExaminationCommand(parsedCommand);
+      } else if (parsedCommand.type === 'pickup') {
+        return await this.executePickupCommand(parsedCommand);
       } else if (parsedCommand.type === 'system') {
         return await this.executeSystemCommand(parsedCommand);
       }
@@ -535,6 +651,168 @@ export class CommandRouter {
       return {
         success: false,
         response: 'Unable to examine that. Please try again.'
+      };
+    }
+  }
+
+  /**
+   * Execute pickup commands (take, get, pickup)
+   */
+  private async executePickupCommand(parsedCommand: ParsedCommand): Promise<CommandExecutionResult> {
+    try {
+      // Use TargetDisambiguationService to resolve the target
+      const parseResult = await this.targetDisambiguationService.parseCommand(parsedCommand.raw);
+      
+      if (!parseResult.success || !parseResult.command) {
+        // Command couldn't be parsed - return helpful error
+        const partialMatches = parseResult.failureContext?.partialMatches;
+        if (partialMatches && partialMatches.length > 0) {
+          const bestMatch = partialMatches[0];
+          if (bestMatch.issue) {
+            return {
+              success: false,
+              response: bestMatch.issue
+            };
+          }
+        }
+        return {
+          success: false,
+          response: "I don't understand what you want to pick up."
+        };
+      }
+
+      const command = parseResult.command;
+      
+      // Check if no targets were found
+      if (!command.targetIds || command.targetIds.length === 0) {
+        if (command.target === 'all') {
+          return {
+            success: false,
+            response: 'There are no items here to pick up.'
+          };
+        }
+        return {
+          success: false,
+          response: `There is no ${command.target} here.`
+        };
+      }
+
+      // Check inventory capacity
+      const currentInventoryCount = this.gameStateManager.getInventoryCount();
+      const maxCapacity = 10; // This could be made configurable later
+      
+      if (currentInventoryCount >= maxCapacity) {
+        return {
+          success: false,
+          response: "You can't carry any more items."
+        };
+      }
+
+      // Get current room
+      const currentRoom = this.gameStateManager.getCurrentRoom();
+      if (!currentRoom) {
+        return {
+          success: false,
+          response: 'Error: No current room set.'
+        };
+      }
+
+      // Fetch the items to pick up
+      const items = await this.prismaService.client.item.findMany({
+        where: {
+          id: { in: command.targetIds },
+          roomId: currentRoom.id
+        }
+      });
+
+      if (items.length === 0) {
+        return {
+          success: false,
+          response: `The ${command.target} is not here.`
+        };
+      }
+
+      // Pick up items
+      const pickedUpItems: string[] = [];
+      const failedItems: string[] = [];
+      const itemsToPickUp: number[] = [];
+
+      // First, determine which items can be picked up based on capacity
+      for (const item of items) {
+        if (this.gameStateManager.getInventoryCount() + itemsToPickUp.length >= maxCapacity) {
+          failedItems.push(item.name);
+        } else {
+          itemsToPickUp.push(item.id);
+          pickedUpItems.push(item.name);
+        }
+      }
+
+      // If we're picking up multiple items, use batch update
+      if (itemsToPickUp.length > 1) {
+        try {
+          // Use updateMany for bulk operations
+          await this.prismaService.client.item.updateMany({
+            where: { id: { in: itemsToPickUp } },
+            data: { roomId: null }
+          });
+
+          // Add all items to inventory
+          for (const itemId of itemsToPickUp) {
+            await this.gameStateManager.addToInventory(itemId);
+          }
+        } catch (error) {
+          console.error('Failed to pick up items:', error);
+          return {
+            success: false,
+            response: 'Failed to pick up items. Please try again.'
+          };
+        }
+      } else if (itemsToPickUp.length === 1) {
+        // Single item - use regular update
+        try {
+          await this.prismaService.client.item.update({
+            where: { id: itemsToPickUp[0] },
+            data: { roomId: null }
+          });
+          await this.gameStateManager.addToInventory(itemsToPickUp[0]);
+        } catch (error) {
+          console.error('Failed to pick up item:', error);
+          return {
+            success: false,
+            response: 'Failed to pick up the item. Please try again.'
+          };
+        }
+      }
+
+      // Generate response message
+      if (pickedUpItems.length === 0) {
+        return {
+          success: false,
+          response: "Couldn't pick up any items."
+        };
+      }
+
+      let response = '';
+      if (command.target === 'all' && failedItems.length === 0) {
+        response = `You pick up everything in the room: ${pickedUpItems.join(', ')}.`;
+      } else if (command.target === 'all' && failedItems.length > 0) {
+        response = `You picked up: ${pickedUpItems.join(', ')}. Couldn't pick up all items - inventory full.`;
+      } else if (pickedUpItems.length === 1) {
+        response = `You pick up the ${pickedUpItems[0]}.`;
+      } else {
+        response = `You pick up: ${pickedUpItems.join(', ')}.`;
+      }
+
+      return {
+        success: true,
+        response
+      };
+
+    } catch (error) {
+      console.error('Pickup command error:', error);
+      return {
+        success: false,
+        response: 'Failed to pick up the item. Please try again.'
       };
     }
   }
