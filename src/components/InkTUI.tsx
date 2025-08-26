@@ -3,9 +3,11 @@ import { Box, useApp, useStdout, useInput } from 'ink'
 import { GamePane } from './GamePane'
 import { InputBar } from './InputBar'
 import { StatusPane } from './StatusPane'
+import { Message, createMessage } from '../types/Message'
+import { addMessagesToBuffer } from '../utils/messageBuffer'
 
 export const InkTUI: React.FC = () => {
-  const [messages, setMessages] = useState<string[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [commandHistory, setCommandHistory] = useState<string[]>(['help', 'look', 'status'])
   const [terminalSize, setTerminalSize] = useState({ width: 80, height: 24 })
   const [statusContent, setStatusContent] = useState("Shadow Kingdom v1.0 - Ready (Use arrow keys for history)")
@@ -35,6 +37,11 @@ export const InkTUI: React.FC = () => {
     }
   }, [stdout])
 
+  // Helper function to add messages with scrollback buffer management
+  const addMessage = (content: string): void => {
+    setMessages(prev => addMessagesToBuffer(prev, [createMessage(content)]))
+  }
+
   // Global keyboard shortcuts
   useInput((input, key) => {
     // Ctrl+C - Graceful exit
@@ -45,30 +52,30 @@ export const InkTUI: React.FC = () => {
 
     // Ctrl+H - Help system
     if (key.ctrl && input === 'h') {
-      setMessages(prev => [...prev, '> help'])
-      setMessages(prev => [...prev, 'Available commands: hello, look, help, status, info, reset, quit'])
-      setMessages(prev => [...prev, 'Global shortcuts: Ctrl+C (exit), Ctrl+H (help)'])
+      addMessage('> help')
+      addMessage('Available commands: hello, look, help, status, info, reset, quit')
+      addMessage('Global shortcuts: Ctrl+C (exit), Ctrl+H (help)')
       return
     }
   })
 
   const handleSubmit = (command: string) => {
     // Echo the command back to the game pane with ">" prefix
-    setMessages(prev => [...prev, `> ${command}`])
+    addMessage(`> ${command}`)
     
     // Handle game commands
     if (command.toLowerCase() === 'hello') {
-      setMessages(prev => [...prev, 'Hello there, adventurer!'])
+      addMessage('Hello there, adventurer!')
     } else if (command.toLowerCase() === 'look') {
-      setMessages(prev => [...prev, 'You are standing in a dimly lit chamber with stone walls.'])
+      addMessage('You are standing in a dimly lit chamber with stone walls.')
     } else if (command.toLowerCase() === 'help') {
-      setMessages(prev => [...prev, 'Available commands: hello, look, help, status, info, reset, quit'])
-      setMessages(prev => [...prev, 'Global shortcuts: Ctrl+C (exit), Ctrl+H (help)'])
+      addMessage('Available commands: hello, look, help, status, info, reset, quit')
+      addMessage('Global shortcuts: Ctrl+C (exit), Ctrl+H (help)')
     } else if (command.toLowerCase() === 'quit') {
-      setMessages(prev => [...prev, 'Goodbye, adventurer!'])
+      addMessage('Goodbye, adventurer!')
       setTimeout(() => exit(), 1000) // Give time to see the message
     } else if (command.trim() && !['status', 'info', 'reset'].includes(command.toLowerCase())) {
-      setMessages(prev => [...prev, `Unknown command: ${command}`])
+      addMessage(`Unknown command: ${command}`)
     }
 
     // Handle status content updates
