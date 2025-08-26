@@ -10,10 +10,11 @@ describe('GameStateManager', () => {
   let mockPrismaService: jest.Mocked<PrismaService>;
 
   beforeEach(() => {
-    // Setup mocks
+    // Create comprehensive mock for PrismaService
     const mockRoomFindUnique = jest.fn();
     const mockRoomUpdate = jest.fn();
     const mockGameUpdate = jest.fn();
+    const mockItemFindMany = jest.fn();
 
     mockPrismaService = {
       client: {
@@ -24,9 +25,16 @@ describe('GameStateManager', () => {
         game: {
           update: mockGameUpdate,
         },
+        item: {
+          findMany: mockItemFindMany,
+        },
       },
       disconnect: jest.fn(),
+      getInstance: jest.fn(),
     } as any;
+
+    // Default mock implementations
+    mockItemFindMany.mockResolvedValue([]);
 
     gameStateManager = new GameStateManager(mockPrismaService);
   });
@@ -64,6 +72,7 @@ describe('GameStateManager', () => {
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
       (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue({ ...mockRoom, visited: true });
+      (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
 
       await gameStateManager.initializeGame(mockGame);
 
@@ -141,6 +150,8 @@ describe('GameStateManager', () => {
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockStartingRoom);
       (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue({ ...mockStartingRoom, visited: true });
+      (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
 
       await gameStateManager.initializeGame(mockGame);
     });
@@ -156,6 +167,7 @@ describe('GameStateManager', () => {
           lastSaved: expect.any(Date),
           sessionStartTime: expect.any(Date),
           movementHistory: [],
+          inventory: [],
         });
       });
     });
@@ -229,6 +241,8 @@ describe('GameStateManager', () => {
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockStartingRoom);
       (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue({ ...mockStartingRoom, visited: true });
+      (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
 
       await gameStateManager.initializeGame(mockGame);
     });
@@ -322,6 +336,8 @@ describe('GameStateManager', () => {
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
       (mockPrismaService.client.room.update as jest.Mock).mockRejectedValue(new Error('Update failed'));
+      (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
 
       // Should not throw error, just log warning
       await expect(gameStateManager.initializeGame(mockGame)).resolves.not.toThrow();
@@ -358,6 +374,8 @@ describe('GameStateManager', () => {
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
       (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue(mockRoom);
+      (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
 
       // Initialize session
       await gameStateManager.initializeGame(mockGame);

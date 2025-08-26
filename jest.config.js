@@ -16,7 +16,6 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   // Run tests serially to avoid database conflicts
   maxWorkers: 1,
   // Reset modules between tests

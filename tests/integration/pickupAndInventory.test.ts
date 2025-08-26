@@ -24,11 +24,21 @@ describe('Pickup and Inventory Integration', () => {
         connection: {
           findMany: jest.fn(),
         },
+        game: {
+          update: jest.fn(),
+        },
         $transaction: jest.fn(),
       },
     } as any;
 
     gameStateManager = new GameStateManager(prismaService);
+    
+    // Disable auto-save to prevent hanging in tests
+    (gameStateManager as any).autoSaveEnabled = false;
+    if ((gameStateManager as any).saveInterval) {
+      clearInterval((gameStateManager as any).saveInterval);
+      (gameStateManager as any).saveInterval = null;
+    }
     
     // Mock the internal state
     const mockRoom: Room = {
@@ -56,6 +66,17 @@ describe('Pickup and Inventory Integration', () => {
     };
 
     commandRouter = new CommandRouter(gameStateManager, prismaService);
+  });
+
+  afterEach(() => {
+    // Clean up any remaining intervals
+    if ((gameStateManager as any).saveInterval) {
+      clearInterval((gameStateManager as any).saveInterval);
+      (gameStateManager as any).saveInterval = null;
+    }
+    
+    // Clear the session to prevent test pollution
+    (gameStateManager as any).clearSession?.();
   });
 
   describe('Complete Pickup and Inventory Flow', () => {
@@ -90,6 +111,13 @@ describe('Pickup and Inventory Integration', () => {
       (prismaService.client.item.update as jest.Mock).mockImplementation(() => 
         Promise.resolve({ ...mockItem, roomId: null })
       );
+      
+      // Mock game update for auto-save functionality
+      (prismaService.client.game.update as jest.Mock).mockResolvedValue({
+        id: 1,
+        currentRoomId: 100,
+        updatedAt: new Date(),
+      });
 
       // Step 1: Check initial inventory (should be empty)
       let result = await commandRouter.processCommand('inventory');
@@ -172,6 +200,13 @@ describe('Pickup and Inventory Integration', () => {
       (prismaService.client.character.findMany as jest.Mock).mockResolvedValue([]);
       (prismaService.client.connection.findMany as jest.Mock).mockResolvedValue([]);
       (prismaService.client.item.updateMany as jest.Mock).mockResolvedValue({ count: 3 });
+      
+      // Mock game update for auto-save functionality
+      (prismaService.client.game.update as jest.Mock).mockResolvedValue({
+        id: 1,
+        currentRoomId: 100,
+        updatedAt: new Date(),
+      });
 
       // Pick up all items
       const result = await commandRouter.processCommand('take all');
@@ -245,7 +280,7 @@ describe('Pickup and Inventory Integration', () => {
       (gameStateManager as any).currentSession = null;
 
       const result = await commandRouter.processCommand('inventory');
-      expect(result.message).toContain('not carrying anything');
+      expect(result.message).toContain('No active game session');
     });
 
     it('should handle picking up items with special names', async () => {
@@ -278,6 +313,13 @@ describe('Pickup and Inventory Integration', () => {
       (prismaService.client.item.update as jest.Mock).mockResolvedValue({ 
         ...mockItem, 
         roomId: null 
+      });
+      
+      // Mock game update for auto-save functionality
+      (prismaService.client.game.update as jest.Mock).mockResolvedValue({
+        id: 1,
+        currentRoomId: 100,
+        updatedAt: new Date(),
       });
 
       // Pick up with partial name

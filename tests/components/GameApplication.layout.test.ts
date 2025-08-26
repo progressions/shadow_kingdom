@@ -8,15 +8,26 @@ jest.mock('../../src/services/gameEngine')
 jest.mock('../../src/services/gameStateManager')
 jest.mock('../../src/services/commandRouter')
 jest.mock('../../src/services/roomNavigationEngine')
-jest.mock('../../src/services/loggingService', () => ({
-  LoggingService: jest.fn().mockImplementation(() => ({
-    logSessionStart: jest.fn(),
-    logSessionEnd: jest.fn(),
-    logMessage: jest.fn(),
-    shutdown: jest.fn(),
-    isEnabled: jest.fn().mockReturnValue(false)
-  }))
-}))
+jest.mock('../../src/services/loggingService', () => {
+  const mockLoggingInstance = {
+    logSessionStart: jest.fn().mockResolvedValue(undefined),
+    logSessionEnd: jest.fn().mockResolvedValue(undefined),
+    logMessage: jest.fn().mockResolvedValue(undefined),
+    shutdown: jest.fn().mockResolvedValue(undefined),
+    isEnabled: jest.fn().mockReturnValue(false),
+    getSessionId: jest.fn().mockReturnValue('mock-session-id'),
+    enableBuffering: jest.fn(),
+    disableBuffering: jest.fn(),
+    flush: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const MockLoggingService = jest.fn().mockImplementation(() => mockLoggingInstance) as any;
+  MockLoggingService.getInstance = jest.fn().mockReturnValue(mockLoggingInstance);
+
+  return {
+    LoggingService: MockLoggingService,
+  };
+})
 
 describe('GameApplication - Layout and Height Constraints', () => {
   it('should calculate game area height correctly', () => {

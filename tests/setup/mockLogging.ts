@@ -1,5 +1,4 @@
 // Global mock for LoggingService to prevent real file I/O during tests
-import { LoggingService } from '../../src/services/loggingService';
 
 // Mock the LoggingService module globally
 jest.mock('../../src/services/loggingService', () => {
@@ -15,11 +14,16 @@ jest.mock('../../src/services/loggingService', () => {
     flush: jest.fn().mockResolvedValue(undefined),
   };
 
+  const MockLoggingService = jest.fn().mockImplementation(() => mockInstance);
+  MockLoggingService.getInstance = jest.fn().mockReturnValue(mockInstance);
+
   return {
-    LoggingService: jest.fn().mockImplementation(() => mockInstance),
-    getInstance: jest.fn().mockReturnValue(mockInstance),
+    LoggingService: MockLoggingService,
   };
 });
 
-// Export for tests that need to access the mock
-export const mockLoggingService = LoggingService.getInstance();
+// Export for tests that need to access the mock - import the mock after it's set up
+export const mockLoggingService = (() => {
+  const { LoggingService } = require('../../src/services/loggingService');
+  return LoggingService.getInstance();
+})();

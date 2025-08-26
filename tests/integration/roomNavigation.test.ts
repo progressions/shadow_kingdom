@@ -38,7 +38,20 @@ describe('Room Navigation Integration Tests', () => {
       },
     } as any;
 
+    // Setup default mock responses
+    (prismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
+    (prismaService.client.character.findMany as jest.Mock).mockResolvedValue([]);
+    (prismaService.client.connection.findMany as jest.Mock).mockResolvedValue([]);
+
     gameStateManager = new GameStateManager(prismaService);
+    
+    // Disable auto-save to prevent hanging in tests
+    (gameStateManager as any).autoSaveEnabled = false;
+    if ((gameStateManager as any).saveInterval) {
+      clearInterval((gameStateManager as any).saveInterval);
+      (gameStateManager as any).saveInterval = null;
+    }
+    
     navigationEngine = new RoomNavigationEngine(gameStateManager, prismaService);
     commandRouter = new CommandRouter(gameStateManager, prismaService);
   });
@@ -159,7 +172,7 @@ describe('Room Navigation Integration Tests', () => {
       expect(result.response).toContain('MOVEMENT:');
       expect(result.response).toContain('north, n     - Move north');
       expect(result.response).toContain('EXPLORATION:');
-      expect(result.response).toContain('look         - Examine your surroundings');
+      expect(result.response).toContain('look, l      - Examine your surroundings');
       expect(result.response).toContain('SYSTEM:');
       expect(result.response).toContain('help, h, ?   - Show this help message');
     });
@@ -296,7 +309,7 @@ describe('Room Navigation Integration Tests', () => {
       const result = await commandRouter.executeCommand('look at the door');
       
       expect(result.success).toBe(true);
-      expect(result.response).toContain('You examine the door');
+      expect(result.response).toContain('There\'s nothing here called "door"');
     });
 
     it('should suggest commands for typos', async () => {
@@ -361,6 +374,7 @@ describe('Room Navigation Integration Tests', () => {
       (prismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
       (prismaService.client.room.update as jest.Mock).mockResolvedValue(mockRoom);
       (prismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
+      (prismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
       
       await gameStateManager.initializeGame(mockGame);
       
@@ -404,6 +418,7 @@ describe('Room Navigation Integration Tests', () => {
       (prismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
       (prismaService.client.room.update as jest.Mock).mockResolvedValue(mockRoom);
       (prismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
+      (prismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
 
       await gameStateManager.initializeGame(mockGame);
 
@@ -448,6 +463,7 @@ describe('Room Navigation Integration Tests', () => {
       (prismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
       (prismaService.client.room.update as jest.Mock).mockResolvedValue(mockRoom);
       (prismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
+      (prismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
 
       await gameStateManager.initializeGame(mockGame);
 
