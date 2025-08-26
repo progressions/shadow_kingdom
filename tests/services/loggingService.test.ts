@@ -39,7 +39,19 @@ jest.mock('winston', () => {
 });
 
 describe('LoggingService', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
   let service: LoggingService;
+  
+  beforeAll(() => {
+    // Enable logging for these specific tests
+    process.env.FORCE_LOG_IN_TESTS = 'true';
+  });
+  
+  afterAll(() => {
+    // Disable logging after tests
+    delete process.env.FORCE_LOG_IN_TESTS;
+  });
   let mockLogger: any;
 
   beforeEach(() => {
@@ -53,11 +65,17 @@ describe('LoggingService', () => {
   afterEach(async () => {
     // Reset mocks to prevent errors during shutdown
     jest.clearAllMocks();
+    jest.useRealTimers(); // Always restore real timers
     // Reset singleton after each test
+    if ((LoggingService as any).instance) {
+      await (LoggingService as any).instance.shutdown?.();
+    }
     (LoggingService as any).instance = undefined;
   });
 
   describe('Singleton Pattern', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should return the same instance', () => {
       const instance1 = LoggingService.getInstance();
       const instance2 = LoggingService.getInstance();
@@ -66,6 +84,8 @@ describe('LoggingService', () => {
   });
 
   describe('Session Management', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should generate a unique session ID on creation', () => {
       const sessionId = service.getSessionId();
       expect(sessionId).toBeDefined();
@@ -96,6 +116,8 @@ describe('LoggingService', () => {
   });
 
   describe('Message Logging', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should log room messages', async () => {
       const message = 'You are in a dark forest.';
       await service.logMessage(message, 'ROOM');
@@ -175,6 +197,8 @@ describe('LoggingService', () => {
   });
 
   describe('Configuration', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should respect LOG_ENABLED environment variable', () => {
       process.env.LOG_ENABLED = 'false';
       (LoggingService as any).instance = undefined;
@@ -209,6 +233,8 @@ describe('LoggingService', () => {
   });
 
   describe('Error Handling', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should handle logging errors gracefully', async () => {
       // Get a fresh instance of the mock logger
       const currentMockLogger = (winston.createLogger as jest.Mock).mock.results[0].value;
@@ -243,6 +269,8 @@ describe('LoggingService', () => {
   });
 
   describe('Graceful Shutdown', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should close logger on shutdown', async () => {
       await service.shutdown();
       expect(mockLogger.close).toHaveBeenCalled();
@@ -267,6 +295,11 @@ describe('LoggingService', () => {
   });
 
   describe('Buffered Writing', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { 
+    delete process.env.FORCE_LOG_IN_TESTS; 
+    jest.useRealTimers(); // Ensure timers are restored
+  });
     it('should batch messages when buffer is enabled', async () => {
       jest.useFakeTimers();
       const currentMockLogger = (winston.createLogger as jest.Mock).mock.results[0].value;

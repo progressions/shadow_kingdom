@@ -40,6 +40,8 @@ jest.mock('winston', () => {
 });
 
 describe('LoggingService - Formatting', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
   let service: LoggingService;
   let mockLogger: any;
   let capturedFormatter: any;
@@ -63,6 +65,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('Timestamp Format', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should use ISO 8601 format with milliseconds', () => {
       expect(winston.format.timestamp).toHaveBeenCalledWith({
         format: 'YYYY-MM-DD HH:mm:ss.SSS'
@@ -85,6 +89,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('Log Entry Structure', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should format entries as [timestamp] [session-id] [type] message', () => {
       const logInfo = {
         timestamp: '2025-08-25 10:30:45.123',
@@ -117,6 +123,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('Message Content Preservation', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should preserve multi-line messages', () => {
       const multiLineMessage = 'Line 1\nLine 2\nLine 3';
       const logInfo = {
@@ -174,6 +182,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('Session Markers', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should format session start marker distinctively', async () => {
       await service.logSessionStart();
       
@@ -213,6 +223,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('Session ID Format', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should use UUID v4 format for session IDs', () => {
       const sessionId = service.getSessionId();
       const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -233,6 +245,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('Readable Output', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should produce human-readable log entries', () => {
       const logInfo = {
         timestamp: '2025-08-25 10:30:45.123',
@@ -279,6 +293,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('File Rotation', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should configure max file size for rotation', () => {
       expect(winston.transports.File).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -291,6 +307,8 @@ describe('LoggingService - Formatting', () => {
   });
 
   describe('Performance', () => {
+  beforeAll(() => { process.env.FORCE_LOG_IN_TESTS = 'true'; });
+  afterAll(() => { delete process.env.FORCE_LOG_IN_TESTS; });
     it('should format messages quickly', () => {
       const logInfo = {
         timestamp: '2025-08-25 10:30:45.123',

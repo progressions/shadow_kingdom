@@ -35,6 +35,12 @@ export class PrismaService {
   public async initialize(): Promise<void> {
     if (this.initialized) return;
     
+    // Skip database initialization in test environment
+    if (process.env.NODE_ENV === 'test') {
+      this.initialized = true;
+      return;
+    }
+    
     try {
       // Check if database exists and has schema
       await this.checkAndInitializeDatabase();

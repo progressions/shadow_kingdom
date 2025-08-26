@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement a logging system that duplicates all user-visible game output to log/development.log with timestamps and session markers. This enables debugging, session replay, and allows automated systems like Claude to analyze game sessions by reading the complete output history. All messages displayed in the GamePane component should be transparently captured to the log file in a structured, parseable format.

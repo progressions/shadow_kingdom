@@ -52,6 +52,11 @@ export class LoggingService {
   }
 
   private isLoggingEnabled(): boolean {
+    // Disable logging in test environment unless explicitly enabled
+    if (process.env.NODE_ENV === 'test' && process.env.FORCE_LOG_IN_TESTS !== 'true') {
+      return false;
+    }
+    
     const logEnabled = process.env.LOG_ENABLED;
     if (!logEnabled) return true; // Default to enabled
     
