@@ -10,7 +10,6 @@ export interface GameSession {
   inventory: number[]; // Array of item IDs
 }
 
-
 export interface GameStateManagerError extends Error {
   code: string;
   recoverable: boolean;
@@ -85,7 +84,6 @@ export class GameStateManager {
         sessionStartTime: now,
         inventory: inventoryIds,
       };
-
 
       // Perform initial save to ensure session is persisted
       await this.saveGameState();
@@ -277,8 +275,6 @@ export class GameStateManager {
         },
       });
 
-
-
       // Update session state
       this.currentSession.currentRoomId = roomId;
       this.currentSession.currentRoom = newRoom;
@@ -300,8 +296,6 @@ export class GameStateManager {
       );
     }
   }
-
-
 
   /**
    * Setup auto-save interval for periodic state persistence
@@ -430,7 +424,6 @@ export class GameStateManager {
         sessionStartTime: now,
         inventory: inventoryIds,
       };
-
     } catch (error) {
       if (error instanceof GameStateManagerError) {
         throw error;

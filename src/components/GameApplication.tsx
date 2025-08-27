@@ -248,10 +248,10 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         if (roomInfo.includes('===')) {
           const lines = roomInfo.split('\n');
           let currentMessage = '';
-          
+
           for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            
+
             // Check if this is a room title (next line has ===)
             if (i + 1 < lines.length && lines[i + 1].match(/^=+$/)) {
               // Send any accumulated message first
@@ -276,7 +276,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
               currentMessage += line;
             }
           }
-          
+
           // Send any remaining message
           if (currentMessage.trim()) {
             addMessage(currentMessage.trim(), 'ROOM');
@@ -431,10 +431,10 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
             const lines = result.response.split('\n');
             let currentMessage = '';
             let inRoomTitle = false;
-            
+
             for (let i = 0; i < lines.length; i++) {
               const line = lines[i];
-              
+
               // Check if this is a room title (next line has ===)
               if (i + 1 < lines.length && lines[i + 1].match(/^=+$/)) {
                 // Send any accumulated message first
@@ -460,7 +460,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
                 currentMessage += line;
               }
             }
-            
+
             // Send any remaining message
             if (currentMessage.trim()) {
               addMessage(currentMessage.trim(), 'RESPONSE');
@@ -682,7 +682,11 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   if (programmaticCommand) {
     return (
       <Box flexDirection="column" height="100%" width="100%">
-        <GamePane messages={messages} maxLines={gameAreaHeight} colorThemeService={servicesRef.current.colorThemeService || undefined} />
+        <GamePane
+          messages={messages}
+          maxLines={gameAreaHeight}
+          colorThemeService={servicesRef.current.colorThemeService || undefined}
+        />
       </Box>
     );
   }
@@ -691,7 +695,11 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     <Box flexDirection="column" height="100%" width="100%">
       {/* Game Pane - fills remaining space */}
       <Box flexGrow={1} width="100%" flexDirection="column" flexShrink={1}>
-        <GamePane messages={messages} maxLines={gameAreaHeight} colorThemeService={servicesRef.current.colorThemeService || undefined} />
+        <GamePane
+          messages={messages}
+          maxLines={gameAreaHeight}
+          colorThemeService={servicesRef.current.colorThemeService || undefined}
+        />
       </Box>
 
       {/* Bottom section - Input Bar and Status Pane */}

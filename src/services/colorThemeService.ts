@@ -33,10 +33,10 @@ export class ColorThemeService implements IColorThemeService {
     try {
       const themeName = process.env.COLOR_THEME || 'default';
       const themePath = path.join(process.cwd(), 'themes', `${themeName}.yaml`);
-      
+
       const themeContent = await fs.readFile(themePath, 'utf-8');
       const parsedTheme = yaml.load(themeContent) as ColorTheme;
-      
+
       if (this.validateTheme(parsedTheme)) {
         this.theme = parsedTheme;
         this.initializeColorCache();
@@ -127,7 +127,7 @@ export class ColorThemeService implements IColorThemeService {
 
   getColorFunctions(): Record<string, (text: string) => string> {
     const functions: Record<string, (text: string) => string> = {};
-    
+
     // Common color function mappings
     const colorMappings: Record<string, string> = {
       roomTitle: 'room_title',
@@ -140,7 +140,7 @@ export class ColorThemeService implements IColorThemeService {
       info: 'info',
       prompt: 'prompt',
       input: 'input',
-      border: 'border'
+      border: 'border',
     };
 
     for (const [funcName, colorKey] of Object.entries(colorMappings)) {
@@ -195,8 +195,8 @@ export class ColorThemeService implements IColorThemeService {
         info: 'white',
         prompt: 'white',
         input: 'white',
-        border: 'white'
-      }
+        border: 'white',
+      },
     };
   }
 }

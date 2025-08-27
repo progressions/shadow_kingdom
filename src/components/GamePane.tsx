@@ -54,7 +54,12 @@ class LRUCache<K, V> {
   }
 }
 
-export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width, colorThemeService }) => {
+export const GamePane: React.FC<GamePaneProps> = ({
+  messages,
+  maxLines,
+  width,
+  colorThemeService,
+}) => {
   // Component-scoped cache with proper lifecycle management
   const formatCacheRef = useRef(
     new LRUCache<string, { text: string; color?: string; bold?: boolean; dimColor?: boolean }>(500)
@@ -71,71 +76,68 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width, c
   }, [messages, maxLines]);
 
   // Memoized message formatting function with proper caching
-  const formatMessage = useCallback((message: Message) => {
-    // Generate comprehensive cache key including message metadata
-    const cacheKey = JSON.stringify({
-      content: message.content,
-      id: message.id,
-      timestamp: message.timestamp.toISOString(),
-    });
-
-    const formatCache = formatCacheRef.current;
-    const cachedResult = formatCache.get(cacheKey);
-    if (cachedResult) {
-      return cachedResult;
-    }
-    let content = message.content;
-    let result;
-
-    // Debug logging
-    if (process.env.DEBUG === 'true') {
-      console.log('GamePane formatMessage:', {
-        content: content.substring(0, 50),
-        hasEquals: content.includes('==='),
-        startsWithError: content.startsWith('Error:'),
-        startsWithCommand: content.startsWith('> '),
-        startsWithExits: content.startsWith('Exits:')
+  const formatMessage = useCallback(
+    (message: Message) => {
+      // Generate comprehensive cache key including message metadata
+      const cacheKey = JSON.stringify({
+        content: message.content,
+        id: message.id,
+        timestamp: message.timestamp.toISOString(),
       });
-    }
 
-    // Check content type and determine result
-    // Special handling for room headers (only the title line should be yellow)
-    if (content.includes('===')) {
-      // This is a room title with underline
-      result = { text: content, color: 'yellow', bold: true };
-      if (process.env.DEBUG === 'true') console.log('  -> Applying YELLOW for room title');
-    }
-    else if (content.startsWith('Error:') || content.startsWith('Unable to')) {
-      result = { text: content, color: 'red' };
-      if (process.env.DEBUG === 'true') console.log('  -> Applying RED for error');
-    }
-    else if (content.startsWith('> ')) {
-      result = { text: content, color: 'green', dimColor: true };
-      if (process.env.DEBUG === 'true') console.log('  -> Applying GREEN for command');
-    }
-    else if (content.startsWith('Exits:') || content.startsWith('→ Available exits:')) {
-      result = { text: content, color: 'yellow' };
-      if (process.env.DEBUG === 'true') console.log('  -> Applying YELLOW for exits');
-    }
-    else if (content.startsWith('You can see:') || content.startsWith('Also here:')) {
-      result = { text: content, color: 'magenta', bold: true };
-      if (process.env.DEBUG === 'true') console.log('  -> Applying MAGENTA for items');
-    }
-    else if (content.startsWith('- ') && content.includes(':')) {
-      result = { text: content, color: 'gray', dimColor: true };
-      if (process.env.DEBUG === 'true') console.log('  -> Applying GRAY for list items');
-    }
-    else {
-      // Default formatting for room descriptions and other content
-      result = { text: content, color: 'white' };
-      if (process.env.DEBUG === 'true') console.log('  -> Applying WHITE (default)');
-    }
+      const formatCache = formatCacheRef.current;
+      const cachedResult = formatCache.get(cacheKey);
+      if (cachedResult) {
+        return cachedResult;
+      }
+      let content = message.content;
+      let result;
 
-    // Cache the result using LRU eviction strategy
-    formatCache.set(cacheKey, result);
+      // Debug logging
+      if (process.env.DEBUG === 'true') {
+        console.log('GamePane formatMessage:', {
+          content: content.substring(0, 50),
+          hasEquals: content.includes('==='),
+          startsWithError: content.startsWith('Error:'),
+          startsWithCommand: content.startsWith('> '),
+          startsWithExits: content.startsWith('Exits:'),
+        });
+      }
 
-    return result;
-  }, [colorThemeService]);
+      // Check content type and determine result
+      // Special handling for room headers (only the title line should be yellow)
+      if (content.includes('===')) {
+        // This is a room title with underline
+        result = { text: content, color: 'yellow', bold: true };
+        if (process.env.DEBUG === 'true') console.log('  -> Applying YELLOW for room title');
+      } else if (content.startsWith('Error:') || content.startsWith('Unable to')) {
+        result = { text: content, color: 'red' };
+        if (process.env.DEBUG === 'true') console.log('  -> Applying RED for error');
+      } else if (content.startsWith('> ')) {
+        result = { text: content, color: 'green', dimColor: true };
+        if (process.env.DEBUG === 'true') console.log('  -> Applying GREEN for command');
+      } else if (content.startsWith('Exits:') || content.startsWith('→ Available exits:')) {
+        result = { text: content, color: 'yellow' };
+        if (process.env.DEBUG === 'true') console.log('  -> Applying YELLOW for exits');
+      } else if (content.startsWith('You can see:') || content.startsWith('Also here:')) {
+        result = { text: content, color: 'magenta', bold: true };
+        if (process.env.DEBUG === 'true') console.log('  -> Applying MAGENTA for items');
+      } else if (content.startsWith('- ') && content.includes(':')) {
+        result = { text: content, color: 'gray', dimColor: true };
+        if (process.env.DEBUG === 'true') console.log('  -> Applying GRAY for list items');
+      } else {
+        // Default formatting for room descriptions and other content
+        result = { text: content, color: 'white' };
+        if (process.env.DEBUG === 'true') console.log('  -> Applying WHITE (default)');
+      }
+
+      // Cache the result using LRU eviction strategy
+      formatCache.set(cacheKey, result);
+
+      return result;
+    },
+    [colorThemeService]
+  );
 
   // Memoize the rendered messages for better performance
   const renderedMessages = useMemo(() => {

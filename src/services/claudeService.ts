@@ -140,7 +140,10 @@ export class ClaudeService {
             try {
               return JSON.parse(textContent.text);
             } catch (parseError) {
-              this.logger.logMessage(`Failed to parse AI response on attempt ${attempt + 1}: ${parseError}`, 'ERROR');
+              this.logger.logMessage(
+                `Failed to parse AI response on attempt ${attempt + 1}: ${parseError}`,
+                'ERROR'
+              );
               this.logger.logMessage(`Raw response: ${textContent.text}`, 'ERROR');
               // Throw the error to trigger retry logic
               throw new Error(`JSON parse error: ${parseError}`);
@@ -156,7 +159,10 @@ export class ClaudeService {
 
         // Log different error types appropriately
         if (errorMessage.includes('JSON parse error')) {
-          this.logger.logMessage(`JSON parsing failed on attempt ${attempt + 1}/${this.maxRetries}`, 'ERROR');
+          this.logger.logMessage(
+            `JSON parsing failed on attempt ${attempt + 1}/${this.maxRetries}`,
+            'ERROR'
+          );
         } else {
           this.logger.logMessage(
             `API request attempt ${attempt + 1}/${this.maxRetries} failed: ${errorMessage}`,
@@ -172,7 +178,10 @@ export class ClaudeService {
       }
     }
 
-    this.logger.logMessage(`All retry attempts failed: ${lastError?.message || lastError}`, 'ERROR');
+    this.logger.logMessage(
+      `All retry attempts failed: ${lastError?.message || lastError}`,
+      'ERROR'
+    );
     return null;
   }
 

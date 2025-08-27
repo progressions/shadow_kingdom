@@ -100,7 +100,10 @@ export class ClaudeRegionService extends ClaudeService {
     // Check existing status
     const existingStatus = this.generationQueue.get(generationKey);
     if (existingStatus && existingStatus.phase !== 'failed') {
-      this.logger.logMessage(`Region generation already in progress for ${generationKey}`, 'SYSTEM');
+      this.logger.logMessage(
+        `Region generation already in progress for ${generationKey}`,
+        'SYSTEM'
+      );
       return;
     }
 
@@ -182,14 +185,20 @@ export class ClaudeRegionService extends ClaudeService {
       const validation = RegionResponseValidator.validateThemeResponse(response);
 
       if (!validation.valid) {
-        this.logger.logMessage(`Theme validation failed: ${validation.errors?.join(', ')}`, 'ERROR');
+        this.logger.logMessage(
+          `Theme validation failed: ${validation.errors?.join(', ')}`,
+          'ERROR'
+        );
         const fallback = generateFallbackTheme(context);
         this.setRegionCachedResponse(cacheKey, fallback);
         return this.convertToRegionThemeResponse(fallback);
       }
 
       if (validation.warnings) {
-        this.logger.logMessage(`Theme validation warnings: ${validation.warnings?.join(', ')}`, 'SYSTEM');
+        this.logger.logMessage(
+          `Theme validation warnings: ${validation.warnings?.join(', ')}`,
+          'SYSTEM'
+        );
       }
 
       const validatedResponse = this.convertToRegionThemeResponse(response as RegionThemeSchema);
@@ -248,14 +257,20 @@ export class ClaudeRegionService extends ClaudeService {
       const validation = RegionResponseValidator.validateRoomBatchResponse(response);
 
       if (!validation.valid) {
-        this.logger.logMessage(`Room batch validation failed: ${validation.errors?.join(', ')}`, 'ERROR');
+        this.logger.logMessage(
+          `Room batch validation failed: ${validation.errors?.join(', ')}`,
+          'ERROR'
+        );
         const fallback = this.generateFallbackRoomsFromContext(context);
         this.setRegionCachedResponse(cacheKey, fallback);
         return fallback;
       }
 
       if (validation.warnings) {
-        this.logger.logMessage(`Room batch validation warnings: ${validation.warnings?.join(', ')}`, 'SYSTEM');
+        this.logger.logMessage(
+          `Room batch validation warnings: ${validation.warnings?.join(', ')}`,
+          'SYSTEM'
+        );
       }
 
       const validatedResponse = this.convertToRoomDescriptions(response as RoomSchema[]);

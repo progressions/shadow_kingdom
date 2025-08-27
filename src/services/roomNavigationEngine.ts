@@ -383,7 +383,6 @@ export class RoomNavigationEngine {
 
       let description = `**${room.name}**`;
 
-
       description += `\n\n${room.description}`;
 
       // Add extended description if available
