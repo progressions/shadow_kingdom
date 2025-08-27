@@ -103,7 +103,7 @@ export class RoomNavigationEngine {
     southeast: 'move southeast',
     southwest: 'move southwest',
     up: 'climb up',
-    down: 'climb down'
+    down: 'climb down',
   };
 
   constructor(
@@ -115,12 +115,15 @@ export class RoomNavigationEngine {
   /**
    * Validate if movement in a given direction is possible
    */
-  async validateMovement(direction: string, availableKeys: string[] = []): Promise<MovementValidationResult> {
+  async validateMovement(
+    direction: string,
+    availableKeys: string[] = []
+  ): Promise<MovementValidationResult> {
     try {
       if (!this.gameStateManager.hasActiveSession()) {
         return {
           isValid: false,
-          error: 'No active game session'
+          error: 'No active game session',
         };
       }
 
@@ -128,13 +131,13 @@ export class RoomNavigationEngine {
       if (!currentRoom) {
         return {
           isValid: false,
-          error: 'No current room available'
+          error: 'No current room available',
         };
       }
 
       // Get all connections from current room
       const connections = await this.prismaService.client.connection.findMany({
-        where: { fromRoomId: currentRoom.id }
+        where: { fromRoomId: currentRoom.id },
       });
 
       const validConnections = connections || [];
@@ -149,7 +152,7 @@ export class RoomNavigationEngine {
         return {
           isValid: false,
           error: `No exit available to the ${direction}`,
-          availableDirections
+          availableDirections,
         };
       }
 
@@ -159,7 +162,7 @@ export class RoomNavigationEngine {
           isValid: false,
           error: `The path ${direction} is under construction and cannot be used yet`,
           availableDirections,
-          connection
+          connection,
         };
       }
 
@@ -171,7 +174,7 @@ export class RoomNavigationEngine {
             isValid: false,
             error: `The path ${direction} is locked. You need ${article} ${connection.requiredKey} to proceed.`,
             availableDirections,
-            connection
+            connection,
           };
         }
 
@@ -182,7 +185,7 @@ export class RoomNavigationEngine {
           connection,
           availableDirections,
           requiresKey: true,
-          keyUsed: connection.requiredKey
+          keyUsed: connection.requiredKey,
         };
       }
 
@@ -191,13 +194,12 @@ export class RoomNavigationEngine {
         isValid: true,
         targetRoomId: connection.toRoomId,
         connection,
-        availableDirections
+        availableDirections,
       };
-
     } catch (error) {
       return {
         isValid: false,
-        error: `Movement validation failed: ${error instanceof Error ? error.message : String(error)}`
+        error: `Movement validation failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
@@ -213,7 +215,7 @@ export class RoomNavigationEngine {
       }
 
       const connections = await this.prismaService.client.connection.findMany({
-        where: { fromRoomId: currentRoom.id }
+        where: { fromRoomId: currentRoom.id },
       });
 
       const validConnections = connections || [];
@@ -224,9 +226,8 @@ export class RoomNavigationEngine {
           direction: conn.direction,
           description: conn.description,
           locked: conn.locked,
-          requiresKey: conn.requiredKey
+          requiresKey: conn.requiredKey,
         }));
-
     } catch (error) {
       console.error('Error getting available exits:', error);
       return [];
@@ -239,17 +240,30 @@ export class RoomNavigationEngine {
   async formatRoomExits(roomId: number, connections?: Connection[]): Promise<string> {
     try {
       // Use provided connections or fetch them
-      const roomConnections = connections || await this.prismaService.client.connection.findMany({
-        where: { fromRoomId: roomId },
-        orderBy: { direction: 'asc' }
-      });
+      const roomConnections =
+        connections ||
+        (await this.prismaService.client.connection.findMany({
+          where: { fromRoomId: roomId },
+          orderBy: { direction: 'asc' },
+        }));
 
       if (!roomConnections || roomConnections.length === 0) {
         return 'There are no obvious exits.';
       }
 
       // Sort directions in a logical order (cardinal then intercardinal)
-      const directionOrder = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'];
+      const directionOrder = [
+        'north',
+        'northeast',
+        'east',
+        'southeast',
+        'south',
+        'southwest',
+        'west',
+        'northwest',
+        'up',
+        'down',
+      ];
       const sortedConnections = roomConnections.sort((a, b) => {
         const aIndex = directionOrder.indexOf(a.direction);
         const bIndex = directionOrder.indexOf(b.direction);
@@ -259,22 +273,24 @@ export class RoomNavigationEngine {
         return aIndex - bIndex;
       });
 
-      const exitList = sortedConnections.map(conn => {
-        let exitStr = conn.direction;
-        
-        // Handle locked exits
-        if (conn.locked) {
-          if (conn.description) {
-            exitStr += ` (locked, ${conn.description})`;
-          } else {
-            exitStr += ' (locked)';
+      const exitList = sortedConnections
+        .map(conn => {
+          let exitStr = conn.direction;
+
+          // Handle locked exits
+          if (conn.locked) {
+            if (conn.description) {
+              exitStr += ` (locked, ${conn.description})`;
+            } else {
+              exitStr += ' (locked)';
+            }
+          } else if (conn.description) {
+            exitStr += ` (${conn.description})`;
           }
-        } else if (conn.description) {
-          exitStr += ` (${conn.description})`;
-        }
-        
-        return exitStr;
-      }).join(', ');
+
+          return exitStr;
+        })
+        .join(', ');
 
       return `Exits: ${exitList}`;
     } catch (error) {
@@ -291,16 +307,19 @@ export class RoomNavigationEngine {
       if (!connection.toRoomId) {
         return {
           success: false,
-          error: `Connection to ${connection.direction} has no destination room`
+          error: `Connection to ${connection.direction} has no destination room`,
         };
       }
 
       // Move to the new room using GameStateManager
-      const newRoom = await this.gameStateManager.setCurrentRoom(connection.toRoomId, connection.direction);
+      const newRoom = await this.gameStateManager.setCurrentRoom(
+        connection.toRoomId,
+        connection.direction
+      );
 
       // Generate movement description
       const movementDescription = this.generateMovementDescription(connection);
-      
+
       // Check if we're at a region boundary and trigger generation if needed
       if (this.claudeRegionService) {
         // Trigger generation in background (non-blocking)
@@ -312,13 +331,12 @@ export class RoomNavigationEngine {
       return {
         success: true,
         newRoom,
-        movementDescription
+        movementDescription,
       };
-
     } catch (error) {
       return {
         success: false,
-        error: `Failed to move ${connection.direction}: ${error instanceof Error ? error.message : String(error)}`
+        error: `Failed to move ${connection.direction}: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
@@ -327,17 +345,22 @@ export class RoomNavigationEngine {
    * Generate appropriate movement description based on connection
    */
   private generateMovementDescription(connection: Connection): string {
-    const baseAction = this.movementDescriptors[connection.direction as keyof typeof this.movementDescriptors] || `move ${connection.direction}`;
-    
+    const baseAction =
+      this.movementDescriptors[connection.direction as keyof typeof this.movementDescriptors] ||
+      `move ${connection.direction}`;
+
     if (connection.description) {
       // Special handling for descriptions that already contain direction-specific verbs
-      if (connection.description.includes('up the') || connection.description.includes('down the')) {
+      if (
+        connection.description.includes('up the') ||
+        connection.description.includes('down the')
+      ) {
         return `You climb ${connection.description}.`;
       }
-      
+
       return `You ${baseAction} ${connection.description}.`;
     }
-    
+
     return `You ${baseAction}.`;
   }
 
@@ -348,14 +371,14 @@ export class RoomNavigationEngine {
     try {
       const [items, characters, connections] = await Promise.all([
         this.prismaService.client.item.findMany({
-          where: { roomId: room.id, hidden: false }
+          where: { roomId: room.id, hidden: false },
         }),
         this.prismaService.client.character.findMany({
-          where: { roomId: room.id, alive: true }
+          where: { roomId: room.id, alive: true },
         }),
         this.prismaService.client.connection.findMany({
-          where: { fromRoomId: room.id }
-        })
+          where: { fromRoomId: room.id },
+        }),
       ]);
 
       let description = `**${room.name}**`;
@@ -402,14 +425,13 @@ export class RoomNavigationEngine {
           })
           .sort()
           .join(', ');
-        
+
         description += `\n\n→ Available exits: ${exitList}`;
       } else {
         description += '\n\nThere are no obvious exits.';
       }
 
       return description;
-
     } catch (error) {
       console.error('Error generating room description:', error);
       return `**${room.name}**\n\n${room.description}\n\n(Unable to load additional room details)`;
@@ -424,7 +446,7 @@ export class RoomNavigationEngine {
       // General room examination if no target specified
       if (!target) {
         let examination = `You look around the ${room.name} more carefully.`;
-        
+
         if (room.extendedDescription) {
           examination += ` ${room.extendedDescription}`;
         } else {
@@ -433,55 +455,58 @@ export class RoomNavigationEngine {
 
         return {
           found: true,
-          description: examination
+          description: examination,
         };
       }
 
       // Search for specific target in items and characters
       const [items, characters] = await Promise.all([
         this.prismaService.client.item.findMany({
-          where: { roomId: room.id }
+          where: { roomId: room.id },
         }),
         this.prismaService.client.character.findMany({
-          where: { roomId: room.id, alive: true }
-        })
+          where: { roomId: room.id, alive: true },
+        }),
       ]);
 
       const normalizedTarget = target.toLowerCase();
 
       // Search items (including hidden ones for examination)
-      const foundItem = (items || []).find(item => 
-        item.name.toLowerCase().includes(normalizedTarget) ||
-        normalizedTarget.includes(item.name.toLowerCase())
+      const foundItem = (items || []).find(
+        item =>
+          item.name.toLowerCase().includes(normalizedTarget) ||
+          normalizedTarget.includes(item.name.toLowerCase())
       );
 
       if (foundItem) {
         let description = `**${foundItem.name}**\n\n${foundItem.description}`;
-        
+
         if (foundItem.extendedDescription) {
           description += `\n\n${foundItem.extendedDescription}`;
         }
 
         if (foundItem.hidden) {
-          description += '\n\n*This item was hidden and you discovered it through careful examination.*';
+          description +=
+            '\n\n*This item was hidden and you discovered it through careful examination.*';
         }
 
         return {
           found: true,
           description,
-          target: foundItem
+          target: foundItem,
         };
       }
 
       // Search characters
-      const foundCharacter = (characters || []).find(character =>
-        character.name.toLowerCase().includes(normalizedTarget) ||
-        normalizedTarget.includes(character.name.toLowerCase())
+      const foundCharacter = (characters || []).find(
+        character =>
+          character.name.toLowerCase().includes(normalizedTarget) ||
+          normalizedTarget.includes(character.name.toLowerCase())
       );
 
       if (foundCharacter) {
         let description = `**${foundCharacter.name}**\n\n${foundCharacter.description}`;
-        
+
         // Add sentiment-based additional details
         switch (foundCharacter.sentiment) {
           case 'hostile':
@@ -504,21 +529,20 @@ export class RoomNavigationEngine {
         return {
           found: true,
           description,
-          target: foundCharacter
+          target: foundCharacter,
         };
       }
 
       // Target not found
       return {
         found: false,
-        description: `You don't see anything like that here. Try examining specific items or characters you can see, or just use "look" to see the room again.`
+        description: `You don't see anything like that here. Try examining specific items or characters you can see, or just use "look" to see the room again.`,
       };
-
     } catch (error) {
       console.error('Error examining room:', error);
       return {
         found: false,
-        description: 'Unable to examine that right now. Please try again.'
+        description: 'Unable to examine that right now. Please try again.',
       };
     }
   }
@@ -529,11 +553,11 @@ export class RoomNavigationEngine {
   async validateWorldConsistency(room: Room): Promise<WorldConsistencyResult> {
     try {
       const currentSession = this.gameStateManager.getCurrentSession();
-      
+
       if (!currentSession) {
         return {
           isValid: false,
-          error: 'No active game session'
+          error: 'No active game session',
         };
       }
 
@@ -541,16 +565,15 @@ export class RoomNavigationEngine {
       if (room.gameId !== currentSession.gameId) {
         return {
           isValid: false,
-          error: 'Room belongs to a different game instance'
+          error: 'Room belongs to a different game instance',
         };
       }
 
       return { isValid: true };
-
     } catch (error) {
       return {
         isValid: false,
-        error: `World consistency check failed: ${error instanceof Error ? error.message : String(error)}`
+        error: `World consistency check failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
@@ -566,10 +589,10 @@ export class RoomNavigationEngine {
       }
 
       const regionRooms = await this.prismaService.client.room.findMany({
-        where: { 
+        where: {
           gameId: currentSession.gameId,
-          regionId: regionId
-        }
+          regionId: regionId,
+        },
       });
 
       const rooms = regionRooms || [];
@@ -579,16 +602,15 @@ export class RoomNavigationEngine {
         regionId,
         totalRooms: rooms.length,
         visitedRooms: visitedCount,
-        roomNames: rooms.map(room => room.name)
+        roomNames: rooms.map(room => room.name),
       };
-
     } catch (error) {
       console.error('Error getting region context:', error);
       return {
         regionId,
         totalRooms: 0,
         visitedRooms: 0,
-        roomNames: []
+        roomNames: [],
       };
     }
   }
@@ -607,13 +629,12 @@ export class RoomNavigationEngine {
         where: {
           gameId: currentSession.gameId,
           name: {
-            contains: namePattern
-          }
-        }
+            contains: namePattern,
+          },
+        },
       });
 
       return rooms || [];
-
     } catch (error) {
       console.error('Error finding rooms by name:', error);
       return [];
@@ -645,7 +666,9 @@ export class RoomNavigationEngine {
         }
 
         if (lockedExits.length > 0) {
-          hints.push(`Locked exits: ${lockedExits.map(e => `${e.direction} (needs ${e.requiresKey})`).join(', ')}`);
+          hints.push(
+            `Locked exits: ${lockedExits.map(e => `${e.direction} (needs ${e.requiresKey})`).join(', ')}`
+          );
         }
       }
 
@@ -659,7 +682,6 @@ export class RoomNavigationEngine {
       }
 
       return hints;
-
     } catch (error) {
       console.error('Error getting navigation hints:', error);
       return ['Unable to provide navigation hints at this time'];
@@ -673,7 +695,7 @@ export class RoomNavigationEngine {
     try {
       const errors: string[] = [];
       const currentSession = this.gameStateManager.getCurrentSession();
-      
+
       if (!currentSession) {
         errors.push('No active game session');
         return { isValid: false, errors };
@@ -681,56 +703,65 @@ export class RoomNavigationEngine {
 
       // Get all rooms in the game
       const rooms = await this.prismaService.client.room.findMany({
-        where: { gameId: currentSession.gameId }
+        where: { gameId: currentSession.gameId },
       });
 
       // Get all connections
       const connections = await this.prismaService.client.connection.findMany({
-        where: { gameId: currentSession.gameId }
+        where: { gameId: currentSession.gameId },
       });
 
       // Validate each room has consistent connections
       for (const room of rooms) {
         const roomConnections = connections.filter(conn => conn.fromRoomId === room.id);
-        
+
         // Check for orphaned connections (pointing to non-existent rooms)
         for (const connection of roomConnections) {
           if (connection.toRoomId) {
             const targetRoom = rooms.find(r => r.id === connection.toRoomId);
             if (!targetRoom) {
-              errors.push(`Room "${room.name}" has connection ${connection.direction} pointing to non-existent room ID ${connection.toRoomId}`);
+              errors.push(
+                `Room "${room.name}" has connection ${connection.direction} pointing to non-existent room ID ${connection.toRoomId}`
+              );
             }
           }
         }
 
         // Check for duplicate directions
         const directions = roomConnections.map(conn => conn.direction);
-        const duplicateDirections = directions.filter((dir, index) => directions.indexOf(dir) !== index);
+        const duplicateDirections = directions.filter(
+          (dir, index) => directions.indexOf(dir) !== index
+        );
         if (duplicateDirections.length > 0) {
-          errors.push(`Room "${room.name}" has duplicate connections in directions: ${duplicateDirections.join(', ')}`);
+          errors.push(
+            `Room "${room.name}" has duplicate connections in directions: ${duplicateDirections.join(', ')}`
+          );
         }
       }
 
       // Check for isolated rooms (no incoming or outgoing connections)
       const connectedRoomIds = new Set([
         ...connections.map(conn => conn.fromRoomId),
-        ...connections.filter(conn => conn.toRoomId).map(conn => conn.toRoomId!)
+        ...connections.filter(conn => conn.toRoomId).map(conn => conn.toRoomId!),
       ]);
 
       const isolatedRooms = rooms.filter(room => !connectedRoomIds.has(room.id));
       if (isolatedRooms.length > 0) {
-        errors.push(`Isolated rooms found (no connections): ${isolatedRooms.map(room => room.name).join(', ')}`);
+        errors.push(
+          `Isolated rooms found (no connections): ${isolatedRooms.map(room => room.name).join(', ')}`
+        );
       }
 
       return {
         isValid: errors.length === 0,
-        errors
+        errors,
       };
-
     } catch (error) {
       return {
         isValid: false,
-        errors: [`Navigation validation failed: ${error instanceof Error ? error.message : String(error)}`]
+        errors: [
+          `Navigation validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        ],
       };
     }
   }
@@ -749,12 +780,11 @@ export class RoomNavigationEngine {
       const startingRoom = await this.prismaService.client.room.findFirst({
         where: {
           gameId: currentSession.gameId,
-          name: 'Grand Entrance Hall' // Standard starting room name from YAML
-        }
+          name: 'Grand Entrance Hall', // Standard starting room name from YAML
+        },
       });
 
       return startingRoom;
-
     } catch (error) {
       console.error('Error finding YAML starting room:', error);
       return null;
@@ -779,46 +809,47 @@ export class RoomNavigationEngine {
           totalRegions: 0,
           totalConnections: 0,
           visitedRooms: 0,
-          regionBreakdown: []
+          regionBreakdown: [],
         };
       }
 
       const [rooms, connections, regions] = await Promise.all([
         this.prismaService.client.room.findMany({
-          where: { gameId: currentSession.gameId }
+          where: { gameId: currentSession.gameId },
         }),
         this.prismaService.client.connection.findMany({
-          where: { gameId: currentSession.gameId }
+          where: { gameId: currentSession.gameId },
         }),
         this.prismaService.client.room.findMany({
           where: { gameId: currentSession.gameId },
           select: { regionId: true },
-          distinct: ['regionId']
-        })
+          distinct: ['regionId'],
+        }),
       ]);
 
       const visitedRooms = rooms.filter(room => room.visited).length;
-      
+
       // Group rooms by region
-      const regionBreakdown = regions.filter(r => r.regionId).map(region => {
-        const regionRooms = rooms.filter(room => room.regionId === region.regionId);
-        const visitedCount = regionRooms.filter(room => room.visited).length;
-        
-        return {
-          regionId: region.regionId!,
-          roomCount: regionRooms.length,
-          visitedCount
-        };
-      });
+      const regionBreakdown = regions
+        .filter(r => r.regionId)
+        .map(region => {
+          const regionRooms = rooms.filter(room => room.regionId === region.regionId);
+          const visitedCount = regionRooms.filter(room => room.visited).length;
+
+          return {
+            regionId: region.regionId!,
+            roomCount: regionRooms.length,
+            visitedCount,
+          };
+        });
 
       return {
         totalRooms: rooms.length,
         totalRegions: regions.length,
         totalConnections: connections.length,
         visitedRooms,
-        regionBreakdown
+        regionBreakdown,
       };
-
     } catch (error) {
       console.error('Error getting YAML world overview:', error);
       return {
@@ -826,7 +857,7 @@ export class RoomNavigationEngine {
         totalRegions: 0,
         totalConnections: 0,
         visitedRooms: 0,
-        regionBreakdown: []
+        regionBreakdown: [],
       };
     }
   }
@@ -847,8 +878,8 @@ export class RoomNavigationEngine {
         return [];
       }
 
-      let whereClause: any = {
-        gameId: currentSession.gameId
+      let whereClause: Record<string, unknown> = {
+        gameId: currentSession.gameId,
       };
 
       // Add visited filter if specified
@@ -862,29 +893,25 @@ export class RoomNavigationEngine {
         include: {
           items: criteria.hasItems ? true : false,
           characters: criteria.hasCharacters ? true : false,
-          region: criteria.regionTheme ? true : false
-        }
+          region: criteria.regionTheme ? true : false,
+        },
       });
 
       // Apply additional filters
       let filteredRooms = rooms;
 
       if (criteria.regionTheme) {
-        filteredRooms = filteredRooms.filter(room => 
-          room.region && room.region.theme === criteria.regionTheme
+        filteredRooms = filteredRooms.filter(
+          room => room.region && room.region.theme === criteria.regionTheme
         );
       }
 
       if (criteria.hasItems) {
-        filteredRooms = filteredRooms.filter(room => 
-          room.items && room.items.length > 0
-        );
+        filteredRooms = filteredRooms.filter(room => room.items && room.items.length > 0);
       }
 
       if (criteria.hasCharacters) {
-        filteredRooms = filteredRooms.filter(room => 
-          room.characters && room.characters.length > 0
-        );
+        filteredRooms = filteredRooms.filter(room => room.characters && room.characters.length > 0);
       }
 
       // Return just the room data without includes
@@ -900,7 +927,6 @@ export class RoomNavigationEngine {
         createdAt: room.createdAt,
         updatedAt: room.updatedAt,
       }));
-
     } catch (error) {
       console.error('Error finding rooms by YAML attributes:', error);
       return [];
@@ -910,23 +936,28 @@ export class RoomNavigationEngine {
   /**
    * Interact with room elements (pull lever, press button, etc.)
    */
-  async interactWithRoomElement(room: Room, action: string, target: string): Promise<InteractionResult> {
+  async interactWithRoomElement(
+    room: Room,
+    action: string,
+    target: string
+  ): Promise<InteractionResult> {
     try {
       // Find items that match the target
       const items = await this.prismaService.client.item.findMany({
-        where: { roomId: room.id }
+        where: { roomId: room.id },
       });
 
       const normalizedTarget = target.toLowerCase();
-      const foundItem = items.find(item =>
-        item.name.toLowerCase().includes(normalizedTarget) ||
-        normalizedTarget.includes(item.name.toLowerCase())
+      const foundItem = items.find(
+        item =>
+          item.name.toLowerCase().includes(normalizedTarget) ||
+          normalizedTarget.includes(item.name.toLowerCase())
       );
 
       if (!foundItem) {
         return {
           success: false,
-          description: `You don't see anything here that can be ${action}ed.`
+          description: `You don't see anything here that can be ${action}ed.`,
         };
       }
 
@@ -935,7 +966,7 @@ export class RoomNavigationEngine {
       if (!appropriateActions.includes(action.toLowerCase())) {
         return {
           success: false,
-          description: `You cannot ${action} the ${foundItem.name}.`
+          description: `You cannot ${action} the ${foundItem.name}.`,
         };
       }
 
@@ -947,13 +978,12 @@ export class RoomNavigationEngine {
         description: interactionDescription,
         elementName: foundItem.name,
         actionTaken: action,
-        stateChanged: true
+        stateChanged: true,
       };
-
     } catch (error) {
       return {
         success: false,
-        description: 'Something went wrong with that interaction. Please try again.'
+        description: 'Something went wrong with that interaction. Please try again.',
       };
     }
   }
@@ -984,27 +1014,27 @@ export class RoomNavigationEngine {
           actions.push('turn');
         }
         break;
-      
+
       case 'readable':
         actions.push('read');
         break;
-      
+
       case 'magical':
         actions.push('touch');
         break;
-      
+
       case 'weapon':
         actions.push('take', 'wield');
         break;
-      
+
       case 'key':
         actions.push('take', 'use');
         break;
-      
+
       case 'consumable':
         actions.push('take', 'use', 'drink');
         break;
-      
+
       default:
         actions.push('touch');
         break;
@@ -1023,11 +1053,13 @@ export class RoomNavigationEngine {
       touch: `You carefully touch the ${item.name}. ${this.getGenericInteractionResult()}`,
       read: `You read the ${item.name}. The text contains ancient knowledge and mysterious symbols.`,
       turn: `You turn the ${item.name}. ${this.getGenericInteractionResult()}`,
-      flip: `You flip the ${item.name}. ${this.getGenericInteractionResult()}`
+      flip: `You flip the ${item.name}. ${this.getGenericInteractionResult()}`,
     };
 
-    return actionDescriptions[action as keyof typeof actionDescriptions] || 
-           `You ${action} the ${item.name}. Something happens, but you're not sure what.`;
+    return (
+      actionDescriptions[action as keyof typeof actionDescriptions] ||
+      `You ${action} the ${item.name}. Something happens, but you're not sure what.`
+    );
   }
 
   /**
@@ -1035,11 +1067,11 @@ export class RoomNavigationEngine {
    */
   private getGenericInteractionResult(): string {
     const results = [
-      "You hear a faint clicking sound from somewhere in the room.",
-      "A subtle vibration runs through the floor.",
-      "You notice a brief shimmer in the air.",
-      "The mechanism responds with a soft mechanical sound.",
-      "You feel like something has changed, though you can't quite tell what."
+      'You hear a faint clicking sound from somewhere in the room.',
+      'A subtle vibration runs through the floor.',
+      'You notice a brief shimmer in the air.',
+      'The mechanism responds with a soft mechanical sound.',
+      "You feel like something has changed, though you can't quite tell what.",
     ];
 
     return results[Math.floor(Math.random() * results.length)];
@@ -1051,16 +1083,15 @@ export class RoomNavigationEngine {
   async getInteractiveElements(room: Room): Promise<InteractiveElement[]> {
     try {
       const items = await this.prismaService.client.item.findMany({
-        where: { roomId: room.id, hidden: false }
+        where: { roomId: room.id, hidden: false },
       });
 
       return items.map(item => ({
         name: item.name,
         type: item.type,
         description: item.description,
-        suggestedActions: this.getAppropriateActions(item)
+        suggestedActions: this.getAppropriateActions(item),
       }));
-
     } catch (error) {
       console.error('Error getting interactive elements:', error);
       return [];
@@ -1078,24 +1109,27 @@ export class RoomNavigationEngine {
         return {
           success: true,
           description: `You look around the ${room.name} more carefully, taking in every detail. ${room.extendedDescription || 'The room holds an air of mystery.'}`,
-          hints
+          hints,
         };
       }
 
       // Search for specific target including hidden items
       const items = await this.prismaService.client.item.findMany({
-        where: { roomId: room.id }
+        where: { roomId: room.id },
       });
 
       const normalizedTarget = target.toLowerCase();
-      const foundItem = items.find(item =>
-        item.name.toLowerCase().includes(normalizedTarget) ||
-        normalizedTarget.includes(item.name.toLowerCase())
+      const foundItem = items.find(
+        item =>
+          item.name.toLowerCase().includes(normalizedTarget) ||
+          normalizedTarget.includes(item.name.toLowerCase())
       );
 
       if (foundItem) {
-        const clues = this.extractCluesFromDescription(foundItem.extendedDescription || foundItem.description);
-        
+        const clues = this.extractCluesFromDescription(
+          foundItem.extendedDescription || foundItem.description
+        );
+
         let description = `**${foundItem.name}**\n\n${foundItem.description}`;
         if (foundItem.extendedDescription) {
           description += `\n\n${foundItem.extendedDescription}`;
@@ -1106,7 +1140,7 @@ export class RoomNavigationEngine {
         if (foundItem.hidden) {
           description += '\n\n*Through careful examination, you discover this hidden element!*';
           discoveredHidden = true;
-          
+
           // In a real game, you'd update the item to not be hidden anymore
           // For now, we'll just note the discovery
         }
@@ -1116,7 +1150,7 @@ export class RoomNavigationEngine {
           description,
           clues,
           discoveredHidden,
-          target: foundItem
+          target: foundItem,
         };
       }
 
@@ -1125,14 +1159,13 @@ export class RoomNavigationEngine {
       return {
         success: true,
         description: `You examine the ${target} carefully, but don't find anything particularly noteworthy about it.`,
-        hints
+        hints,
       };
-
     } catch (error) {
       console.error('Error handling complex examination:', error);
       return {
         success: false,
-        description: 'You have trouble focusing on your examination right now. Please try again.'
+        description: 'You have trouble focusing on your examination right now. Please try again.',
       };
     }
   }
@@ -1143,9 +1176,26 @@ export class RoomNavigationEngine {
   private extractCluesFromDescription(description: string): string[] {
     const clues: string[] = [];
     const clueKeywords = [
-      'keyhole', 'lock', 'scratch', 'mark', 'symbol', 'carving', 'inscription',
-      'warm', 'cold', 'vibration', 'sound', 'mechanism', 'hidden', 'secret',
-      'ancient', 'seal', 'crest', 'worn', 'damaged', 'recent'
+      'keyhole',
+      'lock',
+      'scratch',
+      'mark',
+      'symbol',
+      'carving',
+      'inscription',
+      'warm',
+      'cold',
+      'vibration',
+      'sound',
+      'mechanism',
+      'hidden',
+      'secret',
+      'ancient',
+      'seal',
+      'crest',
+      'worn',
+      'damaged',
+      'recent',
     ];
 
     for (const keyword of clueKeywords) {
@@ -1166,25 +1216,29 @@ export class RoomNavigationEngine {
     try {
       // Check for hidden items
       const hiddenItems = await this.prismaService.client.item.findMany({
-        where: { roomId: room.id, hidden: true }
+        where: { roomId: room.id, hidden: true },
       });
 
       if (hiddenItems.length > 0) {
-        hints.push('You sense there might be hidden elements in this room that could be discovered through careful examination.');
+        hints.push(
+          'You sense there might be hidden elements in this room that could be discovered through careful examination.'
+        );
       }
 
       // Check for interactive items
       const interactiveItems = await this.prismaService.client.item.findMany({
-        where: { roomId: room.id, type: 'interactive' }
+        where: { roomId: room.id, type: 'interactive' },
       });
 
       if (interactiveItems.length > 0) {
-        hints.push('Some objects in this room appear to be interactive and might respond to your actions.');
+        hints.push(
+          'Some objects in this room appear to be interactive and might respond to your actions.'
+        );
       }
 
       // Check for locked connections
       const lockedConnections = await this.prismaService.client.connection.findMany({
-        where: { fromRoomId: room.id, locked: true }
+        where: { fromRoomId: room.id, locked: true },
       });
 
       if (lockedConnections.length > 0) {
@@ -1193,9 +1247,10 @@ export class RoomNavigationEngine {
 
       // General exploration hint
       if (hints.length === 0) {
-        hints.push('This room seems ordinary at first glance, but adventure often lies in the details.');
+        hints.push(
+          'This room seems ordinary at first glance, but adventure often lies in the details.'
+        );
       }
-
     } catch (error) {
       console.error('Error generating room hints:', error);
       hints.push('The room holds mysteries that are waiting to be uncovered.');
@@ -1210,60 +1265,61 @@ export class RoomNavigationEngine {
   async checkRegionBoundary(roomId: number): Promise<RegionBoundaryInfo> {
     try {
       const room = await this.prismaService.client.room.findFirst({
-        where: { id: roomId }
+        where: { id: roomId },
       });
-      
+
       if (!room || !room.regionId) {
         return {
           isAtBoundary: false,
           unfilledDirections: [],
-          boundaryDirections: []
+          boundaryDirections: [],
         };
       }
-      
+
       // Get all connections from this room
       const connections = await this.prismaService.client.connection.findMany({
         where: { fromRoomId: roomId },
         include: {
-          toRoom: true
-        }
+          toRoom: true,
+        },
       });
-      
+
       const unfilledDirections: string[] = [];
       const boundaryDirections: { direction: string; toRegionId?: number | null }[] = [];
-      
+
       for (const conn of connections) {
         // Check for unfilled connections (potential new regions)
         if (!conn.toRoomId) {
           unfilledDirections.push(conn.direction);
-          boundaryDirections.push({ 
-            direction: conn.direction, 
-            toRegionId: null 
+          boundaryDirections.push({
+            direction: conn.direction,
+            toRegionId: null,
           });
-        } 
+        }
         // Check for connections to different regions
         else if (conn.toRoom && conn.toRoom.regionId !== room.regionId) {
-          boundaryDirections.push({ 
-            direction: conn.direction, 
-            toRegionId: conn.toRoom.regionId 
+          boundaryDirections.push({
+            direction: conn.direction,
+            toRegionId: conn.toRoom.regionId,
           });
         }
       }
-      
-      const isAtBoundary = unfilledDirections.length > 0 || 
-                          boundaryDirections.some(b => b.toRegionId !== room.regionId);
-      
+
+      const isAtBoundary =
+        unfilledDirections.length > 0 ||
+        boundaryDirections.some(b => b.toRegionId !== room.regionId);
+
       return {
         isAtBoundary,
         unfilledDirections,
-        boundaryDirections
+        boundaryDirections,
       };
     } catch (error) {
       console.error('Error checking region boundary:', error);
       return {
         isAtBoundary: false,
         unfilledDirections: [],
-        boundaryDirections: []
+        boundaryDirections: [],
       };
     }
   }
@@ -1275,27 +1331,27 @@ export class RoomNavigationEngine {
     if (!this.claudeRegionService) {
       return; // No Claude service available
     }
-    
+
     try {
       const boundaryInfo = await this.checkRegionBoundary(roomId);
-      
+
       if (!boundaryInfo.isAtBoundary) {
         return; // Not at a boundary
       }
-      
+
       const session = this.gameStateManager.getCurrentSession();
       if (!session) {
         return; // No active session
       }
-      
+
       const room = await this.prismaService.client.room.findFirst({
-        where: { id: roomId }
+        where: { id: roomId },
       });
-      
+
       if (!room || !room.regionId) {
         return;
       }
-      
+
       // If specific direction provided, check if it's unfilled
       if (direction && boundaryInfo.unfilledDirections.includes(direction)) {
         // Trigger generation for this specific direction
@@ -1305,7 +1361,7 @@ export class RoomNavigationEngine {
           direction,
           roomId // Pass source room ID for connection
         );
-      } 
+      }
       // Otherwise trigger for all unfilled directions
       else if (!direction && boundaryInfo.unfilledDirections.length > 0) {
         // Trigger generation for the first unfilled direction

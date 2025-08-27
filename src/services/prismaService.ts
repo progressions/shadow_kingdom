@@ -14,13 +14,17 @@ export class PrismaService {
 
   private constructor() {
     // Use our specific database URL, falling back to DATABASE_URL if needed
-    const dbUrl = process.env.SHADOW_KINGDOM_DB || process.env.DATABASE_URL || 'file:./prisma/dev.db';
-    
+    const dbUrl =
+      process.env.SHADOW_KINGDOM_DB || process.env.DATABASE_URL || 'file:./prisma/dev.db';
+
     // Set DATABASE_URL for Prisma to use
     process.env.DATABASE_URL = dbUrl;
-    
+
     this.client = new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
+      log:
+        process.env.NODE_ENV === 'development'
+          ? ['query', 'info', 'warn', 'error']
+          : ['warn', 'error'],
     });
   }
 
@@ -34,13 +38,13 @@ export class PrismaService {
   // Initialize database if needed
   public async initialize(): Promise<void> {
     if (this.initialized) return;
-    
+
     // Skip database initialization in test environment
     if (process.env.NODE_ENV === 'test') {
       this.initialized = true;
       return;
     }
-    
+
     try {
       // Check if database exists and has schema
       await this.checkAndInitializeDatabase();
@@ -56,10 +60,10 @@ export class PrismaService {
     const projectRoot = process.cwd();
     const dbPath = path.join(projectRoot, 'data', 'shadow_kingdom.db');
     const dbUrl = `file:${dbPath}`;
-    
+
     // Log the path for debugging
     console.log('Using database at:', dbPath);
-    
+
     const fullDbPath = dbPath;
     const dbDir = path.dirname(fullDbPath);
 
@@ -72,15 +76,15 @@ export class PrismaService {
     // Check if database file exists
     const dbExists = fs.existsSync(fullDbPath);
     let needsSeeding = false;
-    
+
     if (!dbExists) {
       console.log('Database not found. Creating new database...');
       // Apply schema to create database
       try {
         console.log('Applying database schema...');
-        execSync('npx prisma db push --skip-generate', { 
+        execSync('npx prisma db push --skip-generate', {
           stdio: 'inherit',
-          env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl }
+          env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl },
         });
         console.log('Database created successfully');
         needsSeeding = true;
@@ -96,14 +100,15 @@ export class PrismaService {
           console.log('No games found in database');
           needsSeeding = true;
         }
-      } catch (error: any) {
+      } catch (error) {
         // If table doesn't exist, push schema
-        if (error?.message?.includes('no such table')) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('no such table')) {
           console.log('Database schema missing. Applying schema...');
           try {
-            execSync('npx prisma db push --skip-generate', { 
+            execSync('npx prisma db push --skip-generate', {
               stdio: 'inherit',
-              env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl }
+              env: { ...process.env, DATABASE_URL: dbUrl, SHADOW_KINGDOM_DB: dbUrl },
             });
             console.log('Schema applied successfully');
             needsSeeding = true;
@@ -126,7 +131,7 @@ export class PrismaService {
 
   private async seedInitialData(): Promise<void> {
     const yamlPath = path.join(process.cwd(), 'worlds', 'starting-region.yml');
-    
+
     if (fs.existsSync(yamlPath)) {
       // Use the YamlWorldService to seed
       console.log('Seeding initial world data...');

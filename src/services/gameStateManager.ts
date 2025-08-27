@@ -55,7 +55,11 @@ export class GameStateManager {
   async initializeGame(game: Game): Promise<void> {
     try {
       if (!game.currentRoomId) {
-        throw new GameStateManagerError('Game has no current room set', 'INVALID_GAME_STATE', false);
+        throw new GameStateManagerError(
+          'Game has no current room set',
+          'INVALID_GAME_STATE',
+          false
+        );
       }
 
       const currentRoom = await this.prismaService.client.room.findUnique({
@@ -63,15 +67,19 @@ export class GameStateManager {
       });
 
       if (!currentRoom) {
-        throw new GameStateManagerError(`Current room ${game.currentRoomId} not found`, 'ROOM_NOT_FOUND', true);
+        throw new GameStateManagerError(
+          `Current room ${game.currentRoomId} not found`,
+          'ROOM_NOT_FOUND',
+          true
+        );
       }
 
       // Load inventory - items with null roomId belonging to this game
       const inventoryItems = await this.prismaService.client.item.findMany({
-        where: { 
+        where: {
           gameId: game.id,
-          roomId: null 
-        }
+          roomId: null,
+        },
       });
       const inventoryIds = inventoryItems.map(item => item.id);
 
@@ -96,7 +104,11 @@ export class GameStateManager {
         throw error;
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new GameStateManagerError(`Failed to initialize game: ${errorMessage}`, 'INITIALIZATION_FAILED', false);
+      throw new GameStateManagerError(
+        `Failed to initialize game: ${errorMessage}`,
+        'INITIALIZATION_FAILED',
+        false
+      );
     }
   }
 
@@ -127,7 +139,7 @@ export class GameStateManager {
       if (!room) {
         return 'No current room. Please start or load a game.';
       }
-      
+
       let display = '';
 
       // Room name
@@ -146,21 +158,21 @@ export class GameStateManager {
       const connections = await this.prismaService.client.connection.findMany({
         where: { fromRoomId: room.id },
         include: {
-          toRoom: true
-        }
+          toRoom: true,
+        },
       });
 
       // Get items in the room (excluding those in player inventory)
       const items = await this.prismaService.client.item.findMany({
-        where: { 
+        where: {
           roomId: room.id,
-          gameId: this.currentSession.gameId 
-        }
+          gameId: this.currentSession.gameId,
+        },
       });
 
       // Get characters in the room
       const characters = await this.prismaService.client.character.findMany({
-        where: { roomId: room.id }
+        where: { roomId: room.id },
       });
 
       // Add items description if any
@@ -209,7 +221,7 @@ export class GameStateManager {
    */
   private getArticle(noun: string): string {
     if (!noun) return 'a';
-    
+
     // Words that should use "an"
     const vowels = ['a', 'e', 'i', 'o', 'u'];
     const firstLetter = noun.charAt(0).toLowerCase();
@@ -240,13 +252,13 @@ export class GameStateManager {
         roomId = roomOrId;
         // Try to get room from cache first
         newRoom = this.getRoomFromCache(roomId);
-        
+
         if (!newRoom) {
           // Get the new room from database
           newRoom = await this.prismaService.client.room.findUnique({
             where: { id: roomId },
           });
-          
+
           // Add to cache if found
           if (newRoom) {
             this.addRoomToCache(newRoom);
@@ -260,8 +272,8 @@ export class GameStateManager {
 
       if (newRoom.gameId !== this.currentSession.gameId) {
         throw new GameStateManagerError(
-          `Room ${roomId} does not belong to current game ${this.currentSession.gameId}`, 
-          'ROOM_GAME_MISMATCH', 
+          `Room ${roomId} does not belong to current game ${this.currentSession.gameId}`,
+          'ROOM_GAME_MISMATCH',
           false
         );
       }
@@ -270,7 +282,7 @@ export class GameStateManager {
       const now = new Date();
       await this.prismaService.client.game.update({
         where: { id: this.currentSession.gameId },
-        data: { 
+        data: {
           currentRoomId: roomId,
           updatedAt: now,
         },
@@ -303,7 +315,11 @@ export class GameStateManager {
         throw error;
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new GameStateManagerError(`Failed to set current room: ${errorMessage}`, 'SET_ROOM_FAILED', false);
+      throw new GameStateManagerError(
+        `Failed to set current room: ${errorMessage}`,
+        'SET_ROOM_FAILED',
+        false
+      );
     }
   }
 
@@ -314,7 +330,7 @@ export class GameStateManager {
     try {
       await this.prismaService.client.room.update({
         where: { id: roomId },
-        data: { visited: true }
+        data: { visited: true },
       });
 
       // Update cache if the room is cached
@@ -332,10 +348,12 @@ export class GameStateManager {
    */
   private addMovementToHistory(entry: MovementHistoryEntry): void {
     this.currentSession?.movementHistory.push(entry);
-    
+
     // Trim history if it exceeds max size
     if (this.currentSession && this.currentSession.movementHistory.length > this.maxHistorySize) {
-      this.currentSession.movementHistory = this.currentSession.movementHistory.slice(-this.maxHistorySize);
+      this.currentSession.movementHistory = this.currentSession.movementHistory.slice(
+        -this.maxHistorySize
+      );
     }
   }
 
@@ -394,28 +412,30 @@ export class GameStateManager {
           const validItems = await this.prismaService.client.item.findMany({
             where: {
               id: { in: this.currentSession.inventory },
-              gameId: this.currentSession.gameId
-            }
+              gameId: this.currentSession.gameId,
+            },
           });
-          
+
           const validItemIds = validItems.map(item => item.id);
-          
+
           // Only update items that actually exist and belong to this game
           if (validItemIds.length > 0) {
             await this.prismaService.client.item.updateMany({
               where: {
                 id: { in: validItemIds },
-                gameId: this.currentSession.gameId
+                gameId: this.currentSession.gameId,
               },
               data: {
-                roomId: null
-              }
+                roomId: null,
+              },
             });
           }
-          
+
           // Update inventory to only include valid items
           if (validItemIds.length !== this.currentSession.inventory.length) {
-            console.warn(`Inventory contained ${this.currentSession.inventory.length - validItemIds.length} invalid item IDs, cleaning up`);
+            console.warn(
+              `Inventory contained ${this.currentSession.inventory.length - validItemIds.length} invalid item IDs, cleaning up`
+            );
             this.currentSession.inventory = validItemIds;
           }
         } catch (itemError) {
@@ -430,8 +450,8 @@ export class GameStateManager {
     } catch (error) {
       console.error('Failed to save game state:', error);
       throw new GameStateManagerError(
-        `Failed to save game state: ${error instanceof Error ? error.message : String(error)}`, 
-        'SAVE_FAILED', 
+        `Failed to save game state: ${error instanceof Error ? error.message : String(error)}`,
+        'SAVE_FAILED',
         true
       );
     }
@@ -445,8 +465,8 @@ export class GameStateManager {
       const game = await this.prismaService.client.game.findUnique({
         where: { id: gameId },
         include: {
-          currentRoom: true
-        }
+          currentRoom: true,
+        },
       });
 
       if (!game) {
@@ -454,15 +474,19 @@ export class GameStateManager {
       }
 
       if (!game.currentRoom) {
-        throw new GameStateManagerError(`Game ${gameId} has invalid room reference`, 'INVALID_GAME_STATE', false);
+        throw new GameStateManagerError(
+          `Game ${gameId} has invalid room reference`,
+          'INVALID_GAME_STATE',
+          false
+        );
       }
 
       // Load inventory items
       const inventoryItems = await this.prismaService.client.item.findMany({
-        where: { 
+        where: {
           gameId: gameId,
-          roomId: null 
-        }
+          roomId: null,
+        },
       });
       const inventoryIds = inventoryItems.map(item => item.id);
 
@@ -505,7 +529,11 @@ export class GameStateManager {
       return game;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new GameStateManagerError(`Failed to create new game: ${errorMessage}`, 'CREATE_FAILED', false);
+      throw new GameStateManagerError(
+        `Failed to create new game: ${errorMessage}`,
+        'CREATE_FAILED',
+        false
+      );
     }
   }
 
@@ -514,11 +542,11 @@ export class GameStateManager {
    */
   private getRoomFromCache(roomId: number): Room | null {
     const cached = this.roomCache.get(roomId);
-    
+
     if (cached) {
       const now = Date.now();
       const age = now - cached.cachedAt.getTime();
-      
+
       if (age < this.cacheExpiry) {
         return cached.room;
       } else {
@@ -526,7 +554,7 @@ export class GameStateManager {
         this.roomCache.delete(roomId);
       }
     }
-    
+
     return null;
   }
 
@@ -536,7 +564,7 @@ export class GameStateManager {
   private addRoomToCache(room: Room): void {
     this.roomCache.set(room.id, {
       room,
-      cachedAt: new Date()
+      cachedAt: new Date(),
     });
 
     // Limit cache size to prevent memory issues
@@ -544,7 +572,7 @@ export class GameStateManager {
       // Remove oldest entries
       const entries = Array.from(this.roomCache.entries());
       entries.sort((a, b) => a[1].cachedAt.getTime() - b[1].cachedAt.getTime());
-      
+
       // Remove oldest 10 entries
       for (let i = 0; i < 10; i++) {
         this.roomCache.delete(entries[i][0]);
@@ -617,7 +645,7 @@ export class GameStateManager {
     // Update database to mark item as in inventory (roomId = null)
     await this.prismaService.client.item.update({
       where: { id: itemId },
-      data: { roomId: null, gameId: this.currentSession.gameId }
+      data: { roomId: null, gameId: this.currentSession.gameId },
     });
 
     return true;
@@ -670,7 +698,7 @@ export class GameStateManager {
     try {
       await this.prismaService.client.item.update({
         where: { id: itemId },
-        data: { roomId: null }
+        data: { roomId: null },
       });
       return true;
     } catch (error) {
@@ -685,7 +713,7 @@ export class GameStateManager {
   async setCurrentGame(gameId: number): Promise<void> {
     try {
       const game = await this.prismaService.client.game.findUnique({
-        where: { id: gameId }
+        where: { id: gameId },
       });
 
       if (!game) {
@@ -698,7 +726,11 @@ export class GameStateManager {
         throw error;
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new GameStateManagerError(`Failed to set current game: ${errorMessage}`, 'SET_GAME_FAILED', false);
+      throw new GameStateManagerError(
+        `Failed to set current game: ${errorMessage}`,
+        'SET_GAME_FAILED',
+        false
+      );
     }
   }
 
@@ -737,10 +769,10 @@ export class GameStateManager {
   async resetGameState(): Promise<void> {
     // Clear the current session
     this.currentSession = null;
-    
+
     // Clear the room cache
     this.roomCache.clear();
-    
+
     // Stop auto-save timer if running
     if (this.saveInterval) {
       clearInterval(this.saveInterval);

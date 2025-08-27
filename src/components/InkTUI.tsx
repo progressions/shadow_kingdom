@@ -1,106 +1,110 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Box, useApp, useStdout, useInput } from 'ink'
-import { GamePane } from './GamePane'
-import { InputBar } from './InputBar'
-import { StatusPane } from './StatusPane'
-import { Message, createMessage } from '../types/Message'
-import { addMessagesToBuffer } from '../utils/messageBuffer'
+import React, { useState, useEffect, useMemo } from 'react';
+import { Box, useApp, useStdout, useInput } from 'ink';
+import { GamePane } from './GamePane';
+import { InputBar } from './InputBar';
+import { StatusPane } from './StatusPane';
+import { Message, createMessage } from '../types/Message';
+import { addMessagesToBuffer } from '../utils/messageBuffer';
 
 export const InkTUI: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [commandHistory, setCommandHistory] = useState<string[]>(['help', 'look', 'status'])
-  const [terminalSize, setTerminalSize] = useState({ width: 80, height: 24 })
-  const [statusContent, setStatusContent] = useState("Shadow Kingdom v1.0 - Ready (Use arrow keys for history)")
-  const { stdout } = useStdout()
-  const { exit } = useApp()
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [commandHistory, setCommandHistory] = useState<string[]>(['help', 'look', 'status']);
+  const [terminalSize, setTerminalSize] = useState({ width: 80, height: 24 });
+  const [statusContent, setStatusContent] = useState(
+    'Shadow Kingdom v1.0 - Ready (Use arrow keys for history)'
+  );
+  const { stdout } = useStdout();
+  const { exit } = useApp();
 
   // Handle terminal resize events
   useEffect(() => {
-    if (!stdout) return
-    
+    if (!stdout) return;
+
     const updateSize = () => {
-      if (!stdout) return
+      if (!stdout) return;
       setTerminalSize({
         width: stdout.columns || 80,
-        height: stdout.rows || 24
-      })
-    }
+        height: stdout.rows || 24,
+      });
+    };
 
     // Initial size
-    updateSize()
+    updateSize();
 
     // Listen for resize events
-    stdout.on('resize', updateSize)
+    stdout.on('resize', updateSize);
 
     return () => {
-      stdout.off('resize', updateSize)
-    }
-  }, [stdout])
+      stdout.off('resize', updateSize);
+    };
+  }, [stdout]);
 
   // Helper function to add messages with scrollback buffer management
   const addMessage = (content: string): void => {
-    setMessages(prev => addMessagesToBuffer(prev, [createMessage(content)]))
-  }
+    setMessages(prev => addMessagesToBuffer(prev, [createMessage(content)]));
+  };
 
   // Global keyboard shortcuts
   useInput((input, key) => {
     // Ctrl+C - Graceful exit
     if (key.ctrl && input === 'c') {
-      exit()
-      return
+      exit();
+      return;
     }
 
     // Ctrl+H - Help system
     if (key.ctrl && input === 'h') {
-      addMessage('> help')
-      addMessage('Available commands: hello, look, help, status, info, reset, quit')
-      addMessage('Global shortcuts: Ctrl+C (exit), Ctrl+H (help)')
-      return
+      addMessage('> help');
+      addMessage('Available commands: hello, look, help, status, info, reset, quit');
+      addMessage('Global shortcuts: Ctrl+C (exit), Ctrl+H (help)');
+      return;
     }
-  })
+  });
 
   const handleSubmit = (command: string) => {
     // Echo the command back to the game pane with ">" prefix
-    addMessage(`> ${command}`)
-    
+    addMessage(`> ${command}`);
+
     // Handle game commands
     if (command.toLowerCase() === 'hello') {
-      addMessage('Hello there, adventurer!')
+      addMessage('Hello there, adventurer!');
     } else if (command.toLowerCase() === 'look') {
-      addMessage('You are standing in a dimly lit chamber with stone walls.')
+      addMessage('You are standing in a dimly lit chamber with stone walls.');
     } else if (command.toLowerCase() === 'help') {
-      addMessage('Available commands: hello, look, help, status, info, reset, quit')
-      addMessage('Global shortcuts: Ctrl+C (exit), Ctrl+H (help)')
+      addMessage('Available commands: hello, look, help, status, info, reset, quit');
+      addMessage('Global shortcuts: Ctrl+C (exit), Ctrl+H (help)');
     } else if (command.toLowerCase() === 'quit') {
-      addMessage('Goodbye, adventurer!')
-      setTimeout(() => exit(), 1000) // Give time to see the message
+      addMessage('Goodbye, adventurer!');
+      setTimeout(() => exit(), 1000); // Give time to see the message
     } else if (command.trim() && !['status', 'info', 'reset'].includes(command.toLowerCase())) {
-      addMessage(`Unknown command: ${command}`)
+      addMessage(`Unknown command: ${command}`);
     }
 
     // Handle status content updates
     if (command === 'status') {
-      setStatusContent("Shadow Kingdom v1.0\nLocation: Starting Room\nHealth: 100/100")
+      setStatusContent('Shadow Kingdom v1.0\nLocation: Starting Room\nHealth: 100/100');
     } else if (command === 'info') {
-      setStatusContent("Shadow Kingdom v1.0\nPlayer: Adventure Seeker\nLocation: Entrance Hall\nItems: Iron Sword, Health Potion\nGold: 50")
+      setStatusContent(
+        'Shadow Kingdom v1.0\nPlayer: Adventure Seeker\nLocation: Entrance Hall\nItems: Iron Sword, Health Potion\nGold: 50'
+      );
     } else if (command === 'reset') {
-      setStatusContent("Shadow Kingdom v1.0 - Ready (Use arrow keys for history)")
+      setStatusContent('Shadow Kingdom v1.0 - Ready (Use arrow keys for history)');
     }
-  }
+  };
 
   const handleHistoryUpdate = (newHistory: string[]) => {
-    setCommandHistory(newHistory)
-  }
+    setCommandHistory(newHistory);
+  };
 
   // Calculate status height dynamically
   const statusHeight = useMemo(() => {
-    return statusContent.split('\n').length
-  }, [statusContent])
+    return statusContent.split('\n').length;
+  }, [statusContent]);
 
   // Calculate spacing to push bottom bars to the bottom
-  const inputBarHeight = 3 // Input bar with borders
-  const fixedBottomHeight = inputBarHeight + statusHeight
-  const gameAreaHeight = Math.max(1, terminalSize.height - fixedBottomHeight)
+  const inputBarHeight = 3; // Input bar with borders
+  const fixedBottomHeight = inputBarHeight + statusHeight;
+  const gameAreaHeight = Math.max(1, terminalSize.height - fixedBottomHeight);
 
   return (
     <Box flexDirection="column" height="100%" width="100%">
@@ -108,13 +112,13 @@ export const InkTUI: React.FC = () => {
       <Box height={gameAreaHeight} width="100%">
         <GamePane messages={messages} maxLines={Math.max(5, gameAreaHeight - 2)} />
       </Box>
-      
+
       {/* Spacer to push bottom bars down */}
       <Box flexGrow={1} />
-      
+
       {/* Bottom section - Input Bar and Status Pane */}
       <Box flexShrink={0} width="100%" flexDirection="column">
-        <InputBar 
+        <InputBar
           onSubmit={handleSubmit}
           placeholder="Enter command..."
           commandHistory={commandHistory}
@@ -123,5 +127,5 @@ export const InkTUI: React.FC = () => {
         <StatusPane status={statusContent} />
       </Box>
     </Box>
-  )
-}
+  );
+};

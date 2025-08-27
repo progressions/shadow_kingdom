@@ -1,6 +1,7 @@
 import winston from 'winston';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import { randomUUID } from 'crypto';
 
 export type MessageType = 'ROOM' | 'COMMAND' | 'RESPONSE' | 'ERROR' | 'SYSTEM';
@@ -56,22 +57,22 @@ export class LoggingService {
     if (process.env.NODE_ENV === 'test' && process.env.FORCE_LOG_IN_TESTS !== 'true') {
       return false;
     }
-    
+
     const logEnabled = process.env.LOG_ENABLED;
     if (!logEnabled) return true; // Default to enabled
-    
+
     const falseValues = ['false', 'FALSE', 'False', '0', 'no', 'NO'];
     return !falseValues.includes(logEnabled);
   }
 
   private getLogPath(): string {
     const logPath = process.env.LOG_PATH || 'log/development.log';
-    
+
     // Validate path
     if (!logPath || logPath.trim().length === 0) {
       return 'log/development.log';
     }
-    
+
     // Check for invalid characters or patterns
     const invalidPatterns = ['\0', '../', '..\\'];
     if (invalidPatterns.some(pattern => logPath.includes(pattern))) {
@@ -80,19 +81,19 @@ export class LoggingService {
       }
       return 'log/development.log';
     }
-    
+
     return logPath.trim();
   }
 
   private createLogger(): winston.Logger {
     const logDir = path.dirname(this.logPath);
-    
+
     // Ensure log directory exists synchronously before creating logger
     this.ensureLogDirectorySync(logDir);
 
     const logFormat = winston.format.combine(
       winston.format.timestamp({
-        format: 'YYYY-MM-DD HH:mm:ss.SSS'
+        format: 'YYYY-MM-DD HH:mm:ss.SSS',
       }),
       winston.format.errors({ stack: true }),
       winston.format.printf(({ timestamp, level, message, type, sessionId }) => {
@@ -109,14 +110,13 @@ export class LoggingService {
           maxsize: 50 * 1024 * 1024, // 50MB
           maxFiles: 5,
           tailable: true,
-        })
+        }),
       ],
       exitOnError: false,
     });
   }
 
   private ensureLogDirectorySync(dirPath: string): void {
-    const fsSync = require('fs');
     try {
       if (!fsSync.existsSync(dirPath)) {
         fsSync.mkdirSync(dirPath, { recursive: true });
@@ -181,7 +181,11 @@ export class LoggingService {
     });
   }
 
-  private async writeLog(message: string, type: MessageType, retryCount: number = 0): Promise<void> {
+  private async writeLog(
+    message: string,
+    type: MessageType,
+    retryCount: number = 0
+  ): Promise<void> {
     if (!this.enabled || !this.logger) return;
 
     try {
@@ -202,7 +206,7 @@ export class LoggingService {
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.writeLog(message, type, retryCount + 1);
       }
-      
+
       if (!this.silentErrors) {
         if (retryCount > 0) {
           console.warn(`Failed to write to log after ${retryCount + 1} attempts:`, error);
@@ -226,7 +230,7 @@ export class LoggingService {
 
     if (this.bufferEnabled) {
       this.messageBuffer.push({ message, type });
-      
+
       if (this.messageBuffer.length >= this.BUFFER_SIZE_LIMIT) {
         this.flushBuffer();
       }
@@ -260,7 +264,7 @@ export class LoggingService {
       this.disableBuffering();
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       if (this.logger) {
         // Winston's close method doesn't take a callback in v3
         // We'll just close it synchronously

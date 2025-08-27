@@ -61,9 +61,9 @@ export class RegionPromptTemplates {
 
     // Starting context
     if (!context.previousRegion) {
-      parts.push("Generate the FIRST region of a new adventure.");
+      parts.push('Generate the FIRST region of a new adventure.');
       parts.push("This is where the player's journey begins.");
-      parts.push("Make it welcoming but with hints of danger ahead.");
+      parts.push('Make it welcoming but with hints of danger ahead.');
     } else {
       parts.push(`The player is traveling ${context.direction.toUpperCase()} from:`);
       parts.push(`Previous Region: "${context.previousRegion.name}"`);
@@ -71,26 +71,25 @@ export class RegionPromptTemplates {
       if (context.previousRegion.exitDirection) {
         parts.push(`Exit was to the ${context.previousRegion.exitDirection}`);
       }
-      parts.push("");
-      parts.push("The new region should:");
-      parts.push("- Feel like a natural progression from the previous area");
-      parts.push("- Offer a contrasting but connected theme");
-      parts.push("- Escalate or vary the challenge appropriately");
+      parts.push('');
+      parts.push('The new region should:');
+      parts.push('- Feel like a natural progression from the previous area');
+      parts.push('- Offer a contrasting but connected theme');
+      parts.push('- Escalate or vary the challenge appropriately');
     }
-
 
     // Avoid duplicates
     if (context.existingRegions && context.existingRegions.length > 0) {
-      parts.push("");
-      parts.push("Already explored regions (avoid similar themes):");
+      parts.push('');
+      parts.push('Already explored regions (avoid similar themes):');
       context.existingRegions.slice(-5).forEach(r => parts.push(`- ${r}`));
     }
 
     // Direction-based suggestions
-    parts.push("");
+    parts.push('');
     parts.push(getDirectionalHints(context.direction));
 
-    return parts.join("\n");
+    return parts.join('\n');
   }
 
   /**
@@ -131,7 +130,23 @@ export class RegionPromptTemplates {
    * User prompt for room batch generation
    */
   static getRoomBatchUserPrompt(
-    theme: any,
+    theme: {
+      name: string;
+      theme: string;
+      description: string;
+      atmosphere: string;
+      guardianConcept: {
+        name: string;
+        type: string;
+        description: string;
+      };
+      keyConcept: {
+        name: string;
+        description: string;
+        hint: string;
+      };
+      lockedExitDescription: string;
+    },
     guardianRoomIndex: number,
     keyRoomIndex: number,
     entranceDirection: string,
@@ -176,13 +191,16 @@ Include variety: combat rooms, puzzle rooms, treasure rooms, and atmospheric roo
  */
 function getDirectionalHints(direction: string): string {
   const hints: Record<string, string> = {
-    north: "Consider: Higher elevation, colder climate, mountainous terrain, or ancient structures",
-    south: "Consider: Warmer climate, lush vegetation, tropical elements, or desert transitions",
-    east: "Consider: Sunrise themes, new beginnings, coastal regions, or mystical oriental influences",
-    west: "Consider: Sunset themes, endings, wastelands, or western frontier elements",
+    north: 'Consider: Higher elevation, colder climate, mountainous terrain, or ancient structures',
+    south: 'Consider: Warmer climate, lush vegetation, tropical elements, or desert transitions',
+    east: 'Consider: Sunrise themes, new beginnings, coastal regions, or mystical oriental influences',
+    west: 'Consider: Sunset themes, endings, wastelands, or western frontier elements',
   };
-  
-  return hints[direction.toLowerCase()] || "Consider the geographical and thematic flow from the previous region.";
+
+  return (
+    hints[direction.toLowerCase()] ||
+    'Consider the geographical and thematic flow from the previous region.'
+  );
 }
 
 /**
@@ -190,50 +208,73 @@ function getDirectionalHints(direction: string): string {
  */
 export function getThemeProgressions(previousTheme: string): string[] {
   const progressions: Record<string, string[]> = {
-    forest: ["ancient ruins", "druid grove", "spider caves", "treetop village", "corrupted woods"],
-    caves: ["underground lake", "crystal caverns", "dwarven halls", "volcanic tubes", "mushroom kingdom"],
-    castle: ["dungeon depths", "royal gardens", "abandoned wing", "wizard's tower", "siege grounds"],
-    ruins: ["overgrown temple", "buried city", "archaeological site", "haunted battlefield", "time-worn palace"],
-    swamp: ["witch's domain", "sunken village", "bog of eternal stench", "crocodile lair", "will-o'-wisp maze"],
-    mountain: ["ice caves", "dragon's peak", "monastery", "giant's realm", "wind-swept plateau"],
-    desert: ["oasis paradise", "sand-buried pyramid", "scorpion valley", "nomad camp", "glass desert"],
-    underwater: ["coral palace", "shipwreck graveyard", "kraken's domain", "mer-city", "abyssal trench"],
+    forest: ['ancient ruins', 'druid grove', 'spider caves', 'treetop village', 'corrupted woods'],
+    caves: [
+      'underground lake',
+      'crystal caverns',
+      'dwarven halls',
+      'volcanic tubes',
+      'mushroom kingdom',
+    ],
+    castle: [
+      'dungeon depths',
+      'royal gardens',
+      'abandoned wing',
+      "wizard's tower",
+      'siege grounds',
+    ],
+    ruins: [
+      'overgrown temple',
+      'buried city',
+      'archaeological site',
+      'haunted battlefield',
+      'time-worn palace',
+    ],
+    swamp: [
+      "witch's domain",
+      'sunken village',
+      'bog of eternal stench',
+      'crocodile lair',
+      "will-o'-wisp maze",
+    ],
+    mountain: ['ice caves', "dragon's peak", 'monastery', "giant's realm", 'wind-swept plateau'],
+    desert: [
+      'oasis paradise',
+      'sand-buried pyramid',
+      'scorpion valley',
+      'nomad camp',
+      'glass desert',
+    ],
+    underwater: [
+      'coral palace',
+      'shipwreck graveyard',
+      "kraken's domain",
+      'mer-city',
+      'abyssal trench',
+    ],
   };
 
   // Extract key theme word
-  const themeKey = Object.keys(progressions).find(key => 
-    previousTheme.toLowerCase().includes(key)
-  );
+  const themeKey = Object.keys(progressions).find(key => previousTheme.toLowerCase().includes(key));
 
-  return progressions[themeKey || 'forest'] || [
-    "mysterious realm",
-    "forgotten sanctuary",
-    "cursed grounds",
-    "ancient stronghold",
-    "magical nexus"
-  ];
+  return (
+    progressions[themeKey || 'forest'] || [
+      'mysterious realm',
+      'forgotten sanctuary',
+      'cursed grounds',
+      'ancient stronghold',
+      'magical nexus',
+    ]
+  );
 }
 
 /**
  * Guardian archetypes based on theme
  */
-export function getGuardianArchetypes(theme: string): any[] {
-  const archetypes = [
-    {
-      nature: ["Treant Sentinel", "Dire Wolf Pack Leader", "Corrupted Druid", "Vine Horror"],
-      undead: ["Skeletal Champion", "Wraith Lord", "Zombie Horde Master", "Lich Apprentice"],
-      elemental: ["Fire Sprite Swarm", "Stone Golem", "Wind Dancer", "Ice Construct"],
-      beast: ["Mutant Spider Queen", "Cave Bear Matriarch", "Hydra Spawn", "Griffin Fledgling"],
-      magical: ["Animated Armor", "Spell Wisp", "Rune Guardian", "Crystal Sentinel"],
-      demonic: ["Imp Overseer", "Shadow Fiend", "Hellhound", "Lesser Demon"],
-      construct: ["Clockwork Knight", "Iron Defender", "Jade Statue", "War Machine"],
-      dragon: ["Wyrmling", "Drake", "Kobold Dragon-Priest", "Wyvern"],
-    }
-  ];
-
+export function getGuardianArchetypes(theme: string): string[] {
   // Return a selection based on theme keywords
-  const themeCategories = [];
-  
+  const themeCategories: string[] = [];
+
   if (theme.includes('forest') || theme.includes('grove')) themeCategories.push('nature');
   if (theme.includes('tomb') || theme.includes('crypt')) themeCategories.push('undead');
   if (theme.includes('crystal') || theme.includes('fire')) themeCategories.push('elemental');

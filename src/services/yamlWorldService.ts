@@ -14,7 +14,7 @@ import {
   DatabaseConnectionData,
   DatabaseItemData,
   DatabaseCharacterData,
-  VALID_DIRECTIONS
+  VALID_DIRECTIONS,
 } from '../types/worldSchema';
 
 export class YamlWorldService {
@@ -35,15 +35,15 @@ export class YamlWorldService {
     try {
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const parsedData = yaml.load(fileContent) as unknown;
-      
+
       // Validate against schema
       const validatedData = WorldDefinitionSchema.parse(parsedData);
       return validatedData;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const validationErrors = error.errors.map(err => 
-          `${err.path.join('.')}: ${err.message}`
-        ).join(', ');
+        const validationErrors = error.errors
+          .map(err => `${err.path.join('.')}: ${err.message}`)
+          .join(', ');
         throw new Error(`YAML validation failed: ${validationErrors}`);
       }
       throw new Error(`Failed to parse YAML file ${filePath}: ${error}`);
@@ -98,7 +98,7 @@ export class YamlWorldService {
       this.validateWorldDefinition(worldDef);
 
       // Create world in database with transaction
-      const result = await this.prismaService.$transaction(async (prisma) => {
+      const result = await this.prismaService.$transaction(async prisma => {
         // Create game
         const game = await prisma.game.create({
           data: {
@@ -121,13 +121,13 @@ export class YamlWorldService {
         // Get created regions for ID mapping
         const createdRegions = await prisma.region.findMany({
           where: { gameId: game.id },
-          select: { id: true, name: true, theme: true }
+          select: { id: true, name: true, theme: true },
         });
 
         const regionIdMap = new Map<string, number>();
         worldDef.regions.forEach((regionDef, index) => {
-          const createdRegion = createdRegions.find(r => 
-            r.name === regionDef.name && r.theme === regionDef.theme
+          const createdRegion = createdRegions.find(
+            r => r.name === regionDef.name && r.theme === regionDef.theme
           );
           if (createdRegion) {
             regionIdMap.set(regionDef.id, createdRegion.id);
@@ -151,7 +151,7 @@ export class YamlWorldService {
         const createdRooms = await prisma.room.findMany({
           where: { gameId: game.id },
           select: { id: true, name: true },
-          orderBy: { id: 'asc' }
+          orderBy: { id: 'asc' },
         });
 
         const roomIdMap = new Map<string, number>();
@@ -164,13 +164,15 @@ export class YamlWorldService {
 
         // Find starting room
         const startingRoomDef = worldDef.rooms.find(room => room.starting_room);
-        const startingRoomId = startingRoomDef ? roomIdMap.get(startingRoomDef.id) : createdRooms[0]?.id;
+        const startingRoomId = startingRoomDef
+          ? roomIdMap.get(startingRoomDef.id)
+          : createdRooms[0]?.id;
 
         // Update game with starting room
         if (startingRoomId) {
           await prisma.game.update({
             where: { id: game.id },
-            data: { currentRoomId: startingRoomId }
+            data: { currentRoomId: startingRoomId },
           });
         }
 
@@ -213,8 +215,12 @@ export class YamlWorldService {
             roomId: roomIdMap.get(character.room_id)!,
             name: character.name,
             description: character.description,
-            sentiment: character.type === 'hostile' ? 'hostile' : 
-                      character.type === 'friendly' ? 'friendly' : 'neutral',
+            sentiment:
+              character.type === 'hostile'
+                ? 'hostile'
+                : character.type === 'friendly'
+                  ? 'friendly'
+                  : 'neutral',
             health: character.health || 20,
             maxHealth: character.health || 20,
             attack: character.attack || 5,
@@ -250,7 +256,7 @@ export class YamlWorldService {
   // Private validation methods
   private validateStartingRoom(worldDef: WorldDefinition, errors: ValidationError[]): void {
     const startingRooms = worldDef.rooms.filter(room => room.starting_room);
-    
+
     if (startingRooms.length === 0) {
       errors.push({
         field: 'rooms',
@@ -267,7 +273,7 @@ export class YamlWorldService {
 
   private validateRegionReferences(worldDef: WorldDefinition, errors: ValidationError[]): void {
     const regionIds = new Set(worldDef.regions.map(r => r.id));
-    
+
     worldDef.rooms.forEach(room => {
       if (room.region_id && !regionIds.has(room.region_id)) {
         errors.push({
@@ -281,7 +287,7 @@ export class YamlWorldService {
 
   private validateRoomReferences(worldDef: WorldDefinition, errors: ValidationError[]): void {
     const roomIds = new Set(worldDef.rooms.map(r => r.id));
-    
+
     worldDef.connections.forEach((conn, index) => {
       if (!roomIds.has(conn.from)) {
         errors.push({
@@ -290,7 +296,7 @@ export class YamlWorldService {
           value: conn.from,
         });
       }
-      
+
       if (conn.to && !roomIds.has(conn.to)) {
         errors.push({
           field: `connections[${index}].to`,
@@ -303,9 +309,9 @@ export class YamlWorldService {
 
   private validateItemReferences(worldDef: WorldDefinition, errors: ValidationError[]): void {
     if (!worldDef.items) return;
-    
+
     const roomIds = new Set(worldDef.rooms.map(r => r.id));
-    
+
     worldDef.items.forEach((item, index) => {
       // Only validate room_id if it's provided (since it's optional for loot items)
       if (item.room_id && !roomIds.has(item.room_id)) {
@@ -320,9 +326,9 @@ export class YamlWorldService {
 
   private validateCharacterReferences(worldDef: WorldDefinition, errors: ValidationError[]): void {
     if (!worldDef.characters) return;
-    
+
     const roomIds = new Set(worldDef.rooms.map(r => r.id));
-    
+
     worldDef.characters.forEach((character, index) => {
       if (!roomIds.has(character.room_id)) {
         errors.push({
@@ -337,29 +343,30 @@ export class YamlWorldService {
   private validateRoomConnectivity(worldDef: WorldDefinition, errors: ValidationError[]): void {
     const startingRoom = worldDef.rooms.find(room => room.starting_room);
     if (!startingRoom) return; // Already validated elsewhere
-    
+
     // Build connectivity graph
     const graph: ConnectivityGraph = {};
     worldDef.rooms.forEach(room => {
       graph[room.id] = { id: room.id, connections: [] };
     });
-    
+
     // Add connections (both directions for filled connections)
     worldDef.connections.forEach(conn => {
-      if (conn.to) { // Only filled connections for connectivity
+      if (conn.to) {
+        // Only filled connections for connectivity
         graph[conn.from].connections.push(conn.to);
       }
     });
-    
+
     // BFS to find reachable rooms
     const visited = new Set<string>();
     const queue = [startingRoom.id];
     visited.add(startingRoom.id);
-    
+
     while (queue.length > 0) {
       const currentRoom = queue.shift()!;
       const roomNode = graph[currentRoom];
-      
+
       roomNode.connections.forEach(connectedRoomId => {
         if (!visited.has(connectedRoomId)) {
           visited.add(connectedRoomId);
@@ -367,12 +374,12 @@ export class YamlWorldService {
         }
       });
     }
-    
+
     // Check if all rooms are reachable
     const unreachableRooms = worldDef.rooms
       .map(room => room.id)
       .filter(roomId => !visited.has(roomId));
-    
+
     if (unreachableRooms.length > 0) {
       errors.push({
         field: 'connections',
@@ -384,7 +391,7 @@ export class YamlWorldService {
 
   private validateConnectionDirections(worldDef: WorldDefinition, errors: ValidationError[]): void {
     worldDef.connections.forEach((conn, index) => {
-      if (!VALID_DIRECTIONS.includes(conn.direction as any)) {
+      if (!VALID_DIRECTIONS.includes(conn.direction as (typeof VALID_DIRECTIONS)[number])) {
         errors.push({
           field: `connections[${index}].direction`,
           message: `Invalid direction: ${conn.direction}. Valid directions: ${VALID_DIRECTIONS.join(', ')}`,
@@ -396,9 +403,9 @@ export class YamlWorldService {
 
   private validateRequiredKeys(worldDef: WorldDefinition, errors: ValidationError[]): void {
     if (!worldDef.items) return;
-    
+
     const itemIds = new Set(worldDef.items.map(item => item.id));
-    
+
     worldDef.connections.forEach((conn, index) => {
       if (conn.required_key && !itemIds.has(conn.required_key)) {
         errors.push({

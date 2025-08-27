@@ -64,25 +64,27 @@ export class GameEngine {
     try {
       // Try to find an existing game
       const existingGame = await this.detectExistingGames();
-      
+
       if (existingGame) {
         // Validate the existing game state
         const isValid = await this.validateGameState(existingGame);
-        
+
         if (isValid) {
           if (this.launchConfiguration.showLaunchMessages) {
             console.log('Loading Shadow Kingdom...');
-            console.log(`Resuming game (Last played: ${existingGame.updatedAt.toLocaleDateString()})`);
+            console.log(
+              `Resuming game (Last played: ${existingGame.updatedAt.toLocaleDateString()})`
+            );
           }
-          
+
           // Update play timestamp if configured
           if (this.launchConfiguration.updatePlayTimestamps) {
             await this.updateGameTimestamp(existingGame);
           }
-          
+
           // Trigger region generation if available
           await this.triggerInitialRegionGeneration(existingGame);
-          
+
           return { game: existingGame, isNewGame: false };
         } else {
           if (this.launchConfiguration.showLaunchMessages) {
@@ -90,19 +92,19 @@ export class GameEngine {
           }
         }
       }
-      
+
       // Create new game if no valid existing game found
       if (this.launchConfiguration.autoCreateGame) {
         if (this.launchConfiguration.showLaunchMessages && !existingGame) {
           console.log('Initializing Shadow Kingdom...');
           console.log('Creating new adventure...');
         }
-        
+
         const newGame = await this.createNewGame();
-        
+
         // Trigger region generation for new game
         await this.triggerInitialRegionGeneration(newGame);
-        
+
         return { game: newGame, isNewGame: true };
       } else {
         throw new Error('No valid game found and auto-creation is disabled');
@@ -121,7 +123,7 @@ export class GameEngine {
       const mostRecentGame = await this.prismaService.client.game.findFirst({
         orderBy: { updatedAt: 'desc' },
       });
-      
+
       return mostRecentGame;
     } catch (error) {
       if (error instanceof Error) {
@@ -133,16 +135,19 @@ export class GameEngine {
             true
           );
         }
-        
+
         // Database corruption issues
-        if (error.message.includes('SQLITE_CORRUPT') || error.message.includes('database disk image is malformed')) {
+        if (
+          error.message.includes('SQLITE_CORRUPT') ||
+          error.message.includes('database disk image is malformed')
+        ) {
           throw new GameEngineError(
             'Database corruption detected. Game data may be corrupted.',
             'DATABASE_CORRUPTED',
             true
           );
         }
-        
+
         // Connection timeout or busy database
         if (error.message.includes('SQLITE_BUSY') || error.message.includes('database is locked')) {
           throw new GameEngineError(
@@ -152,9 +157,13 @@ export class GameEngine {
           );
         }
       }
-      
+
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new GameEngineError(`Failed to detect existing games: ${errorMessage}`, 'UNKNOWN_DATABASE_ERROR', false);
+      throw new GameEngineError(
+        `Failed to detect existing games: ${errorMessage}`,
+        'UNKNOWN_DATABASE_ERROR',
+        false
+      );
     }
   }
 
@@ -167,15 +176,15 @@ export class GameEngine {
       if (!game.currentRoomId) {
         return false;
       }
-      
+
       // Verify the current room exists and belongs to this game
       const currentRoom = await this.prismaService.client.room.findFirst({
-        where: { 
-          id: game.currentRoomId, 
-          gameId: game.id 
+        where: {
+          id: game.currentRoomId,
+          gameId: game.id,
         },
       });
-      
+
       return currentRoom !== null;
     } catch (error) {
       // If validation fails due to database error, consider game invalid
@@ -190,7 +199,7 @@ export class GameEngine {
     try {
       // Get the starting room from the seeded world
       const startingRoom = await this.getStartingRoom();
-      
+
       // Create the game record
       const newGame = await this.prismaService.client.game.create({
         data: {
@@ -200,10 +209,10 @@ export class GameEngine {
           generationCooldownMs: 10000,
         },
       });
-      
+
       // Initialize game state
       await this.gameStateManager.initializeGame(newGame);
-      
+
       return newGame;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -222,11 +231,11 @@ export class GameEngine {
         },
         orderBy: { createdAt: 'desc' }, // Get the most recent in case of multiple worlds
       });
-      
+
       if (!startingRoom) {
         throw new Error('No starting room found in database. Please seed the world first.');
       }
-      
+
       return startingRoom;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -296,13 +305,14 @@ export class GameEngine {
           await this.prismaService.client.$connect();
           return await this.selectGameForLaunch();
 
-        case 'DATABASE_CORRUPTED':
+        case 'DATABASE_CORRUPTED': {
           if (this.launchConfiguration.showLaunchMessages) {
             console.log('Database corruption detected. Creating fresh game...');
           }
           // Skip existing games and create new one
           const freshGame = await this.createNewGame();
           return { game: freshGame, isNewGame: true };
+        }
 
         case 'DATABASE_BUSY':
           if (this.launchConfiguration.showLaunchMessages) {
@@ -376,10 +386,10 @@ export class GameEngine {
     }
 
     // Check if we're near a region boundary
-    // This is a simplified check - in a full implementation, 
+    // This is a simplified check - in a full implementation,
     // we'd check room connections to see if any lead to undefined regions
     const room = await this.prismaService.client.room.findFirst({
-      where: { id: currentRoomId }
+      where: { id: currentRoomId },
     });
 
     if (!room || !room.regionId) {
@@ -395,7 +405,7 @@ export class GameEngine {
   /**
    * Get the status of region generation
    */
-  getRegionGenerationStatus(gameId: number, direction: string): any {
+  getRegionGenerationStatus(gameId: number, direction: string): unknown {
     if (!this.claudeRegionService) {
       return null;
     }
@@ -415,10 +425,10 @@ export class GameEngine {
       if (!game.currentRoomId) {
         return;
       }
-      
+
       // Get current room's region
       const currentRoom = await this.prismaService.client.room.findFirst({
-        where: { id: game.currentRoomId }
+        where: { id: game.currentRoomId },
       });
 
       if (!currentRoom?.regionId) {

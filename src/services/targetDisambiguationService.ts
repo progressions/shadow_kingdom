@@ -125,10 +125,10 @@ export class TargetDisambiguationService {
     return {
       roomId: currentRoom.id,
       items: items.map(item => ({ id: item.id, name: item.name })),
-      characters: characters.map(char => ({ 
-        id: char.id, 
+      characters: characters.map(char => ({
+        id: char.id,
         name: char.name,
-        role: char.sentiment === 'hostile' ? 'hostile' : 'npc'
+        role: char.sentiment === 'hostile' ? 'hostile' : 'npc',
       })),
       exits: connections.map(conn => conn.direction),
       roomDescription: currentRoom.description,
@@ -161,10 +161,13 @@ export class TargetDisambiguationService {
   /**
    * Resolve inventory targets for drop commands
    */
-  private async resolveInventoryTargets(all: boolean, targetString?: string): Promise<TargetResolution> {
+  private async resolveInventoryTargets(
+    all: boolean,
+    targetString?: string
+  ): Promise<TargetResolution> {
     // Get current inventory
     const inventoryIds = this.gameStateManager.getInventory();
-    
+
     if (inventoryIds.length === 0) {
       return {
         targets: [],
@@ -176,8 +179,8 @@ export class TargetDisambiguationService {
     // Fetch item details
     const items = await this.prismaService.client.item.findMany({
       where: {
-        id: { in: inventoryIds }
-      }
+        id: { in: inventoryIds },
+      },
     });
 
     if (all) {
@@ -202,36 +205,39 @@ export class TargetDisambiguationService {
     }
 
     const normalizedTarget = targetString.toLowerCase().trim();
-    
+
     // Try exact match
-    const exactMatch = items.find(item => 
-      item.name.toLowerCase() === normalizedTarget
-    );
-    
+    const exactMatch = items.find(item => item.name.toLowerCase() === normalizedTarget);
+
     if (exactMatch) {
       return {
-        targets: [{
-          type: 'item' as const,
-          id: exactMatch.id,
-          name: exactMatch.name,
-        }],
+        targets: [
+          {
+            type: 'item' as const,
+            id: exactMatch.id,
+            name: exactMatch.name,
+          },
+        ],
         confidence: 1.0,
       };
     }
 
     // Try partial match
-    const partialMatches = items.filter(item =>
-      item.name.toLowerCase().includes(normalizedTarget) ||
-      normalizedTarget.includes(item.name.toLowerCase())
+    const partialMatches = items.filter(
+      item =>
+        item.name.toLowerCase().includes(normalizedTarget) ||
+        normalizedTarget.includes(item.name.toLowerCase())
     );
 
     if (partialMatches.length === 1) {
       return {
-        targets: [{
-          type: 'item' as const,
-          id: partialMatches[0].id,
-          name: partialMatches[0].name,
-        }],
+        targets: [
+          {
+            type: 'item' as const,
+            id: partialMatches[0].id,
+            name: partialMatches[0].name,
+          },
+        ],
         confidence: 0.85,
       };
     } else if (partialMatches.length > 1) {
@@ -348,9 +354,7 @@ export class TargetDisambiguationService {
     }
 
     // Find matches
-    const exactMatches = candidates.filter(
-      c => c.name.toLowerCase() === normalizedTarget
-    );
+    const exactMatches = candidates.filter(c => c.name.toLowerCase() === normalizedTarget);
 
     if (exactMatches.length === 1) {
       // Perfect match
@@ -369,9 +373,10 @@ export class TargetDisambiguationService {
     }
 
     // Try partial matching
-    const partialMatches = candidates.filter(c =>
-      c.name.toLowerCase().includes(normalizedTarget) ||
-      normalizedTarget.includes(c.name.toLowerCase())
+    const partialMatches = candidates.filter(
+      c =>
+        c.name.toLowerCase().includes(normalizedTarget) ||
+        normalizedTarget.includes(c.name.toLowerCase())
     );
 
     if (partialMatches.length === 1) {
@@ -391,9 +396,7 @@ export class TargetDisambiguationService {
     }
 
     // Try fuzzy matching (starting with)
-    const fuzzyMatches = candidates.filter(c =>
-      c.name.toLowerCase().startsWith(normalizedTarget)
-    );
+    const fuzzyMatches = candidates.filter(c => c.name.toLowerCase().startsWith(normalizedTarget));
 
     if (fuzzyMatches.length === 1) {
       return {
@@ -422,23 +425,38 @@ export class TargetDisambiguationService {
    */
   async parseCommand(input: string): Promise<ParseResult> {
     const normalizedInput = input.trim().toLowerCase();
-    
+
     // Check for command aliases first
     const aliasedCommand = this.commandAliases[normalizedInput] || normalizedInput;
-    
+
     // Split into words
     const words = aliasedCommand.split(/\s+/);
-    
+
     if (words.length === 0) {
       return this.createFailureResult(input, 'Empty command');
     }
 
     const verb = words[0];
-    
+
     // Check if this is a known command verb
-    const knownVerbs = ['take', 'pickup', 'get', 'drop', 'discard', 'put', 'attack', 'fight', 
-                       'talk', 'speak', 'go', 'move', 'walk', 'look', 'examine'];
-    
+    const knownVerbs = [
+      'take',
+      'pickup',
+      'get',
+      'drop',
+      'discard',
+      'put',
+      'attack',
+      'fight',
+      'talk',
+      'speak',
+      'go',
+      'move',
+      'walk',
+      'look',
+      'examine',
+    ];
+
     if (!knownVerbs.includes(verb)) {
       return this.createFailureResult(input, `Unknown command verb: ${verb}`);
     }
@@ -456,14 +474,14 @@ export class TargetDisambiguationService {
 
     // Extract target (everything after the verb)
     const targetString = words.slice(1).join(' ');
-    
+
     if (!targetString && verb !== 'look') {
       return this.createFailureResult(input, 'No target specified');
     }
 
     // Resolve the target
     const resolution = await this.resolveTarget(targetString, verb);
-    
+
     // Determine success based on confidence
     if (resolution.confidence >= 0.8) {
       return {
@@ -471,9 +489,7 @@ export class TargetDisambiguationService {
         command: {
           verb,
           target: targetString,
-          targetIds: resolution.targets
-            .filter(t => t.id !== undefined)
-            .map(t => t.id!),
+          targetIds: resolution.targets.filter(t => t.id !== undefined).map(t => t.id!),
           confidence: resolution.confidence,
         },
       };
@@ -481,7 +497,7 @@ export class TargetDisambiguationService {
 
     // Create failure context for AI handoff
     const context = await this.buildRoomContext();
-    
+
     return {
       success: false,
       failureContext: {
@@ -505,7 +521,7 @@ export class TargetDisambiguationService {
    */
   private async createFailureResult(input: string, issue: string): Promise<ParseResult> {
     const context = await this.buildRoomContext();
-    
+
     return {
       success: false,
       failureContext: {

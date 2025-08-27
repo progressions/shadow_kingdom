@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useApp, useStdout } from 'ink';
+import type { Room, Game } from '@prisma/client';
+import type { GameSession } from '../services/gameStateManager';
 import { GamePane } from './GamePane';
 import { InputBar } from './InputBar';
 import { StatusPane } from './StatusPane';
@@ -22,13 +24,13 @@ interface GameState {
   isInitialized: boolean;
   isLoading: boolean;
   error: string | null;
-  currentRoom: any | null;
-  gameSession: any | null;
+  currentRoom: Room | null;
+  gameSession: GameSession | null;
 }
 
-export const GameApplication: React.FC<GameApplicationProps> = ({ 
+export const GameApplication: React.FC<GameApplicationProps> = ({
   programmaticCommand,
-  debugMode = false 
+  debugMode = false,
 }) => {
   // Core application state
   const [gameState, setGameState] = useState<GameState>({
@@ -42,7 +44,14 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   // UI state
   const [messages, setMessages] = useState<Message[]>([]);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
-  const [statusInfo, setStatusInfo] = useState<any>({});
+  const [statusInfo, setStatusInfo] = useState<{
+    status?: string;
+    statusLines?: string[];
+    version?: string;
+    mode?: string;
+    connection?: string;
+    [key: string]: string | number | string[] | undefined;
+  }>({});
   const [navigationHints, setNavigationHints] = useState<string[]>([]);
   const [terminalSize, setTerminalSize] = useState({ width: 80, height: 24 });
 
@@ -73,14 +82,14 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   // Don't use useCallback here to avoid dependency issues
   const addMessage = (message: string | string[], type: MessageType = 'RESPONSE'): void => {
     const messageStrings = Array.isArray(message) ? message : [message];
-    
+
     // Update UI state with scrollback buffer management
     setMessages(prev => {
       // Create Message objects for new messages
       const messageObjects = messageStrings.map(content => createMessage(content));
       // Use buffer utility for automatic trimming
       const updatedMessages = addMessagesToBuffer(prev, messageObjects);
-      
+
       // Log buffer stats in debug mode
       if (debugMode) {
         const stats = getBufferStats(updatedMessages);
@@ -88,16 +97,18 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
           console.log('[DEBUG] Message buffer is full, trimming old messages');
         }
       }
-      
+
       return updatedMessages;
     });
-    
+
     // Debug output
     if (process.env.DEBUG_LOGGING === 'true') {
-      console.log(`[DEBUG-APP] addMessage called with ${messageStrings.length} messages, type: ${type}`);
+      console.log(
+        `[DEBUG-APP] addMessage called with ${messageStrings.length} messages, type: ${type}`
+      );
       console.log(`[DEBUG-APP] loggingService exists: ${!!servicesRef.current.loggingService}`);
     }
-    
+
     // Log to file if logging service is available
     // Access ref directly to get current value
     if (servicesRef.current.loggingService && servicesRef.current.loggingService.isEnabled()) {
@@ -117,12 +128,12 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   // Handle terminal resize
   useEffect(() => {
     if (!stdout) return;
-    
+
     const updateSize = () => {
       if (!stdout) return;
       setTerminalSize({
         width: stdout.columns || 80,
-        height: stdout.rows || 24
+        height: stdout.rows || 24,
       });
     };
 
@@ -145,12 +156,12 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
       // Initialize services in dependency order
       const prismaService = PrismaService.getInstance();
-      
+
       // Initialize database if needed (create, schema, seed)
       await prismaService.initialize();
-      
+
       const gameStateManager = new GameStateManager(prismaService);
-      
+
       // Initialize ClaudeRegionService if Claude API is available
       let claudeRegionService: ClaudeRegionService | undefined;
       if (process.env.CLAUDE_API_KEY || process.env.CLAUDE_MOCK_MODE === 'true') {
@@ -161,9 +172,13 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       } else if (debugMode) {
         console.log('ClaudeRegionService not initialized (no API key or mock mode)');
       }
-      
+
       const gameEngine = new GameEngine(prismaService, gameStateManager, claudeRegionService);
-      const navigationEngine = new RoomNavigationEngine(gameStateManager, prismaService, claudeRegionService);
+      const navigationEngine = new RoomNavigationEngine(
+        gameStateManager,
+        prismaService,
+        claudeRegionService
+      );
       const commandRouter = new CommandRouter(gameStateManager, prismaService);
 
       // Store service references
@@ -205,13 +220,16 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       });
 
       // Show welcome message and initial room
-      addMessage([
-        '=== Shadow Kingdom ===',
-        '',
-        'Welcome to your adventure! Type "help" for available commands.',
-        ''
-      ], 'SYSTEM');
-      
+      addMessage(
+        [
+          '=== Shadow Kingdom ===',
+          '',
+          'Welcome to your adventure! Type "help" for available commands.',
+          '',
+        ],
+        'SYSTEM'
+      );
+
       // Display the initial room description
       if (currentRoom) {
         const roomInfo = await gameStateManager.getCurrentRoomInfo();
@@ -227,21 +245,20 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       if (programmaticCommand) {
         await handleProgrammaticCommand(programmaticCommand);
       }
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to initialize game:', error);
-      
+
       // Log the error
       const { loggingService } = servicesRef.current;
       if (loggingService && loggingService.isEnabled()) {
         await loggingService.logMessage(`Failed to start game: ${errorMessage}`, 'ERROR');
       }
-      
+
       setGameState(prev => ({
         ...prev,
         isLoading: false,
-        error: `Failed to start game: ${errorMessage}`
+        error: `Failed to start game: ${errorMessage}`,
       }));
     }
   }, [programmaticCommand, debugMode]);
@@ -286,7 +303,6 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
         setStatusInfo({ statusLines });
       }
-
     } catch (error) {
       if (debugMode) {
         console.error('Error updating game state:', error);
@@ -295,147 +311,155 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   }, [debugMode]);
 
   // Handle programmatic command execution
-  const handleProgrammaticCommand = useCallback(async (command: string): Promise<void> => {
-    const { commandRouter } = servicesRef.current;
-    if (!commandRouter) return;
+  const handleProgrammaticCommand = useCallback(
+    async (command: string): Promise<void> => {
+      const { commandRouter } = servicesRef.current;
+      if (!commandRouter) return;
 
-    try {
-      addMessage(`> ${command}`, 'COMMAND');
-      
-      const result = await commandRouter.executeCommand(command);
-      
-      if (result.success) {
-        // Log and display response - split into lines for proper display
-        const responseLines = result.response.split('\n');
-        responseLines.forEach(line => addMessage(line, 'RESPONSE'));
-        
-        // Handle quit command - exit immediately for programmatic mode
-        if (result.metadata?.shouldExit) {
-          // Quick cleanup for programmatic mode
-          const { prismaService } = servicesRef.current;
-          if (prismaService) {
-            await prismaService.disconnect().catch(() => {});
+      try {
+        addMessage(`> ${command}`, 'COMMAND');
+
+        const result = await commandRouter.executeCommand(command);
+
+        if (result.success) {
+          // Log and display response - split into lines for proper display
+          const responseLines = result.response.split('\n');
+          responseLines.forEach(line => addMessage(line, 'RESPONSE'));
+
+          // Handle quit command - exit immediately for programmatic mode
+          if (result.metadata?.shouldExit) {
+            // Quick cleanup for programmatic mode
+            const { prismaService } = servicesRef.current;
+            if (prismaService) {
+              await prismaService.disconnect().catch(() => {});
+            }
+            setTimeout(() => {
+              exit();
+              // Force exit if needed
+              setTimeout(() => process.exit(0), 100);
+            }, 0);
+            return;
           }
-          setTimeout(() => {
-            exit();
-            // Force exit if needed
-            setTimeout(() => process.exit(0), 100);
-          }, 0);
-          return;
-        }
-        
-        // Update state if room changed
-        if (result.metadata?.roomChanged) {
-          await updateGameState();
-        }
-      } else {
-        // Log and display error
-        addMessage(result.response, 'ERROR');
-      }
 
-      // Exit after programmatic command execution
-      setTimeout(() => exit(), 100);
-      
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      addMessage(`Error: ${errorMsg}`, 'ERROR');
-      setTimeout(() => exit(), 100);
-    }
-  }, [exit]);
+          // Update state if room changed
+          if (result.metadata?.roomChanged) {
+            await updateGameState();
+          }
+        } else {
+          // Log and display error
+          addMessage(result.response, 'ERROR');
+        }
+
+        // Exit after programmatic command execution
+        setTimeout(() => exit(), 100);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        addMessage(`Error: ${errorMsg}`, 'ERROR');
+        setTimeout(() => exit(), 100);
+      }
+    },
+    [exit]
+  );
 
   // Handle interactive command submission
-  const handleCommandSubmit = useCallback(async (command: string): Promise<void> => {
-    const { commandRouter, gameStateManager } = servicesRef.current;
-    if (!commandRouter || !gameStateManager) {
-      addMessage('Game services not available. Please wait...', 'ERROR');
-      return;
-    }
+  const handleCommandSubmit = useCallback(
+    async (command: string): Promise<void> => {
+      const { commandRouter, gameStateManager } = servicesRef.current;
+      if (!commandRouter || !gameStateManager) {
+        addMessage('Game services not available. Please wait...', 'ERROR');
+        return;
+      }
 
-    try {
-      // Log the command
-      addMessage(`> ${command}`, 'COMMAND');
-      
-      // Execute the command through the router
-      const result = await commandRouter.executeCommand(command);
-      
-      if (result.success) {
-        // Display the response - split into lines for proper display
-        const responseLines = result.response.split('\n');
-        responseLines.forEach(line => addMessage(line, 'RESPONSE'));
-        
-        // Handle quit command
-        if (result.metadata?.shouldExit) {
-          addMessage('Shutting down...', 'SYSTEM');
-          
-          // Ensure cleanup happens before exit
-          const performQuickCleanup = async () => {
-            try {
-              const { prismaService, loggingService, claudeRegionService } = servicesRef.current;
-              
-              // Stop Claude region generation if active
-              if (claudeRegionService) {
-                await claudeRegionService.cleanup().catch(() => {});
+      try {
+        // Log the command
+        addMessage(`> ${command}`, 'COMMAND');
+
+        // Execute the command through the router
+        const result = await commandRouter.executeCommand(command);
+
+        if (result.success) {
+          // Display the response - split into lines for proper display
+          const responseLines = result.response.split('\n');
+          responseLines.forEach(line => addMessage(line, 'RESPONSE'));
+
+          // Handle quit command
+          if (result.metadata?.shouldExit) {
+            addMessage('Shutting down...', 'SYSTEM');
+
+            // Ensure cleanup happens before exit
+            const performQuickCleanup = async () => {
+              try {
+                const { prismaService, loggingService, claudeRegionService } = servicesRef.current;
+
+                // Stop Claude region generation if active
+                if (claudeRegionService) {
+                  await claudeRegionService.cleanup().catch(() => {});
+                }
+
+                if (loggingService) {
+                  await loggingService.logSessionEnd().catch(() => {});
+                }
+
+                if (prismaService) {
+                  await prismaService.disconnect().catch(() => {});
+                }
+              } catch (error) {
+                // Ignore errors during quick cleanup
               }
-              
-              if (loggingService) {
-                await loggingService.logSessionEnd().catch(() => {});
-              }
-              
-              if (prismaService) {
-                await prismaService.disconnect().catch(() => {});
-              }
-            } catch (error) {
-              // Ignore errors during quick cleanup
-            }
-            
-            // Force immediate exit
-            process.exit(0);
-          };
-          
-          performQuickCleanup();
-          return;
+
+              // Force immediate exit
+              process.exit(0);
+            };
+
+            performQuickCleanup();
+            return;
+          }
+
+          // Update state if room changed
+          if (result.metadata?.roomChanged) {
+            await updateGameState();
+          }
+        } else {
+          // Display error message
+          addMessage(result.response, 'ERROR');
         }
-        
-        // Update state if room changed
-        if (result.metadata?.roomChanged) {
-          await updateGameState();
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        addMessage(`Error: ${errorMsg}`, 'ERROR');
+
+        if (debugMode) {
+          console.error('Command execution error:', error);
         }
-      } else {
-        // Display error message
-        addMessage(result.response, 'ERROR');
       }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      addMessage(`Error: ${errorMsg}`, 'ERROR');
-      
-      if (debugMode) {
-        console.error('Command execution error:', error);
-      }
-    }
-  }, [addMessage, exit, updateGameState, debugMode]);
+    },
+    [addMessage, exit, updateGameState, debugMode]
+  );
 
   // Update status display
-  const updateStatusDisplay = useCallback((session: any, room: any): void => {
-    if (!session || !room) {
-      setStatusInfo({ status: 'No active session' });
-      return;
-    }
+  const updateStatusDisplay = useCallback(
+    (session: GameSession | null, room: Room | null): void => {
+      if (!session || !room) {
+        setStatusInfo({ status: 'No active session' });
+        return;
+      }
 
-    const statusLines = [
-      `Shadow Kingdom - Game ${session.gameId}`,
-      `Location: ${room.name}`,
-      `Region: ${room.regionId || 'Unknown'}`,
-    ];
+      const statusLines = [
+        `Shadow Kingdom - Game ${session.gameId}`,
+        `Location: ${room.name}`,
+        `Region: ${room.regionId || 'Unknown'}`,
+      ];
 
-    // Add navigation hints
-    if (navigationHints && navigationHints.length > 0) {
-      statusLines.push('---');
-      // Show all navigation hints to prevent truncation
-      statusLines.push(...navigationHints);
-    }
+      // Add navigation hints
+      if (navigationHints && navigationHints.length > 0) {
+        statusLines.push('---');
+        // Show all navigation hints to prevent truncation
+        statusLines.push(...navigationHints);
+      }
 
-    setStatusInfo({ statusLines });
-  }, [navigationHints]);
+      setStatusInfo({ statusLines });
+    },
+    [navigationHints]
+  );
 
   // Initialize on mount
   useEffect(() => {
@@ -443,8 +467,9 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
     // Cleanup on unmount
     return () => {
-      const { gameEngine, gameStateManager, navigationEngine, prismaService, loggingService } = servicesRef.current;
-      
+      const { gameEngine, gameStateManager, navigationEngine, prismaService, loggingService } =
+        servicesRef.current;
+
       // Perform cleanup operations in sequence to avoid race conditions
       // GameStateManager needs to save state before database disconnects
       const performCleanup = async () => {
@@ -457,7 +482,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
               }
             });
           }
-          
+
           // Save game state before disconnecting database
           if (gameStateManager?.shutdown) {
             await gameStateManager.shutdown().catch(error => {
@@ -466,7 +491,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
               }
             });
           }
-          
+
           // Cleanup navigation engine
           if (navigationEngine?.cleanup) {
             await navigationEngine.cleanup().catch(error => {
@@ -475,7 +500,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
               }
             });
           }
-          
+
           // Shutdown game engine
           if (gameEngine?.shutdown) {
             await gameEngine.shutdown().catch(error => {
@@ -484,7 +509,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
               }
             });
           }
-          
+
           // Finally disconnect database
           if (prismaService?.disconnect) {
             await prismaService.disconnect().catch(error => {
@@ -493,7 +518,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
               }
             });
           }
-          
+
           // Shutdown logging service last
           if (loggingService?.shutdown) {
             await loggingService.shutdown().catch(error => {
@@ -508,7 +533,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
           }
         }
       };
-      
+
       performCleanup();
     };
   }, [initializeServices, debugMode]);
@@ -519,7 +544,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   }, [navigationHints, gameState.gameSession, gameState.currentRoom, updateStatusDisplay]);
 
   // Calculate layout
-  const statusHeight = statusInfo.statusLines ? statusInfo.statusLines.length : 1;
+  const statusHeight = Array.isArray(statusInfo.statusLines) ? statusInfo.statusLines.length : 1;
   const inputBarHeight = 3;
   const fixedBottomHeight = inputBarHeight + statusHeight;
   const gameAreaHeight = Math.max(1, terminalSize.height - fixedBottomHeight);
@@ -527,15 +552,17 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   // Show loading state
   if (gameState.isLoading) {
     return (
-      <Box flexDirection="column" height="100%" width="100%" justifyContent="center" alignItems="center">
+      <Box
+        flexDirection="column"
+        height="100%"
+        width="100%"
+        justifyContent="center"
+        alignItems="center"
+      >
         <Box marginBottom={1}>
           <Text>📚 Loading Shadow Kingdom...</Text>
         </Box>
-        {debugMode && (
-          <Text color="gray">
-            Initializing services and launching game...
-          </Text>
-        )}
+        {debugMode && <Text color="gray">Initializing services and launching game...</Text>}
       </Box>
     );
   }
@@ -543,13 +570,17 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   // Show error state
   if (gameState.error) {
     return (
-      <Box flexDirection="column" height="100%" width="100%" justifyContent="center" alignItems="center">
+      <Box
+        flexDirection="column"
+        height="100%"
+        width="100%"
+        justifyContent="center"
+        alignItems="center"
+      >
         <Box marginBottom={1}>
-          <Text color="red">⚠️  {gameState.error}</Text>
+          <Text color="red">⚠️ {gameState.error}</Text>
         </Box>
-        <Text color="gray">
-          Please try restarting the application.
-        </Text>
+        <Text color="gray">Please try restarting the application.</Text>
         {debugMode && (
           <Box marginTop={1}>
             <Text color="dim">Press Ctrl+C to exit</Text>
@@ -574,10 +605,10 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       <Box flexGrow={1} width="100%" flexDirection="column" flexShrink={1}>
         <GamePane messages={messages} maxLines={gameAreaHeight} />
       </Box>
-      
+
       {/* Bottom section - Input Bar and Status Pane */}
       <Box flexShrink={0} width="100%" flexDirection="column" flexGrow={0}>
-        <InputBar 
+        <InputBar
           onSubmit={handleCommandSubmit}
           placeholder="Enter command..."
           commandHistory={commandHistory}

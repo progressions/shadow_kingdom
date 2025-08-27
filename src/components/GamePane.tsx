@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react'
-import { Box, Text } from 'ink'
-import { Message } from '../types/Message'
+import React, { useMemo } from 'react';
+import { Box, Text } from 'ink';
+import { Message } from '../types/Message';
 
 interface GamePaneProps {
-  messages: Message[]
-  maxLines?: number
-  width?: number
+  messages: Message[];
+  maxLines?: number;
+  width?: number;
 }
 
 export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width }) => {
@@ -19,7 +19,7 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width })
     }
     return messages;
   }, [messages, maxLines]);
-  
+
   // Process messages to handle special formatting
   const formatMessage = (message: Message) => {
     const content = message.content;
@@ -46,15 +46,15 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width })
     // Default formatting
     return { text: content, color: undefined };
   };
-  
+
   return (
     <Box flexDirection="column" padding={0} width={width}>
       {displayMessages.map((message, index) => {
         const formatted = formatMessage(message);
         return (
           <Box key={message.id}>
-            <Text 
-              color={formatted.color} 
+            <Text
+              color={formatted.color}
               bold={formatted.bold}
               dimColor={formatted.dimColor}
               wrap="wrap"
@@ -65,5 +65,5 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width })
         );
       })}
     </Box>
-  )
-}
+  );
+};

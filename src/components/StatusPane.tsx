@@ -1,15 +1,15 @@
-import React, { useMemo } from 'react'
-import { Box, Text } from 'ink'
+import React, { useMemo } from 'react';
+import { Box, Text } from 'ink';
 
 interface StatusPaneProps {
-  status?: string
+  status?: string;
   statusInfo?: {
-    version?: string
-    mode?: string
-    connection?: string
-    [key: string]: any
-  }
-  statusLines?: string[]
+    version?: string;
+    mode?: string;
+    connection?: string;
+    [key: string]: string | number | undefined;
+  };
+  statusLines?: string[];
 }
 
 export const StatusPane: React.FC<StatusPaneProps> = ({ status, statusInfo, statusLines }) => {
@@ -17,20 +17,20 @@ export const StatusPane: React.FC<StatusPaneProps> = ({ status, statusInfo, stat
   const contentHeight = useMemo(() => {
     let height = 1;
     if (statusLines) {
-      height = Math.max(2, statusLines.length)
+      height = Math.max(2, statusLines.length);
     } else if (status) {
       // Count newlines in status string + 1
-      height = Math.max(1, status.split('\n').length)
+      height = Math.max(1, status.split('\n').length);
     } else if (statusInfo) {
       // Count number of info items
-      height = Math.max(1, Object.keys(statusInfo).length)
+      height = Math.max(1, Object.keys(statusInfo).length);
     }
     // Ensure minimum height and maximum reasonable height
     return Math.min(Math.max(1, height), 10);
-  }, [status, statusInfo, statusLines])
+  }, [status, statusInfo, statusLines]);
 
   return (
-    <Box 
+    <Box
       height={contentHeight}
       paddingX={1}
       width="100%"
@@ -60,10 +60,8 @@ export const StatusPane: React.FC<StatusPaneProps> = ({ status, statusInfo, stat
           </Text>
         ))
       ) : (
-        <Text color="gray">
-          Ready
-        </Text>
+        <Text color="gray">Ready</Text>
       )}
     </Box>
-  )
-}
+  );
+};

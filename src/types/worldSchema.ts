@@ -94,7 +94,7 @@ export interface WorldCreationResult {
 export interface ValidationError {
   field: string;
   message: string;
-  value?: any;
+  value?: unknown;
 }
 
 // Room connectivity validation types
@@ -164,16 +164,28 @@ export interface DatabaseCharacterData {
 
 // Constants for validation
 export const VALID_DIRECTIONS = [
-  'north', 'south', 'east', 'west',
-  'up', 'down',
-  'northeast', 'northwest', 'southeast', 'southwest',
-  'in', 'out'
+  'north',
+  'south',
+  'east',
+  'west',
+  'up',
+  'down',
+  'northeast',
+  'northwest',
+  'southeast',
+  'southwest',
+  'in',
+  'out',
 ] as const;
 
 export const VALID_ITEM_TYPES = [
-  'weapon', 'armor', 'consumable', 'key', 'treasure', 'book', 'tool'
+  'weapon',
+  'armor',
+  'consumable',
+  'key',
+  'treasure',
+  'book',
+  'tool',
 ] as const;
 
-export const VALID_CHARACTER_TYPES = [
-  'friendly', 'hostile', 'neutral'
-] as const;
+export const VALID_CHARACTER_TYPES = ['friendly', 'hostile', 'neutral'] as const;

@@ -4,12 +4,12 @@ import { GameStateManager } from './gameStateManager';
 import { Room, Region } from '@prisma/client';
 import crypto from 'crypto';
 import { RegionPromptTemplates, RegionThemePromptContext } from './prompts/regionPrompts';
-import { 
-  RegionResponseValidator, 
-  RegionThemeSchema, 
+import {
+  RegionResponseValidator,
+  RegionThemeSchema,
   RoomSchema,
   generateFallbackTheme,
-  generateFallbackRooms 
+  generateFallbackRooms,
 } from './validators/regionValidators';
 
 interface RegionThemeContext {
@@ -89,13 +89,13 @@ export class ClaudeRegionService extends ClaudeService {
     sourceRoomId?: number
   ): Promise<void> {
     const generationKey = `${gameId}_${direction}`;
-    
+
     // Use lock to prevent race conditions
     if (this.generationLocks.has(generationKey)) {
       console.log(`Region generation already locked for ${generationKey}`);
       return;
     }
-    
+
     // Check existing status
     const existingStatus = this.generationQueue.get(generationKey);
     if (existingStatus && existingStatus.phase !== 'failed') {
@@ -105,7 +105,7 @@ export class ClaudeRegionService extends ClaudeService {
 
     // Acquire lock and start generation
     this.generationLocks.add(generationKey);
-    
+
     // Start generation in background
     this.generationQueue.set(generationKey, {
       phase: 'generating-theme',
@@ -113,7 +113,12 @@ export class ClaudeRegionService extends ClaudeService {
     });
 
     // Run generation asynchronously
-    this.activeGeneration = this.generateRegionAsync(gameId, previousRegionId, direction, sourceRoomId)
+    this.activeGeneration = this.generateRegionAsync(
+      gameId,
+      previousRegionId,
+      direction,
+      sourceRoomId
+    )
       .catch(error => {
         console.error(`Region generation failed for ${generationKey}:`, error);
         this.generationQueue.set(generationKey, {
@@ -132,7 +137,7 @@ export class ClaudeRegionService extends ClaudeService {
    */
   private async generateRegionTheme(context: RegionThemeContext): Promise<RegionThemeResponse> {
     const cacheKey = this.generateRegionCacheKey('region-theme', context);
-    const cached = this.getRegionCachedResponse(cacheKey);
+    const cached = this.getRegionCachedResponse(cacheKey) as RegionThemeResponse | null;
     if (cached) {
       console.log(`Using cached theme for ${context.direction}`);
       return cached;
@@ -147,7 +152,7 @@ export class ClaudeRegionService extends ClaudeService {
 
     // Get existing regions for context
     const existingRegions = await this.getExistingRegionThemes(context.worldSeed || '');
-    
+
     // Build prompt context
     const promptContext: RegionThemePromptContext = {
       previousRegion: context.previousRegion,
@@ -158,39 +163,39 @@ export class ClaudeRegionService extends ClaudeService {
 
     const systemPrompt = RegionPromptTemplates.getThemeSystemPrompt();
     const userPrompt = RegionPromptTemplates.getThemeUserPrompt(promptContext);
-    
+
     if (!this.isShuttingDown) {
       console.log(`Requesting theme generation from Claude API...`);
     }
     const startTime = Date.now();
-    
+
     const response = await this.makeRegionRequestWithRetry(userPrompt, systemPrompt);
-    
+
     const generationTime = Date.now() - startTime;
     if (!this.isShuttingDown) {
       console.log(`Theme generation completed in ${generationTime}ms`);
     }
-    
+
     // Validate response
     if (response) {
       const validation = RegionResponseValidator.validateThemeResponse(response);
-      
+
       if (!validation.valid) {
         console.error('Theme validation failed:', validation.errors);
         const fallback = generateFallbackTheme(context);
         this.setRegionCachedResponse(cacheKey, fallback);
         return this.convertToRegionThemeResponse(fallback);
       }
-      
+
       if (validation.warnings) {
         console.warn('Theme validation warnings:', validation.warnings);
       }
-      
-      const validatedResponse = this.convertToRegionThemeResponse(response);
+
+      const validatedResponse = this.convertToRegionThemeResponse(response as RegionThemeSchema);
       this.setRegionCachedResponse(cacheKey, validatedResponse);
       return validatedResponse;
     }
-    
+
     // Fallback if no response
     console.warn('No response from Claude, using fallback theme');
     const fallback = generateFallbackTheme(context);
@@ -203,7 +208,7 @@ export class ClaudeRegionService extends ClaudeService {
    */
   private async generateRoomBatch(context: RoomBatchContext): Promise<RoomDescription[]> {
     const cacheKey = this.generateRegionCacheKey('room-batch', context);
-    const cached = this.getRegionCachedResponse(cacheKey);
+    const cached = this.getRegionCachedResponse(cacheKey) as RoomDescription[] | null;
     if (cached) {
       console.log(`Using cached rooms for ${context.regionTheme.name}`);
       return cached;
@@ -224,39 +229,39 @@ export class ClaudeRegionService extends ClaudeService {
       context.entranceDirection,
       context.exitDirection
     );
-    
+
     if (!this.isShuttingDown) {
       console.log(`Requesting room batch generation from Claude API...`);
     }
     const startTime = Date.now();
-    
+
     const response = await this.makeRegionRequestWithRetry(userPrompt, systemPrompt);
-    
+
     const generationTime = Date.now() - startTime;
     if (!this.isShuttingDown) {
       console.log(`Room batch generation completed in ${generationTime}ms`);
     }
-    
+
     // Validate response
     if (response) {
       const validation = RegionResponseValidator.validateRoomBatchResponse(response);
-      
+
       if (!validation.valid) {
         console.error('Room batch validation failed:', validation.errors);
         const fallback = this.generateFallbackRoomsFromContext(context);
         this.setRegionCachedResponse(cacheKey, fallback);
         return fallback;
       }
-      
+
       if (validation.warnings) {
         console.warn('Room batch validation warnings:', validation.warnings);
       }
-      
-      const validatedResponse = this.convertToRoomDescriptions(response);
+
+      const validatedResponse = this.convertToRoomDescriptions(response as RoomSchema[]);
       this.setRegionCachedResponse(cacheKey, validatedResponse);
       return validatedResponse;
     }
-    
+
     // Fallback if no response
     console.warn('No response from Claude, using fallback rooms');
     const fallback = this.generateFallbackRoomsFromContext(context);
@@ -274,7 +279,7 @@ export class ClaudeRegionService extends ClaudeService {
     sourceRoomId?: number
   ): Promise<void> {
     const generationKey = `${gameId}_${direction}`;
-    
+
     // Check if shutting down before starting
     if (this.isShuttingDown) {
       return;
@@ -297,23 +302,23 @@ export class ClaudeRegionService extends ClaudeService {
 
       // Phase 1: Generate theme (target: < 2 seconds)
       const startPhase1 = Date.now();
-      
+
       // Check shutdown before phase 1
       if (this.isShuttingDown) {
         return;
       }
-      
+
       const regionTheme = await this.generateRegionTheme({
         previousRegion,
         direction,
         worldSeed: `${gameId}`,
       });
-      
+
       // Check shutdown after theme generation
       if (this.isShuttingDown) {
         return;
       }
-      
+
       if (!this.isShuttingDown) {
         console.log(`Phase 1 completed in ${Date.now() - startPhase1}ms`);
       }
@@ -344,12 +349,12 @@ export class ClaudeRegionService extends ClaudeService {
         guardianRoomIndex,
         keyRoomIndex,
       });
-      
+
       // Check shutdown after room generation
       if (this.isShuttingDown) {
         return;
       }
-      
+
       if (!this.isShuttingDown) {
         console.log(`Phase 2 completed in ${Date.now() - startPhase2}ms`);
       }
@@ -365,7 +370,9 @@ export class ClaudeRegionService extends ClaudeService {
       });
 
       if (!this.isShuttingDown) {
-        console.log(`Region generation complete for ${generationKey} in ${Date.now() - (this.generationQueue.get(generationKey)?.startTime || Date.now())}ms`);
+        console.log(
+          `Region generation complete for ${generationKey} in ${Date.now() - (this.generationQueue.get(generationKey)?.startTime || Date.now())}ms`
+        );
       }
     } catch (error) {
       console.error(`Region generation failed:`, error);
@@ -398,7 +405,7 @@ export class ClaudeRegionService extends ClaudeService {
     });
 
     // Create rooms and store their IDs
-    const createdRooms: Array<{id: number, index: number}> = [];
+    const createdRooms: Array<{ id: number; index: number }> = [];
     for (const roomData of rooms) {
       const room = await this._prismaService.client.room.create({
         data: {
@@ -406,30 +413,30 @@ export class ClaudeRegionService extends ClaudeService {
           regionId: region.id,
           name: roomData.name,
           description: roomData.description,
-          extendedDescription: roomData.hasGuardian 
+          extendedDescription: roomData.hasGuardian
             ? `The ${theme.guardianConcept.name} guards this room.`
             : roomData.hasKey
-            ? `The ${theme.keyConcept.name} can be found here.`
-            : null,
+              ? `The ${theme.keyConcept.name} can be found here.`
+              : null,
           visited: false,
           locked: false,
         },
       });
-      createdRooms.push({id: room.id, index: roomData.index});
+      createdRooms.push({ id: room.id, index: roomData.index });
     }
-    
+
     // Create connections between rooms in the new region
     // For the entrance room, we need to reserve the opposite direction for returning
     // So use perpendicular directions (east/west) for the first connection
     for (let i = 0; i < createdRooms.length - 1; i++) {
       const fromRoom = createdRooms[i];
       const toRoom = createdRooms[i + 1];
-      
+
       // If this is the entrance room (i=0), avoid using the return direction
       // Use east/west for the first internal connection to preserve north/south for entry/exit
       let forwardDir: string;
       let backwardDir: string;
-      
+
       if (i === 0) {
         // First connection from entrance - use perpendicular directions
         forwardDir = 'east';
@@ -439,7 +446,7 @@ export class ClaudeRegionService extends ClaudeService {
         forwardDir = 'north';
         backwardDir = 'south';
       }
-      
+
       // Check if connection already exists before creating
       const existingForward = await this._prismaService.client.connection.findFirst({
         where: {
@@ -447,7 +454,7 @@ export class ClaudeRegionService extends ClaudeService {
           direction: forwardDir,
         },
       });
-      
+
       if (!existingForward) {
         await this._prismaService.client.connection.create({
           data: {
@@ -461,14 +468,14 @@ export class ClaudeRegionService extends ClaudeService {
           },
         });
       }
-      
+
       const existingBackward = await this._prismaService.client.connection.findFirst({
         where: {
           fromRoomId: toRoom.id,
           direction: backwardDir,
         },
       });
-      
+
       if (!existingBackward) {
         await this._prismaService.client.connection.create({
           data: {
@@ -483,7 +490,7 @@ export class ClaudeRegionService extends ClaudeService {
         });
       }
     }
-    
+
     // Connect the new region to the existing world
     if (sourceRoomId && direction && createdRooms.length > 0) {
       // Find the existing unfilled connection
@@ -494,7 +501,7 @@ export class ClaudeRegionService extends ClaudeService {
           toRoomId: null, // Unfilled connection
         },
       });
-      
+
       if (existingConnection) {
         // Update the existing connection to point to the entrance of the new region
         const entranceRoom = createdRooms[0]; // First room is the entrance
@@ -502,10 +509,10 @@ export class ClaudeRegionService extends ClaudeService {
           where: { id: existingConnection.id },
           data: { toRoomId: entranceRoom.id },
         });
-        
+
         // Create reverse connection from entrance back to source
         const oppositeDirection = this.getOppositeDirection(direction);
-        
+
         // Since we now use east/west for the entrance's internal connection,
         // north/south should be free for the return path
         const existingReverse = await this._prismaService.client.connection.findFirst({
@@ -514,7 +521,7 @@ export class ClaudeRegionService extends ClaudeService {
             direction: oppositeDirection,
           },
         });
-        
+
         if (!existingReverse) {
           await this._prismaService.client.connection.create({
             data: {
@@ -528,7 +535,9 @@ export class ClaudeRegionService extends ClaudeService {
             },
           });
         } else {
-          console.log(`Reverse connection already exists from room ${entranceRoom.id} ${oppositeDirection} to room ${sourceRoomId}`);
+          console.log(
+            `Reverse connection already exists from room ${entranceRoom.id} ${oppositeDirection} to room ${sourceRoomId}`
+          );
         }
       }
     }
@@ -578,7 +587,9 @@ export class ClaudeRegionService extends ClaudeService {
   /**
    * Get existing region themes for context
    */
-  private async getExistingRegionThemes(worldSeed: string): Promise<Array<{name: string, theme: string}>> {
+  private async getExistingRegionThemes(
+    worldSeed: string
+  ): Promise<Array<{ name: string; theme: string }>> {
     try {
       // Get up to 10 most recent regions
       const regions = await this._prismaService.client.region.findMany({
@@ -591,7 +602,7 @@ export class ClaudeRegionService extends ClaudeService {
         },
         take: 10,
       });
-      
+
       return regions
         .filter(r => r.theme !== null)
         .map(r => ({
@@ -625,8 +636,12 @@ export class ClaudeRegionService extends ClaudeService {
       keyConcept: context.regionTheme.keyConcept,
       lockedExitDescription: context.regionTheme.lockedExitDescription,
     };
-    
-    const rooms = generateFallbackRooms(themeSchema, context.guardianRoomIndex, context.keyRoomIndex);
+
+    const rooms = generateFallbackRooms(
+      themeSchema,
+      context.guardianRoomIndex,
+      context.keyRoomIndex
+    );
     return this.convertToRoomDescriptions(rooms);
   }
 
@@ -673,7 +688,7 @@ export class ClaudeRegionService extends ClaudeService {
 
   private generateMockRoomBatch(context: RoomBatchContext): RoomDescription[] {
     const rooms: RoomDescription[] = [];
-    
+
     for (let i = 0; i < 12; i++) {
       rooms.push({
         index: i,
@@ -682,37 +697,37 @@ export class ClaudeRegionService extends ClaudeService {
           i === context.guardianRoomIndex
             ? `The ${context.regionTheme.guardianConcept.name} stands guard here.`
             : i === context.keyRoomIndex
-            ? `The ${context.regionTheme.keyConcept.name} glimmers in the corner.`
-            : 'The atmosphere is heavy with anticipation.'
+              ? `The ${context.regionTheme.keyConcept.name} glimmers in the corner.`
+              : 'The atmosphere is heavy with anticipation.'
         }`,
         hasGuardian: i === context.guardianRoomIndex,
         hasKey: i === context.keyRoomIndex,
         exitHints: i === 0 ? [`Exit ${context.entranceDirection} leads back`] : [],
       });
     }
-    
+
     return rooms;
   }
 
   // Helper methods for cache and API access
-  private generateRegionCacheKey(type: string, context: any): string {
+  private generateRegionCacheKey(type: string, context: unknown): string {
     const contextString = JSON.stringify(context);
     const hash = crypto.createHash('md5').update(contextString).digest('hex');
     return `${type}_${hash}`;
   }
 
-  private getRegionCachedResponse(key: string): any | null {
+  private getRegionCachedResponse(key: string): unknown | null {
     // Access parent's cache directly (now protected)
     return this.responseCache?.get(key) || null;
   }
 
-  private setRegionCachedResponse(key: string, response: any): void {
+  private setRegionCachedResponse(key: string, response: unknown): void {
     // Access parent's cache directly (now protected)
     if (!this.responseCache) {
       this.responseCache = new Map();
     }
     this.responseCache.set(key, response);
-    
+
     // Only set timeout if not in test environment
     if (process.env.NODE_ENV !== 'test') {
       setTimeout(() => {
@@ -721,10 +736,14 @@ export class ClaudeRegionService extends ClaudeService {
     }
   }
 
-  private async makeRegionRequestWithRetry(prompt: string, systemPrompt: string): Promise<any> {
+  private async makeRegionRequestWithRetry(prompt: string, systemPrompt: string): Promise<unknown> {
     // Use parent's implementation if available
-    if ((this as any).client && !this.isInMockMode()) {
-      return (this as any).makeRequestWithRetry(prompt, systemPrompt);
+    const parent = this as unknown as {
+      client?: unknown;
+      makeRequestWithRetry?: (prompt: string, systemPrompt: string) => Promise<unknown>;
+    };
+    if (parent.client && !this.isInMockMode() && parent.makeRequestWithRetry) {
+      return parent.makeRequestWithRetry(prompt, systemPrompt);
     }
     return null;
   }
@@ -734,14 +753,14 @@ export class ClaudeRegionService extends ClaudeService {
    */
   async cleanup(): Promise<void> {
     this.isShuttingDown = true;
-    
+
     // Clear all generation queues and statuses immediately
     this.generationQueue.clear();
     this.generationLocks.clear(); // Also clear locks
-    
+
     // Don't wait for generation to complete, just cancel it
     this.activeGeneration = null;
-    
+
     // Don't reset isShuttingDown - keep it true
   }
 }

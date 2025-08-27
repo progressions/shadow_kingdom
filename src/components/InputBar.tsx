@@ -1,56 +1,56 @@
-import React, { useState, useEffect } from 'react'
-import { Box, Text, useInput } from 'ink'
+import React, { useState, useEffect } from 'react';
+import { Box, Text, useInput } from 'ink';
 
 interface InputBarProps {
-  onSubmit: (command: string) => void
-  placeholder: string
-  commandHistory?: string[]
-  onHistoryUpdate?: (history: string[]) => void
-  isFocused?: boolean
+  onSubmit: (command: string) => void;
+  placeholder: string;
+  commandHistory?: string[];
+  onHistoryUpdate?: (history: string[]) => void;
+  isFocused?: boolean;
 }
 
-export const InputBar: React.FC<InputBarProps> = ({ 
-  onSubmit, 
-  placeholder, 
-  commandHistory = [], 
-  onHistoryUpdate, 
-  isFocused = true
+export const InputBar: React.FC<InputBarProps> = ({
+  onSubmit,
+  placeholder,
+  commandHistory = [],
+  onHistoryUpdate,
+  isFocused = true,
 }) => {
-  const [value, setValue] = useState('')
-  const [historyIndex, setHistoryIndex] = useState(commandHistory.length)
-  const [currentInput, setCurrentInput] = useState('')
+  const [value, setValue] = useState('');
+  const [historyIndex, setHistoryIndex] = useState(commandHistory.length);
+  const [currentInput, setCurrentInput] = useState('');
 
   // Complete input handling with history navigation
   useInput((input, key) => {
-    if (!isFocused) return
+    if (!isFocused) return;
 
     // Handle Enter key - submit
     if (key.return) {
-      handleSubmit(value)
-      return
+      handleSubmit(value);
+      return;
     }
 
     // Handle up arrow for history navigation
     if (key.upArrow && commandHistory.length > 0) {
       if (historyIndex > 0) {
-        const newIndex = historyIndex - 1
-        setHistoryIndex(newIndex)
-        setValue(commandHistory[newIndex] || '')
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setValue(commandHistory[newIndex] || '');
       }
-      return
+      return;
     }
 
     // Handle down arrow for history navigation
     if (key.downArrow && commandHistory.length > 0) {
       if (historyIndex < commandHistory.length - 1) {
-        const newIndex = historyIndex + 1
-        setHistoryIndex(newIndex)
-        setValue(commandHistory[newIndex] || '')
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setValue(commandHistory[newIndex] || '');
       } else if (historyIndex === commandHistory.length - 1) {
-        setHistoryIndex(commandHistory.length)
-        setValue(currentInput || '')
+        setHistoryIndex(commandHistory.length);
+        setValue(currentInput || '');
       }
-      return
+      return;
     }
 
     // Handle backspace and delete keys (multiple ways to detect them)
@@ -61,72 +61,72 @@ export const InputBar: React.FC<InputBarProps> = ({
     // - \u007f (0x7f): DEL character (common on Unix/macOS)
     // - \u0008: Another backspace variant
     if (key.backspace || key.delete || input === '\b' || input === '\u007f' || input === '\u0008') {
-      setValue(prev => prev.length > 0 ? prev.slice(0, -1) : prev)
+      setValue(prev => (prev.length > 0 ? prev.slice(0, -1) : prev));
       // Reset to current input mode when editing
       if (historyIndex !== commandHistory.length) {
-        setHistoryIndex(commandHistory.length)
+        setHistoryIndex(commandHistory.length);
       }
-      return
+      return;
     }
 
     // Handle regular character input (exclude backspace and control characters)
-    if (input && !key.ctrl && !key.meta && input !== '\b' && input !== '\u007f' && input !== '\u0008') {
-      setValue(prev => prev + input)
+    if (
+      input &&
+      !key.ctrl &&
+      !key.meta &&
+      input !== '\b' &&
+      input !== '\u007f' &&
+      input !== '\u0008'
+    ) {
+      setValue(prev => prev + input);
       // Reset to current input mode when typing
       if (historyIndex !== commandHistory.length) {
-        setHistoryIndex(commandHistory.length)
+        setHistoryIndex(commandHistory.length);
       }
     }
-  })
+  });
 
   // Update current input when typing (not from history)
   useEffect(() => {
     if (historyIndex === commandHistory.length) {
-      setCurrentInput(value)
+      setCurrentInput(value);
     }
-  }, [value, historyIndex, commandHistory.length])
+  }, [value, historyIndex, commandHistory.length]);
 
   const handleSubmit = (submittedValue: string) => {
     // Guard against undefined or null
     if (!submittedValue) {
-      submittedValue = ''
+      submittedValue = '';
     }
-    const trimmedValue = submittedValue.trim()
-    
-    onSubmit(submittedValue)
-    setValue('')
-    setHistoryIndex(commandHistory.length + 1)
-    setCurrentInput('')
+    const trimmedValue = submittedValue.trim();
+
+    onSubmit(submittedValue);
+    setValue('');
+    setHistoryIndex(commandHistory.length + 1);
+    setCurrentInput('');
 
     // Add to history if not empty and not duplicate of last command
     if (trimmedValue && onHistoryUpdate) {
-      const lastCommand = commandHistory[commandHistory.length - 1]
+      const lastCommand = commandHistory[commandHistory.length - 1];
       if (trimmedValue !== lastCommand) {
-        const newHistory = [...commandHistory, trimmedValue]
-        onHistoryUpdate(newHistory)
+        const newHistory = [...commandHistory, trimmedValue];
+        onHistoryUpdate(newHistory);
       }
     }
-  }
+  };
 
   // Update history index when command history changes
   useEffect(() => {
-    setHistoryIndex(commandHistory.length)
-  }, [commandHistory.length])
+    setHistoryIndex(commandHistory.length);
+  }, [commandHistory.length]);
 
   return (
-    <Box 
-      borderStyle="single" 
-      borderColor="white"
-      paddingX={1}
-      width="100%"
-    >
+    <Box borderStyle="single" borderColor="white" paddingX={1} width="100%">
       <Text color="green">Command: </Text>
       <Text>
-        {value || (
-          <Text color="gray">{placeholder}</Text>
-        )}
+        {value || <Text color="gray">{placeholder}</Text>}
         {isFocused && <Text color="white">█</Text>}
       </Text>
     </Box>
-  )
-}
+  );
+};

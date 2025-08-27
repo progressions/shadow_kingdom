@@ -45,8 +45,8 @@ export class ClaudeService {
   private prismaService: PrismaService;
   private gameStateManager: GameStateManager;
   private mockMode: boolean = false;
-  protected responseCache: Map<string, any> = new Map();
-  private requestQueue: Array<() => Promise<any>> = [];
+  protected responseCache: Map<string, unknown> = new Map();
+  private requestQueue: Array<() => Promise<unknown>> = [];
   private isProcessingQueue: boolean = false;
   private rateLimit: number;
   private requestsThisSecond: number = 0;
@@ -73,19 +73,19 @@ export class ClaudeService {
     return this.mockMode;
   }
 
-  private generateCacheKey(type: string, context: any): string {
+  private generateCacheKey(type: string, context: unknown): string {
     const contextString = JSON.stringify(context);
     const hash = crypto.createHash('md5').update(contextString).digest('hex');
     return `${type}_${hash}`;
   }
 
-  private getCachedResponse(key: string): any | null {
+  private getCachedResponse(key: string): unknown | null {
     return this.responseCache.get(key) || null;
   }
 
-  private setCachedResponse(key: string, response: any): void {
+  private setCachedResponse(key: string, response: unknown): void {
     this.responseCache.set(key, response);
-    
+
     // Only set timeout if not in test environment
     if (process.env.NODE_ENV !== 'test') {
       setTimeout(() => {
@@ -97,7 +97,7 @@ export class ClaudeService {
   private async enforceRateLimit(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest > 1000) {
       this.requestsThisSecond = 0;
       this.lastRequestTime = now;
@@ -113,13 +113,13 @@ export class ClaudeService {
     this.requestsThisSecond++;
   }
 
-  private async makeRequestWithRetry(prompt: string, systemPrompt: string): Promise<any> {
+  private async makeRequestWithRetry(prompt: string, systemPrompt: string): Promise<unknown> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
         await this.enforceRateLimit();
-        
+
         if (!this.client) {
           throw new Error('Claude client not initialized');
         }
@@ -144,20 +144,23 @@ export class ClaudeService {
             }
           }
         }
-        
+
         // No content received - throw error to trigger retry
         throw new Error('No valid content in API response');
       } catch (error) {
         lastError = error as Error;
         const errorMessage = error instanceof Error ? error.message : String(error);
-        
+
         // Log different error types appropriately
         if (errorMessage.includes('JSON parse error')) {
           console.error(`JSON parsing failed on attempt ${attempt + 1}/${this.maxRetries}`);
         } else {
-          console.error(`API request attempt ${attempt + 1}/${this.maxRetries} failed:`, errorMessage);
+          console.error(
+            `API request attempt ${attempt + 1}/${this.maxRetries} failed:`,
+            errorMessage
+          );
         }
-        
+
         if (attempt < this.maxRetries - 1) {
           const delay = this.retryDelay * Math.pow(2, attempt);
           console.log(`Retrying in ${delay}ms...`);
@@ -170,20 +173,26 @@ export class ClaudeService {
     return null;
   }
 
-  private validateRoomResponse(response: any): RoomGenerationResponse {
+  private validateRoomResponse(response: unknown): RoomGenerationResponse {
     if (!response || typeof response !== 'object') {
       return this.generateMockRoom('unknown');
     }
 
+    const resp = response as {
+      name?: string;
+      description?: string;
+      exits?: Record<string, string>;
+      items?: string[];
+    };
     return {
-      name: response.name || 'Unnamed Room',
-      description: response.description || 'An empty room.',
-      exits: response.exits || {},
-      items: response.items || [],
+      name: resp.name || 'Unnamed Room',
+      description: resp.description || 'An empty room.',
+      exits: resp.exits || {},
+      items: resp.items || [],
     };
   }
 
-  private validateNPCResponse(response: any): NPCDialogueResponse {
+  private validateNPCResponse(response: unknown): NPCDialogueResponse {
     if (!response || typeof response !== 'object') {
       return {
         dialogue: 'The character remains silent.',
@@ -191,24 +200,30 @@ export class ClaudeService {
       };
     }
 
+    const resp = response as { dialogue?: string; emotion?: string; hints?: string[] };
     return {
-      dialogue: response.dialogue || 'The character says nothing.',
-      emotion: response.emotion || 'neutral',
-      hints: response.hints || [],
+      dialogue: resp.dialogue || 'The character says nothing.',
+      emotion: resp.emotion || 'neutral',
+      hints: resp.hints || [],
     };
   }
 
-  private validateItemResponse(response: any): ItemDescriptionResponse {
+  private validateItemResponse(response: unknown): ItemDescriptionResponse {
     if (!response || typeof response !== 'object') {
       return {
         description: 'An ordinary item.',
       };
     }
 
+    const resp = response as {
+      description?: string;
+      properties?: Record<string, string>;
+      lore?: string;
+    };
     return {
-      description: response.description || 'An ordinary item.',
-      properties: response.properties || {},
-      lore: response.lore,
+      description: resp.description || 'An ordinary item.',
+      properties: resp.properties || {},
+      lore: resp.lore,
     };
   }
 
@@ -234,12 +249,14 @@ export class ClaudeService {
       },
     };
 
-    return mockRooms[regionTheme as keyof typeof mockRooms] || {
-      name: 'Generic Room',
-      description: `A room themed around ${regionTheme}.`,
-      exits: { north: 'An exit' },
-      items: [],
-    };
+    return (
+      mockRooms[regionTheme as keyof typeof mockRooms] || {
+        name: 'Generic Room',
+        description: `A room themed around ${regionTheme}.`,
+        exits: { north: 'An exit' },
+        items: [],
+      }
+    );
   }
 
   private generateMockNPCDialogue(): NPCDialogueResponse {
@@ -263,7 +280,7 @@ export class ClaudeService {
 
   async generateRoom(context: RoomGenerationContext): Promise<RoomGenerationResponse> {
     const cacheKey = this.generateCacheKey('room', context);
-    const cached = this.getCachedResponse(cacheKey);
+    const cached = this.getCachedResponse(cacheKey) as RoomGenerationResponse | null;
     if (cached) {
       return cached;
     }
@@ -286,7 +303,7 @@ export class ClaudeService {
 
     const response = await this.makeRequestWithRetry(userPrompt, systemPrompt);
     const validatedResponse = this.validateRoomResponse(response);
-    
+
     if (!response) {
       const fallback = this.generateMockRoom(context.regionTheme);
       this.setCachedResponse(cacheKey, fallback);
@@ -299,7 +316,7 @@ export class ClaudeService {
 
   async generateNPCDialogue(context: NPCDialogueContext): Promise<NPCDialogueResponse> {
     const cacheKey = this.generateCacheKey('dialogue', context);
-    const cached = this.getCachedResponse(cacheKey);
+    const cached = this.getCachedResponse(cacheKey) as NPCDialogueResponse | null;
     if (cached) {
       return cached;
     }
@@ -338,7 +355,7 @@ export class ClaudeService {
 
     const response = await this.makeRequestWithRetry(userPrompt, systemPrompt);
     const validatedResponse = this.validateNPCResponse(response);
-    
+
     if (!response) {
       const fallback = this.generateMockNPCDialogue();
       this.setCachedResponse(cacheKey, fallback);
@@ -351,7 +368,7 @@ export class ClaudeService {
 
   async generateItemDescription(context: ItemDescriptionContext): Promise<ItemDescriptionResponse> {
     const cacheKey = this.generateCacheKey('item', context);
-    const cached = this.getCachedResponse(cacheKey);
+    const cached = this.getCachedResponse(cacheKey) as ItemDescriptionResponse | null;
     if (cached) {
       return cached;
     }
@@ -374,7 +391,7 @@ export class ClaudeService {
 
     const response = await this.makeRequestWithRetry(userPrompt, systemPrompt);
     const validatedResponse = this.validateItemResponse(response);
-    
+
     if (!response) {
       const fallback = this.generateMockItemDescription(context.itemName);
       this.setCachedResponse(cacheKey, fallback);

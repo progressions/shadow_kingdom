@@ -41,7 +41,7 @@ export class RegionResponseValidator {
   /**
    * Validate region theme response
    */
-  static validateThemeResponse(response: any): ValidationResult {
+  static validateThemeResponse(response: unknown): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -53,51 +53,65 @@ export class RegionResponseValidator {
       };
     }
 
+    // Cast to Record for type checking
+    const resp = response as Record<string, unknown>;
+
     // Required top-level fields
-    const requiredFields = ['name', 'theme', 'description', 'atmosphere', 'guardianConcept', 'keyConcept', 'lockedExitDescription'];
+    const requiredFields = [
+      'name',
+      'theme',
+      'description',
+      'atmosphere',
+      'guardianConcept',
+      'keyConcept',
+      'lockedExitDescription',
+    ];
     for (const field of requiredFields) {
-      if (!(field in response)) {
+      if (!(field in resp)) {
         errors.push(`Missing required field: ${field}`);
       }
     }
 
     // Validate name
-    if (response.name) {
-      if (typeof response.name !== 'string') {
+    if (resp.name) {
+      if (typeof resp.name !== 'string') {
         errors.push('Name must be a string');
-      } else if (response.name.length < 3 || response.name.length > 50) {
+      } else if ((resp.name as string).length < 3 || (resp.name as string).length > 50) {
         warnings.push('Name should be between 3 and 50 characters');
       }
     }
 
     // Validate theme
-    if (response.theme) {
-      if (typeof response.theme !== 'string') {
+    if (resp.theme) {
+      if (typeof resp.theme !== 'string') {
         errors.push('Theme must be a string');
-      } else if (response.theme.length < 5 || response.theme.length > 100) {
+      } else if ((resp.theme as string).length < 5 || (resp.theme as string).length > 100) {
         warnings.push('Theme should be between 5 and 100 characters');
       }
     }
 
     // Validate description
-    if (response.description) {
-      if (typeof response.description !== 'string') {
+    if (resp.description) {
+      if (typeof resp.description !== 'string') {
         errors.push('Description must be a string');
-      } else if (response.description.length < 10 || response.description.length > 500) {
+      } else if (
+        (resp.description as string).length < 10 ||
+        (resp.description as string).length > 500
+      ) {
         warnings.push('Description should be between 10 and 500 characters');
       }
     }
 
     // Validate atmosphere
-    if (response.atmosphere) {
-      if (typeof response.atmosphere !== 'string') {
+    if (resp.atmosphere) {
+      if (typeof resp.atmosphere !== 'string') {
         errors.push('Atmosphere must be a string');
       }
     }
 
     // Validate guardianConcept
-    if (response.guardianConcept) {
-      const guardian = response.guardianConcept;
+    if (resp.guardianConcept) {
+      const guardian = resp.guardianConcept as Record<string, unknown>;
       if (typeof guardian !== 'object') {
         errors.push('GuardianConcept must be an object');
       } else {
@@ -114,8 +128,8 @@ export class RegionResponseValidator {
     }
 
     // Validate keyConcept
-    if (response.keyConcept) {
-      const key = response.keyConcept;
+    if (resp.keyConcept) {
+      const key = resp.keyConcept as Record<string, unknown>;
       if (typeof key !== 'object') {
         errors.push('KeyConcept must be an object');
       } else {
@@ -132,10 +146,10 @@ export class RegionResponseValidator {
     }
 
     // Validate lockedExitDescription
-    if (response.lockedExitDescription) {
-      if (typeof response.lockedExitDescription !== 'string') {
+    if (resp.lockedExitDescription) {
+      if (typeof resp.lockedExitDescription !== 'string') {
         errors.push('LockedExitDescription must be a string');
-      } else if (response.lockedExitDescription.length < 10) {
+      } else if ((resp.lockedExitDescription as string).length < 10) {
         warnings.push('LockedExitDescription should be at least 10 characters');
       }
     }
@@ -150,7 +164,7 @@ export class RegionResponseValidator {
   /**
    * Validate room batch response
    */
-  static validateRoomBatchResponse(response: any): ValidationResult {
+  static validateRoomBatchResponse(response: unknown): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -173,7 +187,7 @@ export class RegionResponseValidator {
     const seenIndices = new Set<number>();
 
     // Validate each room
-    response.forEach((room: any, idx: number) => {
+    response.forEach((room: unknown, idx: number) => {
       const roomErrors: string[] = [];
 
       if (!room || typeof room !== 'object') {
@@ -181,58 +195,60 @@ export class RegionResponseValidator {
         return;
       }
 
+      const roomObj = room as Record<string, unknown>;
+
       // Validate index
-      if (room.index !== undefined) {
-        if (typeof room.index !== 'number') {
+      if (roomObj.index !== undefined) {
+        if (typeof roomObj.index !== 'number') {
           roomErrors.push('Index must be a number');
-        } else if (room.index < 0 || room.index > 11) {
+        } else if ((roomObj.index as number) < 0 || (roomObj.index as number) > 11) {
           roomErrors.push('Index must be between 0 and 11');
         } else {
-          if (seenIndices.has(room.index)) {
-            roomErrors.push(`Duplicate index: ${room.index}`);
+          if (seenIndices.has(roomObj.index as number)) {
+            roomErrors.push(`Duplicate index: ${roomObj.index}`);
           }
-          seenIndices.add(room.index);
+          seenIndices.add(roomObj.index as number);
         }
       } else {
         roomErrors.push('Index is required');
       }
 
       // Validate name
-      if (!room.name || typeof room.name !== 'string') {
+      if (!roomObj.name || typeof roomObj.name !== 'string') {
         roomErrors.push('Name is required and must be a string');
       }
 
       // Validate description
-      if (!room.description || typeof room.description !== 'string') {
+      if (!roomObj.description || typeof roomObj.description !== 'string') {
         roomErrors.push('Description is required and must be a string');
-      } else if (room.description.length < 20) {
-        warnings.push(`Room ${room.index || idx}: Description should be at least 20 characters`);
+      } else if ((roomObj.description as string).length < 20) {
+        warnings.push(`Room ${roomObj.index || idx}: Description should be at least 20 characters`);
       }
 
       // Validate features (optional)
-      if (room.features && !Array.isArray(room.features)) {
+      if (roomObj.features && !Array.isArray(roomObj.features)) {
         roomErrors.push('Features must be an array if provided');
       }
 
       // Validate guardian flag
-      if (room.hasGuardian === true) {
+      if (roomObj.hasGuardian === true) {
         guardianRooms++;
       }
 
       // Validate key flag
-      if (room.hasKey === true) {
+      if (roomObj.hasKey === true) {
         keyRooms++;
       }
 
       // Validate connections (optional)
-      if (room.connections) {
-        if (!Array.isArray(room.connections)) {
+      if (roomObj.connections) {
+        if (!Array.isArray(roomObj.connections)) {
           roomErrors.push('Connections must be an array if provided');
         } else {
           const validDirections = ['north', 'south', 'east', 'west', 'up', 'down'];
-          room.connections.forEach((dir: any) => {
-            if (!validDirections.includes(dir)) {
-              warnings.push(`Room ${room.index || idx}: Invalid direction '${dir}'`);
+          roomObj.connections.forEach((dir: unknown) => {
+            if (typeof dir === 'string' && !validDirections.includes(dir)) {
+              warnings.push(`Room ${roomObj.index || idx}: Invalid direction '${dir}'`);
             }
           });
         }
@@ -240,7 +256,7 @@ export class RegionResponseValidator {
 
       // Add room errors to main errors
       if (roomErrors.length > 0) {
-        errors.push(`Room ${room.index || idx}: ${roomErrors.join(', ')}`);
+        errors.push(`Room ${roomObj.index || idx}: ${roomErrors.join(', ')}`);
       }
     });
 
@@ -269,14 +285,14 @@ export class RegionResponseValidator {
   /**
    * Attempt to fix common response issues
    */
-  static fixCommonIssues(response: any, type: 'theme' | 'rooms'): any {
-    if (type === 'theme') {
-
+  static fixCommonIssues(response: unknown, type: 'theme' | 'rooms'): unknown {
+    if (type === 'theme' && response && typeof response === 'object') {
+      const resp = response as Record<string, unknown>;
       // Ensure all string fields are strings
       const stringFields = ['name', 'theme', 'description', 'atmosphere', 'lockedExitDescription'];
       stringFields.forEach(field => {
-        if (response[field] && typeof response[field] !== 'string') {
-          response[field] = String(response[field]);
+        if (resp[field] && typeof resp[field] !== 'string') {
+          resp[field] = String(resp[field]);
         }
       });
 
@@ -286,17 +302,22 @@ export class RegionResponseValidator {
     if (type === 'rooms' && Array.isArray(response)) {
       // Ensure all rooms have indices
       response.forEach((room, idx) => {
-        if (room.index === undefined) {
-          room.index = idx;
+        const roomObj = room as Record<string, unknown>;
+        if (roomObj.index === undefined) {
+          roomObj.index = idx;
         }
         // Ensure index is a number
-        if (typeof room.index === 'string') {
-          room.index = parseInt(room.index, 10);
+        if (typeof roomObj.index === 'string') {
+          roomObj.index = parseInt(roomObj.index, 10);
         }
       });
 
       // Sort by index
-      response.sort((a, b) => a.index - b.index);
+      response.sort((a, b) => {
+        const aIndex = (a as Record<string, unknown>).index as number;
+        const bIndex = (b as Record<string, unknown>).index as number;
+        return aIndex - bIndex;
+      });
 
       return response;
     }
@@ -308,46 +329,54 @@ export class RegionResponseValidator {
 /**
  * Generate a fallback theme response when validation fails
  */
-export function generateFallbackTheme(context: any): RegionThemeSchema {
+export function generateFallbackTheme(context: unknown): RegionThemeSchema {
   const themes = [
     {
-      name: "Whispering Woods",
-      theme: "enchanted forest",
-      description: "An ancient forest where the trees seem to whisper secrets to those who listen carefully.",
-      atmosphere: "mysterious and otherworldly",
+      name: 'Whispering Woods',
+      theme: 'enchanted forest',
+      description:
+        'An ancient forest where the trees seem to whisper secrets to those who listen carefully.',
+      atmosphere: 'mysterious and otherworldly',
       guardianConcept: {
-        name: "Elder Treant",
-        type: "nature elemental",
-        description: "A massive tree creature with glowing amber eyes and branches like grasping claws.",
+        name: 'Elder Treant',
+        type: 'nature elemental',
+        description:
+          'A massive tree creature with glowing amber eyes and branches like grasping claws.',
       },
       keyConcept: {
-        name: "Amber Leaf Key",
-        description: "A golden leaf preserved in ancient amber that glows with inner light.",
-        hint: "The guardian treasures what falls from its branches.",
+        name: 'Amber Leaf Key',
+        description: 'A golden leaf preserved in ancient amber that glows with inner light.',
+        hint: 'The guardian treasures what falls from its branches.',
       },
-      lockedExitDescription: "A wall of thorny vines blocks the path, with a leaf-shaped keyhole at its center.",
+      lockedExitDescription:
+        'A wall of thorny vines blocks the path, with a leaf-shaped keyhole at its center.',
     },
     {
-      name: "Frozen Crypts",
-      theme: "icy tomb complex",
-      description: "Ancient burial chambers encased in eternal ice, where the dead do not rest peacefully.",
-      atmosphere: "cold and foreboding",
+      name: 'Frozen Crypts',
+      theme: 'icy tomb complex',
+      description:
+        'Ancient burial chambers encased in eternal ice, where the dead do not rest peacefully.',
+      atmosphere: 'cold and foreboding',
       guardianConcept: {
-        name: "Frost Wight Lord",
-        type: "undead",
-        description: "An ancient warrior king wreathed in frost, wielding a blade of pure ice.",
+        name: 'Frost Wight Lord',
+        type: 'undead',
+        description: 'An ancient warrior king wreathed in frost, wielding a blade of pure ice.',
       },
       keyConcept: {
-        name: "Frozen Heart Key",
-        description: "A key carved from ice that never melts, pulsing with a faint blue light.",
+        name: 'Frozen Heart Key',
+        description: 'A key carved from ice that never melts, pulsing with a faint blue light.',
         hint: "The lord's frozen heart still beats with purpose.",
       },
-      lockedExitDescription: "A massive ice door sealed with frozen chains, requiring a special key to shatter the bonds.",
+      lockedExitDescription:
+        'A massive ice door sealed with frozen chains, requiring a special key to shatter the bonds.',
     },
   ];
 
   // Select a theme based on direction or random
-  const directionIndex = ['north', 'south', 'east', 'west'].indexOf(context.direction || 'north');
+  const contextObj = context as { direction?: string };
+  const directionIndex = ['north', 'south', 'east', 'west'].indexOf(
+    contextObj.direction || 'north'
+  );
   const selectedTheme = themes[directionIndex % themes.length];
 
   return selectedTheme;
@@ -356,7 +385,11 @@ export function generateFallbackTheme(context: any): RegionThemeSchema {
 /**
  * Generate fallback rooms when validation fails
  */
-export function generateFallbackRooms(theme: RegionThemeSchema, guardianIdx: number, keyIdx: number): RoomSchema[] {
+export function generateFallbackRooms(
+  theme: RegionThemeSchema,
+  guardianIdx: number,
+  keyIdx: number
+): RoomSchema[] {
   const rooms: RoomSchema[] = [];
 
   for (let i = 0; i < 12; i++) {
@@ -367,17 +400,25 @@ export function generateFallbackRooms(theme: RegionThemeSchema, guardianIdx: num
 
     rooms.push({
       index: i,
-      name: isEntrance ? "Region Entrance" : isExit ? "Sealed Exit" : `${theme.name} - Chamber ${i}`,
+      name: isEntrance
+        ? 'Region Entrance'
+        : isExit
+          ? 'Sealed Exit'
+          : `${theme.name} - Chamber ${i}`,
       description: isGuardianRoom
         ? `A large chamber where ${theme.guardianConcept.name} stands guard. ${theme.guardianConcept.description}`
         : isKeyRoom
-        ? `A hidden alcove containing ${theme.keyConcept.name}. ${theme.keyConcept.description}`
-        : isEntrance
-        ? `The entrance to ${theme.name}. ${theme.atmosphere} atmosphere fills the air.`
-        : isExit
-        ? `${theme.lockedExitDescription} This passage leads onward to new adventures.`
-        : `A chamber within ${theme.name}. The ${theme.atmosphere} feeling persists here.`,
-      features: isGuardianRoom ? ["boss arena", "combat zone"] : isKeyRoom ? ["treasure", "hidden"] : [],
+          ? `A hidden alcove containing ${theme.keyConcept.name}. ${theme.keyConcept.description}`
+          : isEntrance
+            ? `The entrance to ${theme.name}. ${theme.atmosphere} atmosphere fills the air.`
+            : isExit
+              ? `${theme.lockedExitDescription} This passage leads onward to new adventures.`
+              : `A chamber within ${theme.name}. The ${theme.atmosphere} feeling persists here.`,
+      features: isGuardianRoom
+        ? ['boss arena', 'combat zone']
+        : isKeyRoom
+          ? ['treasure', 'hidden']
+          : [],
       hasGuardian: isGuardianRoom,
       hasKey: isKeyRoom,
       connections: generateConnections(i),
