@@ -81,37 +81,42 @@ export class ColorThemeService implements IColorThemeService {
     return chalk.white(text);
   }
 
-  validateTheme(theme: any): boolean {
+  validateTheme(theme: unknown): boolean {
     if (!theme || typeof theme !== 'object') {
       return false;
     }
 
-    if (!theme.name || typeof theme.name !== 'string') {
+    const themeObj = theme as Record<string, unknown>;
+
+    if (!themeObj.name || typeof themeObj.name !== 'string') {
       return false;
     }
 
-    if (!theme.version || typeof theme.version !== 'string') {
+    if (!themeObj.version || typeof themeObj.version !== 'string') {
       return false;
     }
 
-    if (!theme.colors || typeof theme.colors !== 'object') {
+    if (!themeObj.colors || typeof themeObj.colors !== 'object') {
       return false;
     }
+
+    const colors = themeObj.colors as Record<string, unknown>;
 
     // Validate all color values are strings
-    for (const key in theme.colors) {
-      if (typeof theme.colors[key] !== 'string') {
+    for (const key in colors) {
+      if (typeof colors[key] !== 'string') {
         return false;
       }
     }
 
     // Validate extended colors if present
-    if (theme.extended_colors) {
-      if (typeof theme.extended_colors !== 'object') {
+    if (themeObj.extended_colors) {
+      if (typeof themeObj.extended_colors !== 'object') {
         return false;
       }
-      for (const key in theme.extended_colors) {
-        if (typeof theme.extended_colors[key] !== 'number') {
+      const extendedColors = themeObj.extended_colors as Record<string, unknown>;
+      for (const key in extendedColors) {
+        if (typeof extendedColors[key] !== 'number') {
           return false;
         }
       }
@@ -148,8 +153,10 @@ export class ColorThemeService implements IColorThemeService {
   private applyChalkColor(colorName: string, text: string): string {
     try {
       // Check if chalk has this color
-      if (colorName in chalk && typeof (chalk as any)[colorName] === 'function') {
-        return (chalk as any)[colorName](text);
+      const chalkObj = chalk as unknown as Record<string, unknown>;
+      if (colorName in chalkObj && typeof chalkObj[colorName] === 'function') {
+        const colorFunc = chalkObj[colorName] as (text: string) => string;
+        return colorFunc(text);
       }
       // Fall back to white for invalid color names
       return chalk.white(text);
@@ -162,9 +169,10 @@ export class ColorThemeService implements IColorThemeService {
     if (!this.theme) return;
 
     // Pre-compile color functions for better performance
+    const chalkObj = chalk as unknown as Record<string, unknown>;
     for (const [key, colorName] of Object.entries(this.theme.colors)) {
-      if (colorName in chalk && typeof (chalk as any)[colorName] === 'function') {
-        this.colorCache.set(key, (chalk as any)[colorName]);
+      if (colorName in chalkObj && typeof chalkObj[colorName] === 'function') {
+        this.colorCache.set(key, chalkObj[colorName] as (text: string) => string);
       } else {
         this.colorCache.set(key, chalk.white);
       }
