@@ -122,9 +122,9 @@ export const InputBar: React.FC<InputBarProps> = ({
 
   return (
     <Box borderStyle="single" borderColor="white" paddingX={1} width="100%">
-      <Text color="green">Command: </Text>
+      <Text color="green">{'> '}</Text>
       <Text>
-        {value || <Text color="gray">{placeholder}</Text>}
+        {value}
         {isFocused && <Text color="white">█</Text>}
       </Text>
     </Box>

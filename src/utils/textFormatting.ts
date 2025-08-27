@@ -61,17 +61,8 @@ export function convertExitsToLegacyFormat(content: string): string {
  * Formats room name with ASCII underline if not already present
  */
 export function ensureRoomNameFormatting(content: string): string {
-  // If already has underline, return as-is
-  if (content.includes('\n') && content.includes('=')) {
-    return content;
-  }
-
-  // If it's a room name without underline, add one
-  if (isRoomName(content)) {
-    const roomName = extractRoomName(content);
-    const underline = createASCIIUnderline(roomName);
-    return `${roomName}\n${underline}`;
-  }
-
-  return content;
+  // Always format - caller knows it's a room name
+  const roomName = extractRoomName(content);
+  const underline = createASCIIUnderline(roomName);
+  return `${roomName}\n${underline}`;
 }

@@ -383,10 +383,6 @@ export class RoomNavigationEngine {
 
       let description = `**${room.name}**`;
 
-      // Add first visit notification for unvisited rooms
-      if (!room.visited) {
-        description += '\n*[First time visiting]*';
-      }
 
       description += `\n\n${room.description}`;
 
@@ -596,7 +592,7 @@ export class RoomNavigationEngine {
       });
 
       const rooms = regionRooms || [];
-      const visitedCount = rooms.filter(room => room.visited).length;
+      const visitedCount = rooms.length; // All rooms considered visited
 
       return {
         regionId,
@@ -675,10 +671,7 @@ export class RoomNavigationEngine {
       // Check for unvisited areas in current region
       if (currentRoom.regionId) {
         const regionContext = await this.getRegionContext(currentRoom.regionId);
-        if (regionContext.visitedRooms < regionContext.totalRooms) {
-          const unvisited = regionContext.totalRooms - regionContext.visitedRooms;
-          hints.push(`${unvisited} unvisited areas remain in this region`);
-        }
+        // Remove unvisited room hints since we don't track visited state
       }
 
       return hints;
@@ -827,14 +820,14 @@ export class RoomNavigationEngine {
         }),
       ]);
 
-      const visitedRooms = rooms.filter(room => room.visited).length;
+      const visitedRooms = rooms.length; // All rooms considered visited
 
       // Group rooms by region
       const regionBreakdown = regions
         .filter(r => r.regionId)
         .map(region => {
           const regionRooms = rooms.filter(room => room.regionId === region.regionId);
-          const visitedCount = regionRooms.filter(room => room.visited).length;
+          const visitedCount = regionRooms.length; // All rooms considered visited
 
           return {
             regionId: region.regionId!,
@@ -883,9 +876,7 @@ export class RoomNavigationEngine {
       };
 
       // Add visited filter if specified
-      if (criteria.visited !== undefined) {
-        whereClause.visited = criteria.visited;
-      }
+      // Removed visited criteria since we don't track visited state
 
       // Get rooms with basic filters
       const rooms = await this.prismaService.client.room.findMany({
@@ -922,7 +913,6 @@ export class RoomNavigationEngine {
         name: room.name,
         description: room.description,
         extendedDescription: room.extendedDescription,
-        visited: room.visited,
         locked: room.locked,
         createdAt: room.createdAt,
         updatedAt: room.updatedAt,

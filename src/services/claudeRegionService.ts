@@ -1,6 +1,7 @@
 import { ClaudeService } from './claudeService';
 import { PrismaService } from './prismaService';
 import { GameStateManager } from './gameStateManager';
+import { LoggingService } from './loggingService';
 import type { Room, Region } from '@prisma/client';
 import crypto from 'crypto';
 import { RegionPromptTemplates, RegionThemePromptContext } from './prompts/regionPrompts';
@@ -92,14 +93,14 @@ export class ClaudeRegionService extends ClaudeService {
 
     // Use lock to prevent race conditions
     if (this.generationLocks.has(generationKey)) {
-      console.log(`Region generation already locked for ${generationKey}`);
+      this.logger.logMessage(`Region generation already locked for ${generationKey}`, 'SYSTEM');
       return;
     }
 
     // Check existing status
     const existingStatus = this.generationQueue.get(generationKey);
     if (existingStatus && existingStatus.phase !== 'failed') {
-      console.log(`Region generation already in progress for ${generationKey}`);
+      this.logger.logMessage(`Region generation already in progress for ${generationKey}`, 'SYSTEM');
       return;
     }
 
@@ -120,7 +121,7 @@ export class ClaudeRegionService extends ClaudeService {
       sourceRoomId
     )
       .catch(error => {
-        console.error(`Region generation failed for ${generationKey}:`, error);
+        this.logger.logMessage(`Region generation failed for ${generationKey}: ${error}`, 'ERROR');
         this.generationQueue.set(generationKey, {
           phase: 'failed',
           error: error.message,
@@ -139,12 +140,12 @@ export class ClaudeRegionService extends ClaudeService {
     const cacheKey = this.generateRegionCacheKey('region-theme', context);
     const cached = this.getRegionCachedResponse(cacheKey) as RegionThemeResponse | null;
     if (cached) {
-      console.log(`Using cached theme for ${context.direction}`);
+      this.logger.logMessage(`Using cached theme for ${context.direction}`, 'SYSTEM');
       return cached;
     }
 
     if (this.isInMockMode()) {
-      console.log(`Generating mock theme for ${context.direction}`);
+      this.logger.logMessage(`Generating mock theme for ${context.direction}`, 'SYSTEM');
       const mockResponse = this.generateMockRegionTheme(context);
       this.setRegionCachedResponse(cacheKey, mockResponse);
       return mockResponse;
@@ -165,7 +166,7 @@ export class ClaudeRegionService extends ClaudeService {
     const userPrompt = RegionPromptTemplates.getThemeUserPrompt(promptContext);
 
     if (!this.isShuttingDown) {
-      console.log(`Requesting theme generation from Claude API...`);
+      this.logger.logMessage(`Requesting theme generation from Claude API...`, 'SYSTEM');
     }
     const startTime = Date.now();
 
@@ -173,7 +174,7 @@ export class ClaudeRegionService extends ClaudeService {
 
     const generationTime = Date.now() - startTime;
     if (!this.isShuttingDown) {
-      console.log(`Theme generation completed in ${generationTime}ms`);
+      this.logger.logMessage(`Theme generation completed in ${generationTime}ms`, 'SYSTEM');
     }
 
     // Validate response
@@ -181,14 +182,14 @@ export class ClaudeRegionService extends ClaudeService {
       const validation = RegionResponseValidator.validateThemeResponse(response);
 
       if (!validation.valid) {
-        console.error('Theme validation failed:', validation.errors);
+        this.logger.logMessage(`Theme validation failed: ${validation.errors?.join(', ')}`, 'ERROR');
         const fallback = generateFallbackTheme(context);
         this.setRegionCachedResponse(cacheKey, fallback);
         return this.convertToRegionThemeResponse(fallback);
       }
 
       if (validation.warnings) {
-        console.warn('Theme validation warnings:', validation.warnings);
+        this.logger.logMessage(`Theme validation warnings: ${validation.warnings?.join(', ')}`, 'SYSTEM');
       }
 
       const validatedResponse = this.convertToRegionThemeResponse(response as RegionThemeSchema);
@@ -197,7 +198,7 @@ export class ClaudeRegionService extends ClaudeService {
     }
 
     // Fallback if no response
-    console.warn('No response from Claude, using fallback theme');
+    this.logger.logMessage('No response from Claude, using fallback theme', 'SYSTEM');
     const fallback = generateFallbackTheme(context);
     this.setRegionCachedResponse(cacheKey, fallback);
     return this.convertToRegionThemeResponse(fallback);
@@ -210,12 +211,12 @@ export class ClaudeRegionService extends ClaudeService {
     const cacheKey = this.generateRegionCacheKey('room-batch', context);
     const cached = this.getRegionCachedResponse(cacheKey) as RoomDescription[] | null;
     if (cached) {
-      console.log(`Using cached rooms for ${context.regionTheme.name}`);
+      this.logger.logMessage(`Using cached rooms for ${context.regionTheme.name}`, 'SYSTEM');
       return cached;
     }
 
     if (this.isInMockMode()) {
-      console.log(`Generating mock rooms for ${context.regionTheme.name}`);
+      this.logger.logMessage(`Generating mock rooms for ${context.regionTheme.name}`, 'SYSTEM');
       const mockResponse = this.generateMockRoomBatch(context);
       this.setRegionCachedResponse(cacheKey, mockResponse);
       return mockResponse;
@@ -231,7 +232,7 @@ export class ClaudeRegionService extends ClaudeService {
     );
 
     if (!this.isShuttingDown) {
-      console.log(`Requesting room batch generation from Claude API...`);
+      this.logger.logMessage(`Requesting room batch generation from Claude API...`, 'SYSTEM');
     }
     const startTime = Date.now();
 
@@ -239,7 +240,7 @@ export class ClaudeRegionService extends ClaudeService {
 
     const generationTime = Date.now() - startTime;
     if (!this.isShuttingDown) {
-      console.log(`Room batch generation completed in ${generationTime}ms`);
+      this.logger.logMessage(`Room batch generation completed in ${generationTime}ms`, 'SYSTEM');
     }
 
     // Validate response
@@ -247,14 +248,14 @@ export class ClaudeRegionService extends ClaudeService {
       const validation = RegionResponseValidator.validateRoomBatchResponse(response);
 
       if (!validation.valid) {
-        console.error('Room batch validation failed:', validation.errors);
+        this.logger.logMessage(`Room batch validation failed: ${validation.errors?.join(', ')}`, 'ERROR');
         const fallback = this.generateFallbackRoomsFromContext(context);
         this.setRegionCachedResponse(cacheKey, fallback);
         return fallback;
       }
 
       if (validation.warnings) {
-        console.warn('Room batch validation warnings:', validation.warnings);
+        this.logger.logMessage(`Room batch validation warnings: ${validation.warnings?.join(', ')}`, 'SYSTEM');
       }
 
       const validatedResponse = this.convertToRoomDescriptions(response as RoomSchema[]);
@@ -263,7 +264,7 @@ export class ClaudeRegionService extends ClaudeService {
     }
 
     // Fallback if no response
-    console.warn('No response from Claude, using fallback rooms');
+    this.logger.logMessage('No response from Claude, using fallback rooms', 'SYSTEM');
     const fallback = this.generateFallbackRoomsFromContext(context);
     this.setRegionCachedResponse(cacheKey, fallback);
     return fallback;
@@ -320,7 +321,7 @@ export class ClaudeRegionService extends ClaudeService {
       }
 
       if (!this.isShuttingDown) {
-        console.log(`Phase 1 completed in ${Date.now() - startPhase1}ms`);
+        this.logger.logMessage(`Phase 1 completed in ${Date.now() - startPhase1}ms`, 'SYSTEM');
       }
 
       // Update status
@@ -356,7 +357,7 @@ export class ClaudeRegionService extends ClaudeService {
       }
 
       if (!this.isShuttingDown) {
-        console.log(`Phase 2 completed in ${Date.now() - startPhase2}ms`);
+        this.logger.logMessage(`Phase 2 completed in ${Date.now() - startPhase2}ms`, 'SYSTEM');
       }
 
       // Save to database with connections to existing world
@@ -418,7 +419,6 @@ export class ClaudeRegionService extends ClaudeService {
             : roomData.hasKey
               ? `The ${theme.keyConcept.name} can be found here.`
               : null,
-          visited: false,
           locked: false,
         },
       });
@@ -610,7 +610,7 @@ export class ClaudeRegionService extends ClaudeService {
           theme: r.theme || 'unknown',
         }));
     } catch (error) {
-      console.error('Failed to fetch existing regions:', error);
+      this.logger.logMessage(`Failed to fetch existing regions: ${error}`, 'ERROR');
       return [];
     }
   }

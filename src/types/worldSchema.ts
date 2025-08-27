@@ -121,7 +121,6 @@ export interface DatabaseRoomData {
   name: string;
   description: string;
   extendedDescription?: string;
-  visited: boolean;
   locked: boolean;
 }
 

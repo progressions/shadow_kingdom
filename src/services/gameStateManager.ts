@@ -7,16 +7,9 @@ export interface GameSession {
   currentRoom: Room;
   lastSaved: Date;
   sessionStartTime: Date;
-  movementHistory: MovementHistoryEntry[];
   inventory: number[]; // Array of item IDs
 }
 
-export interface MovementHistoryEntry {
-  fromRoomId: number;
-  toRoomId: number;
-  direction: string;
-  timestamp: Date;
-}
 
 export interface GameStateManagerError extends Error {
   code: string;
@@ -90,12 +83,9 @@ export class GameStateManager {
         currentRoom,
         lastSaved: now,
         sessionStartTime: now,
-        movementHistory: [],
         inventory: inventoryIds,
       };
 
-      // Mark the starting room as visited
-      await this.markRoomVisited(currentRoom.id);
 
       // Perform initial save to ensure session is persisted
       await this.saveGameState();
@@ -147,11 +137,11 @@ export class GameStateManager {
       display += '='.repeat(room.name?.length || 0) + '\n\n';
 
       // Room description
-      display += `${room.description}\n`;
+      display += `${room.description}\n\n`;
 
-      // Extended description if room has been visited and has one
-      if (room.visited && room.extendedDescription) {
-        display += `\n${room.extendedDescription}\n`;
+      // Extended description if room has one
+      if (room.extendedDescription) {
+        display += `${room.extendedDescription}\n\n`;
       }
 
       // Get room connections for exits
@@ -177,16 +167,14 @@ export class GameStateManager {
 
       // Add items description if any
       if (items.length > 0) {
-        display += '\n';
         if (items.length === 1) {
           const article = this.getArticle(items[0].name);
-          display += `You can see ${article} ${items[0].name} here.`;
+          display += `You can see ${article} ${items[0].name} here.\n\n`;
         } else {
           display += 'You can see: ';
           display += items.map(item => `${this.getArticle(item.name)} ${item.name}`).join(', ');
-          display += '.';
+          display += '.\n\n';
         }
-        display += '\n';
       }
 
       // Add characters if any
@@ -199,14 +187,15 @@ export class GameStateManager {
 
       // Add exits
       if (connections.length > 0) {
-        display += '\nExits: ';
+        display += 'Exits: ';
         const exitDescriptions = connections.map(conn => {
           const exitDesc = conn.description || `to ${conn.toRoom?.name || 'somewhere'}`;
           return `${conn.direction} (${exitDesc})`;
         });
         display += exitDescriptions.join(', ');
+        display += '\n\n';
       } else {
-        display += '\nThere are no obvious exits.';
+        display += 'There are no obvious exits.\n\n';
       }
 
       return display;
@@ -288,18 +277,7 @@ export class GameStateManager {
         },
       });
 
-      // Mark room as visited
-      await this.markRoomVisited(roomId);
 
-      // Track movement history if direction is provided
-      if (direction) {
-        this.addMovementToHistory({
-          fromRoomId: this.currentSession.currentRoomId,
-          toRoomId: roomId,
-          direction,
-          timestamp: now,
-        });
-      }
 
       // Update session state
       this.currentSession.currentRoomId = roomId;
@@ -323,54 +301,7 @@ export class GameStateManager {
     }
   }
 
-  /**
-   * Mark a room as visited in the database and cache
-   */
-  private async markRoomVisited(roomId: number): Promise<void> {
-    try {
-      await this.prismaService.client.room.update({
-        where: { id: roomId },
-        data: { visited: true },
-      });
 
-      // Update cache if the room is cached
-      const cached = this.roomCache.get(roomId);
-      if (cached) {
-        cached.room.visited = true;
-      }
-    } catch (error) {
-      console.error(`Failed to mark room ${roomId} as visited:`, error);
-    }
-  }
-
-  /**
-   * Add movement to history and trim if needed
-   */
-  private addMovementToHistory(entry: MovementHistoryEntry): void {
-    this.currentSession?.movementHistory.push(entry);
-
-    // Trim history if it exceeds max size
-    if (this.currentSession && this.currentSession.movementHistory.length > this.maxHistorySize) {
-      this.currentSession.movementHistory = this.currentSession.movementHistory.slice(
-        -this.maxHistorySize
-      );
-    }
-  }
-
-  /**
-   * Get movement history for the current session
-   */
-  getMovementHistory(): MovementHistoryEntry[] {
-    return this.currentSession?.movementHistory || [];
-  }
-
-  /**
-   * Get the last N movements
-   */
-  getRecentMovements(count: number = 5): MovementHistoryEntry[] {
-    const history = this.getMovementHistory();
-    return history.slice(-count);
-  }
 
   /**
    * Setup auto-save interval for periodic state persistence
@@ -497,12 +428,9 @@ export class GameStateManager {
         currentRoom: game.currentRoom,
         lastSaved: now,
         sessionStartTime: now,
-        movementHistory: [],
         inventory: inventoryIds,
       };
 
-      // Mark room as visited (in case it wasn't already)
-      await this.markRoomVisited(game.currentRoomId!);
     } catch (error) {
       if (error instanceof GameStateManagerError) {
         throw error;

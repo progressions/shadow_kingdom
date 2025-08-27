@@ -140,7 +140,6 @@ export class YamlWorldService {
           name: room.name,
           description: room.description,
           extendedDescription: room.extended_description,
-          visited: room.starting_room || false,
           locked: false,
         }));
 

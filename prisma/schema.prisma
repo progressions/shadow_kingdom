@@ -39,7 +39,6 @@ model Room {
   name                  String
   description           String
   extendedDescription   String?      @map("extended_description")
-  visited               Boolean      @default(false)
   locked                Boolean      @default(false)
   createdAt             DateTime     @default(now()) @map("created_at")
   updatedAt             DateTime     @updatedAt @map("updated_at")

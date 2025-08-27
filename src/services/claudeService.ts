@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from './prismaService';
 import { GameStateManager } from './gameStateManager';
+import { LoggingService } from './loggingService';
 import crypto from 'crypto';
 
 interface RoomGenerationContext {
@@ -46,6 +47,7 @@ export class ClaudeService {
   private gameStateManager: GameStateManager;
   private mockMode: boolean = false;
   protected responseCache: Map<string, unknown> = new Map();
+  protected logger: LoggingService;
   private requestQueue: Array<() => Promise<unknown>> = [];
   private isProcessingQueue: boolean = false;
   private rateLimit: number;
@@ -57,6 +59,7 @@ export class ClaudeService {
   constructor(prismaService: PrismaService, gameStateManager: GameStateManager) {
     this.prismaService = prismaService;
     this.gameStateManager = gameStateManager;
+    this.logger = LoggingService.getInstance();
     this.mockMode = process.env.CLAUDE_MOCK_MODE === 'true';
     this.rateLimit = parseInt(process.env.CLAUDE_RATE_LIMIT || '5', 10);
 
@@ -137,8 +140,8 @@ export class ClaudeService {
             try {
               return JSON.parse(textContent.text);
             } catch (parseError) {
-              console.error(`Failed to parse AI response on attempt ${attempt + 1}:`, parseError);
-              console.error('Raw response:', textContent.text);
+              this.logger.logMessage(`Failed to parse AI response on attempt ${attempt + 1}: ${parseError}`, 'ERROR');
+              this.logger.logMessage(`Raw response: ${textContent.text}`, 'ERROR');
               // Throw the error to trigger retry logic
               throw new Error(`JSON parse error: ${parseError}`);
             }
@@ -153,23 +156,23 @@ export class ClaudeService {
 
         // Log different error types appropriately
         if (errorMessage.includes('JSON parse error')) {
-          console.error(`JSON parsing failed on attempt ${attempt + 1}/${this.maxRetries}`);
+          this.logger.logMessage(`JSON parsing failed on attempt ${attempt + 1}/${this.maxRetries}`, 'ERROR');
         } else {
-          console.error(
-            `API request attempt ${attempt + 1}/${this.maxRetries} failed:`,
-            errorMessage
+          this.logger.logMessage(
+            `API request attempt ${attempt + 1}/${this.maxRetries} failed: ${errorMessage}`,
+            'ERROR'
           );
         }
 
         if (attempt < this.maxRetries - 1) {
           const delay = this.retryDelay * Math.pow(2, attempt);
-          console.log(`Retrying in ${delay}ms...`);
+          this.logger.logMessage(`Retrying in ${delay}ms...`, 'SYSTEM');
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     }
 
-    console.error('All retry attempts failed:', lastError);
+    this.logger.logMessage(`All retry attempts failed: ${lastError?.message || lastError}`, 'ERROR');
     return null;
   }
 
