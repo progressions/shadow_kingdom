@@ -1,0 +1,144 @@
+🧪 Testing Claude Region Generation
+
+============================================================
+📌 Running in MOCK MODE (no API calls will be made)
+   To use real Claude API, set CLAUDE_API_KEY in .env
+
+============================================================
+
+📍 TEST 1: Generate Region Theme
+----------------------------------------
+Input Context:{
+  "direction": "north",
+  "playerLevel": 3,
+  "worldSeed": "test-seed-123",
+  "previousRegion": {
+    "name": "Shadow Castle",
+    "theme": "abandoned fortress"
+  }
+}
+
+Generating theme...
+
+✅ Generated Theme Response:
+{
+  "name": "Haunted Manor",
+  "theme": "gothic mansion",
+  "description": "An abandoned manor house filled with restless spirits.",
+  "atmosphere": "dark and foreboding",
+  "guardianConcept": {
+    "name": "Lord Spectre",
+    "type": "undead",
+    "description": "The ghostly lord of the manor.",
+    "difficulty": 7
+  },
+  "keyConcept": {
+    "name": "Spectral Key",
+    "description": "A translucent key that phases between dimensions.",
+    "hint": "The lord holds dominion over all doors."
+  },
+  "lockedExitDescription": "An ornate door bound by spectral chains."
+}
+
+
+📍 TEST 2: Generate Room Batch
+----------------------------------------
+Room Context:
+- Guardian in room: 7
+- Key in room: 4
+- Entrance from: south
+- Exit to: north
+
+Generating 12 rooms...
+
+✅ Generated Rooms:
+
+  Room 0: gothic mansion - Room 1
+  -------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 1: gothic mansion - Room 2
+  -------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 2: gothic mansion - Room 3
+  -------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 3: gothic mansion - Room 4
+  -------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 4: gothic mansion - Room 5
+  -------------------------------
+  A room within the gothic mansion. The Spectral Key glimmers in the corner.
+  🗝️ KEY: Spectral Key can be found here!
+
+  Room 5: gothic mansion - Room 6
+  -------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 6: gothic mansion - Room 7
+  -------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 7: gothic mansion - Room 8
+  -------------------------------
+  A room within the gothic mansion. The Lord Spectre stands guard here.
+  ⚔️ GUARDIAN: Lord Spectre is here!
+
+  Room 8: gothic mansion - Room 9
+  -------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 9: gothic mansion - Room 10
+  --------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 10: gothic mansion - Room 11
+  --------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+  Room 11: gothic mansion - Room 12
+  --------------------------------
+  A room within the gothic mansion. The atmosphere is heavy with anticipation.
+
+
+📍 TEST 3: Database Storage Preview
+----------------------------------------
+Region record that would be created:
+{
+  "name": "Haunted Manor",
+  "theme": "gothic mansion",
+  "description": "An abandoned manor house filled with restless spirits.",
+  "atmosphere": "dark and foreboding"
+}
+
+Sample room records (first 3 rooms):
+
+{
+  "name": "gothic mansion - Room 1",
+  "description": "A room within the gothic mansion. The atmosphere is heavy with anticipation.",
+  "extendedDescription": null,
+  "visited": false,
+  "locked": false
+}
+
+{
+  "name": "gothic mansion - Room 2",
+  "description": "A room within the gothic mansion. The atmosphere is heavy with anticipation.",
+  "extendedDescription": null,
+  "visited": false,
+  "locked": false
+}
+
+{
+  "name": "gothic mansion - Room 3",
+  "description": "A room within the gothic mansion. The atmosphere is heavy with anticipation.",
+  "extendedDescription": null,
+  "visited": false,
+  "locked": false
+}
+
+
+✨ Test complete!

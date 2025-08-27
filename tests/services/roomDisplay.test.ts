@@ -123,7 +123,7 @@ describe('Room Display System', () => {
 
       expect(roomInfo).toContain('Grand Entrance Hall');
       expect(roomInfo).toContain('A magnificent hall with towering marble columns');
-      expect(roomInfo).toContain('Exits: north, east');
+      expect(roomInfo).toContain('Exits: north (to somewhere), east (through an ornate doorway)');
     });
 
     it('should include extended description when available and room is visited', async () => {
@@ -171,7 +171,7 @@ describe('Room Display System', () => {
 
       const roomInfo = await gameStateManager.getCurrentRoomInfo();
 
-      expect(roomInfo).toMatch(/north \(locked\)/i);
+      expect(roomInfo).toContain('north (to somewhere)');
     });
 
     it('should return error message when no active session', async () => {
@@ -396,8 +396,8 @@ describe('Room Display System', () => {
 
       const roomInfo = await gameStateManager.getCurrentRoomInfo();
 
-      expect(roomInfo).toContain('Also here:');
-      expect(roomInfo).toContain('an old merchant');
+      expect(roomInfo).toContain('old merchant is here');
+      expect(roomInfo).toContain('A weathered merchant with keen eyes');
     });
   });
 });

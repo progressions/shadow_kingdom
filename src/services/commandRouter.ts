@@ -38,6 +38,7 @@ export interface CommandExecutionResult {
     roomChanged?: boolean;
     newRoomId?: number;
     shouldExit?: boolean;
+    requiresConfirmation?: boolean;
   };
 }
 
@@ -92,7 +93,8 @@ export class CommandRouter {
   private systemPatterns = {
     quit: ['quit', 'exit', 'q', 'bye', 'goodbye', 'leave'],
     help: ['help', 'h', '?', 'commands', 'instructions'],
-    inventory: ['inventory', 'inv', 'i', 'items', 'carrying']
+    inventory: ['inventory', 'inv', 'i', 'items', 'carrying'],
+    new: ['new', 'restart', 'reset', 'newgame', 'new game']
   };
 
   private itemPatterns = {
@@ -429,6 +431,16 @@ export class CommandRouter {
       return {
         type: 'system',
         action: 'inventory',
+        raw,
+        confidence: 1.0
+      };
+    }
+
+    // Check for new game command
+    if (this.systemPatterns.new.includes(action)) {
+      return {
+        type: 'system',
+        action: 'new',
         raw,
         confidence: 1.0
       };
@@ -1017,6 +1029,10 @@ export class CommandRouter {
         return await this.executeInventoryCommand();
       }
 
+      if (parsedCommand.action === 'new') {
+        return await this.executeNewGameCommand();
+      }
+
       return {
         success: false,
         response: 'Unknown system command.'
@@ -1265,6 +1281,90 @@ export class CommandRouter {
   }
 
   /**
+   * Execute new game command
+   */
+  private async executeNewGameCommand(): Promise<CommandExecutionResult> {
+    try {
+      // Get the current game ID
+      const currentGameId = this.gameStateManager.getCurrentGameId();
+      
+      if (!currentGameId) {
+        return {
+          success: false,
+          response: 'No active game session. Please restart the application.'
+        };
+      }
+      
+      // Find the starting room (Grand Entrance Hall)
+      // Note: Rooms may belong to different games, so we don't filter by gameId
+      const startingRoom = await this.prismaService.client.room.findFirst({
+        where: {
+          name: 'Grand Entrance Hall'
+        }
+      });
+
+      if (!startingRoom) {
+        return {
+          success: false,
+          response: 'Unable to find starting room. Please ensure the game data is properly seeded.'
+        };
+      }
+
+      // Simply reinitialize with the same game ID, resetting to starting position
+      // This keeps the same game record but resets progress
+      await this.prismaService.client.game.update({
+        where: { id: currentGameId },
+        data: {
+          currentRoomId: startingRoom.id,
+          updatedAt: new Date()
+        }
+      });
+      
+      // Clear inventory by setting all items back to their original rooms or removing them
+      await this.prismaService.client.item.updateMany({
+        where: {
+          gameId: currentGameId,
+          roomId: null  // Items in inventory
+        },
+        data: {
+          roomId: startingRoom.id  // Drop them in starting room
+        }
+      });
+      
+      // Reinitialize the game state manager with the reset game
+      const game = await this.prismaService.client.game.findUnique({
+        where: { id: currentGameId }
+      });
+      
+      if (!game) {
+        throw new Error('Failed to retrieve game after reset');
+      }
+      
+      await this.gameStateManager.resetGameState();
+      await this.gameStateManager.initializeGame(game);
+      
+      // Format starting room description
+      const roomDescription = await this.formatRoomDescription(startingRoom);
+
+      return {
+        success: true,
+        response: `\n=== NEW GAME STARTED ===\n\nWelcome to Shadow Kingdom! Your adventure begins...\n\n${roomDescription}`,
+        metadata: {
+          roomChanged: true,
+          newRoomId: startingRoom.id
+        }
+      };
+
+    } catch (error) {
+      console.error('New game command error:', error);
+      return {
+        success: false,
+        response: 'Failed to start a new game. Please try again.'
+      };
+    }
+  }
+
+  /**
    * Get appropriate article (a/an) for a word
    */
   private getArticle(word: string): string {
@@ -1431,6 +1531,7 @@ export class CommandRouter {
     
     helpSections.push('SYSTEM:');
     helpSections.push('  help, h, ?   - Show this help message');
+    helpSections.push('  new, restart - Start a new game');
     helpSections.push('  quit         - Exit the game');
     helpSections.push('');
     
@@ -1474,5 +1575,33 @@ export class CommandRouter {
    */
   clearHistory(): void {
     this.commandHistory = [];
+  }
+
+  /**
+   * Get all available commands (for testing and help)
+   */
+  getAvailableCommands(): Array<{ name: string; description: string }> {
+    const commands: Array<{ name: string; description: string }> = [];
+    
+    // System commands
+    commands.push({ name: 'help', description: 'Show help' });
+    commands.push({ name: 'new', description: 'Start a new game' });
+    commands.push({ name: 'quit', description: 'Exit the game' });
+    commands.push({ name: 'inventory', description: 'View your inventory' });
+    
+    // Exploration commands
+    commands.push({ name: 'look', description: 'Examine surroundings' });
+    commands.push({ name: 'examine', description: 'Examine something' });
+    
+    // Item commands
+    commands.push({ name: 'take', description: 'Pick up an item' });
+    commands.push({ name: 'drop', description: 'Drop an item' });
+    
+    // Movement commands
+    Object.keys(this.movementPatterns.directions).forEach(dir => {
+      commands.push({ name: dir, description: `Go ${dir}` });
+    });
+    
+    return commands;
   }
 }

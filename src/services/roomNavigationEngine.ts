@@ -1,5 +1,6 @@
 import { GameStateManager } from './gameStateManager';
 import { PrismaService } from './prismaService';
+import { ClaudeRegionService } from './claudeRegionService';
 import { Room, Connection, Item, Character } from '@prisma/client';
 
 export interface MovementValidationResult {
@@ -68,6 +69,12 @@ export interface ComplexExaminationResult {
   target?: Item;
 }
 
+export interface RegionBoundaryInfo {
+  isAtBoundary: boolean;
+  unfilledDirections: string[];
+  boundaryDirections: { direction: string; toRegionId?: number | null }[];
+}
+
 export interface RoomNavigationError extends Error {
   code: string;
   recoverable: boolean;
@@ -101,7 +108,8 @@ export class RoomNavigationEngine {
 
   constructor(
     private readonly gameStateManager: GameStateManager,
-    private readonly prismaService: PrismaService
+    private readonly prismaService: PrismaService,
+    private readonly claudeRegionService?: ClaudeRegionService
   ) {}
 
   /**
@@ -292,6 +300,14 @@ export class RoomNavigationEngine {
 
       // Generate movement description
       const movementDescription = this.generateMovementDescription(connection);
+      
+      // Check if we're at a region boundary and trigger generation if needed
+      if (this.claudeRegionService) {
+        // Trigger generation in background (non-blocking)
+        this.triggerBoundaryGeneration(newRoom.id).catch(error => {
+          console.warn('Background region generation failed:', error);
+        });
+      }
 
       return {
         success: true,
@@ -1186,6 +1202,124 @@ export class RoomNavigationEngine {
     }
 
     return hints;
+  }
+
+  /**
+   * Check if a room is at a region boundary (has connections to null or different regions)
+   */
+  async checkRegionBoundary(roomId: number): Promise<RegionBoundaryInfo> {
+    try {
+      const room = await this.prismaService.client.room.findFirst({
+        where: { id: roomId }
+      });
+      
+      if (!room || !room.regionId) {
+        return {
+          isAtBoundary: false,
+          unfilledDirections: [],
+          boundaryDirections: []
+        };
+      }
+      
+      // Get all connections from this room
+      const connections = await this.prismaService.client.connection.findMany({
+        where: { fromRoomId: roomId },
+        include: {
+          toRoom: true
+        }
+      });
+      
+      const unfilledDirections: string[] = [];
+      const boundaryDirections: { direction: string; toRegionId?: number | null }[] = [];
+      
+      for (const conn of connections) {
+        // Check for unfilled connections (potential new regions)
+        if (!conn.toRoomId) {
+          unfilledDirections.push(conn.direction);
+          boundaryDirections.push({ 
+            direction: conn.direction, 
+            toRegionId: null 
+          });
+        } 
+        // Check for connections to different regions
+        else if (conn.toRoom && conn.toRoom.regionId !== room.regionId) {
+          boundaryDirections.push({ 
+            direction: conn.direction, 
+            toRegionId: conn.toRoom.regionId 
+          });
+        }
+      }
+      
+      const isAtBoundary = unfilledDirections.length > 0 || 
+                          boundaryDirections.some(b => b.toRegionId !== room.regionId);
+      
+      return {
+        isAtBoundary,
+        unfilledDirections,
+        boundaryDirections
+      };
+    } catch (error) {
+      console.error('Error checking region boundary:', error);
+      return {
+        isAtBoundary: false,
+        unfilledDirections: [],
+        boundaryDirections: []
+      };
+    }
+  }
+
+  /**
+   * Trigger region generation if at boundary and conditions are met
+   */
+  async triggerBoundaryGeneration(roomId: number, direction?: string): Promise<void> {
+    if (!this.claudeRegionService) {
+      return; // No Claude service available
+    }
+    
+    try {
+      const boundaryInfo = await this.checkRegionBoundary(roomId);
+      
+      if (!boundaryInfo.isAtBoundary) {
+        return; // Not at a boundary
+      }
+      
+      const session = this.gameStateManager.getCurrentSession();
+      if (!session) {
+        return; // No active session
+      }
+      
+      const room = await this.prismaService.client.room.findFirst({
+        where: { id: roomId }
+      });
+      
+      if (!room || !room.regionId) {
+        return;
+      }
+      
+      // If specific direction provided, check if it's unfilled
+      if (direction && boundaryInfo.unfilledDirections.includes(direction)) {
+        // Trigger generation for this specific direction
+        await this.claudeRegionService.triggerRegionGeneration(
+          session.gameId,
+          room.regionId,
+          direction,
+          roomId // Pass source room ID for connection
+        );
+      } 
+      // Otherwise trigger for all unfilled directions
+      else if (!direction && boundaryInfo.unfilledDirections.length > 0) {
+        // Trigger generation for the first unfilled direction
+        const targetDirection = boundaryInfo.unfilledDirections[0];
+        await this.claudeRegionService.triggerRegionGeneration(
+          session.gameId,
+          room.regionId,
+          targetDirection,
+          roomId // Pass source room ID for connection
+        );
+      }
+    } catch (error) {
+      console.error('Error triggering boundary generation:', error);
+    }
   }
 
   /**

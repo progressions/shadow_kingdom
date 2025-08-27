@@ -8,6 +8,7 @@ import { GameStateManager } from '../services/gameStateManager';
 import { CommandRouter } from '../services/commandRouter';
 import { RoomNavigationEngine } from '../services/roomNavigationEngine';
 import { PrismaService } from '../services/prismaService';
+import { ClaudeRegionService } from '../services/claudeRegionService';
 import { LoggingService, MessageType } from '../services/loggingService';
 import { Message, createMessage } from '../types/Message';
 import { addMessagesToBuffer, getBufferStats } from '../utils/messageBuffer';
@@ -52,6 +53,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     commandRouter: CommandRouter | null;
     navigationEngine: RoomNavigationEngine | null;
     prismaService: PrismaService | null;
+    claudeRegionService: ClaudeRegionService | null;
     loggingService: LoggingService | null;
   }>({
     gameEngine: null,
@@ -59,6 +61,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     commandRouter: null,
     navigationEngine: null,
     prismaService: null,
+    claudeRegionService: null,
     loggingService: null,
   });
 
@@ -147,8 +150,20 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       await prismaService.initialize();
       
       const gameStateManager = new GameStateManager(prismaService);
-      const gameEngine = new GameEngine(prismaService, gameStateManager);
-      const navigationEngine = new RoomNavigationEngine(gameStateManager, prismaService);
+      
+      // Initialize ClaudeRegionService if Claude API is available
+      let claudeRegionService: ClaudeRegionService | undefined;
+      if (process.env.CLAUDE_API_KEY || process.env.CLAUDE_MOCK_MODE === 'true') {
+        claudeRegionService = new ClaudeRegionService(prismaService, gameStateManager);
+        if (debugMode) {
+          console.log('ClaudeRegionService initialized');
+        }
+      } else if (debugMode) {
+        console.log('ClaudeRegionService not initialized (no API key or mock mode)');
+      }
+      
+      const gameEngine = new GameEngine(prismaService, gameStateManager, claudeRegionService);
+      const navigationEngine = new RoomNavigationEngine(gameStateManager, prismaService, claudeRegionService);
       const commandRouter = new CommandRouter(gameStateManager, prismaService);
 
       // Store service references
@@ -158,6 +173,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         commandRouter,
         navigationEngine,
         prismaService,
+        claudeRegionService: claudeRegionService || null,
         loggingService,
       };
 
@@ -295,7 +311,16 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         
         // Handle quit command - exit immediately for programmatic mode
         if (result.metadata?.shouldExit) {
-          setTimeout(() => exit(), 100);
+          // Quick cleanup for programmatic mode
+          const { prismaService } = servicesRef.current;
+          if (prismaService) {
+            await prismaService.disconnect().catch(() => {});
+          }
+          setTimeout(() => {
+            exit();
+            // Force exit if needed
+            setTimeout(() => process.exit(0), 100);
+          }, 0);
           return;
         }
         
@@ -340,7 +365,34 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         
         // Handle quit command
         if (result.metadata?.shouldExit) {
-          setTimeout(() => exit(), 100);
+          addMessage('Shutting down...', 'SYSTEM');
+          
+          // Ensure cleanup happens before exit
+          const performQuickCleanup = async () => {
+            try {
+              const { prismaService, loggingService, claudeRegionService } = servicesRef.current;
+              
+              // Stop Claude region generation if active
+              if (claudeRegionService) {
+                await claudeRegionService.cleanup().catch(() => {});
+              }
+              
+              if (loggingService) {
+                await loggingService.logSessionEnd().catch(() => {});
+              }
+              
+              if (prismaService) {
+                await prismaService.disconnect().catch(() => {});
+              }
+            } catch (error) {
+              // Ignore errors during quick cleanup
+            }
+            
+            // Force immediate exit
+            process.exit(0);
+          };
+          
+          performQuickCleanup();
           return;
         }
         
@@ -393,26 +445,71 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     return () => {
       const { gameEngine, gameStateManager, navigationEngine, prismaService, loggingService } = servicesRef.current;
       
-      // Log session end before cleanup
-      if (loggingService) {
-        loggingService.logSessionEnd().catch(error => {
-          if (debugMode) {
-            console.error('Failed to log session end:', error);
+      // Perform cleanup operations in sequence to avoid race conditions
+      // GameStateManager needs to save state before database disconnects
+      const performCleanup = async () => {
+        try {
+          // Log session end first
+          if (loggingService) {
+            await loggingService.logSessionEnd().catch(error => {
+              if (debugMode) {
+                console.error('Failed to log session end:', error);
+              }
+            });
           }
-        });
-      }
-      
-      Promise.all([
-        gameStateManager?.shutdown?.(),
-        navigationEngine?.cleanup?.(),
-        gameEngine?.shutdown?.(),
-        prismaService?.disconnect?.(),
-        loggingService?.shutdown?.(),
-      ]).catch(error => {
-        if (debugMode) {
-          console.error('Cleanup error:', error);
+          
+          // Save game state before disconnecting database
+          if (gameStateManager?.shutdown) {
+            await gameStateManager.shutdown().catch(error => {
+              if (debugMode) {
+                console.error('GameStateManager shutdown error:', error);
+              }
+            });
+          }
+          
+          // Cleanup navigation engine
+          if (navigationEngine?.cleanup) {
+            await navigationEngine.cleanup().catch(error => {
+              if (debugMode) {
+                console.error('NavigationEngine cleanup error:', error);
+              }
+            });
+          }
+          
+          // Shutdown game engine
+          if (gameEngine?.shutdown) {
+            await gameEngine.shutdown().catch(error => {
+              if (debugMode) {
+                console.error('GameEngine shutdown error:', error);
+              }
+            });
+          }
+          
+          // Finally disconnect database
+          if (prismaService?.disconnect) {
+            await prismaService.disconnect().catch(error => {
+              if (debugMode) {
+                console.error('PrismaService disconnect error:', error);
+              }
+            });
+          }
+          
+          // Shutdown logging service last
+          if (loggingService?.shutdown) {
+            await loggingService.shutdown().catch(error => {
+              if (debugMode) {
+                console.error('LoggingService shutdown error:', error);
+              }
+            });
+          }
+        } catch (error) {
+          if (debugMode) {
+            console.error('Cleanup sequence error:', error);
+          }
         }
-      });
+      };
+      
+      performCleanup();
     };
   }, [initializeServices, debugMode]);
 

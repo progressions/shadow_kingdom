@@ -1,5 +1,6 @@
 import { PrismaService } from './prismaService';
 import { GameStateManager } from './gameStateManager';
+import { ClaudeRegionService } from './claudeRegionService';
 import { Game, Room } from '@prisma/client';
 
 export interface LaunchConfiguration {
@@ -36,7 +37,8 @@ export class GameEngine {
 
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly gameStateManager: GameStateManager
+    private readonly gameStateManager: GameStateManager,
+    private readonly claudeRegionService?: ClaudeRegionService
   ) {
     // Initialize configuration from environment variables
     this.launchConfiguration = this.loadConfigurationFromEnvironment();
@@ -78,6 +80,9 @@ export class GameEngine {
             await this.updateGameTimestamp(existingGame);
           }
           
+          // Trigger region generation if available
+          await this.triggerInitialRegionGeneration(existingGame);
+          
           return { game: existingGame, isNewGame: false };
         } else {
           if (this.launchConfiguration.showLaunchMessages) {
@@ -94,6 +99,10 @@ export class GameEngine {
         }
         
         const newGame = await this.createNewGame();
+        
+        // Trigger region generation for new game
+        await this.triggerInitialRegionGeneration(newGame);
+        
         return { game: newGame, isNewGame: true };
       } else {
         throw new Error('No valid game found and auto-creation is disabled');
@@ -347,6 +356,93 @@ export class GameEngine {
       } else {
         throw error;
       }
+    }
+  }
+
+  /**
+   * Get the ClaudeRegionService instance if available
+   */
+  getClaudeRegionService(): ClaudeRegionService | undefined {
+    return this.claudeRegionService;
+  }
+
+  /**
+   * Check if region generation should be triggered
+   */
+  async shouldTriggerRegionGeneration(gameId: number, currentRoomId: number): Promise<boolean> {
+    // Check if Claude service is available
+    if (!this.claudeRegionService) {
+      return false;
+    }
+
+    // Check if we're near a region boundary
+    // This is a simplified check - in a full implementation, 
+    // we'd check room connections to see if any lead to undefined regions
+    const room = await this.prismaService.client.room.findFirst({
+      where: { id: currentRoomId }
+    });
+
+    if (!room || !room.regionId) {
+      return false;
+    }
+
+    // Check if this region has unexplored exits
+    // For now, we'll trigger generation when entering a new region
+    // In the future, this should check for region boundaries
+    return this.launchConfiguration.backgroundGeneration;
+  }
+
+  /**
+   * Get the status of region generation
+   */
+  getRegionGenerationStatus(gameId: number, direction: string): any {
+    if (!this.claudeRegionService) {
+      return null;
+    }
+    return this.claudeRegionService.getGenerationStatus(gameId, direction);
+  }
+
+  /**
+   * Trigger region generation after game launch
+   */
+  private async triggerInitialRegionGeneration(game: Game): Promise<void> {
+    if (!this.claudeRegionService || !this.launchConfiguration.backgroundGeneration) {
+      return;
+    }
+
+    try {
+      // Check if game has a current room
+      if (!game.currentRoomId) {
+        return;
+      }
+      
+      // Get current room's region
+      const currentRoom = await this.prismaService.client.room.findFirst({
+        where: { id: game.currentRoomId }
+      });
+
+      if (!currentRoom?.regionId) {
+        return;
+      }
+
+      // Trigger generation for adjacent regions (simplified for now)
+      // In a full implementation, this would check actual room connections
+      const directions = ['north', 'south', 'east', 'west'];
+      for (const direction of directions) {
+        // Check if region already exists in that direction
+        // For now, we'll just trigger one generation as an example
+        if (direction === 'north') {
+          await this.claudeRegionService.triggerRegionGeneration(
+            game.id,
+            currentRoom.regionId,
+            direction,
+            game.currentRoomId // Pass current room as source
+          );
+          break; // Only trigger one for now
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to trigger initial region generation:', error);
     }
   }
 

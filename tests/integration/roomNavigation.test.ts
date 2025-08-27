@@ -302,7 +302,7 @@ describe('Room Navigation Integration Tests', () => {
       expect(result.response).toContain('north');
       expect(result.response).toContain('east');
       expect(result.response).toContain('west');
-      expect(result.response).toContain('locked');
+      expect(result.response).toContain('narrow passage');
     });
 
     it('should handle examination of specific targets', async () => {

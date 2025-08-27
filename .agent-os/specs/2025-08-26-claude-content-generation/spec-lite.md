@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement Claude AI integration to power asynchronous generation of complete 12-room themed regions, each with a guardian monster protecting a key that unlocks the connection to the next region. The AI generates cohesive regional themes, creates narrative connections between regions, and ensures each room maintains thematic consistency while offering unique exploration opportunities. Background generation ensures seamless exploration without gameplay interruption.

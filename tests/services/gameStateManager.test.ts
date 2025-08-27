@@ -39,10 +39,14 @@ describe('GameStateManager', () => {
     gameStateManager = new GameStateManager(mockPrismaService);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     jest.clearAllMocks();
     // Clear any intervals to prevent test timeout
-    gameStateManager?.clearSession();
+    if (gameStateManager) {
+      await gameStateManager.resetGameState(); // This clears the saveInterval
+      gameStateManager.clearSession();
+    }
+    jest.clearAllTimers();
   });
 
   describe('Game Initialization', () => {
@@ -332,7 +336,7 @@ describe('GameStateManager', () => {
         updatedAt: new Date(),
       };
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
       (mockPrismaService.client.room.update as jest.Mock).mockRejectedValue(new Error('Update failed'));

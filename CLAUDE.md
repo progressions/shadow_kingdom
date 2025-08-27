@@ -134,8 +134,13 @@ DATABASE_URL=file:./data/shadow_kingdom.db
 ### Optional Development
 ```bash
 AI_DEBUG_LOGGING=true                    # Enable detailed debug output
-AI_MOCK_MODE=true                        # Use mock AI responses
+AI_MOCK_MODE=true                        # Use mock AI responses (deprecated)
 GAME_ENGINE_SKIP_MENU=true               # Auto-launch for TUI integration
+
+# Claude AI Integration
+CLAUDE_API_KEY=sk-ant-...                # Anthropic API key for Claude
+CLAUDE_MOCK_MODE=true                    # Use mock Claude responses for development
+CLAUDE_RATE_LIMIT=5                      # Requests per second limit (default: 5)
 ```
 
 ## Key Development Patterns

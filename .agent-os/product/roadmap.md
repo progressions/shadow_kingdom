@@ -61,14 +61,14 @@
 - **Performance Optimization**: Request throttling, response caching, and async processing to maintain responsive gameplay
 
 ### Advanced Features
-- **Dynamic Character Generation**: AI-created NPCs with contextually appropriate personalities, backstories, and interaction capabilities based on regional themes
+- **~~Dynamic Character Generation~~**: ~~AI-created NPCs with contextually appropriate personalities, backstories, and interaction capabilities based on regional themes~~ **(DEFERRED TO FUTURE PHASE)**
 - **Thematic Item Placement**: Region-appropriate item generation with purposeful placement and meaningful interactions
 - **Environmental Storytelling**: AI-generated atmospheric details and environmental narratives that enhance immersion
 
-## Phase 3: Enhanced Gameplay Systems (3-4 weeks)
+## Phase 3: Enhanced Gameplay Systems (3-4 weeks) - **[PARTIALLY DEFERRED]**
 
 **Goal:** Implement core RPG mechanics and advanced interaction systems
-**Success Criteria:** Full-featured gameplay experience with inventory, combat, and NPC interaction
+**Success Criteria:** Full-featured gameplay experience with inventory, combat, and basic item interaction
 
 ### Must-Have Features
 
@@ -84,11 +84,11 @@
 - **Combat Integration**: Seamless integration with world generation for contextually appropriate encounters
 - **Victory/Defeat Handling**: Proper game state management for combat outcomes
 
-#### 3.3 NPC Interaction Framework (Week 3-4)
-- **Advanced Dialogue System**: AI-powered conversation system with context-aware responses and character personality consistency
-- **Quest Integration**: Basic quest framework with NPC-driven objectives and reward systems
-- **Relationship Tracking**: NPC relationship mechanics affecting interactions and available options
-- **Social Dynamics**: Faction relationships and reputation systems affecting gameplay
+#### 3.3 **[DEFERRED] NPC Interaction Framework** (Week 3-4)
+- **~~Advanced Dialogue System~~**: ~~AI-powered conversation system with context-aware responses and character personality consistency~~ **(DEFERRED TO FUTURE PHASE)**
+- **~~Quest Integration~~**: ~~Basic quest framework with NPC-driven objectives and reward systems~~ **(DEFERRED TO FUTURE PHASE)**
+- **~~Relationship Tracking~~**: ~~NPC relationship mechanics affecting interactions and available options~~ **(DEFERRED TO FUTURE PHASE)**
+- **~~Social Dynamics~~**: ~~Faction relationships and reputation systems affecting gameplay~~ **(DEFERRED TO FUTURE PHASE)**
 
 ### Quality of Life Features
 - **Advanced Help System**: Context-aware help with command suggestions and gameplay hints
@@ -111,7 +111,7 @@
 #### 4.2 Advanced AI Features (Week 2)
 - **Natural Language Command Processing**: Full natural language understanding for complex commands and player intent
 - **Contextual AI Responses**: Advanced AI integration for dynamic responses to player actions and world state changes
-- **Procedural Quest Generation**: AI-generated quest lines and objectives based on world state and player history
+- **~~Procedural Quest Generation~~**: ~~AI-generated quest lines and objectives based on world state and player history~~ **(DEFERRED TO FUTURE PHASE)**
 - **Adaptive Difficulty**: Dynamic game difficulty adjustment based on player performance and preferences
 
 #### 4.3 Production Readiness (Week 2-3)
@@ -125,6 +125,18 @@
 - **Multi-Language Support**: Framework for localization and international deployment
 - **Analytics Integration**: Privacy-respecting usage analytics for product improvement insights
 - **Community Features**: Foundation for sharing worlds, importing/exporting game states, and community content
+
+## **[FUTURE PHASE] NPC & Social Systems**
+
+**Goal:** Add rich NPC interactions and social dynamics to enhance gameplay depth
+**Scope:** Advanced dialogue, quests, relationships, and faction systems
+
+### Features (Future Implementation)
+- **AI-Powered Dialogue System**: Context-aware NPC conversations with personality consistency
+- **Dynamic Quest Generation**: AI-created quests based on world state and player history
+- **Relationship & Reputation Systems**: Complex social dynamics affecting gameplay options
+- **Faction Mechanics**: Guild relationships and territorial politics
+- **Advanced Character Generation**: AI-created NPCs with rich backstories and personalities
 
 ## Success Metrics by Phase
 
@@ -143,7 +155,7 @@
 ### Phase 3 Metrics
 - Complete inventory system with persistent state management
 - Combat system handles all encounter types without errors
-- NPC conversations maintain character consistency across sessions
+- ~~NPC conversations maintain character consistency across sessions~~ **(DEFERRED)**
 - Save/load operations complete successfully 100% of the time
 
 ### Phase 4 Metrics
@@ -165,3 +177,5 @@
 - **Accessibility**: Early testing across diverse terminal environments and user accessibility needs
 
 This roadmap provides a clear path to a production-ready Shadow Kingdom game that successfully combines classic text adventure gameplay with cutting-edge AI technology while maintaining the reliability and polish expected of modern software products.
+
+**CURRENT FOCUS:** Completing Claude API integration for room generation and testing existing Claude service functionality. NPC dialogue and social systems have been deferred to allow focused development on core world generation features.
