@@ -277,9 +277,9 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
             }
           }
 
-          // Send any remaining message
+          // Send any remaining message (room description) with a blank line before it
           if (currentMessage.trim()) {
-            addMessage(currentMessage.trim(), 'ROOM');
+            addMessage('\n' + currentMessage.trim(), 'ROOM');
           }
         } else {
           addMessage(roomInfo, 'ROOM');
@@ -461,9 +461,14 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
               }
             }
 
-            // Send any remaining message
+            // Send any remaining message (likely a room description) with a blank line before it
             if (currentMessage.trim()) {
-              addMessage(currentMessage.trim(), 'RESPONSE');
+              // Add blank line if this appears to be a room description (after a room title)
+              if (inRoomTitle) {
+                addMessage('\n' + currentMessage.trim(), 'RESPONSE');
+              } else {
+                addMessage(currentMessage.trim(), 'RESPONSE');
+              }
             }
           } else {
             // Display the response as single message to preserve formatting
