@@ -196,10 +196,10 @@ export class RoomNavigationEngine {
         connection,
         availableDirections,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         isValid: false,
-        error: `Movement validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        error: `Movement validation failed: ${_error instanceof Error ? _error.message : String(_error)}`,
       };
     }
   }
@@ -228,8 +228,8 @@ export class RoomNavigationEngine {
           locked: conn.locked,
           requiresKey: conn.requiredKey,
         }));
-    } catch (error) {
-      console.error('Error getting available exits:', error);
+    } catch (_error) {
+      console.error('Error getting available exits:', _error);
       return [];
     }
   }
@@ -293,8 +293,8 @@ export class RoomNavigationEngine {
         .join(', ');
 
       return `Exits: ${exitList}`;
-    } catch (error) {
-      console.error('Error formatting room exits:', error);
+    } catch (_error) {
+      console.error('Error formatting room exits:', _error);
       return 'Unable to determine available exits.';
     }
   }
@@ -323,8 +323,8 @@ export class RoomNavigationEngine {
       // Check if we're at a region boundary and trigger generation if needed
       if (this.claudeRegionService) {
         // Trigger generation in background (non-blocking)
-        this.triggerBoundaryGeneration(newRoom.id).catch(error => {
-          console.warn('Background region generation failed:', error);
+        this.triggerBoundaryGeneration(newRoom.id).catch(_error => {
+          console.warn('Background region generation failed:', _error);
         });
       }
 
@@ -333,10 +333,10 @@ export class RoomNavigationEngine {
         newRoom,
         movementDescription,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
-        error: `Failed to move ${connection.direction}: ${error instanceof Error ? error.message : String(error)}`,
+        error: `Failed to move ${connection.direction}: ${_error instanceof Error ? _error.message : String(_error)}`,
       };
     }
   }
@@ -432,8 +432,8 @@ export class RoomNavigationEngine {
       }
 
       return description;
-    } catch (error) {
-      console.error('Error generating room description:', error);
+    } catch (_error) {
+      console.error('Error generating room description:', _error);
       return `**${room.name}**\n\n${room.description}\n\n(Unable to load additional room details)`;
     }
   }
@@ -538,8 +538,8 @@ export class RoomNavigationEngine {
         found: false,
         description: `You don't see anything like that here. Try examining specific items or characters you can see, or just use "look" to see the room again.`,
       };
-    } catch (error) {
-      console.error('Error examining room:', error);
+    } catch (_error) {
+      console.error('Error examining room:', _error);
       return {
         found: false,
         description: 'Unable to examine that right now. Please try again.',
@@ -570,10 +570,10 @@ export class RoomNavigationEngine {
       }
 
       return { isValid: true };
-    } catch (error) {
+    } catch (_error) {
       return {
         isValid: false,
-        error: `World consistency check failed: ${error instanceof Error ? error.message : String(error)}`,
+        error: `World consistency check failed: ${_error instanceof Error ? _error.message : String(_error)}`,
       };
     }
   }
@@ -604,8 +604,8 @@ export class RoomNavigationEngine {
         visitedRooms: visitedCount,
         roomNames: rooms.map(room => room.name),
       };
-    } catch (error) {
-      console.error('Error getting region context:', error);
+    } catch (_error) {
+      console.error('Error getting region context:', _error);
       return {
         regionId,
         totalRooms: 0,
@@ -635,8 +635,8 @@ export class RoomNavigationEngine {
       });
 
       return rooms || [];
-    } catch (error) {
-      console.error('Error finding rooms by name:', error);
+    } catch (_error) {
+      console.error('Error finding rooms by name:', _error);
       return [];
     }
   }
@@ -682,8 +682,8 @@ export class RoomNavigationEngine {
       }
 
       return hints;
-    } catch (error) {
-      console.error('Error getting navigation hints:', error);
+    } catch (_error) {
+      console.error('Error getting navigation hints:', _error);
       return ['Unable to provide navigation hints at this time'];
     }
   }
@@ -756,11 +756,11 @@ export class RoomNavigationEngine {
         isValid: errors.length === 0,
         errors,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         isValid: false,
         errors: [
-          `Navigation validation failed: ${error instanceof Error ? error.message : String(error)}`,
+          `Navigation validation failed: ${_error instanceof Error ? _error.message : String(_error)}`,
         ],
       };
     }
@@ -785,8 +785,8 @@ export class RoomNavigationEngine {
       });
 
       return startingRoom;
-    } catch (error) {
-      console.error('Error finding YAML starting room:', error);
+    } catch (_error) {
+      console.error('Error finding YAML starting room:', _error);
       return null;
     }
   }
@@ -850,8 +850,8 @@ export class RoomNavigationEngine {
         visitedRooms,
         regionBreakdown,
       };
-    } catch (error) {
-      console.error('Error getting YAML world overview:', error);
+    } catch (_error) {
+      console.error('Error getting YAML world overview:', _error);
       return {
         totalRooms: 0,
         totalRegions: 0,
@@ -927,8 +927,8 @@ export class RoomNavigationEngine {
         createdAt: room.createdAt,
         updatedAt: room.updatedAt,
       }));
-    } catch (error) {
-      console.error('Error finding rooms by YAML attributes:', error);
+    } catch (_error) {
+      console.error('Error finding rooms by YAML attributes:', _error);
       return [];
     }
   }
@@ -980,7 +980,7 @@ export class RoomNavigationEngine {
         actionTaken: action,
         stateChanged: true,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         description: 'Something went wrong with that interaction. Please try again.',
@@ -1092,8 +1092,8 @@ export class RoomNavigationEngine {
         description: item.description,
         suggestedActions: this.getAppropriateActions(item),
       }));
-    } catch (error) {
-      console.error('Error getting interactive elements:', error);
+    } catch (_error) {
+      console.error('Error getting interactive elements:', _error);
       return [];
     }
   }
@@ -1161,8 +1161,8 @@ export class RoomNavigationEngine {
         description: `You examine the ${target} carefully, but don't find anything particularly noteworthy about it.`,
         hints,
       };
-    } catch (error) {
-      console.error('Error handling complex examination:', error);
+    } catch (_error) {
+      console.error('Error handling complex examination:', _error);
       return {
         success: false,
         description: 'You have trouble focusing on your examination right now. Please try again.',
@@ -1251,8 +1251,8 @@ export class RoomNavigationEngine {
           'This room seems ordinary at first glance, but adventure often lies in the details.'
         );
       }
-    } catch (error) {
-      console.error('Error generating room hints:', error);
+    } catch (_error) {
+      console.error('Error generating room hints:', _error);
       hints.push('The room holds mysteries that are waiting to be uncovered.');
     }
 
@@ -1314,8 +1314,8 @@ export class RoomNavigationEngine {
         unfilledDirections,
         boundaryDirections,
       };
-    } catch (error) {
-      console.error('Error checking region boundary:', error);
+    } catch (_error) {
+      console.error('Error checking region boundary:', _error);
       return {
         isAtBoundary: false,
         unfilledDirections: [],
@@ -1373,8 +1373,8 @@ export class RoomNavigationEngine {
           roomId // Pass source room ID for connection
         );
       }
-    } catch (error) {
-      console.error('Error triggering boundary generation:', error);
+    } catch (_error) {
+      console.error('Error triggering boundary generation:', _error);
     }
   }
 

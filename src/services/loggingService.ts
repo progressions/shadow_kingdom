@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 
 export type MessageType = 'ROOM' | 'COMMAND' | 'RESPONSE' | 'ERROR' | 'SYSTEM';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface LogEntry {
   timestamp: string;
   sessionId: string;
@@ -96,7 +97,7 @@ export class LoggingService {
         format: 'YYYY-MM-DD HH:mm:ss.SSS',
       }),
       winston.format.errors({ stack: true }),
-      winston.format.printf(({ timestamp, level, message, type, sessionId }) => {
+      winston.format.printf(({ timestamp, level: _level, message, type, sessionId }) => {
         return `[${timestamp}] [${sessionId}] [${type}] ${message}`;
       })
     );

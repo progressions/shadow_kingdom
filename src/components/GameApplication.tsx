@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useApp, useStdout } from 'ink';
-import type { Room, Game } from '@prisma/client';
+import type { Room } from '@prisma/client';
 import type { GameSession } from '../services/gameStateManager';
 import { GamePane } from './GamePane';
 import { InputBar } from './InputBar';
@@ -403,7 +403,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
                 if (prismaService) {
                   await prismaService.disconnect().catch(() => {});
                 }
-              } catch (error) {
+              } catch (_) {
                 // Ignore errors during quick cleanup
               }
 

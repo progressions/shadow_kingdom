@@ -8,7 +8,6 @@ import {
   WorldCreationResult,
   ValidationError,
   ConnectivityGraph,
-  RoomNode,
   DatabaseRegionData,
   DatabaseRoomData,
   DatabaseConnectionData,
@@ -125,7 +124,7 @@ export class YamlWorldService {
         });
 
         const regionIdMap = new Map<string, number>();
-        worldDef.regions.forEach((regionDef, index) => {
+        worldDef.regions.forEach((regionDef, _index) => {
           const createdRegion = createdRegions.find(
             r => r.name === regionDef.name && r.theme === regionDef.theme
           );

@@ -1,7 +1,7 @@
 import { ClaudeService } from './claudeService';
 import { PrismaService } from './prismaService';
 import { GameStateManager } from './gameStateManager';
-import { Room, Region } from '@prisma/client';
+import type { Room, Region } from '@prisma/client';
 import crypto from 'crypto';
 import { RegionPromptTemplates, RegionThemePromptContext } from './prompts/regionPrompts';
 import {
@@ -588,7 +588,7 @@ export class ClaudeRegionService extends ClaudeService {
    * Get existing region themes for context
    */
   private async getExistingRegionThemes(
-    worldSeed: string
+    _worldSeed: string
   ): Promise<Array<{ name: string; theme: string }>> {
     try {
       // Get up to 10 most recent regions
@@ -645,7 +645,7 @@ export class ClaudeRegionService extends ClaudeService {
     return this.convertToRoomDescriptions(rooms);
   }
 
-  private generateMockRegionTheme(context: RegionThemeContext): RegionThemeResponse {
+  private generateMockRegionTheme(_context: RegionThemeContext): RegionThemeResponse {
     const themes = [
       {
         name: 'Crystal Caves',

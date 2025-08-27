@@ -1,6 +1,6 @@
 import { PrismaService } from './prismaService';
 import { GameStateManager } from './gameStateManager';
-import { Item, Character, Connection } from '@prisma/client';
+import type { Item, Character, Connection } from '@prisma/client';
 
 export interface RoomContext {
   roomId: number;

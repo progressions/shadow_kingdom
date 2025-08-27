@@ -186,7 +186,7 @@ export class GameEngine {
       });
 
       return currentRoom !== null;
-    } catch (error) {
+    } catch (_error) {
       // If validation fails due to database error, consider game invalid
       return false;
     }
@@ -356,7 +356,7 @@ export class GameEngine {
           }
           const fallbackGame = await this.createNewGame();
           return { game: fallbackGame, isNewGame: true };
-        } catch (fallbackError) {
+        } catch (_fallbackError) {
           throw new GameEngineError(
             'All recovery attempts failed. Cannot launch game.',
             'TOTAL_FAILURE',
