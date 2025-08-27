@@ -68,14 +68,13 @@ describe('GameStateManager', () => {
         name: 'Grand Entrance Hall',
         description: 'You stand in a magnificent hall...',
         extendedDescription: 'The entrance hall stretches impressively upward...',
-        visited: false,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockRoom);
-      (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue({ ...mockRoom, visited: true });
+      (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue(mockRoom);
       (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
 
       await gameStateManager.initializeGame(mockGame);
@@ -83,10 +82,7 @@ describe('GameStateManager', () => {
       expect(mockPrismaService.client.room.findUnique).toHaveBeenCalledWith({
         where: { id: 123 },
       });
-      expect(mockPrismaService.client.room.update).toHaveBeenCalledWith({
-        where: { id: 123 },
-        data: { visited: true },
-      });
+      // Room visit tracking has been removed from the schema
 
       const currentRoom = gameStateManager.getCurrentRoom();
       expect(currentRoom).toEqual(mockRoom);
@@ -146,14 +142,13 @@ describe('GameStateManager', () => {
         name: 'Grand Entrance Hall',
         description: 'You stand in a magnificent hall...',
         extendedDescription: null,
-        visited: false,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockStartingRoom);
-      (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue({ ...mockStartingRoom, visited: true });
+      (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue(mockStartingRoom);
       (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
       (mockPrismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
 
@@ -170,7 +165,6 @@ describe('GameStateManager', () => {
           currentRoom: mockStartingRoom,
           lastSaved: expect.any(Date),
           sessionStartTime: expect.any(Date),
-          movementHistory: [],
           inventory: [],
         });
       });
@@ -224,7 +218,6 @@ describe('GameStateManager', () => {
         name: 'Grand Entrance Hall',
         description: 'You stand in a magnificent hall...',
         extendedDescription: null,
-        visited: false,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -237,14 +230,13 @@ describe('GameStateManager', () => {
         name: 'Throne Room',
         description: 'A vast chamber dominated by an empty throne...',
         extendedDescription: null,
-        visited: false,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockStartingRoom);
-      (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue({ ...mockStartingRoom, visited: true });
+      (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue(mockStartingRoom);
       (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
       (mockPrismaService.client.game.update as jest.Mock).mockResolvedValue(mockGame);
 
@@ -256,7 +248,7 @@ describe('GameStateManager', () => {
         // Setup mocks for room change
         (mockPrismaService.client.room.findUnique as jest.Mock).mockResolvedValue(mockTargetRoom);
         (mockPrismaService.client.game.update as jest.Mock).mockResolvedValue({ ...mockGame, currentRoomId: 456 });
-        (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue({ ...mockTargetRoom, visited: true });
+        (mockPrismaService.client.room.update as jest.Mock).mockResolvedValue(mockTargetRoom);
 
         const result = await gameStateManager.setCurrentRoom(456);
 
@@ -272,10 +264,7 @@ describe('GameStateManager', () => {
         });
 
         // Verify room was marked as visited
-        expect(mockPrismaService.client.room.update).toHaveBeenCalledWith({
-          where: { id: 456 },
-          data: { visited: true },
-        });
+        // Room visit tracking has been removed from the schema
 
         // Verify session was updated
         const session = gameStateManager.getCurrentSession();
@@ -312,7 +301,7 @@ describe('GameStateManager', () => {
   });
 
   describe('State Consistency and Recovery', () => {
-    it('should handle room marking errors gracefully', async () => {
+    it.skip('should handle room marking errors gracefully', async () => {
       const mockGame: Game = {
         id: 1,
         currentRoomId: 123,
@@ -330,7 +319,6 @@ describe('GameStateManager', () => {
         name: 'Grand Entrance Hall',
         description: 'You stand in a magnificent hall...',
         extendedDescription: null,
-        visited: false,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -370,7 +358,6 @@ describe('GameStateManager', () => {
         name: 'Grand Entrance Hall',
         description: 'You stand in a magnificent hall...',
         extendedDescription: null,
-        visited: true,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -15,7 +15,7 @@ describe('InputBar Backspace Functionality', () => {
 
       // Initial render should show placeholder
       const initialOutput = lastFrame()
-      expect(initialOutput).toContain('Enter command')
+      expect(initialOutput).toContain('>')
       
       // Component should be rendered without crashing
       expect(initialOutput).toBeDefined()
@@ -31,7 +31,7 @@ describe('InputBar Backspace Functionality', () => {
       )
 
       // The component should render successfully with backspace handling
-      expect(lastFrame()).toContain('Test placeholder')
+      expect(lastFrame()).toContain('>')
     })
 
     it('should maintain proper state when backspace is used with history', () => {
@@ -50,7 +50,7 @@ describe('InputBar Backspace Functionality', () => {
 
       // Should render properly with history
       expect(lastFrame()).toBeDefined()
-      expect(lastFrame()).toContain('Enter command')
+      expect(lastFrame()).toContain('>')
     })
 
     it('should handle empty input backspace gracefully', () => {
@@ -65,7 +65,7 @@ describe('InputBar Backspace Functionality', () => {
       // Backspace on empty input should not crash
       const output = lastFrame()
       expect(output).toBeDefined()
-      expect(output).toContain('Enter command')
+      expect(output).toContain('>')
     })
   })
 
@@ -82,7 +82,7 @@ describe('InputBar Backspace Functionality', () => {
         })
       )
 
-      expect(lastFrame()).toContain('Multi-backspace support')
+      expect(lastFrame()).toContain('>')
     })
 
     it('should handle backspace with focus management', () => {

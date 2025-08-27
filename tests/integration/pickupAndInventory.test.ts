@@ -48,7 +48,6 @@ describe('Pickup and Inventory Integration', () => {
       name: 'Test Room',
       description: 'A test room',
       extendedDescription: null,
-      visited: true,
       locked: false,
       createdAt: new Date(),
       updatedAt: new Date(),

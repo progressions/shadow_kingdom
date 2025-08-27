@@ -139,7 +139,9 @@ describe('InputBar Command History', () => {
       )
       
       const output = lastFrame()
-      expect(output).toContain('Command:')
+      // Should show prompt and cursor when focused
+      expect(output).toContain('>')
+      expect(output).toContain('█')
     })
 
     it('should show unfocused state when inactive', () => {

@@ -59,7 +59,6 @@ describe('RoomNavigationEngine', () => {
         name: 'Central Hall',
         description: 'A grand central hall with high vaulted ceilings',
         extendedDescription: 'Sunlight streams through tall windows',
-        visited: true,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -300,7 +299,6 @@ describe('RoomNavigationEngine', () => {
         name: 'Central Hall',
         description: 'A grand central hall',
         extendedDescription: null,
-        visited: true,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -313,7 +311,6 @@ describe('RoomNavigationEngine', () => {
         name: 'Northern Chamber',
         description: 'A smaller chamber to the north',
         extendedDescription: 'Ancient tapestries hang on the walls',
-        visited: false,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -404,7 +401,6 @@ describe('RoomNavigationEngine', () => {
         name: 'Treasure Chamber',
         description: 'A glittering chamber filled with treasures',
         extendedDescription: 'Gold coins catch the light from crystalline formations on the ceiling',
-        visited: true,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -514,7 +510,7 @@ describe('RoomNavigationEngine', () => {
       });
 
       it('should handle first-time visit notification', async () => {
-        const unvisitedRoom = { ...mockRoom, visited: false };
+        const unvisitedRoom = { ...mockRoom };
 
         (mockPrismaService.client.item.findMany as jest.Mock).mockResolvedValue([]);
         (mockPrismaService.client.character.findMany as jest.Mock).mockResolvedValue([]);
@@ -523,7 +519,8 @@ describe('RoomNavigationEngine', () => {
         const description = await navigationEngine.generateRoomDescription(unvisitedRoom);
 
         expect(description).toContain('**Treasure Chamber**');
-        expect(description).toContain('*[First time visiting]*');
+        // Visit tracking has been removed from the schema
+        // expect(description).toContain('*[First time visiting]*');
       });
     });
 
@@ -598,8 +595,7 @@ describe('RoomNavigationEngine', () => {
           name: 'Valid Room',
           description: 'A valid room',
           extendedDescription: null,
-          visited: false,
-          locked: false,
+            locked: false,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -627,8 +623,7 @@ describe('RoomNavigationEngine', () => {
           name: 'Invalid Room',
           description: 'A room from different game',
           extendedDescription: null,
-          visited: false,
-          locked: false,
+            locked: false,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -658,8 +653,7 @@ describe('RoomNavigationEngine', () => {
             name: 'Current Room',
             description: 'Current location',
             extendedDescription: null,
-            visited: true,
-            locked: false,
+                locked: false,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -670,8 +664,7 @@ describe('RoomNavigationEngine', () => {
             name: 'Nearby Room',
             description: 'A nearby location',
             extendedDescription: null,
-            visited: false,
-            locked: false,
+                locked: false,
             createdAt: new Date(),
             updatedAt: new Date(),
           }
@@ -684,7 +677,8 @@ describe('RoomNavigationEngine', () => {
 
         expect(context.regionId).toBe(5);
         expect(context.totalRooms).toBe(2);
-        expect(context.visitedRooms).toBe(1);
+        // Without visited field, all rooms are counted as visited
+        expect(context.visitedRooms).toBe(2);
         expect(context.roomNames).toEqual(['Current Room', 'Nearby Room']);
       });
     });
@@ -702,7 +696,6 @@ describe('RoomNavigationEngine', () => {
         name: 'Library Study',
         description: 'A quiet study filled with ancient tomes',
         extendedDescription: 'Dust motes dance in shafts of sunlight',
-        visited: true,
         locked: false,
         createdAt: new Date(),
         updatedAt: new Date(),

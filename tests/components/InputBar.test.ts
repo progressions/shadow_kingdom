@@ -15,7 +15,7 @@ describe('InputBar Component', () => {
       expect(lastFrame()).toBeDefined()
     })
 
-    it('should display placeholder text', () => {
+    it('should display prompt cursor', () => {
       const mockOnSubmit = jest.fn()
       const { lastFrame } = render(
         React.createElement(InputBar, { 
@@ -24,7 +24,8 @@ describe('InputBar Component', () => {
         })
       )
       const output = lastFrame()
-      expect(output).toContain('Enter command')
+      expect(output).toContain('>')
+      expect(output).toContain('█')
     })
   })
 
@@ -128,7 +129,9 @@ describe('InputBar Component', () => {
         })
       );
       
-      expect(lastFrame()).toContain('Updated placeholder');
+      // Should still show prompt and cursor after re-render
+      expect(lastFrame()).toContain('>');
+      expect(lastFrame()).toContain('█');
     })
   })
 });

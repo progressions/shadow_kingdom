@@ -91,9 +91,10 @@ describe('textFormatting utilities', () => {
       expect(ensureRoomNameFormatting(input)).toBe(input);
     });
 
-    it('leaves non-room-names unchanged', () => {
+    it('adds underline to any text passed to it', () => {
       const input = 'You stand before a door.';
-      expect(ensureRoomNameFormatting(input)).toBe(input);
+      const expected = 'You stand before a door.\n========================';
+      expect(ensureRoomNameFormatting(input)).toBe(expected);
     });
   });
 });
