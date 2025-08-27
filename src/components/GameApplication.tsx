@@ -12,6 +12,7 @@ import { RoomNavigationEngine } from '../services/roomNavigationEngine';
 import { PrismaService } from '../services/prismaService';
 import { ClaudeRegionService } from '../services/claudeRegionService';
 import { LoggingService, MessageType } from '../services/loggingService';
+import { ColorThemeService } from '../services/colorThemeService';
 import { Message, createMessage } from '../types/Message';
 import { addMessagesToBuffer, getBufferStats } from '../utils/messageBuffer';
 
@@ -64,6 +65,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     prismaService: PrismaService | null;
     claudeRegionService: ClaudeRegionService | null;
     loggingService: LoggingService | null;
+    colorThemeService: ColorThemeService | null;
   }>({
     gameEngine: null,
     gameStateManager: null,
@@ -72,6 +74,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     prismaService: null,
     claudeRegionService: null,
     loggingService: null,
+    colorThemeService: null,
   });
 
   // Hooks
@@ -154,6 +157,13 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       const loggingService = LoggingService.getInstance();
       await loggingService.logSessionStart();
 
+      // Initialize color theme service
+      const colorThemeService = new ColorThemeService();
+      await colorThemeService.loadTheme();
+      if (debugMode) {
+        console.log('ColorThemeService initialized and theme loaded');
+      }
+
       // Initialize services in dependency order
       const prismaService = PrismaService.getInstance();
 
@@ -190,6 +200,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         prismaService,
         claudeRegionService: claudeRegionService || null,
         loggingService,
+        colorThemeService,
       };
 
       // Initialize game engine
@@ -233,9 +244,46 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       // Display the initial room description
       if (currentRoom) {
         const roomInfo = await gameStateManager.getCurrentRoomInfo();
-        // Split room info into individual lines to handle display properly
-        const roomLines = roomInfo.split('\n');
-        roomLines.forEach(line => addMessage(line, 'RESPONSE'));
+        // Split room info into separate messages for proper coloring
+        if (roomInfo.includes('===')) {
+          const lines = roomInfo.split('\n');
+          let currentMessage = '';
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Check if this is a room title (next line has ===)
+            if (i + 1 < lines.length && lines[i + 1].match(/^=+$/)) {
+              // Send any accumulated message first
+              if (currentMessage.trim()) {
+                addMessage(currentMessage.trim(), 'ROOM');
+                currentMessage = '';
+              }
+              // Send room title with its underline as one message
+              addMessage(`${line}\n${lines[i + 1]}`, 'ROOM');
+              i++; // Skip the underline line
+            } else if (line.startsWith('Exits:') || line.startsWith('You can see:')) {
+              // Send accumulated message
+              if (currentMessage.trim()) {
+                addMessage(currentMessage.trim(), 'ROOM');
+                currentMessage = '';
+              }
+              // Send this line separately
+              addMessage(line, 'ROOM');
+            } else {
+              // Accumulate regular lines
+              if (currentMessage) currentMessage += '\n';
+              currentMessage += line;
+            }
+          }
+          
+          // Send any remaining message
+          if (currentMessage.trim()) {
+            addMessage(currentMessage.trim(), 'ROOM');
+          }
+        } else {
+          addMessage(roomInfo, 'ROOM');
+        }
       }
 
       // Update status
@@ -322,9 +370,8 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         const result = await commandRouter.executeCommand(command);
 
         if (result.success) {
-          // Log and display response - split into lines for proper display
-          const responseLines = result.response.split('\n');
-          responseLines.forEach(line => addMessage(line, 'RESPONSE'));
+          // Log and display response as single message to preserve formatting
+          addMessage(result.response, 'RESPONSE');
 
           // Handle quit command - exit immediately for programmatic mode
           if (result.metadata?.shouldExit) {
@@ -378,9 +425,50 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         const result = await commandRouter.executeCommand(command);
 
         if (result.success) {
-          // Display the response - split into lines for proper display
-          const responseLines = result.response.split('\n');
-          responseLines.forEach(line => addMessage(line, 'RESPONSE'));
+          // Split room descriptions into separate messages for proper coloring
+          if (result.response.includes('===')) {
+            // This looks like a room description, split it carefully
+            const lines = result.response.split('\n');
+            let currentMessage = '';
+            let inRoomTitle = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              
+              // Check if this is a room title (next line has ===)
+              if (i + 1 < lines.length && lines[i + 1].match(/^=+$/)) {
+                // Send any accumulated message first
+                if (currentMessage.trim()) {
+                  addMessage(currentMessage.trim(), 'RESPONSE');
+                  currentMessage = '';
+                }
+                // Send room title with its underline as one message
+                addMessage(`${line}\n${lines[i + 1]}`, 'RESPONSE');
+                i++; // Skip the underline line
+                inRoomTitle = true;
+              } else if (line.startsWith('Exits:') || line.startsWith('You can see:')) {
+                // Send accumulated message
+                if (currentMessage.trim()) {
+                  addMessage(currentMessage.trim(), 'RESPONSE');
+                  currentMessage = '';
+                }
+                // Send this line separately
+                addMessage(line, 'RESPONSE');
+              } else {
+                // Accumulate regular lines
+                if (currentMessage) currentMessage += '\n';
+                currentMessage += line;
+              }
+            }
+            
+            // Send any remaining message
+            if (currentMessage.trim()) {
+              addMessage(currentMessage.trim(), 'RESPONSE');
+            }
+          } else {
+            // Display the response as single message to preserve formatting
+            addMessage(result.response, 'RESPONSE');
+          }
 
           // Handle quit command
           if (result.metadata?.shouldExit) {
@@ -594,7 +682,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
   if (programmaticCommand) {
     return (
       <Box flexDirection="column" height="100%" width="100%">
-        <GamePane messages={messages} maxLines={gameAreaHeight} />
+        <GamePane messages={messages} maxLines={gameAreaHeight} colorThemeService={servicesRef.current.colorThemeService || undefined} />
       </Box>
     );
   }
@@ -603,14 +691,14 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     <Box flexDirection="column" height="100%" width="100%">
       {/* Game Pane - fills remaining space */}
       <Box flexGrow={1} width="100%" flexDirection="column" flexShrink={1}>
-        <GamePane messages={messages} maxLines={gameAreaHeight} />
+        <GamePane messages={messages} maxLines={gameAreaHeight} colorThemeService={servicesRef.current.colorThemeService || undefined} />
       </Box>
 
       {/* Bottom section - Input Bar and Status Pane */}
       <Box flexShrink={0} width="100%" flexDirection="column" flexGrow={0}>
         <InputBar
           onSubmit={handleCommandSubmit}
-          placeholder="Enter command..."
+          placeholder=""
           commandHistory={commandHistory}
           onHistoryUpdate={setCommandHistory}
         />

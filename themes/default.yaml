@@ -1,0 +1,54 @@
+name: "Shadow Kingdom Default Theme"
+version: "1.0.0"
+description: "Default color theme for Shadow Kingdom text adventure"
+
+colors:
+  # Room-related colors
+  room_title: "yellow"
+  room_description: "white"  # Changed from blue to white as requested
+  room_exits: "yellow"
+  
+  # Game objects
+  item_highlight: "green"
+  item_name: "yellow"
+  item_description: "gray"
+  
+  # Characters
+  character_name: "magenta"
+  character_dialogue: "white"
+  npc_name: "cyan"
+  
+  # System messages
+  error: "red"
+  warning: "yellow"
+  success: "green"
+  info: "blue"
+  debug: "gray"
+  
+  # Interface elements
+  prompt: "white"
+  input: "gray"
+  border: "gray"
+  status_label: "yellow"
+  status_value: "white"
+  
+  # Combat and stats
+  health: "red"
+  energy: "blue"
+  experience: "yellow"
+  damage: "red"
+  heal: "green"
+  
+  # Special effects
+  magic: "magenta"
+  treasure: "yellow"
+  danger: "red"
+  mystery: "cyan"
+
+# Optional: 256-color support for terminals that support it
+extended_colors:
+  room_ambient: 94      # Dark green for atmospheric descriptions
+  treasure_glow: 220    # Gold for special treasures
+  danger_intense: 196   # Bright red for critical dangers
+  magic_aura: 165       # Purple for magical effects
+  ancient_text: 130     # Brown for old inscriptions

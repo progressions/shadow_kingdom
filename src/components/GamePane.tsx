@@ -1,16 +1,14 @@
 import React, { useMemo, useCallback, useRef } from 'react';
 import { Box, Text } from 'ink';
 import { Message } from '../types/Message';
-import {
-  isRoomName,
-  ensureRoomNameFormatting,
-  convertExitsToLegacyFormat,
-} from '../utils/textFormatting';
+import { ColorThemeService } from '../services/colorThemeService';
+// Removed unnecessary text formatting imports
 
 interface GamePaneProps {
   messages: Message[];
   maxLines?: number;
   width?: number;
+  colorThemeService?: ColorThemeService;
 }
 
 // LRU Cache implementation for formatted messages
@@ -56,7 +54,7 @@ class LRUCache<K, V> {
   }
 }
 
-export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width }) => {
+export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width, colorThemeService }) => {
   // Component-scoped cache with proper lifecycle management
   const formatCacheRef = useRef(
     new LRUCache<string, { text: string; color?: string; bold?: boolean; dimColor?: boolean }>(500)
@@ -89,48 +87,55 @@ export const GamePane: React.FC<GamePaneProps> = ({ messages, maxLines, width })
     let content = message.content;
     let result;
 
-    // Convert modern exit format to legacy format first
-    content = convertExitsToLegacyFormat(content);
+    // Debug logging
+    if (process.env.DEBUG === 'true') {
+      console.log('GamePane formatMessage:', {
+        content: content.substring(0, 50),
+        hasEquals: content.includes('==='),
+        startsWithError: content.startsWith('Error:'),
+        startsWithCommand: content.startsWith('> '),
+        startsWithExits: content.startsWith('Exits:')
+      });
+    }
 
-    // Check for room names and ensure ASCII underline formatting
-    if (isRoomName(content)) {
-      content = ensureRoomNameFormatting(content);
-      result = { text: content, color: 'cyan', bold: true };
+    // Check content type and determine result
+    // Special handling for room headers (only the title line should be yellow)
+    if (content.includes('===')) {
+      // This is a room title with underline
+      result = { text: content, color: 'yellow', bold: true };
+      if (process.env.DEBUG === 'true') console.log('  -> Applying YELLOW for room title');
     }
-    // Check for headers with existing ASCII underlines
-    else if (content.includes('===')) {
-      result = { text: content, color: 'cyan', bold: true };
-    }
-    // Check for error messages
     else if (content.startsWith('Error:') || content.startsWith('Unable to')) {
       result = { text: content, color: 'red' };
+      if (process.env.DEBUG === 'true') console.log('  -> Applying RED for error');
     }
-    // Check for commands (lines starting with >)
     else if (content.startsWith('> ')) {
       result = { text: content, color: 'green', dimColor: true };
+      if (process.env.DEBUG === 'true') console.log('  -> Applying GREEN for command');
     }
-    // Check for exits line (including converted legacy format)
-    else if (content.startsWith('Exits:')) {
-      result = { text: content, color: 'yellow', dimColor: true };
+    else if (content.startsWith('Exits:') || content.startsWith('→ Available exits:')) {
+      result = { text: content, color: 'yellow' };
+      if (process.env.DEBUG === 'true') console.log('  -> Applying YELLOW for exits');
     }
-    // Check for items/characters headers
     else if (content.startsWith('You can see:') || content.startsWith('Also here:')) {
       result = { text: content, color: 'magenta', bold: true };
+      if (process.env.DEBUG === 'true') console.log('  -> Applying MAGENTA for items');
     }
-    // Check for items/characters list entries (lines starting with -)
     else if (content.startsWith('- ') && content.includes(':')) {
-      result = { text: content, color: 'white', dimColor: true }; // Subtle styling for list items
+      result = { text: content, color: 'gray', dimColor: true };
+      if (process.env.DEBUG === 'true') console.log('  -> Applying GRAY for list items');
     }
-    // Default formatting for room descriptions and other content
     else {
-      result = { text: content, color: undefined };
+      // Default formatting for room descriptions and other content
+      result = { text: content, color: 'white' };
+      if (process.env.DEBUG === 'true') console.log('  -> Applying WHITE (default)');
     }
 
     // Cache the result using LRU eviction strategy
     formatCache.set(cacheKey, result);
 
     return result;
-  }, []);
+  }, [colorThemeService]);
 
   // Memoize the rendered messages for better performance
   const renderedMessages = useMemo(() => {
