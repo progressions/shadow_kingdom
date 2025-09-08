@@ -66,16 +66,10 @@ async function buildAndShowSaveMenu() {
     return `${type} Slot ${i} — saved ${when}`;
   };
   const choices = [
+    { label: `${format(1, 'Slot')}`, action: 'open_slot', data: 1 },
+    { label: `${format(2, 'Slot')}`, action: 'open_slot', data: 2 },
+    { label: `${format(3, 'Slot')}`, action: 'open_slot', data: 3 },
     { label: `Autosave: ${runtime.autosaveEnabled ? 'On' : 'Off'} (60s)`, action: 'toggle_autosave' },
-    { label: format(1, 'Save'), action: 'save_game_slot', data: 1 },
-    { label: format(2, 'Save'), action: 'save_game_slot', data: 2 },
-    { label: format(3, 'Save'), action: 'save_game_slot', data: 3 },
-    { label: format(1, 'Load'), action: 'load_game_slot', data: 1 },
-    { label: format(2, 'Load'), action: 'load_game_slot', data: 2 },
-    { label: format(3, 'Load'), action: 'load_game_slot', data: 3 },
-    { label: format(1, 'Clear'), action: 'clear_save_slot', data: 1 },
-    { label: format(2, 'Clear'), action: 'clear_save_slot', data: 2 },
-    { label: format(3, 'Clear'), action: 'clear_save_slot', data: 3 },
     { label: 'Close', action: 'end' },
   ];
   // Rebuild the active dialog node so keyboard selection maps to these choices
@@ -194,11 +188,27 @@ export function selectChoice(index) {
     startCompanionSelector();
     return;
   }
-  if (choice.action === 'save_game_slot') { saveGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'save_game_slot') { requestSaveSlot(choice.data || 1); return; }
   if (choice.action === 'load_game_slot') { loadGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
-  if (choice.action === 'clear_save_slot') { clearSave(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'clear_save_slot') { requestClearSlot(choice.data || 1); return; }
   if (choice.action === 'toggle_autosave') { runtime.autosaveEnabled = !runtime.autosaveEnabled; buildAndShowSaveMenu(); return; }
+  if (choice.action === 'open_slot') { openSlotMenu(choice.data || 1); return; }
+  if (choice.action === 'confirm_save_slot') { saveGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'confirm_clear_slot') { clearSave(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'save_menu_back') { buildAndShowSaveMenu(); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
+}
+
+async function openSlotMenu(slot) {
+  const meta = await getSaveMeta(slot);
+  const label = meta.exists ? `Slot ${slot} — saved ${timeAgo(meta.at)}` : `Slot ${slot} — empty`;
+  const choices = [
+    { label: `Load Slot ${slot}`, action: 'load_game_slot', data: slot },
+    { label: `Save Slot ${slot}`, action: 'save_game_slot', data: slot },
+    { label: `Clear Slot ${slot}`, action: 'clear_save_slot', data: slot },
+    { label: 'Back', action: 'save_menu_back' },
+  ];
+  startPrompt(null, label, choices);
 }
 
 // Text submission removed; choices selected via number keys or clicked buttons
