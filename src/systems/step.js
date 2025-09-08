@@ -36,6 +36,10 @@ function moveWithCollision(ent, dx, dy) {
 }
 
 export function step(dt) {
+  // Decay interaction lock (prevents chatting immediately after taking damage)
+  if (runtime.interactLock > 0) {
+    runtime.interactLock = Math.max(0, runtime.interactLock - dt);
+  }
   // Input axes
   let ax = 0, ay = 0;
   const keys = runtime.keys;
@@ -104,7 +108,12 @@ export function step(dt) {
     if (e.hitTimer === 0) {
       const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
       const er = { x: e.x, y: e.y, w: e.w, h: e.h };
-      if (rectsIntersect(pr, er)) { player.hp = Math.max(0, player.hp - e.touchDamage); e.hitTimer = e.hitCooldown; }
+      if (rectsIntersect(pr, er)) {
+        player.hp = Math.max(0, player.hp - e.touchDamage);
+        e.hitTimer = e.hitCooldown;
+        // Apply a brief no-interaction buffer so Space triggers attack, not talk
+        runtime.interactLock = Math.max(runtime.interactLock, 0.6);
+      }
     }
   }
 

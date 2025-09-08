@@ -42,6 +42,8 @@ export function handleAttacks(dt) {
 }
 
 export function tryInteract() {
+  // Block interactions briefly after taking damage so Space attacks instead
+  if (runtime.interactLock > 0) return false;
   const range = 12;
   const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
   if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
@@ -58,17 +60,6 @@ export function tryInteract() {
           { label: 'Not right now.', action: 'end' },
         ]);
       }
-      return true;
-    }
-  }
-  // Interact with companions: offer dismiss
-  for (const c of companions) {
-    const cr = { x: c.x, y: c.y, w: c.w, h: c.h };
-    if (rectsIntersect(hb, cr)) {
-      startPrompt(c, `Do you want ${c.name || 'this companion'} to leave your party?`, [
-        { label: 'Yes, dismiss', action: 'dismiss_companion', data: c },
-        { label: 'Cancel', action: 'end' },
-      ]);
       return true;
     }
   }

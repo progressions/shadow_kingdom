@@ -8,6 +8,9 @@ Controls:
 - Attack: J (Space will attack if not interacting)
 - Interact with NPC: Space (when facing and in range)
 - VN dialog: Click a choice or press number keys (1–9). Esc or click canvas to exit.
+- Open companion menu: C (choose a companion to talk to or dismiss)
+  - If you have none, a brief banner appears instead of opening the menu.
+  - Companions cannot be talked to directly in the world; manage them via C.
 
 Notes:
 - Canvas internal resolution is 320x180 for a pixel-art look, scaled to 960x540.
@@ -15,9 +18,14 @@ Notes:
 - Larger scrolling world with procedurally generated terrain; the camera follows the player.
 - One enemy spawns and chases you; hit it to defeat it.
 - Start with zero companions. You can recruit Canopy via dialog.
-- A stationary NPC stands on the right side (non-hostile).
+- Three NPCs near the start (non-hostile): Canopy (brown hair, pink dress), Yorna (red hair, orange dress), Hola (black hair, blue dress).
 - VN overlay replaces the sidebar; dialog text and choices appear over the game.
-  - Canopy asks to join; choose Yes and she will follow you as a companion.
+  - Each NPC has unique dialog and can join your party on request.
+  - You can have up to 3 companions. If full, you’ll be told the party is full.
+ - Map markers show NPC locations on screen; off-screen NPCs have edge arrows pointing toward them.
+ - Companion dialogs are editable in `src/data/companion_dialogs.js`.
+   - Keys are lowercase companion names, each with a `start` node and `nodes` map.
+   - Use `action: 'companion_back'` to return to the companion selector and `action: 'dismiss_companion'` to remove them.
  - A small party UI shows current companions at the top-right.
  - When someone joins, a banner briefly appears at the top.
 - Obstacles (trees, rocks) appear in the world; the player collides with them.

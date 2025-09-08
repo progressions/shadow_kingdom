@@ -1,5 +1,9 @@
-import { runtime, npcs, companions, spawnCompanion, removeCompanion } from './state.js';
+import { runtime, npcs, companions, spawnCompanion, removeCompanion, spawnNpc, obstacles, world, player } from './state.js';
 import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner } from './ui.js';
+import { companionDialogs } from '../data/companion_dialogs.js';
+import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
+import { TILE } from './constants.js';
+import { rectsIntersect } from './utils.js';
 
 // Attach a dialog tree to an NPC object
 export function setNpcDialog(npc, tree) {
@@ -25,6 +29,26 @@ export function startPrompt(actor, text, choices) {
   renderCurrentNode();
 }
 
+// Open a menu to choose a companion to interact with
+export function startCompanionSelector() {
+  const list = companions.map((c, i) => ({ label: c.name || `Companion ${i+1}`, action: 'companion_select', data: i }));
+  if (list.length === 0) {
+    // Non-blocking notice; do not enter chat mode
+    showBanner('You have no companions.');
+    return;
+  }
+  startPrompt(null, 'Choose a companion:', [ ...list, { label: 'Cancel', action: 'end' } ]);
+}
+
+export function startCompanionAction(comp) {
+  if (!comp) { startCompanionSelector(); return; }
+  startPrompt(comp, `What do you want to do with ${comp.name || 'this companion'}?`, [
+    { label: 'Talk', action: 'companion_talk', data: comp },
+    { label: 'Dismiss', action: 'dismiss_companion', data: comp },
+    { label: 'Back', action: 'companion_back' },
+  ]);
+}
+
 export function renderCurrentNode() {
   if (!runtime.activeDialog) return;
   const { tree, nodeId } = runtime.activeDialog;
@@ -45,8 +69,13 @@ export function selectChoice(index) {
   if (choice.action === 'join_party') {
     const npc = runtime.activeNpc;
     if (npc) {
+      // Enforce party size limit
+      if (companions.length >= 3) {
+        setOverlayDialog('Your party is full (max 3).', [ { label: 'Ok', action: 'end' } ]);
+        return;
+      }
       // Spawn as companion using NPC sheet if available
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion' });
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc });
       // Remove NPC from world
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
@@ -59,13 +88,65 @@ export function selectChoice(index) {
   }
   if (choice.action === 'dismiss_companion') {
     const comp = choice.data || (companions.includes(runtime.activeNpc) ? runtime.activeNpc : null);
+    // Ask for confirmation before dismissing
+    if (!choice.confirmed) {
+      startPrompt(comp || null, `Dismiss ${comp?.name || 'this companion'}?`, [
+        { label: 'Yes', action: 'dismiss_companion', data: comp, confirmed: true },
+        { label: 'No', action: 'companion_back' },
+      ]);
+      return;
+    }
     if (comp) {
+      // Convert companion back into an NPC near their current position (nudge to nearest free tile)
+      const spot = findNearbyFreeSpot(comp.x, comp.y, comp.w, comp.h);
+      const nx = spot ? spot.x : comp.x;
+      const ny = spot ? spot.y : comp.y;
+      const npc = spawnNpc(nx, ny, comp.dir || 'down', {
+        name: comp.name || 'Companion',
+        sheet: comp.sheet || null,
+        portrait: comp.portraitSrc || null,
+      });
+      // Attach appropriate dialog so you can re-recruit them
+      const key = (npc.name || '').toLowerCase();
+      if (key.includes('canopy')) setNpcDialog(npc, canopyDialog);
+      else if (key.includes('yorna')) setNpcDialog(npc, yornaDialog);
+      else if (key.includes('hola')) setNpcDialog(npc, holaDialog);
+      // Remove from party
       removeCompanion(comp);
       updatePartyUI(companions);
       showBanner(`${comp.name || 'Companion'} left your party.`);
     }
     endDialog();
     exitChat(runtime);
+    return;
+  }
+  if (choice.action === 'companion_select') {
+    const idx = typeof choice.data === 'number' ? choice.data : -1;
+    const comp = companions[idx];
+    startCompanionAction(comp);
+    return;
+  }
+  if (choice.action === 'companion_talk') {
+    const comp = choice.data || runtime.activeNpc;
+    // Open companion-specific dialog tree if defined
+    const key = ((comp?.name) || '').toLowerCase();
+    const tree = companionDialogs[key];
+    if (tree) {
+      runtime.activeNpc = comp;
+      runtime.activeDialog = { tree, nodeId: tree.start || 'root' };
+      enterChat(runtime);
+      renderCurrentNode();
+    } else {
+      // Fallback simple line
+      startPrompt(comp, `${comp?.name || 'Companion'}: Let's keep moving.`, [
+        { label: 'Back to companions', action: 'companion_back' },
+        { label: 'Close', action: 'end' },
+      ]);
+    }
+    return;
+  }
+  if (choice.action === 'companion_back') {
+    startCompanionSelector();
     return;
   }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
@@ -76,4 +157,35 @@ export function selectChoice(index) {
 export function endDialog() {
   runtime.activeDialog = null;
   // keep chat mode open but clear choices; caller may exit chat
+}
+
+function findNearbyFreeSpot(x, y, w, h) {
+  const startTx = Math.floor(x / TILE);
+  const startTy = Math.floor(y / TILE);
+  const maxR = 6;
+  const actors = [
+    { x: player.x, y: player.y, w: player.w, h: player.h },
+    ...companions.map(c => ({ x: c.x, y: c.y, w: c.w, h: c.h })),
+    ...npcs.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h })),
+  ];
+  function isFree(px, py) {
+    const rect = { x: px, y: py, w, h };
+    if (px < 0 || py < 0 || px + w > world.w || py + h > world.h) return false;
+    for (const o of obstacles) if (rectsIntersect(rect, o)) return false;
+    for (const a of actors) if (rectsIntersect(rect, a)) return false;
+    return true;
+  }
+  for (let r = 0; r <= maxR; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const tx = startTx + dx;
+        const ty = startTy + dy;
+        const px = Math.floor(tx * TILE + (TILE - w) / 2);
+        const py = Math.floor(ty * TILE + (TILE - h) / 2);
+        if (isFree(px, py)) return { x: px, y: py };
+      }
+    }
+  }
+  return null;
 }

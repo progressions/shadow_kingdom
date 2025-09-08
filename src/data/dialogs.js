@@ -37,3 +37,45 @@ export const canopyDialog = {
     },
   },
 };
+
+export const yornaDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: 'Name\'s Yorna. The road ahead is rough. Need a hand?',
+      choices: [
+        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'What can you do?', next: 'skills' },
+        { label: 'No thanks.', action: 'end' },
+      ],
+    },
+    skills: {
+      text: 'I\'m quick on my feet and good at scouting paths.',
+      choices: [
+        { label: 'Sounds great — join me.', action: 'join_party' },
+        { label: 'Maybe later.', action: 'end' },
+      ],
+    },
+  },
+};
+
+export const holaDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: 'Hola. I can keep pace and watch your back. Shall I come?',
+      choices: [
+        { label: 'Yes, please join.', action: 'join_party' },
+        { label: 'Tell me about yourself.', next: 'about' },
+        { label: 'Not now.', action: 'end' },
+      ],
+    },
+    about: {
+      text: 'I\'m steady and patient. I won\'t slow you down.',
+      choices: [
+        { label: 'Alright, join me.', action: 'join_party' },
+        { label: 'Maybe later.', action: 'end' },
+      ],
+    },
+  },
+};

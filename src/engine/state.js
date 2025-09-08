@@ -68,6 +68,7 @@ export function spawnCompanion(x, y, sheet, opts = {}) {
     animFrame: 0,
     sheet,
     name: opts.name || 'Companion',
+    portraitSrc: opts.portrait || opts.portraitSrc || null,
   };
   companions.push(comp);
   return comp;
@@ -102,4 +103,7 @@ export const runtime = {
   gameState: 'play', // 'play' | 'chat'
   activeNpc: null,
   activeDialog: null, // { tree, nodeId }
+  vnFocusIndex: 0,
+  vnChoiceCount: 0,
+  interactLock: 0, // seconds remaining where interaction is disabled
 };

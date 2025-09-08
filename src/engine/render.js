@@ -55,4 +55,50 @@ export function render(terrainBitmap, obstacles) {
 
   // Player UI overlay
   drawBar(6, 6, 60, 5, player.hp / player.maxHp, '#4fa3ff');
+
+  // NPC markers
+  drawNpcMarkers();
+}
+
+function drawNpcMarkers() {
+  const margin = 12;
+  for (const n of npcs) {
+    // screen position of target (center of sprite)
+    const tx = n.x + n.w / 2 - camera.x;
+    const ty = n.y + n.h / 2 - camera.y;
+    const inView = tx >= 0 && tx <= camera.w && ty >= 0 && ty <= camera.h;
+    const color = markerColorFor(n);
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    if (inView) {
+      // draw dot slightly above the head
+      const px = Math.round(tx);
+      const py = Math.round(ty - 10);
+      ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else {
+      // clamp to screen edges and draw a small arrow pointing towards target
+      const cx = Math.max(margin, Math.min(camera.w - margin, tx));
+      const cy = Math.max(margin, Math.min(camera.h - margin, ty));
+      const ang = Math.atan2(ty - cy, tx - cx);
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-8, 4);
+      ctx.lineTo(-8, -4);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function markerColorFor(npc) {
+  const name = (npc.name || '').toLowerCase();
+  if (name.includes('canopy')) return '#ff7ab6';
+  if (name.includes('yorna')) return '#ff8a3d';
+  if (name.includes('hola')) return '#6fb7ff';
+  return '#ffd166';
 }

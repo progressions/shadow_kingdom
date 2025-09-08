@@ -1,3 +1,4 @@
+import { runtime } from './state.js';
 export const canvas = document.getElementById('game');
 export const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -7,6 +8,7 @@ const overlayName = document.getElementById('portrait-name');
 const vnName = document.getElementById('vn-name');
 const vnText = document.getElementById('vn-text');
 const vnChoices = document.getElementById('vn-choices');
+const vnPortraitBox = document.querySelector('.vn-portrait');
 const partyUI = document.getElementById('party-ui');
 const bannerEl = document.getElementById('banner');
 
@@ -18,11 +20,20 @@ export function enterChat(runtime) {
   // No sidebar input focus; VN overlay handles choices
   // Show portrait overlay if NPC has one
   const npc = runtime.activeNpc;
-  if (overlay && npc && npc.portraitSrc) {
+  if (overlay) {
     overlay.style.display = 'block';
-    if (overlayImg) overlayImg.src = npc.portraitSrc;
-    if (overlayName) overlayName.textContent = npc.name || 'NPC';
-    if (vnName) vnName.textContent = npc.name || 'NPC';
+    if (npc && npc.portraitSrc) {
+      if (vnPortraitBox) vnPortraitBox.style.display = '';
+      if (overlayImg) { overlayImg.src = npc.portraitSrc; overlayImg.style.display = ''; }
+      if (overlayName) overlayName.textContent = npc.name || 'NPC';
+      if (vnName) vnName.textContent = npc.name || 'NPC';
+    } else {
+      // Hide portrait area when there is no portrait (e.g., companion menus)
+      if (vnPortraitBox) vnPortraitBox.style.display = 'none';
+      if (overlayImg) { overlayImg.src = ''; overlayImg.style.display = 'none'; }
+      if (overlayName) overlayName.textContent = '';
+      if (vnName) vnName.textContent = '';
+    }
   }
 }
 export function exitChat(runtime) {
@@ -57,8 +68,13 @@ export function setOverlayDialog(text, choices) {
           import('../engine/dialog.js').then(mod => mod.selectChoice(idx));
         }
       };
+      // Initialize keyboard focus state
+      runtime.vnChoiceCount = choices.length;
+      runtime.vnFocusIndex = 0;
+      refreshChoiceFocus();
     } else {
       vnChoices.onclick = null;
+      runtime.vnChoiceCount = 0;
     }
   }
 }
@@ -80,12 +96,7 @@ export function updatePartyUI(companions) {
     const idx = parseInt(t.dataset.index, 10);
     const comp = companions[idx];
     if (!comp) return;
-    import('../engine/dialog.js').then(mod => {
-      mod.startPrompt(comp, `Do you want ${comp.name || 'this companion'} to leave your party?`, [
-        { label: 'Yes, dismiss', action: 'dismiss_companion', data: comp },
-        { label: 'Cancel', action: 'end' },
-      ]);
-    });
+    import('../engine/dialog.js').then(mod => mod.startCompanionAction(comp));
   };
 }
 
@@ -97,4 +108,27 @@ export function showBanner(text, durationMs = 1800) {
   showBanner._t = window.setTimeout(() => {
     bannerEl.classList.remove('show');
   }, durationMs);
+}
+
+export function refreshChoiceFocus() {
+  if (!vnChoices) return;
+  const children = Array.from(vnChoices.children);
+  children.forEach((el, i) => {
+    if (!(el instanceof HTMLElement)) return;
+    if (i === runtime.vnFocusIndex) el.classList.add('focused');
+    else el.classList.remove('focused');
+  });
+}
+
+export function moveChoiceFocus(delta) {
+  if (runtime.vnChoiceCount <= 0) return;
+  const max = runtime.vnChoiceCount - 1;
+  runtime.vnFocusIndex = Math.max(0, Math.min(max, runtime.vnFocusIndex + delta));
+  refreshChoiceFocus();
+}
+
+export function activateFocusedChoice() {
+  if (runtime.vnChoiceCount <= 0) return;
+  const idx = runtime.vnFocusIndex;
+  import('../engine/dialog.js').then(mod => mod.selectChoice(idx));
 }

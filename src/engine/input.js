@@ -1,7 +1,7 @@
 import { runtime, world } from './state.js';
-import { canvas, exitChat } from './ui.js';
+import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice } from './ui.js';
 import { startAttack, tryInteract } from '../systems/combat.js';
-import { selectChoice } from '../engine/dialog.js';
+import { selectChoice, startCompanionSelector } from '../engine/dialog.js';
 
 export function initInput() {
   window.addEventListener('keydown', (e) => {
@@ -10,6 +10,9 @@ export function initInput() {
     if (runtime.gameState === 'chat') {
       if (e.key === 'Escape') { exitChat(runtime); e.preventDefault(); return; }
       if (e.key >= '1' && e.key <= '9') { selectChoice(parseInt(e.key, 10) - 1); e.preventDefault(); return; }
+      if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'k') { moveChoiceFocus(-1); e.preventDefault(); return; }
+      if (e.key === 'ArrowDown' || e.key.toLowerCase() === 'j') { moveChoiceFocus(1); e.preventDefault(); return; }
+      if (e.key === 'Enter') { activateFocusedChoice(); e.preventDefault(); return; }
       return; // ignore other keys while in chat
     }
     runtime.keys.add(e.key.toLowerCase());
@@ -18,6 +21,9 @@ export function initInput() {
       if (!tryInteract()) startAttack();
     } else if (e.key.toLowerCase() === 'j') {
       startAttack();
+    } else if (e.key.toLowerCase() === 'c') {
+      // Open companion selection overlay
+      startCompanionSelector();
     }
   });
   window.addEventListener('keyup', (e) => runtime.keys.delete(e.key.toLowerCase()));

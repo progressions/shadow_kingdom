@@ -84,6 +84,7 @@
       .vn-choices { display: grid; gap: 6px; }
       .vn-choices button { text-align: left; padding: 8px 10px; background: #1a1a1a; color: #eaeaea; border: 1px solid #444; border-radius: 6px; cursor: pointer; }
       .vn-choices button:hover { background: #232323; border-color: #666; }
+      .vn-choices button.focused { outline: 2px solid #8ab4ff; background: #202a39; border-color: #8ab4ff; }
 
       /* Party UI (top-right) */
       #party-ui { position: absolute; top: 10px; right: 10px; display: grid; gap: 6px; justify-items: end; }
@@ -105,7 +106,7 @@
       <div class="main-panel">
         <div id="game-wrapper">
           <canvas id="game" width="320" height="180" aria-label="Sprite game canvas"></canvas>
-          <div class="hint">Move with <kbd>WASD</kbd> or <kbd>Arrow Keys</kbd>. Attack: <kbd>Space</kbd>/<kbd>J</kbd>. Grid: <kbd>G</kbd>.</div>
+          <div class="hint">Move: <kbd>WASD</kbd>/<kbd>Arrows</kbd> · Attack: <kbd>Space</kbd>/<kbd>J</kbd> · Grid: <kbd>G</kbd> · Companions: <kbd>C</kbd></div>
         </div>
         <div id="party-ui" aria-label="Party"></div>
         <div id="banner" role="status" aria-live="polite"></div>

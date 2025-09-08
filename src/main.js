@@ -7,15 +7,27 @@ import { initInput } from './engine/input.js';
 import { render } from './engine/render.js';
 import { step } from './systems/step.js';
 import { setNpcDialog } from './engine/dialog.js';
-import { canopyDialog } from './data/dialogs.js';
+import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { updatePartyUI } from './engine/ui.js';
 
 // Initialize actors
 spawnEnemy(world.w * 0.25, world.h * 0.5);
-// Example NPC with portrait (place your image at assets/portraits/Canopy.png)
-const canopySheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffc8e0', shirt: '#ffdbe8' });
-const canopy = spawnNpc(world.w * 0.75, world.h * 0.5, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy.png', sheet: canopySheet });
+// NPCs with portraits (place your images at assets/portraits/*.png)
+// Place them near the starting area
+// Canopy: brown hair, feminine look, pink dress
+const canopySheet = makeSpriteSheet({ hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff77c8', shirt: '#ffd3ea' });
+const canopy = spawnNpc(player.x + 56, player.y + 8, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy.png', sheet: canopySheet });
 setNpcDialog(canopy, canopyDialog);
+
+// Yorna: red hair, warm orange dress
+const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#ff9a4a', shirt: '#ffd1a6' });
+const yorna = spawnNpc(player.x - 72, player.y - 24, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna.png', sheet: yornaSheet });
+setNpcDialog(yorna, yornaDialog);
+
+// Hola: black hair, cool blue dress
+const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#6fb7ff', shirt: '#bfe1ff' });
+const hola = spawnNpc(player.x + 24, player.y + 72, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola.png', sheet: holaSheet });
+setNpcDialog(hola, holaDialog);
 // Start with zero companions
 
 // Build terrain and obstacles
