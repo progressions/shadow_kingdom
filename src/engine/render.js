@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
@@ -22,7 +22,7 @@ export function render(terrainBitmap, obstacles) {
   const drawables = [];
   for (const n of npcs) drawables.push({
     x: n.x, y: n.y, w: n.w, h: n.h,
-    dir: n.dir, frame: n.animFrame, sheet: npcSheet,
+    dir: n.dir, frame: n.animFrame, sheet: n.sheet || npcSheet,
   });
   for (const c of companions) drawables.push({
     x: c.x, y: c.y, w: c.w, h: c.h,

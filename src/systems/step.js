@@ -69,9 +69,34 @@ export function step(dt) {
       e.knockbackX = 0; e.knockbackY = 0;
       let dx = (player.x - e.x), dy = (player.y - e.y);
       const dist = Math.hypot(dx, dy) || 1; dx/=dist; dy/=dist;
+      const oldX = e.x, oldY = e.y;
       moveWithCollision(e, dx * e.speed * dt, dy * e.speed * dt);
+      let moved = Math.hypot(e.x - oldX, e.y - oldY);
+      // Axis fallback if stuck
+      if (moved < 0.05) {
+        e.x = oldX; e.y = oldY;
+        moveWithCollision(e, dx * e.speed * dt, 0);
+        moved = Math.hypot(e.x - oldX, e.y - oldY);
+        if (moved < 0.05) {
+          e.x = oldX; e.y = oldY;
+          moveWithCollision(e, 0, dy * e.speed * dt);
+          moved = Math.hypot(e.x - oldX, e.y - oldY);
+        }
+      }
+      // Perpendicular sidestep if still stuck
+      if (moved < 0.05) {
+        e.x = oldX; e.y = oldY;
+        const px = -dy * e.avoidSign;
+        const py = dx * e.avoidSign;
+        moveWithCollision(e, px * e.speed * 0.7 * dt, py * e.speed * 0.7 * dt);
+        moved = Math.hypot(e.x - oldX, e.y - oldY);
+      }
+
       e.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left':'right') : (dy < 0 ? 'up':'down');
       e.animTime += dt; if (e.animTime > 0.22) { e.animTime = 0; e.animFrame = (e.animFrame + 1) % FRAMES_PER_DIR; }
+      // Flip avoidance side if stuck for too long
+      if (moved < 0.1) { e.stuckTime += dt; if (e.stuckTime > 0.6) { e.avoidSign *= -1; e.stuckTime = 0; } }
+      else e.stuckTime = 0;
     }
     e.x = Math.max(0, Math.min(world.w - e.w, e.x));
     e.y = Math.max(0, Math.min(world.h - e.h, e.y));

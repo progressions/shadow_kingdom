@@ -1,6 +1,7 @@
-import { player, enemies, npcs, runtime } from '../engine/state.js';
+import { player, enemies, npcs, companions, runtime } from '../engine/state.js';
 import { rectsIntersect } from '../engine/utils.js';
-import { appendLogLine, enterChat } from '../engine/ui.js';
+import { enterChat } from '../engine/ui.js';
+import { startDialog, startPrompt } from '../engine/dialog.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -50,12 +51,26 @@ export function tryInteract() {
   for (const n of npcs) {
     const nr = { x: n.x, y: n.y, w: n.w, h: n.h };
     if (rectsIntersect(hb, nr)) {
-      appendLogLine('NPC says: Hello');
-      runtime.activeNpc = n;
-      enterChat(runtime);
+      if (n.dialog) { startDialog(n); }
+      else {
+        startPrompt(n, `Hello, I'm ${n.name || 'an NPC'}. May I join you?`, [
+          { label: 'Yes, join me.', action: 'join_party' },
+          { label: 'Not right now.', action: 'end' },
+        ]);
+      }
+      return true;
+    }
+  }
+  // Interact with companions: offer dismiss
+  for (const c of companions) {
+    const cr = { x: c.x, y: c.y, w: c.w, h: c.h };
+    if (rectsIntersect(hb, cr)) {
+      startPrompt(c, `Do you want ${c.name || 'this companion'} to leave your party?`, [
+        { label: 'Yes, dismiss', action: 'dismiss_companion', data: c },
+        { label: 'Cancel', action: 'end' },
+      ]);
       return true;
     }
   }
   return false;
 }
-

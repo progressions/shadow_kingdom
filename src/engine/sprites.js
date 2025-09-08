@@ -26,6 +26,9 @@ export function makeSpriteSheet(paletteOverrides = {}) {
     const pants = paletteOverrides.pants || '#3a3a3a';
     const outline = paletteOverrides.outline || '#000000';
     const hair = paletteOverrides.hair || '#3b2a1f';
+    const longHair = !!paletteOverrides.longHair;
+    const dress = !!paletteOverrides.dress;
+    const dressColor = paletteOverrides.dressColor || shirt;
     const bob = frame === 0 ? 0 : 1;
     const ox = x;
     const oy = y + bob;
@@ -36,12 +39,25 @@ export function makeSpriteSheet(paletteOverrides = {}) {
     for (let i = 4; i < 12; i++) for (let j = 1; j < 7; j++) px(i-4, j, skin);
     for (let i = 2; i < 14; i++) px(i-4, 0, hair);
     for (let i = 1; i < 13; i++) px(i-4, 1, hair);
+    if (longHair) {
+      // Side strands and bottom line to suggest longer hair
+      for (let j = 2; j < 8; j++) { px(0, j, hair); px(7, j, hair); }
+      for (let i = 1; i < 7; i++) px(i, 7, hair);
+    }
     const eyeY = 4 + (dir === 'down' ? 0 : dir === 'up' ? -1 : 0);
     px(3, eyeY, outline); px(6, eyeY, outline);
     for (let i = 4; i < 12; i++) for (let j = 7; j < 12; j++) px(i-4, j, shirt);
     px(0 + (frame===0?1:0) + dx, 8, skin);
     px(7 - (frame===0?1:0) + dx, 8, skin);
-    for (let i = 4; i < 12; i++) for (let j = 12; j < 15; j++) px(i-4, j, pants);
+    if (dress) {
+      // Simple trapezoid skirt below the shirt
+      for (let j = 12; j < 15; j++) {
+        const expand = j - 12; // 0..2
+        for (let i = 2 - expand; i < 6 + expand; i++) px(i, j, dressColor);
+      }
+    } else {
+      for (let i = 4; i < 12; i++) for (let j = 12; j < 15; j++) px(i-4, j, pants);
+    }
     px(2 + (frame===0?1:0) - dx, 15, outline);
     px(5 - (frame===0?1:0) + dx, 15, outline);
     g.strokeStyle = outline; g.lineWidth = 1;
@@ -65,8 +81,8 @@ export const playerSheet = makeSpriteSheet();
 export const enemySheet = makeSpriteSheet({ shirt: '#e34b4b', hair: '#1b1b1b' });
 export const npcSheet   = makeSpriteSheet({ shirt: '#5ac8fa', hair: '#2a2a2a' });
 export const companionSheets = [
-  makeSpriteSheet({ shirt: '#44d17a' }),
-  makeSpriteSheet({ shirt: '#b377ff' }),
-  makeSpriteSheet({ shirt: '#e3d34b' }),
+  // Brown, Blonde, Red hair
+  makeSpriteSheet({ shirt: '#ff8fb1', hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff6f9d' }),
+  makeSpriteSheet({ shirt: '#caa6ff', hair: '#e8d18b', longHair: true, dress: true, dressColor: '#b88fff' }),
+  makeSpriteSheet({ shirt: '#ffd07f', hair: '#d14a24', longHair: true, dress: true, dressColor: '#ffbf5e' }),
 ];
-

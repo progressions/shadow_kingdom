@@ -57,8 +57,8 @@ export function spawnEnemy(x, y) {
   });
 }
 
-export function spawnCompanion(x, y, sheet) {
-  companions.push({
+export function spawnCompanion(x, y, sheet, opts = {}) {
+  const comp = {
     x, y,
     w: 12, h: 16,
     speed: 110,
@@ -67,11 +67,33 @@ export function spawnCompanion(x, y, sheet) {
     animTime: 0,
     animFrame: 0,
     sheet,
-  });
+    name: opts.name || 'Companion',
+  };
+  companions.push(comp);
+  return comp;
 }
 
-export function spawnNpc(x, y, dir = 'down') {
-  npcs.push({ x, y, w: 12, h: 16, dir, animFrame: 0, idleTime: 0 });
+export function removeCompanion(comp) {
+  const idx = companions.indexOf(comp);
+  if (idx !== -1) companions.splice(idx, 1);
+}
+
+export function spawnNpc(x, y, dir = 'down', opts = {}) {
+  const npc = { 
+    x, y, w: 12, h: 16, dir, animFrame: 0, idleTime: 0,
+    name: opts.name || 'NPC',
+    portraitSrc: opts.portrait || null,
+    portrait: null,
+    dialog: null,
+    sheet: opts.sheet || null,
+  };
+  if (npc.portraitSrc) {
+    const img = new Image();
+    img.src = npc.portraitSrc;
+    npc.portrait = img;
+  }
+  npcs.push(npc);
+  return npc;
 }
 
 // Runtime (input + mode)
@@ -79,4 +101,5 @@ export const runtime = {
   keys: new Set(),
   gameState: 'play', // 'play' | 'chat'
   activeNpc: null,
+  activeDialog: null, // { tree, nodeId }
 };
