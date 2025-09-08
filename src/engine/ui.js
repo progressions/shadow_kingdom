@@ -1,4 +1,5 @@
 import { runtime } from './state.js';
+import { playSfx } from './audio.js';
 export const canvas = document.getElementById('game');
 export const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -22,6 +23,7 @@ export function enterChat(runtime) {
   const npc = runtime.activeNpc;
   if (overlay) {
     overlay.style.display = 'block';
+    playSfx('uiOpen');
     if (npc && npc.portraitSrc) {
       if (vnPortraitBox) vnPortraitBox.style.display = '';
       if (overlayImg) { overlayImg.src = npc.portraitSrc; overlayImg.style.display = ''; }
@@ -41,6 +43,7 @@ export function exitChat(runtime) {
   runtime.activeNpc = null;
   // no-op
   if (overlay) overlay.style.display = 'none';
+  playSfx('uiClose');
 }
 
 export function setupChatInputHandlers(runtime) {
@@ -125,10 +128,12 @@ export function moveChoiceFocus(delta) {
   const max = runtime.vnChoiceCount - 1;
   runtime.vnFocusIndex = Math.max(0, Math.min(max, runtime.vnFocusIndex + delta));
   refreshChoiceFocus();
+  playSfx('uiMove');
 }
 
 export function activateFocusedChoice() {
   if (runtime.vnChoiceCount <= 0) return;
   const idx = runtime.vnFocusIndex;
+  playSfx('uiSelect');
   import('../engine/dialog.js').then(mod => mod.selectChoice(idx));
 }

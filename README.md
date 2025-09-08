@@ -1,4 +1,4 @@
-Sprite Move Demo (HTML5 Canvas)
+Shadow Kingdom (HTML5 Canvas)
 
 Run by opening index.html directly in your browser. No installs or build steps required.
 
@@ -11,6 +11,11 @@ Controls:
 - Open companion menu: C (choose a companion to talk to or dismiss)
   - If you have none, a brief banner appears instead of opening the menu.
   - Companions cannot be talked to directly in the world; manage them via C.
+- Save/Load menu: P (open menu with Save Slot 1–3, Load Slot 1–3, Clear Slot 1–3, Close)
+  - Quick Save: F6 (or Ctrl+S)
+  - Quick Load: F7
+  - Toggle Autosave (60s) at the top of the menu.
+- Audio: M to mute/unmute; B to toggle background music.
 
 Notes:
 - Canvas internal resolution is 320x180 for a pixel-art look, scaled to 960x540.
@@ -23,9 +28,10 @@ Notes:
   - Each NPC has unique dialog and can join your party on request.
   - You can have up to 3 companions. If full, you’ll be told the party is full.
  - Map markers show NPC locations on screen; off-screen NPCs have edge arrows pointing toward them.
- - Companion dialogs are editable in `src/data/companion_dialogs.js`.
-   - Keys are lowercase companion names, each with a `start` node and `nodes` map.
-   - Use `action: 'companion_back'` to return to the companion selector and `action: 'dismiss_companion'` to remove them.
+- Companion dialogs are editable in `src/data/companion_dialogs.js`.
+  - Keys are lowercase companion names, each with a `start` node and `nodes` map.
+  - Use `action: 'companion_back'` to return to the companion selector and `action: 'dismiss_companion'` to remove them.
+- Saves are stored in your browser's localStorage under a single slot.
  - A small party UI shows current companions at the top-right.
  - When someone joins, a banner briefly appears at the top.
 - Obstacles (trees, rocks) appear in the world; the player collides with them.
@@ -35,3 +41,39 @@ Notes:
  - NPC dialog trees: when talking to an NPC, numbered choices appear.
    - Choose with number keys (1–9) or type the number and press Enter.
    - Dialog data lives in `src/data/dialogs.js` and is attached to NPCs in `src/main.js`.
+Backend (optional, for web saves)
+- A tiny Express server is included under `server/` for remote saves.
+- Endpoints (auth via `x-api-key` secret and `x-user-id` user id):
+  - `POST /api/save?slot=1` body `{ payload }` → saves
+  - `GET /api/save?slot=1` → loads
+  - `DELETE /api/save?slot=1` → clears
+- Deploy to fly.io
+  1. `cd server`
+  2. `fly launch` (choose a name)
+  3. `fly volumes create data --size 1` (creates persistent volume)
+  4. `fly secrets set SAVE_API_KEY=your-secret`
+  5. Configure volume and env in fly.toml (see example below)
+  6. `fly deploy`
+- Example fly.toml snippet:
+  ```toml
+  [env]
+    DATA_PATH = "/data/saves.json"
+
+  [[mounts]]
+    source = "data"
+    destination = "/data"
+  ```
+- Client integration
+  - In `index.html`, set:
+    ```html
+    <script>
+      window.SAVE_API_URL = 'https://your-app.fly.dev';
+      window.SAVE_API_KEY = 'your-secret'; // optional
+    </script>
+    ```
+  - The game will automatically use the remote API for Save/Load if `SAVE_API_URL` is set; otherwise it defaults to localStorage.
+Audio Assets
+- Put files under `assets/audio/`:
+  - Music: `assets/audio/music/ambient.mp3`
+  - SFX: `assets/audio/sfx/attack.wav`, `hit.wav`, `ui-open.wav`, `ui-move.wav`, `ui-select.wav`, `ui-close.wav`
+- Missing files are handled gracefully (sound just won’t play).

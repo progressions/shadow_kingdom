@@ -106,4 +106,7 @@ export const runtime = {
   vnFocusIndex: 0,
   vnChoiceCount: 0,
   interactLock: 0, // seconds remaining where interaction is disabled
+  autosaveEnabled: false,
+  autosaveTimer: 0,
+  autosaveIntervalSec: 60,
 };

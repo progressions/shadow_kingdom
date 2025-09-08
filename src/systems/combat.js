@@ -1,5 +1,6 @@
 import { player, enemies, npcs, companions, runtime } from '../engine/state.js';
 import { rectsIntersect } from '../engine/utils.js';
+import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
 
@@ -10,6 +11,7 @@ export function startAttack() {
   player.attacking = true;
   player.attackTimer = 0;
   player.lastAttack = now;
+  playSfx('attack');
 }
 
 export function handleAttacks(dt) {
@@ -32,6 +34,7 @@ export function handleAttacks(dt) {
         const mag = Math.hypot(dx, dy) || 1;
         e.knockbackX = (dx / mag) * 80;
         e.knockbackY = (dy / mag) * 80;
+        playSfx('hit');
       }
     }
   }

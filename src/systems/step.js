@@ -2,6 +2,8 @@ import { player, enemies, companions, npcs, obstacles, world, camera, runtime } 
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
+import { saveGame } from '../engine/save.js';
+import { showBanner } from '../engine/ui.js';
 
 function moveWithCollision(ent, dx, dy) {
   // Move X
@@ -39,6 +41,15 @@ export function step(dt) {
   // Decay interaction lock (prevents chatting immediately after taking damage)
   if (runtime.interactLock > 0) {
     runtime.interactLock = Math.max(0, runtime.interactLock - dt);
+  }
+  // Autosave timer
+  if (runtime.autosaveEnabled) {
+    runtime.autosaveTimer += dt;
+    if (runtime.autosaveTimer >= runtime.autosaveIntervalSec) {
+      runtime.autosaveTimer = 0;
+      saveGame(1);
+      showBanner('Autosaved');
+    }
   }
   // Input axes
   let ax = 0, ay = 0;

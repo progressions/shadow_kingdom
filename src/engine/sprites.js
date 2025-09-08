@@ -86,3 +86,12 @@ export const companionSheets = [
   makeSpriteSheet({ shirt: '#caa6ff', hair: '#e8d18b', longHair: true, dress: true, dressColor: '#b88fff' }),
   makeSpriteSheet({ shirt: '#ffd07f', hair: '#d14a24', longHair: true, dress: true, dressColor: '#ffbf5e' }),
 ];
+
+// Return a themed sheet for known character names
+export function sheetForName(name) {
+  const key = (name || '').toLowerCase();
+  if (key.includes('canopy')) return makeSpriteSheet({ hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff77c8', shirt: '#ffd3ea' });
+  if (key.includes('yorna'))  return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#ff9a4a', shirt: '#ffd1a6' });
+  if (key.includes('hola'))   return makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#6fb7ff', shirt: '#bfe1ff' });
+  return npcSheet;
+}

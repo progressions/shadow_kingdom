@@ -2,6 +2,7 @@ import { runtime, npcs, companions, spawnCompanion, removeCompanion, spawnNpc, o
 import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner } from './ui.js';
 import { companionDialogs } from '../data/companion_dialogs.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
+import { saveGame, loadGame, clearSave, getSaveMeta } from './save.js';
 import { TILE } from './constants.js';
 import { rectsIntersect } from './utils.js';
 
@@ -47,6 +48,50 @@ export function startCompanionAction(comp) {
     { label: 'Dismiss', action: 'dismiss_companion', data: comp },
     { label: 'Back', action: 'companion_back' },
   ]);
+}
+
+// Save/Load menu
+export function startSaveMenu() {
+  // Show placeholder then load metadata and refresh menu labels
+  startPrompt(null, 'Save/Load', [ { label: 'Loading…', action: 'end' } ]);
+  buildAndShowSaveMenu();
+}
+
+async function buildAndShowSaveMenu() {
+  const metas = await Promise.all([1,2,3].map(s => getSaveMeta(s)));
+  const format = (i, type) => {
+    const m = metas[i-1];
+    if (!m.exists) return `${type} Slot ${i} — empty`;
+    const when = timeAgo(m.at);
+    return `${type} Slot ${i} — saved ${when}`;
+  };
+  const choices = [
+    { label: `Autosave: ${runtime.autosaveEnabled ? 'On' : 'Off'} (60s)`, action: 'toggle_autosave' },
+    { label: format(1, 'Save'), action: 'save_game_slot', data: 1 },
+    { label: format(2, 'Save'), action: 'save_game_slot', data: 2 },
+    { label: format(3, 'Save'), action: 'save_game_slot', data: 3 },
+    { label: format(1, 'Load'), action: 'load_game_slot', data: 1 },
+    { label: format(2, 'Load'), action: 'load_game_slot', data: 2 },
+    { label: format(3, 'Load'), action: 'load_game_slot', data: 3 },
+    { label: format(1, 'Clear'), action: 'clear_save_slot', data: 1 },
+    { label: format(2, 'Clear'), action: 'clear_save_slot', data: 2 },
+    { label: format(3, 'Clear'), action: 'clear_save_slot', data: 3 },
+    { label: 'Close', action: 'end' },
+  ];
+  // Rebuild the active dialog node so keyboard selection maps to these choices
+  startPrompt(null, 'Save/Load', choices);
+}
+
+function timeAgo(ts) {
+  if (!ts) return 'just now';
+  const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
 }
 
 export function renderCurrentNode() {
@@ -149,6 +194,10 @@ export function selectChoice(index) {
     startCompanionSelector();
     return;
   }
+  if (choice.action === 'save_game_slot') { saveGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'load_game_slot') { loadGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'clear_save_slot') { clearSave(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'toggle_autosave') { runtime.autosaveEnabled = !runtime.autosaveEnabled; buildAndShowSaveMenu(); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
 }
 
