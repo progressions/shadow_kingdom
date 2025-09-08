@@ -120,10 +120,16 @@ export function step(dt) {
       const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
       const er = { x: e.x, y: e.y, w: e.w, h: e.h };
       if (rectsIntersect(pr, er)) {
-        player.hp = Math.max(0, player.hp - e.touchDamage);
-        e.hitTimer = e.hitCooldown;
-        // Apply a brief no-interaction buffer so Space triggers attack, not talk
-        runtime.interactLock = Math.max(runtime.interactLock, 0.6);
+        // Elite enemies trigger turn-based battle
+        if (e.isElite && !isInBattle()) {
+          enterBattle(e.battleConfig || { enemies: [ { template: e.name || 'Elite', level: 1 } ], backdrop: 'battle_default' }, { list: [player, ...companions] });
+          break;
+        } else {
+          player.hp = Math.max(0, player.hp - e.touchDamage);
+          e.hitTimer = e.hitCooldown;
+          // Apply a brief no-interaction buffer so Space triggers attack, not talk
+          runtime.interactLock = Math.max(runtime.interactLock, 0.6);
+        }
       }
     }
   }

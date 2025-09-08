@@ -190,7 +190,11 @@ export function selectChoice(index) {
     startCompanionSelector();
     return;
   }
-  if (choice.action === 'open_inventory') { openInventoryMenu(choice.data || runtime.activeNpc || null); return; }
+  if (choice.action === 'open_inventory') {
+    const tag = (typeof choice.data !== 'undefined') ? choice.data : (runtime.activeNpc || null);
+    openInventoryMenu(tag);
+    return;
+  }
   if (choice.action === 'save_game_slot') { requestSaveSlot(choice.data || 1); return; }
   if (choice.action === 'load_game_slot') { loadGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'clear_save_slot') { requestClearSlot(choice.data || 1); return; }
@@ -332,6 +336,27 @@ async function openSaveSlotMenu(slot) {
 export function endDialog() {
   runtime.activeDialog = null;
   // keep chat mode open but clear choices; caller may exit chat
+}
+
+async function requestSaveSlot(slot) {
+  const meta = await getSaveMeta(slot);
+  if (meta.exists) {
+    startPrompt(null, `Overwrite Slot ${slot}?`, [
+      { label: 'Yes, overwrite', action: 'confirm_save_slot', data: slot },
+      { label: 'Back', action: 'save_menu_back' },
+    ]);
+  } else {
+    saveGame(slot); endDialog(); exitChat(runtime);
+  }
+}
+
+async function requestClearSlot(slot) {
+  const meta = await getSaveMeta(slot);
+  if (!meta.exists) { buildAndShowSaveMenu(); return; }
+  startPrompt(null, `Clear Slot ${slot}?`, [
+    { label: 'Yes, clear', action: 'confirm_clear_slot', data: slot },
+    { label: 'Back', action: 'save_menu_back' },
+  ]);
 }
 
 function findNearbyFreeSpot(x, y, w, h) {

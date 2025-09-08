@@ -1,5 +1,7 @@
 import { runtime, world } from './state.js';
 import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice } from './ui.js';
+import { isInBattle } from '../battle/manager.js';
+import { handleBattleChoice } from '../battle/ui.js';
 import { startAttack, tryInteract } from '../systems/combat.js';
 import { selectChoice, startCompanionSelector, startSaveMenu, startInventoryMenu } from '../engine/dialog.js';
 import { initAudioUnlock, toggleMute, toggleMusic } from './audio.js';
@@ -17,6 +19,7 @@ export function initInput() {
       if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'k') { moveChoiceFocus(-1); e.preventDefault(); return; }
       if (e.key === 'ArrowDown' || e.key.toLowerCase() === 'j') { moveChoiceFocus(1); e.preventDefault(); return; }
       if (e.key === 'Enter') { activateFocusedChoice(); e.preventDefault(); return; }
+      // Allow battle actions mapped to overlay choices (optional hook)
       return; // ignore other keys while in chat
     }
     runtime.keys.add(e.key.toLowerCase());
