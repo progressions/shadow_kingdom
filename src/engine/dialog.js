@@ -5,6 +5,7 @@ import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 import { saveGame, loadGame, clearSave, getSaveMeta } from './save.js';
 import { TILE } from './constants.js';
 import { rectsIntersect } from './utils.js';
+import { sampleItems, cloneItem } from '../data/items.js';
 
 // Attach a dialog tree to an NPC object
 export function setNpcDialog(npc, tree) {
@@ -46,6 +47,7 @@ export function startCompanionAction(comp) {
   startPrompt(comp, `What do you want to do with ${comp.name || 'this companion'}?`, [
     { label: 'Talk', action: 'companion_talk', data: comp },
     { label: 'Dismiss', action: 'dismiss_companion', data: comp },
+    { label: 'Inventory', action: 'open_inventory', data: comp },
     { label: 'Back', action: 'companion_back' },
   ]);
 }
@@ -188,18 +190,132 @@ export function selectChoice(index) {
     startCompanionSelector();
     return;
   }
+  if (choice.action === 'open_inventory') { openInventoryMenu(choice.data || runtime.activeNpc || null); return; }
   if (choice.action === 'save_game_slot') { requestSaveSlot(choice.data || 1); return; }
   if (choice.action === 'load_game_slot') { loadGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'clear_save_slot') { requestClearSlot(choice.data || 1); return; }
   if (choice.action === 'toggle_autosave') { runtime.autosaveEnabled = !runtime.autosaveEnabled; buildAndShowSaveMenu(); return; }
-  if (choice.action === 'open_slot') { openSlotMenu(choice.data || 1); return; }
+  if (choice.action === 'open_slot') { openSaveSlotMenu(choice.data || 1); return; }
   if (choice.action === 'confirm_save_slot') { saveGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'confirm_clear_slot') { clearSave(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'save_menu_back') { buildAndShowSaveMenu(); return; }
+  if (choice.action === 'inventory_back') { startInventoryMenu(); return; }
+  if (choice.action === 'inv_slot') { openSlotMenu(choice.data.actorTag, choice.data.slot); return; }
+  if (choice.action === 'inv_equip') { doEquip(choice.data.actorTag, choice.data.slot, undefined, choice.data.itemId); openInventoryMenu(choice.data.actorTag); return; }
+  if (choice.action === 'inv_unequip') { doUnequip(choice.data.actorTag, choice.data.slot); openInventoryMenu(choice.data.actorTag); return; }
+  if (choice.action === 'inv_add_samples') { addSamples(choice.data.actorTag); openInventoryMenu(choice.data.actorTag); return; }
+  if (choice.action === 'inv_transfer_pick') { openTransferSelectItem(choice.data.actorTag); return; }
+  if (choice.action === 'inv_transfer_target') { openTransferSelectTarget(choice.data.actorTag, choice.data.itemId); return; }
+  if (choice.action === 'inv_transfer_do') { doTransfer(choice.data.from, choice.data.to, choice.data.itemId); openInventoryMenu(choice.data.from); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
 }
 
-async function openSlotMenu(slot) {
+// Inventory menus
+export function startInventoryMenu() {
+  // Choose actor: Player or companions
+  const choices = [
+    { label: 'Player', action: 'open_inventory', data: 'player' },
+    ...companions.map((c, i) => ({ label: c.name || `Companion ${i+1}`, action: 'open_inventory', data: i })),
+    { label: 'Close', action: 'end' },
+  ];
+  startPrompt(null, 'Inventory — Choose Character', choices);
+}
+
+function resolveActor(tag) {
+  if (tag === 'player') return runtime._playerRef || null;
+  if (typeof tag === 'number') return companions[tag] || null;
+  return tag || null;
+}
+
+function slotLabel(slot) {
+  const map = { head: 'Head', torso: 'Torso', legs: 'Legs', leftHand: 'Left Hand', rightHand: 'Right Hand' };
+  return map[slot] || slot;
+}
+
+async function openInventoryMenu(actorTag) {
+  // Attach player ref once (runtime has no direct player export here)
+  if (!runtime._playerRef) runtime._playerRef = (await import('./state.js')).player;
+  const actor = resolveActor(actorTag);
+  if (!actor) { startInventoryMenu(); return; }
+  const eq = actor.inventory?.equipped || {};
+  const equippedLines = ['head','torso','legs','leftHand','rightHand'].map(s => {
+    const it = eq[s];
+    return { label: `${slotLabel(s)}: ${it ? it.name : '(empty)'}`, action: 'inv_slot', data: { actorTag, slot: s } };
+  });
+  const actions = [
+    { label: 'Transfer Items (Backpack)', action: 'inv_transfer_pick', data: { actorTag } },
+    { label: 'Add Sample Items', action: 'inv_add_samples', data: { actorTag } },
+    { label: 'Back', action: 'inventory_back' },
+  ];
+  startPrompt(actor, `${actor.name || 'Player'} — Equipment`, [...equippedLines, ...actions]);
+}
+
+function openSlotMenu(actorTag, slot) {
+  const actor = resolveActor(actorTag);
+  if (!actor) { startInventoryMenu(); return; }
+  const items = (actor.inventory?.items || []).filter(it => it.slot === slot);
+  const eq = actor.inventory?.equipped || {};
+  const choices = [];
+  if (eq[slot]) choices.push({ label: `Unequip ${eq[slot].name}`, action: 'inv_unequip', data: { actorTag, slot } });
+  if (items.length) {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      choices.push({ label: `Equip ${it.name}`, action: 'inv_equip', data: { actorTag, slot, itemId: it.id } });
+    }
+  } else {
+    choices.push({ label: 'No items for this slot', action: 'inventory_back' });
+  }
+  choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
+  startPrompt(actor, `${slotLabel(slot)} — Choose`, choices);
+}
+
+function addSamples(actorTag) {
+  const actor = resolveActor(actorTag);
+  if (!actor) return;
+  if (!actor.inventory) actor.inventory = { items: [], equipped: { head:null, torso:null, legs:null, leftHand:null, rightHand:null } };
+  for (const s of sampleItems) actor.inventory.items.push(cloneItem(s));
+}
+
+function openTransferSelectItem(actorTag) {
+  const actor = resolveActor(actorTag);
+  if (!actor) return;
+  const items = actor.inventory?.items || [];
+  const choices = [];
+  if (items.length === 0) {
+    choices.push({ label: 'Backpack is empty', action: 'open_inventory', data: actorTag });
+  } else {
+    for (const it of items) {
+      choices.push({ label: `Send ${it.name} (${slotLabel(it.slot)})`, action: 'inv_transfer_target', data: { actorTag, itemId: it.id } });
+    }
+  }
+  choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
+  startPrompt(actor, 'Select item to transfer', choices);
+}
+
+function openTransferSelectTarget(actorTag, itemId) {
+  const actor = resolveActor(actorTag);
+  if (!actor) return;
+  const targets = [{ label: 'Player', tag: 'player' }, ...companions.map((c, i) => ({ label: c.name || `Companion ${i+1}`, tag: i }))]
+    .filter(t => !(t.tag !== 'player' && resolveActor(t.tag) === actor));
+  const choices = targets.map(t => ({ label: t.label, action: 'inv_transfer_do', data: { from: actorTag, to: t.tag, itemId } }));
+  choices.push({ label: 'Back', action: 'inv_transfer_pick', data: { actorTag } });
+  startPrompt(actor, 'Send to who?', choices);
+}
+
+async function doTransfer(fromTag, toTag, itemId) {
+  if (!runtime._playerRef) runtime._playerRef = (await import('./state.js')).player;
+  const from = resolveActor(fromTag);
+  const to = resolveActor(toTag);
+  if (!from || !to || !from.inventory || !to.inventory) return;
+  const idx = (from.inventory.items || []).findIndex(x => x.id === itemId);
+  if (idx === -1) return;
+  const it = from.inventory.items[idx];
+  // Only transfer backpack items; to equip, open their inventory later
+  from.inventory.items.splice(idx, 1);
+  to.inventory.items.push(cloneItem(it));
+}
+
+async function openSaveSlotMenu(slot) {
   const meta = await getSaveMeta(slot);
   const label = meta.exists ? `Slot ${slot} — saved ${timeAgo(meta.at)}` : `Slot ${slot} — empty`;
   const choices = [
@@ -247,4 +363,33 @@ function findNearbyFreeSpot(x, y, w, h) {
     }
   }
   return null;
+}
+
+function doEquip(actorTag, slot, index, itemId) {
+  const actor = resolveActor(actorTag);
+  if (!actor || !actor.inventory) return;
+  const items = actor.inventory.items || [];
+  let it = null; let idx = -1;
+  if (itemId) {
+    idx = items.findIndex(x => x.id === itemId && x.slot === slot);
+    if (idx !== -1) it = items[idx];
+  } else if (typeof index === 'number') {
+    idx = index; it = items[index];
+  }
+  if (!it || it.slot !== slot) return;
+  const eq = actor.inventory.equipped;
+  // swap: move currently equipped back to items
+  if (eq[slot]) items.push(eq[slot]);
+  // equip selected and remove from items
+  eq[slot] = it;
+  items.splice(idx, 1);
+}
+
+function doUnequip(actorTag, slot) {
+  const actor = resolveActor(actorTag);
+  if (!actor || !actor.inventory) return;
+  const eq = actor.inventory.equipped;
+  if (!eq[slot]) return;
+  actor.inventory.items.push(eq[slot]);
+  eq[slot] = null;
 }

@@ -29,6 +29,7 @@ export const player = {
   attackTimer: 0,
   attackDuration: 0.18,
   damage: 1,
+  inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
 };
 
 export const enemies = [];
@@ -69,6 +70,7 @@ export function spawnCompanion(x, y, sheet, opts = {}) {
     sheet,
     name: opts.name || 'Companion',
     portraitSrc: opts.portrait || opts.portraitSrc || null,
+    inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
   };
   companions.push(comp);
   return comp;

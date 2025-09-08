@@ -104,8 +104,9 @@ function serializePayload() {
     at: Date.now(),
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir },
     enemies: enemies.filter(e => e.hp > 0).map(e => ({ x: e.x, y: e.y, hp: e.hp, dir: e.dir })),
-    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null })),
+    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null })),
     npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null })),
+    playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
   };
 }
@@ -116,6 +117,8 @@ function deserializePayload(data) {
     player.x = data.player.x; player.y = data.player.y; player.dir = data.player.dir || 'down';
     if (typeof data.player.hp === 'number') player.hp = data.player.hp;
   }
+  // Inventory
+  if (data.playerInv) player.inventory = data.playerInv;
   // Clear arrays
   enemies.length = 0;
   companions.length = 0;
@@ -143,6 +146,7 @@ function deserializePayload(data) {
       const sheet = sheetForName(c.name);
       const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null });
       comp.dir = c.dir || 'down';
+      if (c.inventory) comp.inventory = c.inventory;
     }
     updatePartyUI(companions);
   }

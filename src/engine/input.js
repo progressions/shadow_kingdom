@@ -1,7 +1,7 @@
 import { runtime, world } from './state.js';
 import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice } from './ui.js';
 import { startAttack, tryInteract } from '../systems/combat.js';
-import { selectChoice, startCompanionSelector, startSaveMenu } from '../engine/dialog.js';
+import { selectChoice, startCompanionSelector, startSaveMenu, startInventoryMenu } from '../engine/dialog.js';
 import { initAudioUnlock, toggleMute, toggleMusic } from './audio.js';
 import { saveGame, loadGame } from './save.js';
 
@@ -31,6 +31,9 @@ export function initInput() {
     } else if (e.key.toLowerCase() === 'p') {
       // Open save/load menu
       startSaveMenu();
+    } else if (e.key.toLowerCase() === 'i') {
+      // Open inventory menu
+      startInventoryMenu();
     } else if (e.key.toLowerCase() === 'm') {
       toggleMute();
     } else if (e.key.toLowerCase() === 'b') {

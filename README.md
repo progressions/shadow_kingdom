@@ -16,6 +16,7 @@ Controls:
   - Quick Load: F7
   - Toggle Autosave (60s) at the top of the menu.
 - Audio: M to mute/unmute; B to toggle background music.
+- Inventory: I opens Inventory (choose Player/Companion, view equipment, equip/unequip items).
 
 Notes:
 - Canvas internal resolution is 320x180 for a pixel-art look, scaled to 960x540.
@@ -32,6 +33,8 @@ Notes:
   - Keys are lowercase companion names, each with a `start` node and `nodes` map.
   - Use `action: 'companion_back'` to return to the companion selector and `action: 'dismiss_companion'` to remove them.
 - Saves are stored in your browser's localStorage under a single slot.
+ - Inventory saves and loads with the game (equipped items and backpack).
+ - Sample items defined in `src/data/items.js` — use "Add Sample Items" inside a character's inventory to test.
  - A small party UI shows current companions at the top-right.
  - When someone joins, a banner briefly appears at the top.
 - Obstacles (trees, rocks) appear in the world; the player collides with them.
