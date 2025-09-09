@@ -19,9 +19,16 @@ export const companionDialogs = {
         choices: [
           { label: 'Can you watch over us?', next: 'support' },
           { label: 'How are you holding up?', next: 'mood' },
-          { label: 'Quest: Breath and Bandages', requires: { flag: 'canopy_triage_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared' }, next: 'quest_turnin' },
+          { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      quests: {
+        text: 'Canopy: We can help those in need.',
+        choices: [
+          { label: 'Breath and Bandages', requires: { flag: 'canopy_triage_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared' }, next: 'quest_turnin' },
+          { label: 'Back', next: 'root' },
         ],
       },
       support: {
@@ -65,9 +72,16 @@ export const companionDialogs = {
         choices: [
           { label: 'What\'s your style?', next: 'style' },
           { label: 'Everything alright?', next: 'mood' },
-          { label: 'Quest: Cut the Knot', requires: { flag: 'yorna_knot_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared' }, next: 'quest_turnin' },
+          { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      quests: {
+        text: 'Yorna: Let\'s cut the knot.',
+        choices: [
+          { label: 'Cut the Knot', requires: { flag: 'yorna_knot_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared' }, next: 'quest_turnin' },
+          { label: 'Back', next: 'root' },
         ],
       },
       style: {
@@ -109,7 +123,16 @@ export const companionDialogs = {
         choices: [
           { label: 'What magic do you know?', next: 'magic' },
           { label: 'How\'s the journey?', next: 'mood' },
+          { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      quests: {
+        text: 'Hola: I can practice… if you stay close.',
+        choices: [
+          { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared' }, next: 'quest_turnin' },
+          { label: 'Back', next: 'root' },
         ],
       },
       magic: {
@@ -147,9 +170,16 @@ export const companionDialogs = {
       root: {
         text: 'Oyin: I can practice… if you have time.',
         choices: [
-          { label: 'Quest: Light the Fuse', requires: { flag: 'oyin_fuse_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared' }, next: 'quest_turnin' },
+          { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      quests: {
+        text: 'Oyin: I can try the spark tactics.',
+        choices: [
+          { label: 'Light the Fuse', requires: { flag: 'oyin_fuse_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared' }, next: 'quest_turnin' },
+          { label: 'Back', next: 'root' },
         ],
       },
       quest_intro: {
@@ -176,9 +206,16 @@ export const companionDialogs = {
       root: {
         text: 'Twil: Want to race trouble to the end of a footprint?',
         choices: [
-          { label: 'Quest: Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared' }, next: 'quest_turnin' },
+          { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      quests: {
+        text: 'Twil: Keep up.',
+        choices: [
+          { label: 'Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared' }, next: 'quest_turnin' },
+          { label: 'Back', next: 'root' },
         ],
       },
       quest_intro: {
