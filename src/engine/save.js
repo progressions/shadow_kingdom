@@ -1,4 +1,5 @@
 import { player, enemies, companions, npcs, world, runtime } from './state.js';
+import { itemsOnGround } from './state.js';
 import { spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { sheetForName } from './sprites.js';
@@ -109,6 +110,8 @@ function serializePayload() {
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
     unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
+    groundItems: (Array.isArray(itemsOnGround) ? itemsOnGround.map(g => ({ id: g.id, x: g.x, y: g.y, item: g.item })) : []),
+    openedChests: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'chest' && o.opened && o.id).map(o => o.id) : []),
     vnSeen: Object.keys(runtime?.vnSeen || {}),
   };
 }
@@ -134,7 +137,7 @@ function deserializePayload(data) {
   if (Array.isArray(data.enemies)) {
     for (const e of data.enemies) {
       const kind = (e.kind || 'mook').toLowerCase();
-      const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 20, dmg: 6 }
+      const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 30, dmg: 8 }
         : (kind === 'featured') ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3 }
         : { name: 'Mook', speed: 10, hp: 3, dmg: 3 };
       enemies.push({
@@ -185,6 +188,21 @@ function deserializePayload(data) {
       if (o.type === 'gate' && o.id && data.unlockedGates.includes(o.id)) o.locked = false;
     }
   }
+  // Restore opened chests
+  if (Array.isArray(data.openedChests)) {
+    for (const o of obstacles) {
+      if (o.type === 'chest' && o.id && data.openedChests.includes(o.id)) o.opened = true;
+    }
+  }
+  // Restore ground items
+  try {
+    itemsOnGround.length = 0;
+    if (Array.isArray(data.groundItems)) {
+      for (const g of data.groundItems) {
+        itemsOnGround.push({ id: g.id, x: g.x, y: g.y, w: 10, h: 10, item: g.item });
+      }
+    }
+  } catch {}
   // Apply VN seen flags to current actors
   const markSeen = (ent) => {
     const type = (typeof ent.touchDamage === 'number') ? 'enemy' : 'npc';

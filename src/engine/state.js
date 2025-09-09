@@ -44,15 +44,27 @@ export const obstacles = [];
 export const corpses = [];
 export const stains = [];
 export const sparkles = [];
+export const itemsOnGround = [];
+let _nextPickupId = 1;
+
+export function spawnPickup(x, y, item) {
+  if (!item) return null;
+  const w = 10, h = 10;
+  const p = { id: 'p' + (_nextPickupId++), x: Math.round(x), y: Math.round(y), w, h, item };
+  itemsOnGround.push(p);
+  return p;
+}
 
 export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   // Three classes: mook, featured, boss
   const T = String(type).toLowerCase();
   const cfg = (T === 'boss')
-    ? { name: 'Boss', speed: 12, hp: 20, dmg: 6, sheet: enemyBossSheet, kind: 'boss' }
+    ? { name: 'Boss', speed: 12, hp: 30, dmg: 8, sheet: enemyBossSheet, kind: 'boss' }
     : (T === 'featured' || T === 'foe' || T === 'elite')
       ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3, sheet: enemyFeaturedSheet, kind: 'featured' }
       : { name: 'Mook', speed: 10, hp: 3, dmg: 3, sheet: enemyMookSheet, kind: 'mook' };
+  const hp = (typeof opts.hp === 'number') ? opts.hp : cfg.hp;
+  const dmg = (typeof opts.dmg === 'number') ? opts.dmg : ((typeof opts.touchDamage === 'number') ? opts.touchDamage : cfg.dmg);
   enemies.push({
     x, y,
     w: 12, h: 16,
@@ -63,20 +75,22 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     animFrame: 0,
     name: opts.name || cfg.name,
     kind: cfg.kind,
-    hp: cfg.hp,
-    maxHp: cfg.hp,
-    touchDamage: cfg.dmg,
+    hp,
+    maxHp: hp,
+    touchDamage: dmg,
     hitTimer: 0,
     hitCooldown: 0.8,
     knockbackX: 0,
     knockbackY: 0,
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
-    sheet: cfg.sheet,
+    sheet: opts.sheet || cfg.sheet,
     // Optional portrait for VN overlay on enemies
     portraitSrc: opts.portrait || null,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
+    // Optional guaranteed drop item id (e.g., 'key_bronze')
+    guaranteedDropId: opts.guaranteedDropId || null,
   });
 }
 
@@ -200,5 +214,9 @@ export const runtime = {
   shieldActive: false,
   shieldTimer: 0,
   paused: false,
+  // Music mode: 'normal' | 'low' | 'high'
+  musicMode: 'normal',
+  musicModePending: null,
+  musicModeSwitchTimer: 0,
   
 };

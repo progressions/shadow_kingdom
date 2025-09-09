@@ -4,17 +4,21 @@
 export const introTexts = {
   canopy:
     "You see a blonde‑haired healer in a blue dress, ringed by snarling foes and fighting to keep her footing. Calm resolve steels her gaze as she beckons you closer, ready to mend every wound if you can help her break through.\n" +
-    "Canopy: I'm pinned down—too many of them! Help me break through and I'll mend every scrape I can.",
+    "\nCanopy: \"I'm pinned down—too many of them! Help me break through and I'll mend every scrape I can.\"",
 
   yorna:
     "A red‑haired fighter in a black dress wades into the fray, blade up and shoulders squared as if the chaos is a familiar road. She moves with ruthless confidence, daring you to keep pace as she aims to cut the monsters down.\n" +
-    "Yorna: Finally, someone moving with purpose. Let's carve these monsters to pieces—try to keep up.",
+    "\nYorna: \"Finally, someone moving with purpose. Let's carve these monsters to pieces—try to keep up.\"",
 
   hola:
     "A black‑haired sorceress in a white dress clutches a weathered spellbook, lips shaping half‑remembered words as the monsters press in. Her hands tremble, but determination flickers behind the fear as she searches for the spell that will turn the tide.\n" +
-    "Hola: I… I'm trying to remember the right incantation. There are so many of them—please stay close while I try again.",
+    "\nHola: \"I… I'm trying to remember the right incantation. There are so many of them—please stay close while I try again.\"",
 
   vast:
-    "A towering woman in black stands before the castle gate, the air around her shimmering like heat off stone. Power coils lazily at her fingertips as she regards you with cool amusement, certain the light here will not last.\n" +
-    "Vast: You made it this far? Then watch how hope burns to ash.",
+    "A black‑haired sorceress in a black dress stands before the castle gate, the air around her shimmering like heat off stone. Power coils lazily at her fingertips as she regards you with cool amusement, certain the light here will not last.\n" +
+    "\nVast: \"You made it this far? Then watch how hope burns to ash.\"",
+
+  gorg:
+    "A hulking foe prowls the ruins ahead, armor scuffed and eyes hard. You catch the glint of a brass key at his belt—he guards the way forward and won’t part with it quietly.\n" +
+    "\nGorg: \"Turn back if you value your bones. The gate stays shut—unless you take the key from me.\"",
 };

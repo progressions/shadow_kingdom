@@ -1,12 +1,13 @@
-import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle } from '../engine/state.js';
+import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
-import { playSfx } from '../engine/audio.js';
+import { playSfx, setMusicMode } from '../engine/audio.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
 import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges } from '../engine/ui.js';
+import { ENEMY_LOOT, rollFromTable, itemById } from '../data/loot.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -14,7 +15,9 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     let newX = ent.x + dx;
     const rect = { x: newX, y: ent.y, w: ent.w, h: ent.h };
     for (const o of obstacles) {
-      if (o && o.type === 'gate' && o.locked === false) continue;
+      if (!o) continue;
+      if (o.type === 'gate' && o.locked === false) continue;
+      if (o.type === 'chest') continue; // chests are non-blocking
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -37,7 +40,9 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     let newY = ent.y + dy;
     const rect = { x: ent.x, y: newY, w: ent.w, h: ent.h };
     for (const o of obstacles) {
-      if (o && o.type === 'gate' && o.locked === false) continue;
+      if (!o) continue;
+      if (o.type === 'gate' && o.locked === false) continue;
+      if (o.type === 'chest') continue; // chests are non-blocking
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
@@ -115,6 +120,10 @@ export function step(dt) {
       if (runtime.pendingIntro) {
         const { actor, text } = runtime.pendingIntro;
         runtime.pendingIntro = null;
+        try {
+          const isEnemy = (typeof actor?.touchDamage === 'number');
+          playSfx(isEnemy ? 'vnIntroEnemy' : 'vnIntroNpc');
+        } catch {}
         // No numbered Exit choice; overlay will show Exit (X) automatically
         startPrompt(actor, text, []);
       }
@@ -272,6 +281,39 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
+      // Boss two-phase behavior: on first "death" trigger a VN and refill HP instead of dying
+      if ((e.kind || '').toLowerCase() === 'boss' && !e._secondPhase) {
+        try {
+          const actor = { name: e.name || 'Vast', portraitSrc: 'assets/portraits/Vast/Vast video.mp4' };
+          startPrompt(actor, "Vast: You'll never defeat me! I summon strength from my master Urathar!", []);
+        } catch {}
+        // Refill to second health bar and mark phase
+        e.hp = e.maxHp;
+        e._secondPhase = true;
+        // Increase boss contact damage for second phase
+        e.touchDamage = Math.max(1, (e.touchDamage || 0) + 2);
+        try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Empowered!', { color: '#ffd166', life: 0.8 }); } catch {}
+        // Clear incidental timers/knockback
+        e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
+        continue; // do not remove this frame
+      }
+      // If boss finally defeated (second bar), show a VN overlay with defeat line and video portrait
+      if ((e.kind || '').toLowerCase() === 'boss' && e._secondPhase) {
+        try {
+          const actor = { name: e.name || 'Vast', portraitSrc: 'assets/portraits/Vast/Vast defeated.mp4' };
+          startPrompt(actor, "Vast: I can't believe you defeated me... but my master Urathar will still prevail.", []);
+        } catch {}
+      }
+      // Drops
+      try {
+        let drop = null;
+        if (e.guaranteedDropId) drop = itemById(e.guaranteedDropId);
+        if (!drop) {
+          const table = ENEMY_LOOT[(e.kind || 'mook')] || [];
+          drop = rollFromTable(table);
+        }
+        if (drop) spawnPickup(e.x + e.w/2 - 5, e.y + e.h/2 - 5, drop);
+      } catch {}
       spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
       spawnStain(e.x, e.y, { life: 2.8 });
       enemies.splice(i, 1);
@@ -339,6 +381,26 @@ export function step(dt) {
   // NPC idle
   for (const n of npcs) { n.idleTime += dt; if (n.idleTime > 0.6) { n.idleTime = 0; n.animFrame = (n.animFrame + 1) % FRAMES_PER_DIR; } }
 
+  // Auto-pickup items on ground within small radius
+  if (itemsOnGround && itemsOnGround.length) {
+    const px = player.x + player.w/2;
+    const py = player.y + player.h/2;
+    for (let ii = itemsOnGround.length - 1; ii >= 0; ii--) {
+      const it = itemsOnGround[ii];
+      const cx = it.x + it.w/2, cy = it.y + it.h/2;
+      const dx = cx - px, dy = cy - py;
+      if ((dx*dx + dy*dy) <= (12*12)) {
+        // Collect
+        try { player.inventory.items.push(JSON.parse(JSON.stringify(it.item))); } catch { player.inventory.items.push(it.item); }
+        itemsOnGround.splice(ii, 1);
+        showBanner(`Picked up ${it.item?.name || 'an item'}`);
+        playSfx('pickup');
+        // small sparkle burst
+        for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
+      }
+    }
+  }
+
   // Death check → Game Over
   if (!runtime.gameOver && player.hp <= 0) {
     startGameOver();
@@ -349,6 +411,37 @@ export function step(dt) {
   camera.y = Math.round(player.y + player.h/2 - camera.h/2);
   camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
   camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
+
+  // Music mode switching based on on-screen enemies, with debounce
+  {
+    const view = { x: camera.x, y: camera.y, w: camera.w, h: camera.h };
+    let bossOn = false, anyOn = false;
+    for (const e of enemies) {
+      if (e.hp <= 0) continue;
+      const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
+      if (!on) continue;
+      anyOn = true;
+      if (String(e.kind).toLowerCase() === 'boss') { bossOn = true; break; }
+    }
+    const desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
+    if (desired === runtime.musicMode) {
+      // Already in this mode; clear any pending switch
+      runtime.musicModePending = null;
+      runtime.musicModeSwitchTimer = 0;
+    } else {
+      if (runtime.musicModePending !== desired) {
+        runtime.musicModePending = desired;
+        runtime.musicModeSwitchTimer = 0.6; // debounce window
+      } else if (runtime.musicModeSwitchTimer > 0) {
+        runtime.musicModeSwitchTimer = Math.max(0, runtime.musicModeSwitchTimer - dt);
+        if (runtime.musicModeSwitchTimer === 0) {
+          runtime.musicMode = desired;
+          try { setMusicMode(desired); } catch {}
+          runtime.musicModePending = null;
+        }
+      }
+    }
+  }
 
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
   // then show a simple VN once when first seen

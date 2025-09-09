@@ -138,6 +138,22 @@ export function drawObstacles(ctx, obstacles, camera) {
         ctx.fillStyle = '#8a6a3a';
         for (let x = 2; x < o.w; x += 6) ctx.fillRect(sx + x, sy + 1, 2, o.h - 2);
       }
+    } else if (o.type === 'chest') {
+      const opened = !!o.opened;
+      // Chest base
+      ctx.fillStyle = opened ? '#4a371f' : '#6d4b2b';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#2a1c10';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // Lid line
+      ctx.fillStyle = '#8a6a3a';
+      ctx.fillRect(sx, sy + 3, o.w, 1);
+      // Lock plate when closed or locked
+      if (!opened || o.locked) {
+        ctx.fillStyle = '#c9a24f';
+        ctx.fillRect(sx + (o.w/2 - 2)|0, sy + (o.h/2 - 2)|0, 4, 4);
+      }
     }
   }
 }

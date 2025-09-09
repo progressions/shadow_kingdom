@@ -6,6 +6,7 @@ import { saveGame, loadGame, clearSave, getSaveMeta } from './save.js';
 import { TILE } from './constants.js';
 import { rectsIntersect } from './utils.js';
 import { sampleItems, cloneItem } from '../data/items.js';
+import { playSfx } from './audio.js';
 
 // Attach a dialog tree to an NPC object
 export function setNpcDialog(npc, tree) {
@@ -137,6 +138,7 @@ export function selectChoice(index) {
       if (idx !== -1) npcs.splice(idx, 1);
       updatePartyUI(companions);
       showBanner(`${npc.name || 'Companion'} joined your party!`);
+      try { playSfx('partyJoin'); } catch {}
     }
     endDialog();
     exitChat(runtime);

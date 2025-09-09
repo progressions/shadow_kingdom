@@ -23,22 +23,44 @@ import { updatePartyUI } from './engine/ui.js';
 // Place Canopy just off-screen to the right at game start (still closer than Hola)
 // Camera half-width is ~160px; +172 ensures she's initially not visible
 const canopyPos = { x: Math.round(player.x + 172), y: Math.round(player.y - 10) };
-const holaPos   = { x: Math.round(player.x + 140), y: Math.round(player.y + 100) };
-const yornaPos  = { x: Math.round(player.x - 220), y: Math.round(player.y - 160) };
+// Push Hola and Yorna further from the player start
+const holaPos   = { x: Math.round(player.x + 260), y: Math.round(player.y + 180) };
+const yornaPos  = { x: Math.round(player.x - 340), y: Math.round(player.y - 240) };
 
 // Enemies near Canopy (1 mook), spaced a bit further
 spawnEnemy(canopyPos.x + 28, canopyPos.y + 8, 'mook');
 
-// Enemies near Hola (3 mooks, wider triangle)
-spawnEnemy(holaPos.x - 36, holaPos.y - 16, 'mook');
-spawnEnemy(holaPos.x + 36, holaPos.y - 16, 'mook');
-spawnEnemy(holaPos.x + 0,  holaPos.y + 32, 'mook');
+// Enemies near Hola (3 mooks, wider triangle) — repositioned with Hola
+spawnEnemy(holaPos.x - 42, holaPos.y - 20, 'mook');
+spawnEnemy(holaPos.x + 42, holaPos.y - 20, 'mook');
+spawnEnemy(holaPos.x + 0,  holaPos.y + 38, 'mook');
 
-// Enemies near Yorna (3 mooks, wider spread + 1 featured)
-spawnEnemy(yornaPos.x - 30,  yornaPos.y + 0,  'mook');
-spawnEnemy(yornaPos.x + 30,  yornaPos.y + 0,  'mook');
-spawnEnemy(yornaPos.x + 0,   yornaPos.y + 30, 'mook');
-spawnEnemy(yornaPos.x + 36,  yornaPos.y + 28, 'featured');
+// Enemies near Yorna (3 mooks, wider spread + 1 featured) — repositioned with Yorna
+spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,  'mook');
+spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,  'mook');
+spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36, 'mook');
+// Gorg — featured key-bearer with VN intro and custom red-tinted sheet
+const gorgSheet = makeSpriteSheet({
+  skin: '#ff4a4a',
+  shirt: '#8a1a1a',
+  pants: '#6a0f0f',
+  hair: '#2a0000',
+  outline: '#000000',
+});
+spawnEnemy(
+  yornaPos.x + 44,
+  yornaPos.y + 34,
+  'featured',
+  {
+    guaranteedDropId: 'key_bronze',
+    name: 'Gorg',
+    vnOnSight: { text: introTexts.gorg },
+    portrait: 'assets/portraits/Gorg/Gorg.mp4',
+    sheet: gorgSheet,
+    hp: 16,
+    dmg: 5,
+  }
+);
 // Boss — placed inside a small castle enclosure near bottom-right
 const castle = (function buildCastle() {
   const cw = TILE * 14; // ~14 tiles wide
@@ -117,6 +139,9 @@ setNpcDialog(hola, holaDialog);
 // Build terrain and obstacles
 const terrain = buildTerrainBitmap(world);
 obstacles.push(...buildObstacles(world, player, enemies, npcs));
+// Place a couple of starter chests near the player
+obstacles.push({ x: Math.round(player.x + TILE * 2), y: Math.round(player.y - TILE * 1), w: 12, h: 10, type: 'chest', id: 'chest_start_1', lootTier: 'common', opened: false, locked: false });
+obstacles.push({ x: Math.round(player.x - TILE * 3), y: Math.round(player.y + TILE * 2), w: 12, h: 10, type: 'chest', id: 'chest_start_2', lootTier: 'rare', opened: false, locked: false });
 
 // Input and UI
 setupChatInputHandlers(runtime);
