@@ -7,8 +7,7 @@ import { handleAttacks } from './combat.js';
 import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges } from '../engine/ui.js';
-import { playSfx } from '../engine/audio.js';
-import { ENEMY_LOOT, rollFromTable } from '../data/loot.js';
+import { ENEMY_LOOT, rollFromTable, itemById } from '../data/loot.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -16,7 +15,9 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     let newX = ent.x + dx;
     const rect = { x: newX, y: ent.y, w: ent.w, h: ent.h };
     for (const o of obstacles) {
-      if (o && o.type === 'gate' && o.locked === false) continue;
+      if (!o) continue;
+      if (o.type === 'gate' && o.locked === false) continue;
+      if (o.type === 'chest') continue; // chests are non-blocking
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -39,7 +40,9 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     let newY = ent.y + dy;
     const rect = { x: ent.x, y: newY, w: ent.w, h: ent.h };
     for (const o of obstacles) {
-      if (o && o.type === 'gate' && o.locked === false) continue;
+      if (!o) continue;
+      if (o.type === 'gate' && o.locked === false) continue;
+      if (o.type === 'chest') continue; // chests are non-blocking
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
@@ -280,8 +283,12 @@ export function step(dt) {
       const e = enemies[i];
       // Drops
       try {
-        const table = ENEMY_LOOT[(e.kind || 'mook')] || [];
-        const drop = rollFromTable(table);
+        let drop = null;
+        if (e.guaranteedDropId) drop = itemById(e.guaranteedDropId);
+        if (!drop) {
+          const table = ENEMY_LOOT[(e.kind || 'mook')] || [];
+          drop = rollFromTable(table);
+        }
         if (drop) spawnPickup(e.x + e.w/2 - 5, e.y + e.h/2 - 5, drop);
       } catch {}
       spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });

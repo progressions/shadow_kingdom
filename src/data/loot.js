@@ -14,7 +14,7 @@ export const ENEMY_LOOT = {
     { id: 'armor_leather', w: 15 },
   ],
   boss: [
-    { id: 'key_bronze', w: 100 }, // ensure a gate key exists in the world
+    // Boss no longer drops the castle key; use featured foe key-bearer instead
   ],
 };
 
@@ -45,4 +45,3 @@ export function itemById(id) {
   const it = sampleItems.find(s => s.id === id);
   return it ? cloneItem(it) : null;
 }
-

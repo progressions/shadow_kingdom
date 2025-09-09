@@ -17,4 +17,8 @@ export const introTexts = {
   vast:
     "A black‑haired sorceress in a black dress stands before the castle gate, the air around her shimmering like heat off stone. Power coils lazily at her fingertips as she regards you with cool amusement, certain the light here will not last.\n" +
     "\nVast: \"You made it this far? Then watch how hope burns to ash.\"",
+
+  gorg:
+    "A hulking foe prowls the ruins ahead, armor scuffed and eyes hard. You catch the glint of a brass key at his belt—he guards the way forward and won’t part with it quietly.\n" +
+    "\nGorg: \"Turn back if you value your bones. The gate stays shut—unless you take the key from me.\"",
 };

@@ -163,11 +163,19 @@ export function tryInteract() {
           const item = mod.rollFromTable(mod.CHEST_LOOT[tier] || []);
           if (item) {
             import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
+            o.opened = true;
+            showBanner('Chest opened');
+          } else {
+            // No loot: remove the chest from the world immediately
+            const idx = obstacles.indexOf(o);
+            if (idx !== -1) obstacles.splice(idx, 1);
+            showBanner('Empty chest');
           }
         });
-        o.opened = true;
-        showBanner('Chest opened');
       } else {
+        // Already opened (empty now) — remove it
+        const idx = obstacles.indexOf(o);
+        if (idx !== -1) obstacles.splice(idx, 1);
         showBanner('Empty chest');
       }
       return true;

@@ -11,8 +11,6 @@ import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI } from './engine/ui.js';
-import { obstacles } from './engine/state.js';
-import { TILE } from './engine/constants.js';
 
 // Initialize enemies positioned around the three NPCs
 // Goal:
@@ -41,7 +39,26 @@ spawnEnemy(holaPos.x + 0,  holaPos.y + 38, 'mook');
 spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,  'mook');
 spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,  'mook');
 spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36, 'mook');
-spawnEnemy(yornaPos.x + 44,  yornaPos.y + 34, 'featured');
+// Gorg — featured key-bearer with VN intro and custom red-tinted sheet
+const gorgSheet = makeSpriteSheet({
+  skin: '#ff4a4a',
+  shirt: '#8a1a1a',
+  pants: '#6a0f0f',
+  hair: '#2a0000',
+  outline: '#000000',
+});
+spawnEnemy(
+  yornaPos.x + 44,
+  yornaPos.y + 34,
+  'featured',
+  {
+    guaranteedDropId: 'key_bronze',
+    name: 'Gorg',
+    vnOnSight: { text: introTexts.gorg },
+    portrait: 'assets/portraits/Gorg/Gorg.mp4',
+    sheet: gorgSheet,
+  }
+);
 // Boss — placed inside a small castle enclosure near bottom-right
 const castle = (function buildCastle() {
   const cw = TILE * 14; // ~14 tiles wide

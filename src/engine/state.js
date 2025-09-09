@@ -82,11 +82,13 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     knockbackY: 0,
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
-    sheet: cfg.sheet,
+    sheet: opts.sheet || cfg.sheet,
     // Optional portrait for VN overlay on enemies
     portraitSrc: opts.portrait || null,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
+    // Optional guaranteed drop item id (e.g., 'key_bronze')
+    guaranteedDropId: opts.guaranteedDropId || null,
   });
 }
 
