@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, world } from './state.js';
+import { player, enemies, companions, npcs, world, runtime } from './state.js';
 import { spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { sheetForName } from './sprites.js';
@@ -109,6 +109,7 @@ function serializePayload() {
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
     unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
+    vnSeen: Object.keys(runtime?.vnSeen || {}),
   };
 }
 
@@ -124,6 +125,11 @@ function deserializePayload(data) {
   enemies.length = 0;
   companions.length = 0;
   npcs.length = 0;
+  // Restore VN seen map (session-level)
+  runtime.vnSeen = {};
+  if (Array.isArray(data.vnSeen)) {
+    for (const k of data.vnSeen) runtime.vnSeen[k] = true;
+  }
   // Restore enemies
   if (Array.isArray(data.enemies)) {
     for (const e of data.enemies) {
@@ -179,4 +185,12 @@ function deserializePayload(data) {
       if (o.type === 'gate' && o.id && data.unlockedGates.includes(o.id)) o.locked = false;
     }
   }
+  // Apply VN seen flags to current actors
+  const markSeen = (ent) => {
+    const type = (typeof ent.touchDamage === 'number') ? 'enemy' : 'npc';
+    const key = `${type}:${(ent.name || '').toLowerCase()}`;
+    if (runtime.vnSeen && runtime.vnSeen[key]) ent._vnShown = true;
+  };
+  for (const e of enemies) markSeen(e);
+  for (const n of npcs) markSeen(n);
 }

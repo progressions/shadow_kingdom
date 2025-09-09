@@ -70,30 +70,45 @@ const castle = (function buildCastle() {
   return { x: cx, y: cy, w: cw, h: ch, gapX, gapW: gap };
 })();
 // Boss at center of castle interior
-spawnEnemy(castle.x + castle.w / 2 - 6, castle.y + castle.h / 2 - 8, 'boss');
+spawnEnemy(
+  castle.x + castle.w / 2 - 6,
+  castle.y + castle.h / 2 - 8,
+  'boss',
+  {
+    name: 'Vast',
+    portrait: 'assets/portraits/Vast/Vast video.mp4',
+    vnOnSight: { text: 'Vast: You made it this far? Then watch how hope burns to ash.' },
+  }
+);
 // NPCs with portraits (place your images at assets/portraits/*.png)
 // Repositioned per request
 // Canopy: closest to player
 const canopySheet = makeSpriteSheet({ hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff77c8', shirt: '#ffd3ea' });
 const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', {
-  name: 'Canopy', portrait: 'assets/portraits/Canopy.png', sheet: canopySheet,
-  vnOnSight: { text: "Canopy: Oh! Hello." },
+  name: 'Canopy',
+  portrait: 'assets/portraits/Canopy/Canopy video.mp4',
+  sheet: canopySheet,
+  vnOnSight: { text: "Canopy: I'm pinned down—too many of them! Help me break through and I'll mend every scrape I can." },
 });
 setNpcDialog(canopy, canopyDialog);
 
 // Yorna: furthest
 const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#ff9a4a', shirt: '#ffd1a6' });
 const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', {
-  name: 'Yorna', portrait: 'assets/portraits/Yorna.png', sheet: yornaSheet,
-  vnOnSight: { text: "Yorna: Don't get in my way." },
+  name: 'Yorna',
+  portrait: 'assets/portraits/Yorna/Yorna video.mp4',
+  sheet: yornaSheet,
+  vnOnSight: { text: "Yorna: Finally, someone moving with purpose. Let's carve these monsters to pieces—try to keep up." },
 });
 setNpcDialog(yorna, yornaDialog);
 
 // Hola: next closest in a different area
 const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#6fb7ff', shirt: '#bfe1ff' });
 const hola = spawnNpc(holaPos.x, holaPos.y, 'up', {
-  name: 'Hola', portrait: 'assets/portraits/Hola.png', sheet: holaSheet,
-  vnOnSight: { text: 'Hola: Hi…' },
+  name: 'Hola',
+  portrait: 'assets/portraits/Hola/Hola video.mp4',
+  sheet: holaSheet,
+  vnOnSight: { text: "Hola: I… I'm trying to remember the right incantation. There are so many of them—please stay close while I try again." },
 });
 setNpcDialog(hola, holaDialog);
 // Start with zero companions
