@@ -85,6 +85,45 @@ Audio Assets
   - A small blood stain appears under the corpse and also fades away.
   - Corpses rotate randomly for visual variety.
 
+## VN Intros (First Appearance)
+
+- When a flagged character (NPC or the boss) first enters the camera view, the camera pans to them and a simple VN overlay opens with flavor text.
+- Close the VN with the built‑in Exit (X) button or Esc; gameplay resumes normally and the camera pans back to the player.
+- Intros are remembered per slot (persisted in the save) and won’t repeat after reload.
+
+Video portraits
+- The VN overlay supports both images and videos for portraits.
+- Use MP4/WebM/OGG assets; videos play muted, loop, and stop when the VN closes.
+- Just set `portrait` to your video path; the overlay auto-switches:
+  - Example: `assets/portraits/Canopy/Canopy video.mp4`
+
+Add an intro to an NPC
+
+```js
+// src/main.js (or wherever you spawn your NPC)
+spawnNpc(x, y, 'down', {
+  name: 'Scholar',
+  portrait: 'assets/portraits/Scholar/Scholar video.mp4', // or .png/.webp
+  sheet,
+  vnOnSight: { text: "Scholar: I've been expecting you…" },
+});
+```
+
+Add an intro to an enemy (e.g., the boss)
+
+```js
+spawnEnemy(bx, by, 'boss', {
+  name: 'Vast',
+  portrait: 'assets/portraits/Vast/Vast video.mp4',
+  vnOnSight: { text: 'Vast: You made it this far? Then watch how hope burns to ash.' },
+});
+```
+
+Behavior
+- Pan-to-actor before VN (~0.6s, smooth ease), then open VN with your `text`.
+- No numbered Exit choice; the overlay’s Exit (X) is always available unless you lock it yourself.
+- Seen-tracking: stored as `npc:<name>` or `enemy:<name>` internally and persisted in the save.
+
 ## Engine Flow Diagrams
 
 ### Update/Render Loop
