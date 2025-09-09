@@ -228,6 +228,8 @@ export function selectChoice(index) {
   if (choice.action === 'inv_transfer_pick') { openTransferSelectItem(choice.data.actorTag); return; }
   if (choice.action === 'inv_transfer_target') { openTransferSelectTarget(choice.data.actorTag, choice.data.itemId); return; }
   if (choice.action === 'inv_transfer_do') { doTransfer(choice.data.from, choice.data.to, choice.data.itemId); openInventoryMenu(choice.data.from); return; }
+  if (choice.action === 'inv_quick_list') { openQuickEquipList(choice.data.actorTag); return; }
+  if (choice.action === 'inv_quick_equip') { doEquip(choice.data.actorTag, choice.data.slot, undefined, choice.data.itemId); openQuickEquipList(choice.data.actorTag); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
 }
 
@@ -264,6 +266,7 @@ async function openInventoryMenu(actorTag) {
     return { label: `${slotLabel(s)}: ${it ? it.name : '(empty)'}`, action: 'inv_slot', data: { actorTag, slot: s } };
   });
   const actions = [
+    { label: 'Backpack', action: 'inv_quick_list', data: { actorTag } },
     { label: 'Transfer Items (Backpack)', action: 'inv_transfer_pick', data: { actorTag } },
     { label: 'Add Sample Items', action: 'inv_add_samples', data: { actorTag } },
     { label: 'Back', action: 'inventory_back' },
@@ -288,6 +291,31 @@ function openSlotMenu(actorTag, slot) {
   }
   choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
   startPrompt(actor, `${slotLabel(slot)} — Choose`, choices);
+}
+
+function openQuickEquipList(actorTag) {
+  const actor = resolveActor(actorTag);
+  if (!actor) { startInventoryMenu(); return; }
+  const items = actor.inventory?.items || [];
+  const eq = actor.inventory?.equipped || {};
+  const choices = [];
+  // Unequip options for currently equipped gear
+  const slots = ['head','torso','legs','leftHand','rightHand'];
+  for (const s of slots) {
+    const it = eq[s];
+    if (it) choices.push({ label: `Unequip ${it.name} (${slotLabel(s)})`, action: 'inv_unequip', data: { actorTag, slot: s } });
+  }
+  if (items.length === 0) {
+    choices.push({ label: 'Backpack is empty', action: 'open_inventory', data: actorTag });
+  } else {
+    for (const it of items) {
+      const slot = it.slot;
+      const label = `Equip ${it.name} (${slotLabel(slot)})`;
+      choices.push({ label, action: 'inv_quick_equip', data: { actorTag, itemId: it.id, slot } });
+    }
+  }
+  choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
+  startPrompt(actor, 'Backpack — Click to Equip', choices);
 }
 
 function addSamples(actorTag) {
