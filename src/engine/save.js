@@ -112,6 +112,7 @@ function serializePayload() {
     unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
     groundItems: (Array.isArray(itemsOnGround) ? itemsOnGround.map(g => ({ id: g.id, x: g.x, y: g.y, item: g.item })) : []),
     openedChests: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'chest' && o.opened && o.id).map(o => o.id) : []),
+    brokenBreakables: Object.keys(runtime?.brokenBreakables || {}),
     vnSeen: Object.keys(runtime?.vnSeen || {}),
   };
 }
@@ -192,6 +193,15 @@ function deserializePayload(data) {
   if (Array.isArray(data.openedChests)) {
     for (const o of obstacles) {
       if (o.type === 'chest' && o.id && data.openedChests.includes(o.id)) o.opened = true;
+    }
+  }
+  // Remove broken breakables by id
+  if (Array.isArray(data.brokenBreakables)) {
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      if (o && (o.type === 'barrel' || o.type === 'crate') && o.id && data.brokenBreakables.includes(o.id)) {
+        obstacles.splice(i, 1);
+      }
     }
   }
   // Restore ground items

@@ -218,5 +218,7 @@ export const runtime = {
   musicMode: 'normal',
   musicModePending: null,
   musicModeSwitchTimer: 0,
+  // Persistence for removed breakables (ids)
+  brokenBreakables: {},
   
 };

@@ -154,6 +154,18 @@ export function drawObstacles(ctx, obstacles, camera) {
         ctx.fillStyle = '#c9a24f';
         ctx.fillRect(sx + (o.w/2 - 2)|0, sy + (o.h/2 - 2)|0, 4, 4);
       }
+    } else if (o.type === 'barrel') {
+      // Simple barrel
+      ctx.fillStyle = '#7a4a2a'; ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#3a2414'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      ctx.fillStyle = '#a67c52'; ctx.fillRect(sx, sy + 3, o.w, 2); ctx.fillRect(sx, sy + o.h - 5, o.w, 2);
+    } else if (o.type === 'crate') {
+      // Simple crate
+      ctx.fillStyle = '#6b5a3a'; ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#3a321e'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // cross braces
+      ctx.beginPath(); ctx.moveTo(sx + 1, sy + 1); ctx.lineTo(sx + o.w - 1, sy + o.h - 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx + o.w - 1, sy + 1); ctx.lineTo(sx + 1, sy + o.h - 1); ctx.stroke();
     }
   }
 }

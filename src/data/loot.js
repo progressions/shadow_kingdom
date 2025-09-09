@@ -31,6 +31,19 @@ export const CHEST_LOOT = {
   ],
 };
 
+export const BREAKABLE_LOOT = {
+  barrel: [
+    { id: 'torch', w: 25 },
+    { id: 'stick', w: 20 },
+    { id: 'cap_leather', w: 10 },
+  ],
+  crate: [
+    { id: 'stick', w: 25 },
+    { id: 'buckler', w: 12 },
+    { id: 'shirt_cloth', w: 18 },
+  ],
+};
+
 export function rollFromTable(table) {
   if (!Array.isArray(table) || table.length === 0) return null;
   const total = table.reduce((s, e) => s + (e.w || 0), 0);

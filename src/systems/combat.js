@@ -5,6 +5,7 @@ import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
+import { BREAKABLE_LOOT, rollFromTable } from '../data/loot.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -55,6 +56,25 @@ export function handleAttacks(dt) {
     if (player.dir === 'down')  { hb.h += range; }
     // Attempt to unlock any gate hit by the attack
     tryUnlockGate(hb);
+    // Damage breakables (barrels/crates)
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      if (!o || (o.type !== 'barrel' && o.type !== 'crate')) continue;
+      const r = { x: o.x, y: o.y, w: o.w, h: o.h };
+      if (!rectsIntersect(hb, r)) continue;
+      o.hp = (typeof o.hp === 'number') ? o.hp - 1 : -1;
+      if (o.hp <= 0) {
+        // spawn loot and remove
+        try {
+          const table = BREAKABLE_LOOT[o.type] || [];
+          const drop = rollFromTable(table);
+          if (drop) import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, drop));
+        } catch {}
+        const idx = obstacles.indexOf(o);
+        if (idx !== -1) obstacles.splice(idx, 1);
+        playSfx('break');
+      }
+    }
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
