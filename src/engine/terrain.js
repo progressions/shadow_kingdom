@@ -111,7 +111,20 @@ export function drawObstacles(ctx, obstacles, camera) {
     } else if (o.type === 'rock') {
       ctx.fillStyle = '#6f6f6f'; ctx.fillRect(sx, sy, o.w, o.h);
       ctx.fillStyle = '#9a9a9a'; ctx.fillRect(sx + 2, sy + 2, o.w - 4, o.h - 4);
+    } else if (o.type === 'wall') {
+      // Stone wall segment
+      ctx.fillStyle = '#4f4f57'; ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#2a2a2e'; ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // subtle brick pattern
+      ctx.fillStyle = '#696970';
+      const brickH = 6, brickW = 12;
+      for (let y = 0; y < o.h; y += brickH) {
+        const offset = ((y / brickH) % 2) * (brickW / 2);
+        for (let x = 0; x < o.w; x += brickW) {
+          ctx.fillRect(sx + x + offset, sy + y, brickW - 1, 1);
+        }
+      }
     }
   }
 }
-

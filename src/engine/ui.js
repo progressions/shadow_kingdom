@@ -95,6 +95,20 @@ export function updatePartyUI(companions) {
     chip.className = 'party-chip';
     chip.textContent = c.name || `Companion ${idx+1}`;
     chip.dataset.index = String(idx);
+    // Role badges
+    const roles = rolesForCompanion(c?.name || '');
+    if (roles.length) {
+      const badges = document.createElement('span');
+      badges.className = 'role-badges';
+      for (const r of roles) {
+        const b = document.createElement('span');
+        b.className = `role-badge ${r.cls}`;
+        b.title = r.title;
+        b.textContent = r.label;
+        badges.appendChild(b);
+      }
+      chip.appendChild(badges);
+    }
     partyUI.appendChild(chip);
   });
   // Player equipped items box
@@ -140,6 +154,33 @@ export function updatePartyUI(companions) {
   };
 }
 
+// Update the buffs badge values without rebuilding the whole panel
+export function updateBuffBadges() {
+  const container = document.getElementById('party-ui');
+  if (!container) return;
+  const bb = container.querySelector('.buffs-box');
+  if (!bb) return;
+  const b = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const texts = [
+    `ATK: +${b.atk||0}`,
+    `DR: +${b.dr||0}`,
+    `Regen: ${(b.regen||0).toFixed(1)}/s`,
+    `Range: +${b.range||0}px`,
+    `tDR: +${b.touchDR||0}`,
+  ];
+  // Ensure we have 5 children; if not, rebuild
+  const need = 5;
+  if (bb.children.length !== need) {
+    bb.innerHTML = '';
+    texts.forEach(t => { const d = document.createElement('div'); d.className = 'buff'; d.textContent = t; bb.appendChild(d); });
+    return;
+  }
+  for (let i = 0; i < need; i++) {
+    const child = bb.children[i];
+    if (child) child.textContent = texts[i];
+  }
+}
+
 export function showBanner(text, durationMs = 1800) {
   if (!bannerEl) return;
   bannerEl.textContent = text;
@@ -173,4 +214,30 @@ export function activateFocusedChoice() {
   const idx = runtime.vnFocusIndex;
   playSfx('uiSelect');
   import('../engine/dialog.js').then(mod => mod.selectChoice(idx));
+}
+
+function rolesForCompanion(name) {
+  const key = (name || '').toLowerCase();
+  if (key.includes('canopy')) {
+    return [
+      { cls: 'd', label: 'DR', title: 'Defense Aura' },
+      { cls: 'rg', label: 'Rg', title: 'Regen Aura' },
+      { cls: 'sh', label: 'Sh', title: 'Safeguard Shield' },
+    ];
+  }
+  if (key.includes('yorna')) {
+    return [
+      { cls: 'a', label: 'A', title: 'Attack Aura' },
+      { cls: 'r', label: 'R', title: 'Range Aura' },
+      { cls: 'ec', label: 'E', title: 'Echo Strike' },
+    ];
+  }
+  if (key.includes('hola')) {
+    return [
+      { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
+      { cls: 'td', label: 'tDR', title: 'Touch Damage Reduction' },
+      { cls: 'gs', label: 'G', title: 'Gust' },
+    ];
+  }
+  return [];
 }

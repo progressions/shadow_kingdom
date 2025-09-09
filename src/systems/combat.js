@@ -1,5 +1,6 @@
-import { player, enemies, npcs, companions, runtime } from '../engine/state.js';
-import { rectsIntersect, getEquipStats } from '../engine/utils.js';
+import { player, enemies, npcs, companions, runtime, obstacles } from '../engine/state.js';
+import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
+import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
@@ -24,7 +25,15 @@ export function willAttackHitEnemy() {
   if (player.dir === 'down')  { hb.h += range; }
   for (const e of enemies) {
     if (e.hp <= 0) continue;
-    if (rectsIntersect(hb, e)) return true;
+    if (rectsIntersect(hb, e)) {
+      const px = player.x + player.w/2, py = player.y + player.h/2;
+      const ex = e.x + e.w/2, ey = e.y + e.h/2;
+      let blocked = false;
+      for (const o of obstacles) {
+        if (o && o.blocksAttacks) { if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; } }
+      }
+      if (!blocked) return true;
+    }
   }
   return false;
 }
@@ -43,10 +52,29 @@ export function handleAttacks(dt) {
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
+        const px = player.x + player.w/2, py = player.y + player.h/2;
+        const ex = e.x + e.w/2, ey = e.y + e.h/2;
+        let blocked = false;
+        for (const o of obstacles) {
+          if (o && o.blocksAttacks) { if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; } }
+        }
+        if (blocked) continue;
         const mods = getEquipStats(player);
         const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0);
         const dmg = Math.max(1, (player.damage || 1) + add);
         e.hp -= dmg;
+        // Yorna Echo Strike (bonus damage on hit with cooldown)
+        const hasYorna = companions.some(c => (c.name || '').toLowerCase().includes('yorna'));
+        if (hasYorna) {
+          const cfg = companionEffectsByKey.yorna?.onPlayerHit || { bonusPct: 0.5, cooldownSec: 1.2 };
+          if ((runtime.companionCDs.yornaEcho || 0) <= 0) {
+            const bonus = Math.max(1, Math.round(dmg * (cfg.bonusPct || 0.5)));
+            e.hp -= bonus;
+            runtime.companionCDs.yornaEcho = cfg.cooldownSec || 1.2;
+            // small bark
+            import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 8, `Echo +${bonus}`, { color: '#ffd166', life: 0.7 }));
+          }
+        }
         const dx = (e.x + e.w/2) - (player.x + player.w/2);
         const dy = (e.y + e.h/2) - (player.y + player.h/2);
         const mag = Math.hypot(dx, dy) || 1;

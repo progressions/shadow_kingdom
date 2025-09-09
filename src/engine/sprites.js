@@ -79,6 +79,10 @@ export function makeSpriteSheet(paletteOverrides = {}) {
 
 export const playerSheet = makeSpriteSheet();
 export const enemySheet = makeSpriteSheet({ shirt: '#e34b4b', hair: '#1b1b1b' });
+// Enemy class variants
+export const enemyMookSheet = makeSpriteSheet({ shirt: '#8a8a8a', pants: '#5a5a5a', hair: '#bdbdbd', outline: '#000000' });
+export const enemyFeaturedSheet = makeSpriteSheet({ shirt: '#d7a64a', pants: '#6a5330', hair: '#2a2a2a', outline: '#000000' });
+export const enemyBossSheet = makeSpriteSheet({ shirt: '#8b0000', pants: '#2b0b0b', hair: '#111111', outline: '#000000', longHair: false });
 export const npcSheet   = makeSpriteSheet({ shirt: '#5ac8fa', hair: '#2a2a2a' });
 export const companionSheets = [
   // Brown, Blonde, Red hair

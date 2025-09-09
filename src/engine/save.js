@@ -103,7 +103,7 @@ function serializePayload() {
     version: 1,
     at: Date.now(),
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir },
-    enemies: enemies.filter(e => e.hp > 0).map(e => ({ x: e.x, y: e.y, hp: e.hp, dir: e.dir })),
+    enemies: enemies.filter(e => e.hp > 0).map(e => ({ x: e.x, y: e.y, hp: e.hp, dir: e.dir, kind: e.kind || 'mook' })),
     companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null })),
     npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null })),
     playerInv: player.inventory || null,
@@ -126,12 +126,26 @@ function deserializePayload(data) {
   // Restore enemies
   if (Array.isArray(data.enemies)) {
     for (const e of data.enemies) {
+      const kind = (e.kind || 'mook').toLowerCase();
+      const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 20, dmg: 6 }
+        : (kind === 'featured') ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3 }
+        : { name: 'Mook', speed: 10, hp: 3, dmg: 3 };
       enemies.push({
-        x: e.x, y: e.y, w: 12, h: 16, speed: 10, dir: e.dir || 'down', moving: true,
-        animTime: 0, animFrame: 0, hp: e.hp ?? 3, maxHp: 3, touchDamage: 3, hitTimer: 0, hitCooldown: 0.8,
+        x: e.x, y: e.y, w: 12, h: 16, speed: base.speed, dir: e.dir || 'down', moving: true,
+        animTime: 0, animFrame: 0, hp: e.hp ?? base.hp, maxHp: base.hp, touchDamage: base.dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
+        name: base.name, kind,
       });
     }
+    // Attach class sheets lazily after module loads
+    import('./sprites.js').then(mod => {
+      for (const e of enemies) {
+        if (!e.kind) continue;
+        if (e.kind === 'boss') e.sheet = mod.enemyBossSheet;
+        else if (e.kind === 'featured') e.sheet = mod.enemyFeaturedSheet;
+        else e.sheet = mod.enemyMookSheet;
+      }
+    }).catch(()=>{});
   }
   // Helper: attach NPC dialog by name
   const attachDialogByName = (npc) => {

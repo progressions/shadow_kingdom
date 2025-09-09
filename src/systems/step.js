@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText } from '../engine/state.js';
+import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
@@ -6,7 +6,7 @@ import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
 import { startGameOver } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
-import { showBanner } from '../engine/ui.js';
+import { showBanner, updateBuffBadges } from '../engine/ui.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -94,6 +94,10 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 }
 
 export function step(dt) {
+  // Pause the world while VN/inventory overlay is open
+  if (runtime.gameState === 'chat') {
+    return;
+  }
   // Decay interaction lock (prevents chatting immediately after taking damage)
   if (runtime.interactLock > 0) {
     runtime.interactLock = Math.max(0, runtime.interactLock - dt);
@@ -117,6 +121,10 @@ export function step(dt) {
   if (keys.has('arrowup') || keys.has('w')) ay -= 1;
   if (keys.has('arrowdown') || keys.has('s')) ay += 1;
   if (ax !== 0 && ay !== 0) { const inv = 1/Math.sqrt(2); ax *= inv; ay *= inv; }
+
+  // Aggregate companion auras and process companion triggers before combat/movement
+  applyCompanionAuras(dt);
+  handleCompanionTriggers(dt);
 
   const hasInput = (ax !== 0 || ay !== 0);
   const hasKnock = Math.abs(player.knockbackX) > 0.01 || Math.abs(player.knockbackY) > 0.01;
@@ -158,7 +166,7 @@ export function step(dt) {
     // Enemies collide with player and other enemies; pass through companions/NPCs
     const solidsForEnemy = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
     if (Math.abs(e.knockbackX) > 0.01 || Math.abs(e.knockbackY) > 0.01) {
-      const mul = e._slowMul || 1;
+      const mul = (e._slowMul || 1) * ((e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1);
       moveWithCollision(e, e.knockbackX * dt * mul, e.knockbackY * dt * mul, solidsForEnemy);
       e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
     } else {
@@ -166,7 +174,7 @@ export function step(dt) {
       let dx = (player.x - e.x), dy = (player.y - e.y);
       const dist = Math.hypot(dx, dy) || 1; dx/=dist; dy/=dist;
       const oldX = e.x, oldY = e.y;
-      const mul = e._slowMul || 1;
+      const mul = (e._slowMul || 1) * ((e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1);
       moveWithCollision(e, dx * e.speed * mul * dt, dy * e.speed * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
@@ -198,6 +206,7 @@ export function step(dt) {
     e.x = Math.max(0, Math.min(world.w - e.w, e.x));
     e.y = Math.max(0, Math.min(world.h - e.h, e.y));
     e.hitTimer -= dt; if (e.hitTimer < 0) e.hitTimer = 0;
+    if (e._gustSlowTimer && e._gustSlowTimer > 0) e._gustSlowTimer = Math.max(0, e._gustSlowTimer - dt);
     if (e.hitTimer === 0) {
       const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
       const er = { x: e.x, y: e.y, w: e.w, h: e.h };
@@ -208,7 +217,11 @@ export function step(dt) {
         if (player.invulnTimer <= 0) {
           const dr = (getEquipStats(player).dr || 0) + (runtime?.combatBuffs?.dr || 0) + (runtime?.combatBuffs?.touchDR || 0);
           const raw = e.touchDamage || 1;
-          const taken = Math.max(0, raw - dr);
+          let taken = Math.max(0, raw - dr);
+          if (runtime.shieldActive && taken > 0) {
+            taken = 0;
+            runtime.shieldActive = false;
+          }
           e.hitTimer = e.hitCooldown;
           if (taken > 0) {
             player.hp = Math.max(0, player.hp - taken);
@@ -235,7 +248,7 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
-      spawnCorpse(e.x, e.y, { dir: e.dir, kind: 'enemy', life: 1.8 });
+      spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
       spawnStain(e.x, e.y, { life: 2.8 });
       enemies.splice(i, 1);
     }
@@ -258,6 +271,14 @@ export function step(dt) {
     const f = floaters[i];
     f.t += dt;
     if (f.t >= f.life) floaters.splice(i, 1);
+  }
+  // Update healing sparkles
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const p = sparkles[i];
+    p.t += dt;
+    p.x += (p.vx || 0) * dt;
+    p.y += (p.vy || -15) * dt;
+    if (p.t >= p.life) sparkles.splice(i, 1);
   }
 
   // Companions follow
@@ -292,8 +313,6 @@ export function step(dt) {
   camera.x = Math.round(player.x + player.w/2 - camera.w/2);
   camera.y = Math.round(player.y + player.h/2 - camera.h/2);
   camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
-  // Aggregate companion auras → runtime.combatBuffs and per-enemy slow multipliers
-  applyCompanionAuras(dt);
   camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
 }
 
@@ -342,10 +361,79 @@ function applyCompanionAuras(dt) {
   // Regen
   if (buffs.regen > 0 && player.hp > 0) {
     player.hp = Math.min(player.maxHp, player.hp + buffs.regen * dt);
+    // Healing sparkles while regenerating and not at full
+    if (player.hp < player.maxHp) {
+      const rate = 4 + 8 * (buffs.regen / Math.max(0.2, COMPANION_BUFF_CAPS.regen)); // 4–12 per second
+      if (Math.random() < rate * dt) {
+        const ox = (Math.random() * 8 - 4);
+        const oy = (Math.random() * 6 - 10);
+        spawnSparkle(player.x + player.w/2 + ox, player.y + oy);
+      }
+    }
   }
   // Per-enemy slow multiplier for this frame
   for (let ei = 0; ei < enemies.length; ei++) {
     const s = Math.min(slowAccum[ei], COMPANION_BUFF_CAPS.slow);
     enemies[ei]._slowMul = 1 - s;
+  }
+  // Update UI badges with latest totals
+  try { updateBuffBadges(); } catch {}
+}
+
+function handleCompanionTriggers(dt) {
+  const cds = runtime.companionCDs || (runtime.companionCDs = { yornaEcho: 0, canopyShield: 0, holaGust: 0 });
+  // Cooldowns tick
+  cds.yornaEcho = Math.max(0, (cds.yornaEcho || 0) - dt);
+  cds.canopyShield = Math.max(0, (cds.canopyShield || 0) - dt);
+  cds.holaGust = Math.max(0, (cds.holaGust || 0) - dt);
+
+  // Shield countdown
+  if (runtime.shieldActive) {
+    runtime.shieldTimer = Math.max(0, (runtime.shieldTimer || 0) - dt);
+    if (runtime.shieldTimer <= 0) runtime.shieldActive = false;
+  }
+
+  // Presence checks
+  const has = (key) => companions.some(c => (c.name || '').toLowerCase().includes(key));
+  // Canopy shield trigger
+  if (has('canopy')) {
+    const def = companionEffectsByKey.canopy?.triggers?.shield || { hpThresh: 0.4, cooldownSec: 12, durationSec: 6 };
+    const hpRatio = player.hp / player.maxHp;
+    if (!runtime.shieldActive && (cds.canopyShield || 0) <= 0 && hpRatio < (def.hpThresh || 0.4)) {
+      runtime.shieldActive = true;
+      runtime.shieldTimer = def.durationSec || 6;
+      cds.canopyShield = def.cooldownSec || 12;
+      spawnFloatText(player.x + player.w/2, player.y - 10, 'Shield!', { color: '#8ab4ff', life: 0.8 });
+    }
+  }
+
+  // Hola gust trigger
+  if (has('hola')) {
+    const def = companionEffectsByKey.hola?.triggers?.gust || { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 };
+    if ((cds.holaGust || 0) <= 0) {
+      // Any enemy in radius of player?
+      let any = false;
+      for (const e of enemies) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - player.x, dy = e.y - player.y;
+        if ((dx*dx + dy*dy) <= (def.radius * def.radius)) { any = true; break; }
+      }
+      if (any) {
+        for (const e of enemies) {
+          if (e.hp <= 0) continue;
+          const dx = e.x - player.x, dy = e.y - player.y;
+          if ((dx*dx + dy*dy) <= (def.radius * def.radius)) {
+            const mag = Math.hypot(dx, dy) || 1;
+            const px = (dx / mag) * def.push;
+            const py = (dy / mag) * def.push;
+            const solids = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
+            moveWithCollision(e, px, py, solids);
+            e._gustSlowTimer = Math.max(e._gustSlowTimer || 0, def.durationSec || 0.4);
+          }
+        }
+        cds.holaGust = def.cooldownSec || 10;
+        spawnFloatText(player.x + player.w/2, player.y - 12, 'Gust!', { color: '#a1e3ff', life: 0.8 });
+      }
+    }
   }
 }

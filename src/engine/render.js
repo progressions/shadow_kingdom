@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
@@ -52,7 +52,8 @@ export function render(terrainBitmap, obstacles) {
     // Randomized lay direction for variety
     ctx.translate(dx + SPRITE_SIZE / 2, dy + SPRITE_SIZE / 2);
     ctx.rotate(c.angle || -Math.PI / 2);
-    ctx.drawImage(enemySheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
+    const sheet = c.sheet || enemySheet;
+    ctx.drawImage(sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
     ctx.restore();
   }
 
@@ -68,7 +69,7 @@ export function render(terrainBitmap, obstacles) {
   });
   for (const e of enemies) if (e.hp > 0) drawables.push({
     x: e.x, y: e.y, w: e.w, h: e.h,
-    dir: e.dir, frame: e.animFrame, sheet: enemySheet, enemyRef: e,
+    dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet, enemyRef: e,
   });
   drawables.push({
     x: player.x, y: player.y, w: player.w, h: player.h,
@@ -123,6 +124,9 @@ export function render(terrainBitmap, obstacles) {
 
   // Floating texts (combat barks)
   drawFloaters();
+
+  // Healing sparkles
+  drawSparkles();
 }
 
 function drawNpcMarkers() {
@@ -185,6 +189,23 @@ function drawFloaters() {
     ctx.lineWidth = 2;
     ctx.strokeText(f.text, sx, sy);
     ctx.fillText(f.text, sx, sy);
+  }
+  ctx.restore();
+}
+
+function drawSparkles() {
+  if (!sparkles || sparkles.length === 0) return;
+  ctx.save();
+  for (const p of sparkles) {
+    const alpha = Math.max(0, 1 - p.t / p.life);
+    if (alpha <= 0) continue;
+    const sx = Math.round(p.x - camera.x);
+    const sy = Math.round(p.y - camera.y);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color || '#8effc1';
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.r || 1.5, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 }

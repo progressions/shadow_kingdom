@@ -1,6 +1,7 @@
 // Modular bootstrap
 import { canvas, ctx, setupChatInputHandlers } from './engine/ui.js';
 import { world, camera, player, enemies, npcs, obstacles, spawnEnemy, spawnCompanion, spawnNpc, runtime } from './engine/state.js';
+import { TILE } from './engine/constants.js';
 import { makeSpriteSheet } from './engine/sprites.js';
 import { buildTerrainBitmap, buildObstacles } from './engine/terrain.js';
 import { initInput } from './engine/input.js';
@@ -10,16 +11,49 @@ import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { updatePartyUI } from './engine/ui.js';
 
-// Initialize actors
-spawnEnemy(world.w * 0.25, world.h * 0.5);
-// Add three more enemies around the map
-spawnEnemy(world.w * 0.75, world.h * 0.5);
-spawnEnemy(world.w * 0.5,  world.h * 0.25);
-spawnEnemy(world.w * 0.5,  world.h * 0.75);
-// Add three additional enemies
-spawnEnemy(world.w * 0.2,  world.h * 0.2);
-spawnEnemy(world.w * 0.8,  world.h * 0.2);
-spawnEnemy(world.w * 0.8,  world.h * 0.8);
+// Initialize enemies (7 mooks, 2 featured foes, 1 boss)
+// Mooks
+spawnEnemy(world.w * 0.20, world.h * 0.20, 'mook');
+spawnEnemy(world.w * 0.30, world.h * 0.60, 'mook');
+spawnEnemy(world.w * 0.75, world.h * 0.50, 'mook');
+spawnEnemy(world.w * 0.50, world.h * 0.25, 'mook');
+spawnEnemy(world.w * 0.50, world.h * 0.75, 'mook');
+spawnEnemy(world.w * 0.80, world.h * 0.20, 'mook');
+spawnEnemy(world.w * 0.80, world.h * 0.80, 'mook');
+// Featured foes
+spawnEnemy(world.w * 0.35, world.h * 0.35, 'featured');
+spawnEnemy(world.w * 0.65, world.h * 0.65, 'featured');
+// Boss — placed inside a small castle enclosure near bottom-right
+const castle = (function buildCastle() {
+  const cw = TILE * 14; // ~14 tiles wide
+  const ch = TILE * 10; // ~10 tiles tall
+  const t = 8;          // wall thickness in px
+  const gap = 16;       // opening width
+  const cx = Math.min(world.w - cw - TILE * 2, Math.max(TILE * 2, world.w * 0.82));
+  const cy = Math.min(world.h - ch - TILE * 2, Math.max(TILE * 2, world.h * 0.78));
+  // clear interior obstacles
+  const inner = { x: cx + t, y: cy + t, w: cw - 2 * t, h: ch - 2 * t };
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i];
+    if (o.x < inner.x + inner.w && o.x + o.w > inner.x && o.y < inner.y + inner.h && o.y + o.h > inner.y) {
+      obstacles.splice(i, 1);
+    }
+  }
+  // walls (top with a centered gap)
+  const gapX = cx + (cw - gap) / 2;
+  const add = (x, y, w, h) => obstacles.push({ x, y, w, h, type: 'wall', blocksAttacks: true });
+  // top left and right segments
+  add(cx, cy, gapX - cx, t);
+  add(gapX + gap, cy, (cx + cw) - (gapX + gap), t);
+  // bottom wall
+  add(cx, cy + ch - t, cw, t);
+  // left and right walls
+  add(cx, cy, t, ch);
+  add(cx + cw - t, cy, t, ch);
+  return { x: cx, y: cy, w: cw, h: ch, gapX, gapW: gap };
+})();
+// Boss at center of castle interior
+spawnEnemy(castle.x + castle.w / 2 - 6, castle.y + castle.h / 2 - 8, 'boss');
 // NPCs with portraits (place your images at assets/portraits/*.png)
 // Place them near the starting area
 // Canopy: brown hair, feminine look, pink dress
@@ -46,6 +80,9 @@ obstacles.push(...buildObstacles(world, player, enemies, npcs));
 setupChatInputHandlers(runtime);
 initInput();
 updatePartyUI([]);
+
+// Safe spawn: brief invulnerability on new game so nearby enemies can't insta-hit
+player.invulnTimer = Math.max(player.invulnTimer || 0, 1.5);
 
 // No turn-based battle; all combat is realtime.
 

@@ -1,4 +1,5 @@
 import { TILE } from './constants.js';
+import { enemyMookSheet, enemyFeaturedSheet, enemyBossSheet } from './sprites.js';
 
 // World and camera
 export const world = {
@@ -21,8 +22,8 @@ export const player = {
   moving: false,
   animTime: 0,
   animFrame: 0,
-  hp: 6,
-  maxHp: 6,
+  hp: 10,
+  maxHp: 10,
   attackCooldown: 0.35,
   lastAttack: -999,
   attacking: false,
@@ -42,25 +43,36 @@ export const npcs = [];
 export const obstacles = [];
 export const corpses = [];
 export const stains = [];
+export const sparkles = [];
 
-export function spawnEnemy(x, y) {
+export function spawnEnemy(x, y, type = 'mook') {
+  // Three classes: mook, featured, boss
+  const T = String(type).toLowerCase();
+  const cfg = (T === 'boss')
+    ? { name: 'Boss', speed: 12, hp: 20, dmg: 6, sheet: enemyBossSheet, kind: 'boss' }
+    : (T === 'featured' || T === 'foe' || T === 'elite')
+      ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3, sheet: enemyFeaturedSheet, kind: 'featured' }
+      : { name: 'Mook', speed: 10, hp: 3, dmg: 3, sheet: enemyMookSheet, kind: 'mook' };
   enemies.push({
     x, y,
     w: 12, h: 16,
-    speed: 10, // slow approach speed
+    speed: cfg.speed,
     dir: 'down',
     moving: true,
     animTime: 0,
     animFrame: 0,
-    hp: 3,
-    maxHp: 3,
-    touchDamage: 3,
+    name: cfg.name,
+    kind: cfg.kind,
+    hp: cfg.hp,
+    maxHp: cfg.hp,
+    touchDamage: cfg.dmg,
     hitTimer: 0,
     hitCooldown: 0.8,
     knockbackX: 0,
     knockbackY: 0,
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
+    sheet: cfg.sheet,
   });
 }
 
@@ -71,6 +83,7 @@ export function spawnCorpse(x, y, opts = {}) {
     w: 12, h: 16,
     dir: opts.dir || 'down',
     kind: opts.kind || 'enemy',
+    sheet: opts.sheet || null,
     t: 0, // elapsed seconds
     life: typeof opts.life === 'number' ? opts.life : 1.5, // fade duration
     angle: typeof opts.angle === 'number' ? opts.angle : ([-Math.PI/2, 0, Math.PI/2, Math.PI][(Math.random()*4)|0] + (Math.random()*0.2 - 0.1)),
@@ -94,6 +107,19 @@ export function spawnStain(x, y, opts = {}) {
 export const floaters = [];
 export function spawnFloatText(x, y, text, opts = {}) {
   floaters.push({ x, y, text: String(text), color: opts.color || '#eaeaea', t: 0, life: opts.life || 0.8 });
+}
+
+// Healing sparkle particles (pass-through, fade and drift up)
+export function spawnSparkle(x, y, opts = {}) {
+  sparkles.push({
+    x, y,
+    vx: (Math.random() * 10 - 5) * 0.5,
+    vy: -15 - Math.random() * 10,
+    t: 0,
+    life: opts.life || 0.6,
+    color: opts.color || '#8effc1',
+    r: opts.r || (1 + Math.random()*1.5),
+  });
 }
 
 export function spawnCompanion(x, y, sheet, opts = {}) {
@@ -155,4 +181,8 @@ export const runtime = {
   gameOver: false,
   // Aggregated companion buffs (recomputed each frame)
   combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0 },
+  // Companion ability cooldowns and shield state (Phase 2)
+  companionCDs: { yornaEcho: 0, canopyShield: 0, holaGust: 0 },
+  shieldActive: false,
+  shieldTimer: 0,
 };

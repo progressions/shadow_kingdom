@@ -90,7 +90,18 @@
 
       /* Party UI (top-right) */
       #party-ui { position: absolute; top: 10px; right: 10px; display: grid; gap: 6px; justify-items: end; }
-      .party-chip { background: rgba(0,0,0,0.6); color: #eaeaea; border: 1px solid #444; border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+      .party-chip { background: rgba(0,0,0,0.6); color: #eaeaea; border: 1px solid #444; border-radius: 999px; padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+      .role-badges { display: inline-flex; gap: 4px; pointer-events: none; }
+      .role-badge { background: #222; border: 1px solid #555; color: #ddd; border-radius: 4px; padding: 1px 4px; font-size: 10px; line-height: 1; opacity: 0.9; }
+      .role-badge.a { background:#2b1a1a; border-color:#6d2b2b; color:#ffb3b3; }    /* Attack */
+      .role-badge.d { background:#1a2330; border-color:#2f4b6d; color:#b3d1ff; }    /* Defense */
+      .role-badge.rg { background:#12251b; border-color:#2b6d4e; color:#a8ffd8; }  /* Regen */
+      .role-badge.r { background:#26220f; border-color:#6d5a2b; color:#ffe0a3; }   /* Range */
+      .role-badge.sl { background:#1e1a26; border-color:#5a3b6d; color:#e0b3ff; }  /* Slow */
+      .role-badge.td { background:#102226; border-color:#2b596d; color:#b3f0ff; }  /* touch DR */
+      .role-badge.sh { background:#121d29; border-color:#2b4f6d; color:#a8c6ff; }  /* Shield */
+      .role-badge.ec { background:#2b1f14; border-color:#6d4b2b; color:#ffd166; }  /* Echo */
+      .role-badge.gs { background:#0f1f24; border-color:#2b5866; color:#a1e3ff; }  /* Gust */
       .equip-box { background: rgba(0,0,0,0.6); color: #eaeaea; border: 1px solid #444; border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 180px; }
       .equip-box .equip-title { font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; opacity: 0.95; }
       .equip-box .mods { font-weight: 600; opacity: 0.9; }
