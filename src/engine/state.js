@@ -40,12 +40,14 @@ export const enemies = [];
 export const companions = [];
 export const npcs = [];
 export const obstacles = [];
+export const corpses = [];
+export const stains = [];
 
 export function spawnEnemy(x, y) {
   enemies.push({
     x, y,
     w: 12, h: 16,
-    speed: 60,
+    speed: 20, // move very slowly
     dir: 'down',
     moving: true,
     animTime: 0,
@@ -60,6 +62,32 @@ export function spawnEnemy(x, y) {
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
   });
+}
+
+// Lightweight corpse entity (pass-through, fades out)
+export function spawnCorpse(x, y, opts = {}) {
+  corpses.push({
+    x, y,
+    w: 12, h: 16,
+    dir: opts.dir || 'down',
+    kind: opts.kind || 'enemy',
+    t: 0, // elapsed seconds
+    life: typeof opts.life === 'number' ? opts.life : 1.5, // fade duration
+    angle: typeof opts.angle === 'number' ? opts.angle : ([-Math.PI/2, 0, Math.PI/2, Math.PI][(Math.random()*4)|0] + (Math.random()*0.2 - 0.1)),
+  });
+}
+
+export function spawnStain(x, y, opts = {}) {
+  const life = typeof opts.life === 'number' ? opts.life : 2.5;
+  const count = opts.count || (3 + (Math.random()*3|0));
+  const blobs = [];
+  for (let i = 0; i < count; i++) {
+    const r = 2 + Math.random()*3;
+    const ox = (Math.random()*8 - 4);
+    const oy = (Math.random()*6 - 3);
+    blobs.push({ ox, oy, r });
+  }
+  stains.push({ x, y, t: 0, life, blobs });
 }
 
 export function spawnCompanion(x, y, sheet, opts = {}) {

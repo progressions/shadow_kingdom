@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, obstacles, world, camera, runtime } from '../engine/state.js';
+import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain } from '../engine/state.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
@@ -217,7 +217,25 @@ export function step(dt) {
 
   // Remove defeated enemies to avoid any lingering collision feel
   for (let i = enemies.length - 1; i >= 0; i--) {
-    if (enemies[i].hp <= 0) enemies.splice(i, 1);
+    if (enemies[i].hp <= 0) {
+      const e = enemies[i];
+      spawnCorpse(e.x, e.y, { dir: e.dir, kind: 'enemy', life: 1.8 });
+      spawnStain(e.x, e.y, { life: 2.8 });
+      enemies.splice(i, 1);
+    }
+  }
+
+  // Update corpses timers and purge when faded
+  for (let i = corpses.length - 1; i >= 0; i--) {
+    const c = corpses[i];
+    c.t += dt;
+    if (c.t >= c.life) corpses.splice(i, 1);
+  }
+  // Update stains timers and purge when faded
+  for (let i = stains.length - 1; i >= 0; i--) {
+    const s = stains[i];
+    s.t += dt;
+    if (s.t >= s.life) stains.splice(i, 1);
   }
 
   // Companions follow

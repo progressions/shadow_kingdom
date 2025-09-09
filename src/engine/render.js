@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
@@ -17,6 +17,44 @@ export function render(terrainBitmap, obstacles) {
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
+
+  // Blood stains (fade out). Draw under corpses/actors
+  for (const s of stains) {
+    const alpha = Math.max(0, 1 - (s.t / s.life)) * 0.7;
+    if (alpha <= 0) continue;
+    ctx.save();
+    ctx.translate(Math.round(s.x - camera.x), Math.round(s.y - camera.y));
+    ctx.globalAlpha = alpha;
+    for (const b of s.blobs) {
+      ctx.beginPath();
+      ctx.fillStyle = '#7a0f26';
+      ctx.arc(b.ox, b.oy + 6, b.r, 0, Math.PI*2);
+      ctx.fill();
+      // small highlight for depth
+      ctx.beginPath();
+      ctx.fillStyle = '#a1112d';
+      ctx.arc(b.ox - b.r*0.3, b.oy + 6 - b.r*0.3, b.r*0.4, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Corpses (pass-through, fade out). Draw before living actors so they appear beneath
+  for (const c of corpses) {
+    const row = DIRECTIONS.indexOf(c.dir || 'down');
+    const sx = 0; // first frame
+    const sy = row * SPRITE_SIZE;
+    const dx = Math.round(c.x - (SPRITE_SIZE - c.w) / 2 - camera.x);
+    const dy = Math.round(c.y - (SPRITE_SIZE - c.h) - camera.y);
+    const alpha = Math.max(0, 1 - (c.t / c.life));
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.9;
+    // Randomized lay direction for variety
+    ctx.translate(dx + SPRITE_SIZE / 2, dy + SPRITE_SIZE / 2);
+    ctx.rotate(c.angle || -Math.PI / 2);
+    ctx.drawImage(enemySheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
+    ctx.restore();
+  }
 
   // Build a y-sorted list of drawables
   const drawables = [];

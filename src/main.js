@@ -12,6 +12,10 @@ import { updatePartyUI } from './engine/ui.js';
 
 // Initialize actors
 spawnEnemy(world.w * 0.25, world.h * 0.5);
+// Add three more enemies around the map
+spawnEnemy(world.w * 0.75, world.h * 0.5);
+spawnEnemy(world.w * 0.5,  world.h * 0.25);
+spawnEnemy(world.w * 0.5,  world.h * 0.75);
 // NPCs with portraits (place your images at assets/portraits/*.png)
 // Place them near the starting area
 // Canopy: brown hair, feminine look, pink dress

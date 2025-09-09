@@ -81,3 +81,6 @@ Audio Assets
   - Music: `assets/audio/music/ambient.mp3`
   - SFX: `assets/audio/sfx/attack.wav`, `hit.wav`, `ui-open.wav`, `ui-move.wav`, `ui-select.wav`, `ui-close.wav`
 - Missing files are handled gracefully (sound just won’t play).
+- Enemy corpses: Defeated enemies leave a small corpse (pass-through) that fades after ~2 seconds.
+  - A small blood stain appears under the corpse and also fades away.
+  - Corpses rotate randomly for visual variety.
