@@ -14,6 +14,21 @@ export function startAttack() {
   playSfx('attack');
 }
 
+export function willAttackHitEnemy() {
+  // Predict the immediate attack hitbox and check for any enemy within it
+  const range = 12;
+  const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
+  if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
+  if (player.dir === 'right') { hb.w += range; }
+  if (player.dir === 'up')    { hb.y -= range; hb.h += range; }
+  if (player.dir === 'down')  { hb.h += range; }
+  for (const e of enemies) {
+    if (e.hp <= 0) continue;
+    if (rectsIntersect(hb, e)) return true;
+  }
+  return false;
+}
+
 export function handleAttacks(dt) {
   if (!player.attacking) return;
   player.attackTimer += dt;

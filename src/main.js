@@ -39,17 +39,7 @@ setupChatInputHandlers(runtime);
 initInput();
 updatePartyUI([]);
 
-// Mark the first enemy as elite for demo purposes
-import { enemies } from './engine/state.js';
-if (enemies[0]) {
-  enemies[0].isElite = true;
-  enemies[0].name = enemies[0].name || 'Wolf';
-  enemies[0].battleConfig = {
-    enemies: [ { template: 'wolf', level: 2 } ],
-    backdrop: 'forest_night',
-    intro: 'An elite wolf challenges you!'
-  };
-}
+// No turn-based battle; all combat is realtime.
 
 // Main loop
 camera.w = canvas.width; camera.h = canvas.height;

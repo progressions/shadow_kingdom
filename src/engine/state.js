@@ -29,6 +29,10 @@ export const player = {
   attackTimer: 0,
   attackDuration: 0.18,
   damage: 1,
+  // Hit response
+  invulnTimer: 0, // seconds of invincibility after being hit
+  knockbackX: 0,
+  knockbackY: 0,
   inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
 };
 
@@ -111,4 +115,8 @@ export const runtime = {
   autosaveEnabled: false,
   autosaveTimer: 0,
   autosaveIntervalSec: 60,
+  // Overlay lock prevents closing VN overlay via Esc/mouse (used for Game Over)
+  lockOverlay: false,
+  // Set when the player has died and Game Over screen is shown
+  gameOver: false,
 };

@@ -44,7 +44,15 @@ export function render(terrainBitmap, obstacles) {
     const sy = row * SPRITE_SIZE;
     const dx = Math.round(d.x - (SPRITE_SIZE - d.w) / 2 - camera.x);
     const dy = Math.round(d.y - (SPRITE_SIZE - d.h) - camera.y);
-    ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+    // Player flicker while invulnerable
+    if (d.isPlayer && player.invulnTimer > 0) {
+      const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
+      if (!flicker) {
+        ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+      }
+    } else {
+      ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+    }
   }
 
   // Enemy health bars (overlay)

@@ -44,10 +44,14 @@ export function exitChat(runtime) {
   // no-op
   if (overlay) overlay.style.display = 'none';
   playSfx('uiClose');
+  // Always unlock overlay on exit
+  runtime.lockOverlay = false;
 }
 
 export function setupChatInputHandlers(runtime) {
-  canvas.addEventListener('mousedown', () => { if (runtime.gameState === 'chat') exitChat(runtime); });
+  canvas.addEventListener('mousedown', () => {
+    if (runtime.gameState === 'chat' && !runtime.lockOverlay) exitChat(runtime);
+  });
 }
 
 // VN dialog content helpers

@@ -17,6 +17,7 @@ Controls:
   - Toggle Autosave (60s) at the top of the menu.
 - Audio: M to mute/unmute; B to toggle background music.
 - Inventory: I opens Inventory (choose Player/Companion, view equipment, equip/unequip items).
+- Game Over: If HP reaches 0 in the overworld, a Game Over screen appears with options to Load Slot 1–3 or Restart the game.
 
 Notes:
 - Canvas internal resolution is 320x180 for a pixel-art look, scaled to 960x540.

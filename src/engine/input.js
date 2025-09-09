@@ -1,8 +1,6 @@
 import { runtime, world } from './state.js';
 import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice } from './ui.js';
-import { isInBattle } from '../battle/manager.js';
-import { handleBattleChoice } from '../battle/ui.js';
-import { startAttack, tryInteract } from '../systems/combat.js';
+import { startAttack, tryInteract, willAttackHitEnemy } from '../systems/combat.js';
 import { selectChoice, startCompanionSelector, startSaveMenu, startInventoryMenu } from '../engine/dialog.js';
 import { initAudioUnlock, toggleMute, toggleMusic } from './audio.js';
 import { saveGame, loadGame } from './save.js';
@@ -14,18 +12,26 @@ export function initInput() {
     const gameplayKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "];
     if (gameplayKeys.includes(e.key)) e.preventDefault();
     if (runtime.gameState === 'chat') {
-      if (e.key === 'Escape') { exitChat(runtime); e.preventDefault(); return; }
+      if (e.key === 'Escape') {
+        if (!runtime.lockOverlay) { exitChat(runtime); }
+        e.preventDefault();
+        return;
+      }
       if (e.key >= '1' && e.key <= '9') { selectChoice(parseInt(e.key, 10) - 1); e.preventDefault(); return; }
       if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'k') { moveChoiceFocus(-1); e.preventDefault(); return; }
       if (e.key === 'ArrowDown' || e.key.toLowerCase() === 'j') { moveChoiceFocus(1); e.preventDefault(); return; }
       if (e.key === 'Enter') { activateFocusedChoice(); e.preventDefault(); return; }
-      // Allow battle actions mapped to overlay choices (optional hook)
       return; // ignore other keys while in chat
     }
     runtime.keys.add(e.key.toLowerCase());
     if (e.key.toLowerCase() === 'g') world.showGrid = !world.showGrid;
     if (e.key === ' ') {
-      if (!tryInteract()) startAttack();
+      // Prioritize attacking if an enemy is in front/in range
+      if (willAttackHitEnemy()) {
+        startAttack();
+      } else if (!tryInteract()) {
+        startAttack();
+      }
     } else if (e.key.toLowerCase() === 'j') {
       startAttack();
     } else if (e.key.toLowerCase() === 'c') {

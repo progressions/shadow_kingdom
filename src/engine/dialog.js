@@ -31,6 +31,19 @@ export function startPrompt(actor, text, choices) {
   renderCurrentNode();
 }
 
+// Game Over overlay: lock exit and offer load/restart actions
+export function startGameOver() {
+  runtime.gameOver = true;
+  runtime.lockOverlay = true;
+  const choices = [
+    { label: 'Load Slot 1', action: 'load_game_slot', data: 1 },
+    { label: 'Load Slot 2', action: 'load_game_slot', data: 2 },
+    { label: 'Load Slot 3', action: 'load_game_slot', data: 3 },
+    { label: 'Restart', action: 'game_over_restart' },
+  ];
+  startPrompt(null, 'You have fallen. Game Over.', choices);
+}
+
 // Open a menu to choose a companion to interact with
 export function startCompanionSelector() {
   const list = companions.map((c, i) => ({ label: c.name || `Companion ${i+1}`, action: 'companion_select', data: i }));
@@ -106,7 +119,9 @@ export function selectChoice(index) {
   if (!node || !node.choices) return;
   const choice = node.choices[index];
   if (!choice) return;
+  // No turn-based battle actions; only VN/inventory/save actions are handled.
   if (choice.action === 'end') { endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'game_over_restart') { try { window.location.reload(); } catch {} return; }
   if (choice.action === 'join_party') {
     const npc = runtime.activeNpc;
     if (npc) {
@@ -196,7 +211,7 @@ export function selectChoice(index) {
     return;
   }
   if (choice.action === 'save_game_slot') { requestSaveSlot(choice.data || 1); return; }
-  if (choice.action === 'load_game_slot') { loadGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
+  if (choice.action === 'load_game_slot') { runtime.lockOverlay = false; loadGame(choice.data || 1); endDialog(); exitChat(runtime); runtime.gameOver = false; return; }
   if (choice.action === 'clear_save_slot') { requestClearSlot(choice.data || 1); return; }
   if (choice.action === 'toggle_autosave') { runtime.autosaveEnabled = !runtime.autosaveEnabled; buildAndShowSaveMenu(); return; }
   if (choice.action === 'open_slot') { openSaveSlotMenu(choice.data || 1); return; }
