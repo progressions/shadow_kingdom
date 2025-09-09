@@ -63,6 +63,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     : (T === 'featured' || T === 'foe' || T === 'elite')
       ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3, sheet: enemyFeaturedSheet, kind: 'featured' }
       : { name: 'Mook', speed: 10, hp: 3, dmg: 3, sheet: enemyMookSheet, kind: 'mook' };
+  const hp = (typeof opts.hp === 'number') ? opts.hp : cfg.hp;
+  const dmg = (typeof opts.dmg === 'number') ? opts.dmg : ((typeof opts.touchDamage === 'number') ? opts.touchDamage : cfg.dmg);
   enemies.push({
     x, y,
     w: 12, h: 16,
@@ -73,9 +75,9 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     animFrame: 0,
     name: opts.name || cfg.name,
     kind: cfg.kind,
-    hp: cfg.hp,
-    maxHp: cfg.hp,
-    touchDamage: cfg.dmg,
+    hp,
+    maxHp: hp,
+    touchDamage: dmg,
     hitTimer: 0,
     hitCooldown: 0.8,
     knockbackX: 0,

@@ -57,6 +57,8 @@ spawnEnemy(
     vnOnSight: { text: introTexts.gorg },
     portrait: 'assets/portraits/Gorg/Gorg.mp4',
     sheet: gorgSheet,
+    hp: 16,
+    dmg: 5,
   }
 );
 // Boss — placed inside a small castle enclosure near bottom-right

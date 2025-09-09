@@ -165,6 +165,9 @@ export function tryInteract() {
             import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
             o.opened = true;
             showBanner('Chest opened');
+            // Remove chest immediately after opening
+            const idx = obstacles.indexOf(o);
+            if (idx !== -1) obstacles.splice(idx, 1);
           } else {
             // No loot: remove the chest from the world immediately
             const idx = obstacles.indexOf(o);
@@ -173,7 +176,7 @@ export function tryInteract() {
           }
         });
       } else {
-        // Already opened (empty now) — remove it
+        // Already opened (should have been removed), ensure removal
         const idx = obstacles.indexOf(o);
         if (idx !== -1) obstacles.splice(idx, 1);
         showBanner('Empty chest');
