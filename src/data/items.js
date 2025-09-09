@@ -20,5 +20,6 @@ export function cloneItem(item) {
   const it = { id: item.id, name: item.name, slot: item.slot };
   if (typeof item.atk === 'number') it.atk = item.atk;
   if (typeof item.dr === 'number') it.dr = item.dr;
+  if (item.keyId) it.keyId = item.keyId;
   return it;
 }

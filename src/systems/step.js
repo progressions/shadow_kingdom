@@ -298,6 +298,17 @@ export function step(dt) {
       moveWithCollision(c, dx*move, dy*move, []);
       c.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left':'right') : (dy < 0 ? 'up':'down');
       c.animTime += dt; if (c.animTime > 0.2) { c.animTime = 0; c.animFrame = (c.animFrame + 1) % FRAMES_PER_DIR; }
+      // Track stuck time to allow warp when blocked by maze-like walls (no pathfinding)
+      const movedNow = move; // approx intended move length
+      if (!c._lastPos) c._lastPos = { x: c.x, y: c.y };
+      const actualMoved = Math.hypot(c.x - c._lastPos.x, c.y - c._lastPos.y);
+      c._lastPos.x = c.x; c._lastPos.y = c.y;
+      if (actualMoved < 0.2) c._stuckTime = (c._stuckTime || 0) + dt; else c._stuckTime = 0;
+      // If very stuck and far from leader, warp near leader to avoid companions piling up on walls/gates
+      if ((c._stuckTime || 0) > 0.9 && dist > 60) {
+        tryWarpNear(leader, c);
+        c._stuckTime = 0;
+      }
     } else { c.animTime = 0; c.animFrame = 0; }
     c.x = Math.max(0, Math.min(world.w - c.w, c.x));
     c.y = Math.max(0, Math.min(world.h - c.h, c.y));
@@ -438,4 +449,25 @@ function handleCompanionTriggers(dt) {
       }
     }
   }
+}
+
+
+// Attempt to place follower near leader ignoring labyrinth walls when badly stuck
+function tryWarpNear(leader, follower) {
+  const spots = [
+    { ox: -10, oy: 0 }, { ox: 10, oy: 0 }, { ox: 0, oy: -10 }, { ox: 0, oy: 10 },
+    { ox: -14, oy: -8 }, { ox: 14, oy: -8 }, { ox: -14, oy: 8 }, { ox: 14, oy: 8 },
+  ];
+  for (const s of spots) {
+    const rx = Math.max(0, Math.min(world.w - follower.w, leader.x + s.ox));
+    const ry = Math.max(0, Math.min(world.h - follower.h, leader.y + s.oy));
+    const rect = { x: rx, y: ry, w: follower.w, h: follower.h };
+    let collide = false;
+    for (const o of obstacles) {
+      if (o && o.type === 'gate' && o.locked === false) continue;
+      if (rectsIntersect(rect, o)) { collide = true; break; }
+    }
+    if (!collide) { follower.x = rx; follower.y = ry; return true; }
+  }
+  return false;
 }
