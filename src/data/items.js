@@ -12,6 +12,8 @@ export const sampleItems = [
   { id: 'dagger',        name: 'Rusty Dagger',  slot: 'rightHand',  atk: 2 },
   { id: 'buckler',       name: 'Small Buckler', slot: 'leftHand',   dr: 1 },
   { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0 },
+  // Key items (not equip slots): use slot 'misc'
+  { id: 'key_bronze',    name: 'Bronze Key',    slot: 'misc',       keyId: 'castle_gate' },
 ];
 
 export function cloneItem(item) {

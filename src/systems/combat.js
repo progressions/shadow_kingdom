@@ -1,5 +1,6 @@
 import { player, enemies, npcs, companions, runtime, obstacles } from '../engine/state.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
+import { showBanner } from '../engine/ui.js';
 import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
@@ -30,7 +31,10 @@ export function willAttackHitEnemy() {
       const ex = e.x + e.w/2, ey = e.y + e.h/2;
       let blocked = false;
       for (const o of obstacles) {
-        if (o && o.blocksAttacks) { if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; } }
+        if (o && o.blocksAttacks) {
+          if (o.type === 'gate' && o.locked === false) continue;
+          if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; }
+        }
       }
       if (!blocked) return true;
     }
@@ -49,6 +53,8 @@ export function handleAttacks(dt) {
     if (player.dir === 'right') { hb.w += range; }
     if (player.dir === 'up')    { hb.y -= range; hb.h += range; }
     if (player.dir === 'down')  { hb.h += range; }
+    // Attempt to unlock any gate hit by the attack
+    tryUnlockGate(hb);
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
@@ -56,7 +62,10 @@ export function handleAttacks(dt) {
         const ex = e.x + e.w/2, ey = e.y + e.h/2;
         let blocked = false;
         for (const o of obstacles) {
-          if (o && o.blocksAttacks) { if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; } }
+          if (o && o.blocksAttacks) {
+            if (o.type === 'gate' && o.locked === false) continue;
+            if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; }
+          }
         }
         if (blocked) continue;
         const mods = getEquipStats(player);
@@ -87,6 +96,28 @@ export function handleAttacks(dt) {
   if (player.attackTimer >= player.attackDuration) {
     player.attacking = false;
     player._didHit = false;
+  }
+}
+
+function tryUnlockGate(hb) {
+  for (const o of obstacles) {
+    if (!o || o.type !== 'gate') continue;
+    if (o.locked === false) continue;
+    const r = { x: o.x, y: o.y, w: o.w, h: o.h };
+    if (!rectsIntersect(hb, r)) continue;
+    // Check key in player inventory
+    const keyId = o.keyId || o.id || 'gate';
+    const items = player?.inventory?.items || [];
+    const itm = items.find(it => it && (it.keyId === keyId));
+    if (itm) {
+      o.locked = false; o.blocksAttacks = false;
+      const gateName = o.name || 'Gate';
+      showBanner(`Used ${itm.name || 'Key'} to open ${gateName}`);
+      try { playSfx('unlock'); } catch {}
+    } else {
+      showBanner('Locked — you need a key');
+      try { playSfx('block'); } catch {}
+    }
   }
 }
 

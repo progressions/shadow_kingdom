@@ -14,6 +14,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     let newX = ent.x + dx;
     const rect = { x: newX, y: ent.y, w: ent.w, h: ent.h };
     for (const o of obstacles) {
+      if (o && o.type === 'gate' && o.locked === false) continue;
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -36,6 +37,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     let newY = ent.y + dy;
     const rect = { x: ent.x, y: newY, w: ent.w, h: ent.h };
     for (const o of obstacles) {
+      if (o && o.type === 'gate' && o.locked === false) continue;
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);

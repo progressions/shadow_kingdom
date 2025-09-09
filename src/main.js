@@ -41,10 +41,12 @@ const castle = (function buildCastle() {
   }
   // walls (top with a centered gap)
   const gapX = cx + (cw - gap) / 2;
-  const add = (x, y, w, h) => obstacles.push({ x, y, w, h, type: 'wall', blocksAttacks: true });
+  const add = (x, y, w, h, type='wall', extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
   // top left and right segments
   add(cx, cy, gapX - cx, t);
   add(gapX + gap, cy, (cx + cw) - (gapX + gap), t);
+  // Gate in the opening (locked until key used by attacking it)
+  add(gapX, cy, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
   // bottom wall
   add(cx, cy + ch - t, cw, t);
   // left and right walls

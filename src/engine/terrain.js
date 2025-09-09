@@ -125,6 +125,19 @@ export function drawObstacles(ctx, obstacles, camera) {
           ctx.fillRect(sx + x + offset, sy + y, brickW - 1, 1);
         }
       }
+    } else if (o.type === 'gate') {
+      // Locked/unlocked gate in opening
+      const locked = o.locked !== false;
+      ctx.fillStyle = locked ? '#6b4b2a' : '#2e2e2e';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = locked ? '#3b2a18' : '#1a1a1a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      if (locked) {
+        // simple bar pattern to imply locked
+        ctx.fillStyle = '#8a6a3a';
+        for (let x = 2; x < o.w; x += 6) ctx.fillRect(sx + x, sy + 1, 2, o.h - 2);
+      }
     }
   }
 }

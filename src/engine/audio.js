@@ -173,6 +173,12 @@ function playSfxChip(name) {
       envTone({ type: 'triangle', freq: 1200, attack: 0.001, decay: 0.03, release: 0.02, gain: 0.07, t });
       envTone({ type: 'square', freq: 800, attack: 0.001, decay: 0.04, release: 0.02, gain: 0.05, t: t + 0.01 });
       break;
+    case 'unlock':
+      // rising arpeggio to indicate unlocking
+      envTone({ type: 'triangle', freq: 660, attack: 0.001, decay: 0.05, release: 0.03, gain: 0.08, t });
+      envTone({ type: 'triangle', freq: 880, attack: 0.001, decay: 0.07, release: 0.04, gain: 0.08, t: t + 0.06 });
+      envTone({ type: 'square',   freq: 990, attack: 0.001, decay: 0.08, release: 0.04, gain: 0.07, t: t + 0.12 });
+      break;
   }
 }
 

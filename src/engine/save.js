@@ -108,6 +108,7 @@ function serializePayload() {
     npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null })),
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
+    unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
   };
 }
 
@@ -170,6 +171,12 @@ function deserializePayload(data) {
       const sheet = sheetForName(n.name);
       const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, portrait: n.portrait || null });
       attachDialogByName(npc);
+    }
+  }
+  // Apply unlocked gates
+  if (Array.isArray(data.unlockedGates)) {
+    for (const o of obstacles) {
+      if (o.type === 'gate' && o.id && data.unlockedGates.includes(o.id)) o.locked = false;
     }
   }
 }
