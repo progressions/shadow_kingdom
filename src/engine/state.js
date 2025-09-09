@@ -44,6 +44,16 @@ export const obstacles = [];
 export const corpses = [];
 export const stains = [];
 export const sparkles = [];
+export const itemsOnGround = [];
+let _nextPickupId = 1;
+
+export function spawnPickup(x, y, item) {
+  if (!item) return null;
+  const w = 10, h = 10;
+  const p = { id: 'p' + (_nextPickupId++), x: Math.round(x), y: Math.round(y), w, h, item };
+  itemsOnGround.push(p);
+  return p;
+}
 
 export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   // Three classes: mook, featured, boss

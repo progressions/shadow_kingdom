@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
@@ -55,6 +55,25 @@ export function render(terrainBitmap, obstacles) {
     const sheet = c.sheet || enemySheet;
     ctx.drawImage(sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
     ctx.restore();
+  }
+
+  // Ground pickups
+  if (itemsOnGround && itemsOnGround.length) {
+    for (const it of itemsOnGround) {
+      const sx = Math.round(it.x - camera.x);
+      const sy = Math.round(it.y - camera.y);
+      ctx.save();
+      // base box
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(sx, sy, it.w, it.h);
+      ctx.strokeStyle = '#b3d1ff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, it.w - 1, it.h - 1);
+      // small highlight
+      ctx.fillStyle = '#8ab4ff';
+      ctx.fillRect(sx + 2, sy + 2, Math.max(1, it.w - 4), 1);
+      ctx.restore();
+    }
   }
 
   // Build a y-sorted list of drawables

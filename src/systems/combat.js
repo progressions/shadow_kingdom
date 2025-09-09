@@ -1,4 +1,4 @@
-import { player, enemies, npcs, companions, runtime, obstacles } from '../engine/state.js';
+import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround } from '../engine/state.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
 import { showBanner } from '../engine/ui.js';
 import { companionEffectsByKey } from '../data/companion_effects.js';
@@ -139,6 +139,36 @@ export function tryInteract() {
           { label: 'Yes, join me.', action: 'join_party' },
           { label: 'Not right now.', action: 'end' },
         ]);
+      }
+      return true;
+    }
+  }
+  // Interact with chests
+  for (const o of obstacles) {
+    if (!o || o.type !== 'chest') continue;
+    const or = { x: o.x, y: o.y, w: o.w, h: o.h };
+    if (rectsIntersect(hb, or)) {
+      // If locked, require key (keyId or id)
+      if (o.locked) {
+        const keyId = o.keyId || o.id;
+        const items = player?.inventory?.items || [];
+        const itm = items.find(it => it && (it.keyId === keyId));
+        if (!itm) { showBanner('Locked — you need a key'); return true; }
+        o.locked = false;
+      }
+      if (!o.opened) {
+        // Spawn chest loot (simple: 1 item)
+        const tier = o.lootTier || 'common';
+        import('../data/loot.js').then(mod => {
+          const item = mod.rollFromTable(mod.CHEST_LOOT[tier] || []);
+          if (item) {
+            import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
+          }
+        });
+        o.opened = true;
+        showBanner('Chest opened');
+      } else {
+        showBanner('Empty chest');
       }
       return true;
     }

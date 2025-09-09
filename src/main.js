@@ -11,6 +11,8 @@ import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI } from './engine/ui.js';
+import { obstacles } from './engine/state.js';
+import { TILE } from './engine/constants.js';
 
 // Initialize enemies positioned around the three NPCs
 // Goal:
@@ -118,6 +120,9 @@ setNpcDialog(hola, holaDialog);
 // Build terrain and obstacles
 const terrain = buildTerrainBitmap(world);
 obstacles.push(...buildObstacles(world, player, enemies, npcs));
+// Place a couple of starter chests near the player
+obstacles.push({ x: Math.round(player.x + TILE * 2), y: Math.round(player.y - TILE * 1), w: 12, h: 10, type: 'chest', id: 'chest_start_1', lootTier: 'common', opened: false, locked: false });
+obstacles.push({ x: Math.round(player.x - TILE * 3), y: Math.round(player.y + TILE * 2), w: 12, h: 10, type: 'chest', id: 'chest_start_2', lootTier: 'rare', opened: false, locked: false });
 
 // Input and UI
 setupChatInputHandlers(runtime);

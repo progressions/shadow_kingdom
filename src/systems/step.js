@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle } from '../engine/state.js';
+import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
@@ -7,6 +7,8 @@ import { handleAttacks } from './combat.js';
 import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges } from '../engine/ui.js';
+import { playSfx } from '../engine/audio.js';
+import { ENEMY_LOOT, rollFromTable } from '../data/loot.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -276,6 +278,12 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
+      // Drops
+      try {
+        const table = ENEMY_LOOT[(e.kind || 'mook')] || [];
+        const drop = rollFromTable(table);
+        if (drop) spawnPickup(e.x + e.w/2 - 5, e.y + e.h/2 - 5, drop);
+      } catch {}
       spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
       spawnStain(e.x, e.y, { life: 2.8 });
       enemies.splice(i, 1);
@@ -342,6 +350,26 @@ export function step(dt) {
 
   // NPC idle
   for (const n of npcs) { n.idleTime += dt; if (n.idleTime > 0.6) { n.idleTime = 0; n.animFrame = (n.animFrame + 1) % FRAMES_PER_DIR; } }
+
+  // Auto-pickup items on ground within small radius
+  if (itemsOnGround && itemsOnGround.length) {
+    const px = player.x + player.w/2;
+    const py = player.y + player.h/2;
+    for (let ii = itemsOnGround.length - 1; ii >= 0; ii--) {
+      const it = itemsOnGround[ii];
+      const cx = it.x + it.w/2, cy = it.y + it.h/2;
+      const dx = cx - px, dy = cy - py;
+      if ((dx*dx + dy*dy) <= (12*12)) {
+        // Collect
+        try { player.inventory.items.push(JSON.parse(JSON.stringify(it.item))); } catch { player.inventory.items.push(it.item); }
+        itemsOnGround.splice(ii, 1);
+        showBanner(`Picked up ${it.item?.name || 'an item'}`);
+        playSfx('pickup');
+        // small sparkle burst
+        for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
+      }
+    }
+  }
 
   // Death check → Game Over
   if (!runtime.gameOver && player.hp <= 0) {
