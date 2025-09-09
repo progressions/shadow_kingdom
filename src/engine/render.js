@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
@@ -97,6 +97,22 @@ export function render(terrainBitmap, obstacles) {
   for (const e of enemies) {
     if (e.hp <= 0) continue;
     drawBar(e.x - 2 - camera.x, e.y - 4 - camera.y, e.w + 4, 2, e.hp / e.maxHp, '#ff5555');
+    // Aggro tell: show '!' when player is within 80px
+    const dx = (e.x - player.x), dy = (e.y - player.y);
+    if ((dx*dx + dy*dy) <= (80*80)) {
+      ctx.save();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = '#ffd166';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      const sx = Math.round(e.x + e.w/2 - camera.x);
+      const sy = Math.round(e.y - 8 - camera.y);
+      ctx.strokeText('!', sx, sy);
+      ctx.fillText('!', sx, sy);
+      ctx.restore();
+    }
   }
 
   // Player UI overlay
@@ -104,6 +120,9 @@ export function render(terrainBitmap, obstacles) {
 
   // NPC markers
   drawNpcMarkers();
+
+  // Floating texts (combat barks)
+  drawFloaters();
 }
 
 function drawNpcMarkers() {
@@ -147,4 +166,25 @@ function markerColorFor(npc) {
   if (name.includes('yorna')) return '#ff8a3d';
   if (name.includes('hola')) return '#6fb7ff';
   return '#ffd166';
+}
+
+function drawFloaters() {
+  if (!floaters || floaters.length === 0) return;
+  ctx.save();
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const f of floaters) {
+    const alpha = Math.max(0, 1 - f.t / f.life);
+    if (alpha <= 0) continue;
+    const sx = Math.round(f.x - camera.x);
+    const sy = Math.round(f.y - camera.y - f.t * 16); // drift up
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = f.color || '#eaeaea';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.strokeText(f.text, sx, sy);
+    ctx.fillText(f.text, sx, sy);
+  }
+  ctx.restore();
 }

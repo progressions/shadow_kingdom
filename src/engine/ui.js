@@ -112,6 +112,23 @@ export function updatePartyUI(companions) {
   ];
   box.innerHTML = lines.join('');
   partyUI.appendChild(box);
+  // Buff badges from companions
+  const buffs = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const bb = document.createElement('div');
+  bb.className = 'buffs-box';
+  const mk = (label, val, suffix='') => {
+    const div = document.createElement('div');
+    div.className = 'buff';
+    div.title = label;
+    div.textContent = `${label}: ${val}${suffix}`;
+    return div;
+  };
+  bb.appendChild(mk('ATK', `+${buffs.atk||0}`));
+  bb.appendChild(mk('DR', `+${buffs.dr||0}`));
+  bb.appendChild(mk('Regen', (buffs.regen||0).toFixed(1), '/s'));
+  bb.appendChild(mk('Range', `+${buffs.range||0}`, 'px'));
+  bb.appendChild(mk('tDR', `+${buffs.touchDR||0}`));
+  partyUI.appendChild(bb);
   // Click to manage companion
   partyUI.onclick = (ev) => {
     const t = ev.target;

@@ -168,6 +168,11 @@ function playSfxChip(name) {
     case 'uiClose':
       envTone({ type: 'triangle', freq: 440, attack: 0.001, decay: 0.06, release: 0.02, gain: 0.06, t });
       break;
+    case 'block':
+      // quick metallic ping for blocked damage
+      envTone({ type: 'triangle', freq: 1200, attack: 0.001, decay: 0.03, release: 0.02, gain: 0.07, t });
+      envTone({ type: 'square', freq: 800, attack: 0.001, decay: 0.04, release: 0.02, gain: 0.05, t: t + 0.01 });
+      break;
   }
 }
 

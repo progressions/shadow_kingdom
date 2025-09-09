@@ -16,7 +16,7 @@ export function startAttack() {
 
 export function willAttackHitEnemy() {
   // Predict the immediate attack hitbox and check for any enemy within it
-  const range = 12;
+  const range = 12 + (runtime?.combatBuffs?.range || 0);
   const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
   if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
   if (player.dir === 'right') { hb.w += range; }
@@ -34,7 +34,7 @@ export function handleAttacks(dt) {
   player.attackTimer += dt;
   if (!player._didHit && player.attackTimer >= player.attackDuration * 0.5) {
     player._didHit = true;
-    const range = 12;
+    const range = 12 + (runtime?.combatBuffs?.range || 0);
     const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
     if (player.dir === 'right') { hb.w += range; }
@@ -44,7 +44,8 @@ export function handleAttacks(dt) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
         const mods = getEquipStats(player);
-        const dmg = Math.max(1, (player.damage || 1) + (mods.atk || 0));
+        const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0);
+        const dmg = Math.max(1, (player.damage || 1) + add);
         e.hp -= dmg;
         const dx = (e.x + e.w/2) - (player.x + player.w/2);
         const dy = (e.y + e.h/2) - (player.y + player.h/2);

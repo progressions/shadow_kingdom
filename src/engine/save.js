@@ -127,8 +127,8 @@ function deserializePayload(data) {
   if (Array.isArray(data.enemies)) {
     for (const e of data.enemies) {
       enemies.push({
-        x: e.x, y: e.y, w: 12, h: 16, speed: 60, dir: e.dir || 'down', moving: true,
-        animTime: 0, animFrame: 0, hp: e.hp ?? 3, maxHp: 3, touchDamage: 1, hitTimer: 0, hitCooldown: 0.8,
+        x: e.x, y: e.y, w: 12, h: 16, speed: 10, dir: e.dir || 'down', moving: true,
+        animTime: 0, animFrame: 0, hp: e.hp ?? 3, maxHp: 3, touchDamage: 3, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
       });
     }

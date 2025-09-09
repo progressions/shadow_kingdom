@@ -47,14 +47,14 @@ export function spawnEnemy(x, y) {
   enemies.push({
     x, y,
     w: 12, h: 16,
-    speed: 5, // move extremely slowly
+    speed: 10, // slow approach speed
     dir: 'down',
     moving: true,
     animTime: 0,
     animFrame: 0,
     hp: 3,
     maxHp: 3,
-    touchDamage: 1,
+    touchDamage: 3,
     hitTimer: 0,
     hitCooldown: 0.8,
     knockbackX: 0,
@@ -88,6 +88,12 @@ export function spawnStain(x, y, opts = {}) {
     blobs.push({ ox, oy, r });
   }
   stains.push({ x, y, t: 0, life, blobs });
+}
+
+// Floating combat text (pass-through, fades and rises)
+export const floaters = [];
+export function spawnFloatText(x, y, text, opts = {}) {
+  floaters.push({ x, y, text: String(text), color: opts.color || '#eaeaea', t: 0, life: opts.life || 0.8 });
 }
 
 export function spawnCompanion(x, y, sheet, opts = {}) {
@@ -147,4 +153,6 @@ export const runtime = {
   lockOverlay: false,
   // Set when the player has died and Game Over screen is shown
   gameOver: false,
+  // Aggregated companion buffs (recomputed each frame)
+  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0 },
 };
