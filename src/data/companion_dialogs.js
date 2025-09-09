@@ -19,9 +19,31 @@ export const companionDialogs = {
         choices: [
           { label: 'Can you watch over us?', next: 'support' },
           { label: 'How are you holding up?', next: 'mood' },
+          { label: 'Bond', next: 'bond_menu' },
           { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
+      },
+      bond_menu: {
+        text: 'Canopy: Breathe. Then tell me what you need.',
+        choices: [
+          { label: 'Open up (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Share a memory (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Promise me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      bond6: {
+        text: "Canopy: I worry about the quiet ones most. You included. If you can't rest, I'll sit with you until you can.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond8: {
+        text: "Canopy: When I was small, I stopped a bleeding with willow bark and pressure. It wasn't the bark—it was not giving up.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond10: {
+        text: "Canopy: If you fall, I won't leave you. That's my promise. Breathe with me. In. Out.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
       quests: {
         text: 'Canopy: We can help those in need.',
@@ -72,9 +94,31 @@ export const companionDialogs = {
         choices: [
           { label: 'What\'s your style?', next: 'style' },
           { label: 'Everything alright?', next: 'mood' },
+          { label: 'Bond', next: 'bond_menu' },
           { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
+      },
+      bond_menu: {
+        text: "Yorna: If you want my respect, earn it. You're halfway there.",
+        choices: [
+          { label: 'Trade tells (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Strategy talk (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Stand with me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      bond6: {
+        text: "Yorna: Watch the shoulder. Everyone telegraphs. Even me—if you look close.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond8: {
+        text: "Yorna: I don't hit hard for fun. I hit hard because it keeps you moving. That's the whole point.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond10: {
+        text: "Yorna: If a wall shows up, we go through it. If I slow, you push me. Deal?",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
       quests: {
         text: 'Yorna: Let\'s cut the knot.',
@@ -123,9 +167,31 @@ export const companionDialogs = {
         choices: [
           { label: 'What magic do you know?', next: 'magic' },
           { label: 'How\'s the journey?', next: 'mood' },
+          { label: 'Bond', next: 'bond_menu' },
           { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
+      },
+      bond_menu: {
+        text: 'Hola: I can… share. If you want.',
+        choices: [
+          { label: 'Small steps (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Speak up (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Stand firm (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      bond6: {
+        text: "Hola: If I know where to stand, I don't shake as much. So… tell me where.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond8: {
+        text: "Hola: I said 'no' to a sorcerer once. My voice squeaked. He listened anyway.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond10: {
+        text: "Hola: If you walk, I'll walk. If you run, I'll try. I won't leave.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
       quests: {
         text: 'Hola: I can practice… if you stay close.',
@@ -170,9 +236,31 @@ export const companionDialogs = {
       root: {
         text: 'Oyin: I can practice… if you have time.',
         choices: [
+          { label: 'Bond', next: 'bond_menu' },
           { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
+      },
+      bond_menu: {
+        text: 'Oyin: I want to be braver than I am.',
+        choices: [
+          { label: 'A spark (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Tinder and air (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Firelight (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      bond6: {
+        text: "Oyin: If I say I'm scared, will you… be patient with me?",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond8: {
+        text: "Oyin: I practiced until my hands stopped shaking. They still do sometimes. But less.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond10: {
+        text: "Oyin: If you keep walking, I can be brave. I can match you.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
       quests: {
         text: 'Oyin: I can try the spark tactics.',
@@ -206,9 +294,31 @@ export const companionDialogs = {
       root: {
         text: 'Twil: Want to race trouble to the end of a footprint?',
         choices: [
+          { label: 'Bond', next: 'bond_menu' },
           { label: 'Quests', next: 'quests' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
+      },
+      bond_menu: {
+        text: "Twil: You're not slow. Not today.",
+        choices: [
+          { label: 'Footwork (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Shortcuts (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Same stride (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      bond6: {
+        text: "Twil: See that gap? That's where we cut.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond8: {
+        text: "Twil: People look at the ground. I look at the wind.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond10: {
+        text: "Twil: If you run, I'll run. If you stop, I'll stand.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
       quests: {
         text: 'Twil: Keep up.',
