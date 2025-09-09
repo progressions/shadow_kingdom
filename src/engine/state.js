@@ -200,5 +200,9 @@ export const runtime = {
   shieldActive: false,
   shieldTimer: 0,
   paused: false,
+  // Music mode: 'normal' | 'low' | 'high'
+  musicMode: 'normal',
+  musicModePending: null,
+  musicModeSwitchTimer: 0,
   
 };

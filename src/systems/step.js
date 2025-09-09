@@ -1,6 +1,6 @@
 import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
-import { playSfx } from '../engine/audio.js';
+import { playSfx, setMusicMode } from '../engine/audio.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
@@ -115,6 +115,10 @@ export function step(dt) {
       if (runtime.pendingIntro) {
         const { actor, text } = runtime.pendingIntro;
         runtime.pendingIntro = null;
+        try {
+          const isEnemy = (typeof actor?.touchDamage === 'number');
+          playSfx(isEnemy ? 'vnIntroEnemy' : 'vnIntroNpc');
+        } catch {}
         // No numbered Exit choice; overlay will show Exit (X) automatically
         startPrompt(actor, text, []);
       }
@@ -349,6 +353,37 @@ export function step(dt) {
   camera.y = Math.round(player.y + player.h/2 - camera.h/2);
   camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
   camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
+
+  // Music mode switching based on on-screen enemies, with debounce
+  {
+    const view = { x: camera.x, y: camera.y, w: camera.w, h: camera.h };
+    let bossOn = false, anyOn = false;
+    for (const e of enemies) {
+      if (e.hp <= 0) continue;
+      const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
+      if (!on) continue;
+      anyOn = true;
+      if (String(e.kind).toLowerCase() === 'boss') { bossOn = true; break; }
+    }
+    const desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
+    if (desired === runtime.musicMode) {
+      // Already in this mode; clear any pending switch
+      runtime.musicModePending = null;
+      runtime.musicModeSwitchTimer = 0;
+    } else {
+      if (runtime.musicModePending !== desired) {
+        runtime.musicModePending = desired;
+        runtime.musicModeSwitchTimer = 0.6; // debounce window
+      } else if (runtime.musicModeSwitchTimer > 0) {
+        runtime.musicModeSwitchTimer = Math.max(0, runtime.musicModeSwitchTimer - dt);
+        if (runtime.musicModeSwitchTimer === 0) {
+          runtime.musicMode = desired;
+          try { setMusicMode(desired); } catch {}
+          runtime.musicModePending = null;
+        }
+      }
+    }
+  }
 
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
   // then show a simple VN once when first seen

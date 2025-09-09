@@ -23,22 +23,23 @@ import { updatePartyUI } from './engine/ui.js';
 // Place Canopy just off-screen to the right at game start (still closer than Hola)
 // Camera half-width is ~160px; +172 ensures she's initially not visible
 const canopyPos = { x: Math.round(player.x + 172), y: Math.round(player.y - 10) };
-const holaPos   = { x: Math.round(player.x + 140), y: Math.round(player.y + 100) };
-const yornaPos  = { x: Math.round(player.x - 220), y: Math.round(player.y - 160) };
+// Push Hola and Yorna further from the player start
+const holaPos   = { x: Math.round(player.x + 260), y: Math.round(player.y + 180) };
+const yornaPos  = { x: Math.round(player.x - 340), y: Math.round(player.y - 240) };
 
 // Enemies near Canopy (1 mook), spaced a bit further
 spawnEnemy(canopyPos.x + 28, canopyPos.y + 8, 'mook');
 
-// Enemies near Hola (3 mooks, wider triangle)
-spawnEnemy(holaPos.x - 36, holaPos.y - 16, 'mook');
-spawnEnemy(holaPos.x + 36, holaPos.y - 16, 'mook');
-spawnEnemy(holaPos.x + 0,  holaPos.y + 32, 'mook');
+// Enemies near Hola (3 mooks, wider triangle) — repositioned with Hola
+spawnEnemy(holaPos.x - 42, holaPos.y - 20, 'mook');
+spawnEnemy(holaPos.x + 42, holaPos.y - 20, 'mook');
+spawnEnemy(holaPos.x + 0,  holaPos.y + 38, 'mook');
 
-// Enemies near Yorna (3 mooks, wider spread + 1 featured)
-spawnEnemy(yornaPos.x - 30,  yornaPos.y + 0,  'mook');
-spawnEnemy(yornaPos.x + 30,  yornaPos.y + 0,  'mook');
-spawnEnemy(yornaPos.x + 0,   yornaPos.y + 30, 'mook');
-spawnEnemy(yornaPos.x + 36,  yornaPos.y + 28, 'featured');
+// Enemies near Yorna (3 mooks, wider spread + 1 featured) — repositioned with Yorna
+spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,  'mook');
+spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,  'mook');
+spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36, 'mook');
+spawnEnemy(yornaPos.x + 44,  yornaPos.y + 34, 'featured');
 // Boss — placed inside a small castle enclosure near bottom-right
 const castle = (function buildCastle() {
   const cw = TILE * 14; // ~14 tiles wide
