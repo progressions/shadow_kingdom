@@ -75,7 +75,7 @@
         display: grid; align-content: end; justify-items: start;
       }
       .vn-portrait .portrait-name { font-weight: 700; font-size: 16px; color: #eaeaea; margin: 0 0 8px 4px; }
-      #portrait-img { width: 100%; max-height: 90%; object-fit: contain; image-rendering: auto; border-radius: 8px; background: #151515; border: 2px solid #555; }
+      #portrait-img, #portrait-video { width: 100%; max-height: 90%; object-fit: contain; image-rendering: auto; border-radius: 8px; background: #151515; border: 2px solid #555; }
       .vn-panel {
         background: rgba(10,10,10,0.85);
         border: 2px solid #555; border-radius: 10px;
@@ -133,6 +133,7 @@
             <div class="vn-portrait">
               <div class="portrait-name" id="portrait-name"></div>
               <img id="portrait-img" alt="NPC portrait" />
+              <video id="portrait-video" muted autoplay loop playsinline style="display:none"></video>
             </div>
             <div class="vn-panel">
               <div class="vn-name" id="vn-name"></div>

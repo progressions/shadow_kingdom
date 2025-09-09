@@ -4,7 +4,7 @@ import { playSfx } from '../engine/audio.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
-import { startGameOver } from '../engine/dialog.js';
+import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges } from '../engine/ui.js';
 
@@ -98,6 +98,29 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 export function step(dt) {
   // Pause the world while VN/inventory overlay is open
   if (runtime.gameState === 'chat') return;
+  // Handle simple camera pan for VN intros (pauses simulation)
+  if (runtime.cameraPan) {
+    const p = runtime.cameraPan;
+    p.t = Math.min(p.dur, (p.t || 0) + dt);
+    let u = p.t / p.dur; // ease in-out cubic
+    u = u < 0.5 ? 4*u*u*u : 1 - Math.pow(-2*u + 2, 3)/2;
+    const nx = p.fromX + (p.toX - p.fromX) * u;
+    const ny = p.fromY + (p.toY - p.fromY) * u;
+    camera.x = Math.round(nx);
+    camera.y = Math.round(ny);
+    camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
+    camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
+    if (p.t >= p.dur) {
+      runtime.cameraPan = null;
+      if (runtime.pendingIntro) {
+        const { actor, text } = runtime.pendingIntro;
+        runtime.pendingIntro = null;
+        // No numbered Exit choice; overlay will show Exit (X) automatically
+        startPrompt(actor, text, []);
+      }
+    }
+    return; // halt simulation during pan
+  }
   // Decay interaction lock (prevents chatting immediately after taking damage)
   if (runtime.interactLock > 0) {
     runtime.interactLock = Math.max(0, runtime.interactLock - dt);
@@ -327,7 +350,41 @@ export function step(dt) {
   camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
   camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
 
-  
+  // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
+  // then show a simple VN once when first seen
+  if (runtime.gameState === 'play') {
+    const actors = [...npcs, ...enemies];
+    for (const a of actors) {
+      if (!a || !a.vnOnSight || a._vnShown) continue;
+      // Skip if we've seen this intro before in this session/save
+      const type = (typeof a.touchDamage === 'number') ? 'enemy' : 'npc';
+      const key = `${type}:${(a.name || '').toLowerCase()}`;
+      if (runtime.vnSeen && runtime.vnSeen[key]) { a._vnShown = true; continue; }
+      const inView = (
+        a.x + a.w > camera.x && a.x < camera.x + camera.w &&
+        a.y + a.h > camera.y && a.y < camera.y + camera.h
+      );
+      if (!inView) continue;
+      a._vnShown = true;
+      if (runtime.vnSeen) runtime.vnSeen[key] = true;
+      // Schedule a short camera pan to the actor
+      const toX = Math.round(a.x + a.w/2 - camera.w/2);
+      const toY = Math.round(a.y + a.h/2 - camera.h/2);
+      runtime.cameraPan = {
+        fromX: camera.x,
+        fromY: camera.y,
+        toX: Math.max(0, Math.min(world.w - camera.w, toX)),
+        toY: Math.max(0, Math.min(world.h - camera.h, toY)),
+        t: 0,
+        dur: 0.6,
+      };
+      const text = (typeof a.vnOnSight.text === 'string' && a.vnOnSight.text.length)
+        ? a.vnOnSight.text
+        : `${a.name || 'Someone'} appears.`;
+      runtime.pendingIntro = { actor: a, text };
+      break; // only one per frame
+    }
+  }
 }
 
 function applyCompanionAuras(dt) {

@@ -1,4 +1,4 @@
-import { runtime, player } from './state.js';
+import { runtime, player, camera, world } from './state.js';
 import { getEquipStats } from './utils.js';
 import { tryStartMusic, stopMusic } from './audio.js';
 import { playSfx } from './audio.js';
@@ -7,6 +7,7 @@ export const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 const overlay = document.getElementById('portrait-overlay');
 const overlayImg = document.getElementById('portrait-img');
+const overlayVideo = document.getElementById('portrait-video');
 const overlayName = document.getElementById('portrait-name');
 const vnName = document.getElementById('vn-name');
 const vnText = document.getElementById('vn-text');
@@ -28,13 +29,23 @@ export function enterChat(runtime) {
     playSfx('uiOpen');
     if (npc && npc.portraitSrc) {
       if (vnPortraitBox) vnPortraitBox.style.display = '';
-      if (overlayImg) { overlayImg.src = npc.portraitSrc; overlayImg.style.display = ''; }
+      const isVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(npc.portraitSrc);
+      if (isVideo && overlayVideo) {
+        if (overlayImg) { overlayImg.src = ''; overlayImg.style.display = 'none'; }
+        overlayVideo.src = npc.portraitSrc;
+        overlayVideo.style.display = '';
+        try { overlayVideo.play().catch(()=>{}); } catch {}
+      } else {
+        if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
+        if (overlayImg) { overlayImg.src = npc.portraitSrc; overlayImg.style.display = ''; }
+      }
       if (overlayName) overlayName.textContent = npc.name || 'NPC';
       if (vnName) vnName.textContent = npc.name || 'NPC';
     } else {
       // Hide portrait area when there is no portrait (e.g., companion menus)
       if (vnPortraitBox) vnPortraitBox.style.display = 'none';
       if (overlayImg) { overlayImg.src = ''; overlayImg.style.display = 'none'; }
+      if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
       if (overlayName) overlayName.textContent = '';
       if (vnName) vnName.textContent = '';
     }
@@ -53,6 +64,21 @@ export function exitChat(runtime) {
     runtime.paused = false;
     try { tryStartMusic('ambient'); } catch {}
   }
+  // Smooth pan back to player after VN exits
+  const toX = Math.round(player.x + player.w/2 - camera.w/2);
+  const toY = Math.round(player.y + player.h/2 - camera.h/2);
+  const clampedX = Math.max(0, Math.min(world.w - camera.w, toX));
+  const clampedY = Math.max(0, Math.min(world.h - camera.h, toY));
+  const dx = Math.abs(clampedX - camera.x);
+  const dy = Math.abs(clampedY - camera.y);
+  const dist = Math.max(dx, dy);
+  if (dist > 4) {
+    runtime.cameraPan = { fromX: camera.x, fromY: camera.y, toX: clampedX, toY: clampedY, t: 0, dur: 0.6 };
+  } else {
+    camera.x = clampedX; camera.y = clampedY;
+  }
+  // Stop any portrait video playback after exit
+  if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
 }
 
 export function setupChatInputHandlers(runtime) {

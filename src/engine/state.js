@@ -45,7 +45,7 @@ export const corpses = [];
 export const stains = [];
 export const sparkles = [];
 
-export function spawnEnemy(x, y, type = 'mook') {
+export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   // Three classes: mook, featured, boss
   const T = String(type).toLowerCase();
   const cfg = (T === 'boss')
@@ -61,7 +61,7 @@ export function spawnEnemy(x, y, type = 'mook') {
     moving: true,
     animTime: 0,
     animFrame: 0,
-    name: cfg.name,
+    name: opts.name || cfg.name,
     kind: cfg.kind,
     hp: cfg.hp,
     maxHp: cfg.hp,
@@ -73,6 +73,10 @@ export function spawnEnemy(x, y, type = 'mook') {
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
     sheet: cfg.sheet,
+    // Optional portrait for VN overlay on enemies
+    portraitSrc: opts.portrait || null,
+    // Optional minimal VN intro config
+    vnOnSight: opts.vnOnSight || null,
   });
 }
 
@@ -153,11 +157,16 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     portrait: null,
     dialog: null,
     sheet: opts.sheet || null,
+    // Minimal VN intro flag: if present, a simple VN appears once when first seen
+    vnOnSight: opts.vnOnSight || null,
   };
-  if (npc.portraitSrc) {
-    const img = new Image();
-    img.src = npc.portraitSrc;
-    npc.portrait = img;
+  // Preload portrait only for image extensions
+  if (npc.portraitSrc && /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(npc.portraitSrc)) {
+    try {
+      const img = new Image();
+      img.src = npc.portraitSrc;
+      npc.portrait = img;
+    } catch {}
   }
   npcs.push(npc);
   return npc;
@@ -179,6 +188,10 @@ export const runtime = {
   lockOverlay: false,
   // Set when the player has died and Game Over screen is shown
   gameOver: false,
+  // Simple camera pan for VN intros
+  cameraPan: null, // { fromX, fromY, toX, toY, t, dur }
+  pendingIntro: null, // { actor, text }
+  vnSeen: {}, // map of intro keys that have been shown
   
   // Aggregated companion buffs (recomputed each frame)
   combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0 },
