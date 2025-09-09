@@ -1,11 +1,11 @@
-import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround } from '../engine/state.js';
+import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround, grantPartyXp } from '../engine/state.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
 import { showBanner } from '../engine/ui.js';
 import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
-import { BREAKABLE_LOOT, rollFromTable } from '../data/loot.js';
+import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, rollFromTable, itemById } from '../data/loot.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -77,6 +77,8 @@ export function handleAttacks(dt) {
         playSfx('break');
       }
     }
+    const hasOyin = companions.some(c => (c.name || '').toLowerCase().includes('oyin'));
+    const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
@@ -91,17 +93,46 @@ export function handleAttacks(dt) {
         }
         if (blocked) continue;
         const mods = getEquipStats(player);
-        const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0);
+        const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
         const dmg = Math.max(1, (player.damage || 1) + add);
+        let finalDmg = dmg;
+        // Twil: mark weakness (+1 dmg) when close
+        if (hasTwil) {
+          const dxm = ex - px, dym = ey - py;
+          if ((dxm*dxm + dym*dym) <= (48*48)) finalDmg += 1;
+        }
         e.hp -= dmg;
+        if (finalDmg !== dmg) e.hp -= (finalDmg - dmg);
+        // Oyin: Kindle DoT
+        if (hasOyin) {
+          e._burnTimer = Math.max(e._burnTimer || 0, 1.5);
+          e._burnDps = Math.max(e._burnDps || 0, 0.4);
+          // Quest tracking: Oyin fuse — count unique kindled enemies after start
+          try {
+            if (runtime.questFlags && runtime.questFlags['oyin_fuse_started'] && !runtime.questFlags['oyin_fuse_cleared']) {
+              if (!e._questKindled) {
+                e._questKindled = true;
+                if (!runtime.questCounters) runtime.questCounters = {};
+                const n = (runtime.questCounters['oyin_fuse_kindled'] || 0) + 1;
+                runtime.questCounters['oyin_fuse_kindled'] = n;
+                if (n >= 3 && runtime.questFlags['oyin_fuse_rally']) { runtime.questFlags['oyin_fuse_cleared'] = true; showBanner('Quest updated: Light the Fuse — cleared'); }
+              }
+            }
+          } catch {}
+        }
         // Yorna Echo Strike (bonus damage on hit with cooldown)
         const hasYorna = companions.some(c => (c.name || '').toLowerCase().includes('yorna'));
         if (hasYorna) {
           const cfg = companionEffectsByKey.yorna?.onPlayerHit || { bonusPct: 0.5, cooldownSec: 1.2 };
           if ((runtime.companionCDs.yornaEcho || 0) <= 0) {
-            const bonus = Math.max(1, Math.round(dmg * (cfg.bonusPct || 0.5)));
+            // Affinity scaling for Yorna
+            let m = 1;
+            for (const c of companions) { const nm = (c.name || '').toLowerCase(); if (nm.includes('yorna')) { const aff = (typeof c.affinity==='number')?c.affinity:2; const t = Math.max(0, Math.min(9, aff-1)); m = Math.max(m, 1 + (t/9)*0.5); } }
+            const bonusPct = Math.min(0.75, (cfg.bonusPct || 0.5) * m);
+            const bonus = Math.max(1, Math.round(dmg * bonusPct));
             e.hp -= bonus;
-            runtime.companionCDs.yornaEcho = cfg.cooldownSec || 1.2;
+            const cd = (cfg.cooldownSec || 1.2) / (1 + (m - 1) * 0.5);
+            runtime.companionCDs.yornaEcho = cd;
             // small bark
             import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 8, `Echo +${bonus}`, { color: '#ffd166', life: 0.7 }));
           }
@@ -136,6 +167,12 @@ function tryUnlockGate(hb) {
       const gateName = o.name || 'Gate';
       showBanner(`Used ${itm.name || 'Key'} to open ${gateName}`);
       try { playSfx('unlock'); } catch {}
+      // Level 1 pacing: award objective XP on opening the castle gate to hit ~80% toward Lv 2 pre-boss
+      try {
+        if ((runtime.currentLevel || 1) === 1 && (o.id === 'castle_gate' || o.keyId === 'castle_gate')) {
+          grantPartyXp(23);
+        }
+      } catch {}
     } else {
       showBanner('Locked — you need a key');
       try { playSfx('block'); } catch {}
@@ -179,24 +216,27 @@ export function tryInteract() {
         o.locked = false;
       }
       if (!o.opened) {
-        // Spawn chest loot (simple: 1 item)
-        const tier = o.lootTier || 'common';
-        import('../data/loot.js').then(mod => {
-          const item = mod.rollFromTable(mod.CHEST_LOOT[tier] || []);
-          if (item) {
-            import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
-            o.opened = true;
-            showBanner('Chest opened');
-            // Remove chest immediately after opening
-            const idx = obstacles.indexOf(o);
-            if (idx !== -1) obstacles.splice(idx, 1);
-          } else {
-            // No loot: remove the chest from the world immediately
-            const idx = obstacles.indexOf(o);
-            if (idx !== -1) obstacles.splice(idx, 1);
-            showBanner('Empty chest');
-          }
-        });
+        // Spawn chest loot (fixed item preferred; otherwise roll from tier/table)
+        let item = null;
+        try { if (o.fixedItemId) item = itemById(o.fixedItemId); } catch {}
+        if (!item) {
+          const tier = o.lootTier || 'common';
+          const tableSrc = (runtime.currentLevel === 2) ? CHEST_LOOT_L2 : CHEST_LOOT;
+          item = rollFromTable(tableSrc[tier] || []);
+        }
+        if (item) {
+          import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
+          o.opened = true;
+          showBanner('Chest opened');
+          // Remove chest immediately after opening
+          const idx = obstacles.indexOf(o);
+          if (idx !== -1) obstacles.splice(idx, 1);
+        } else {
+          // No loot: remove the chest from the world immediately
+          const idx = obstacles.indexOf(o);
+          if (idx !== -1) obstacles.splice(idx, 1);
+          showBanner('Empty chest');
+        }
       } else {
         // Already opened (should have been removed), ensure removal
         const idx = obstacles.indexOf(o);

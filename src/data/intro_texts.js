@@ -21,4 +21,24 @@ export const introTexts = {
   gorg:
     "A hulking foe prowls the ruins ahead, armor scuffed and eyes hard. You catch the glint of a brass key at his belt—he guards the way forward and won’t part with it quietly.\n" +
     "\nGorg: \"Turn back if you value your bones. The gate stays shut—unless you take the key from me.\"",
+
+  nethra:
+    "A veiled warrior stands amidst sun-baked ruins, fingers tracing sigils into the dust as the air warps with heat. Her gaze weighs your footsteps and finds them wanting.\n" +
+    "\nNethra: \"Vast failed, but I will not. Urathar\'s shadow lengthens—turn back or be unmade.\"",
+
+  oyin:
+    "A young traveler steadies her hands on the tinderbox, eyes bright but wavering. She tucks a strand of blonde hair behind her ear, trying to look braver than she feels.\n" +
+    "\nOyin: \"I—I'll try to help. I\'m still learning, but if you need me… I can try.\"",
+
+  twil:
+    "Footsteps soft as dust, grin quick as lightning. Twil reads the ruins in a blink and throws you a cocky wink.\n" +
+    "\nTwil: \"Tracks say trouble—but it\'s slow. Try to keep up, yeah?\"",
+
+  aarg:
+    "A sinuous shape coils along the ruin wall—scales the color of deep water, eyes like cracked ice. The air cools in his wake as he lifts a cerulean crest.\n" +
+    "\nAarg: \"Vast fell? Then your path bends to me. The gate won\'t open without my key. Take it—if you can.\"",
+
+  luula:
+    "The marsh hushes. At the island's heart, a figure raises a reed crown and the water stills. Her voice is moon‑thin over the bog.\n" +
+    "\nLuula: \"Step light, wanderer. The marsh remembers every footfall… and it will remember yours.\"",
 };

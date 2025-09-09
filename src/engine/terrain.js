@@ -13,7 +13,7 @@ export function tileType(tx, ty) {
   return 'grass';
 }
 
-export function buildTerrainBitmap(world) {
+export function buildTerrainBitmap(world, theme = 'default') {
   const off = (typeof OffscreenCanvas !== 'undefined')
     ? new OffscreenCanvas(world.w, world.h)
     : Object.assign(document.createElement('canvas'), { width: world.w, height: world.h });
@@ -24,8 +24,14 @@ export function buildTerrainBitmap(world) {
       const tt = tileType(tx, ty);
       const n1 = noise2D(tx * 0.9, ty * 0.9, 11);
       const n2 = noise2D(tx * 0.35, ty * 0.35, 27);
-      let color = '#12381f';
-      if (tt === 'water') color = '#1b3566'; else if (tt === 'dirt') color = '#4a3d2f';
+      // Base palette by theme
+      let baseColor = '#12381f'; // grass
+      let dirtColor = '#4a3d2f';
+      let waterColor = '#1b3566';
+      if (theme === 'desert') { baseColor = '#c2b280'; dirtColor = '#a6906a'; waterColor = '#6fa3c9'; }
+      if (theme === 'marsh') { baseColor = '#3b4a3a'; dirtColor = '#5a5b45'; waterColor = '#2a4f6d'; }
+      let color = baseColor;
+      if (tt === 'water') color = waterColor; else if (tt === 'dirt') color = dirtColor;
       const n3 = noise2D(tx * 1.7, ty * 1.3, 99);
       const v = (n3 - 0.5) * 8;
       const tweak = (hex, dv) => {
@@ -36,8 +42,24 @@ export function buildTerrainBitmap(world) {
       };
       g.fillStyle = tweak(color, v|0);
       g.fillRect(tx * TILE, ty * TILE, TILE, TILE);
-      if (tt === 'grass' && n3 > 0.6) {
-        g.fillStyle = '#1a5a32';
+      if (theme === 'marsh') {
+        if (n3 > 0.6 && tt !== 'water') {
+          // reed/pebble specks
+          g.fillStyle = '#6da86d';
+          const px = (tx * TILE) + (n1 * TILE) | 0;
+          const py = (ty * TILE) + (n2 * TILE) | 0;
+          g.fillRect(px, py, 1, 1);
+        }
+      } else if (theme !== 'desert') {
+        if (tt === 'grass' && n3 > 0.6) {
+          g.fillStyle = '#1a5a32';
+          const px = (tx * TILE) + (n1 * TILE) | 0;
+          const py = (ty * TILE) + (n2 * TILE) | 0;
+          g.fillRect(px, py, 1, 1);
+        }
+      } else if (n3 > 0.7) {
+        // desert pebbles
+        g.fillStyle = '#b8a272';
         const px = (tx * TILE) + (n1 * TILE) | 0;
         const py = (ty * TILE) + (n2 * TILE) | 0;
         g.fillRect(px, py, 1, 1);
@@ -68,7 +90,7 @@ export function drawGrid(ctx, world, camera) {
   ctx.restore();
 }
 
-export function buildObstacles(world, player, enemies, npcs) {
+export function buildObstacles(world, player, enemies, npcs, theme = 'default') {
   const obs = [];
   const wouldOverlap = (rect) => {
     const actors = [
@@ -84,11 +106,19 @@ export function buildObstacles(world, player, enemies, npcs) {
       if (tt === 'water') continue;
       const r = noise2D(tx * 0.77, ty * 0.77, 2025);
       let type = null;
-      if (r > 0.97) type = 'tree'; else if (r > 0.94) type = 'rock';
+      if (theme === 'desert') {
+        if (r > 0.97) type = 'cactus';
+        else if (r > 0.94) type = 'ruin';
+      } else if (theme === 'marsh') {
+        if (r > 0.97) type = 'reed';
+        else if (r > 0.94) type = 'log';
+      } else {
+        if (r > 0.97) type = 'tree'; else if (r > 0.94) type = 'rock';
+      }
       if (!type) continue;
       const baseX = tx * TILE;
       const baseY = ty * TILE;
-      if (type === 'tree') {
+      if (type === 'tree' || type === 'cactus' || type === 'reed') {
         const w = 12, h = 12; const x = baseX + 2, y = baseY + 4;
         if (!wouldOverlap({ x, y, w, h })) obs.push({ x, y, w, h, type });
       } else {
@@ -166,6 +196,37 @@ export function drawObstacles(ctx, obstacles, camera) {
       // cross braces
       ctx.beginPath(); ctx.moveTo(sx + 1, sy + 1); ctx.lineTo(sx + o.w - 1, sy + o.h - 1); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(sx + o.w - 1, sy + 1); ctx.lineTo(sx + 1, sy + o.h - 1); ctx.stroke();
+    } else if (o.type === 'cactus') {
+      // Cactus cluster
+      ctx.fillStyle = '#2e7d32';
+      ctx.fillRect(sx + 4, sy, 4, o.h);
+      ctx.fillRect(sx + 1, sy + 4, 3, o.h - 4);
+      ctx.fillRect(sx + 8, sy + 6, 3, o.h - 6);
+      ctx.strokeStyle = '#1b5e20'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'ruin') {
+      // Crumbled stone block
+      ctx.fillStyle = '#8a8a8a'; ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // chips
+      ctx.fillStyle = '#b0b0b0';
+      ctx.fillRect(sx + 2, sy + 2, 2, 1);
+      ctx.fillRect(sx + o.w - 4, sy + o.h - 3, 2, 1);
+    } else if (o.type === 'reed') {
+      // Marsh reeds
+      ctx.fillStyle = '#4b8b4b';
+      for (let i = 0; i < o.w; i += 3) {
+        ctx.fillRect(sx + i, sy - 4, 1, o.h + 4);
+      }
+      ctx.strokeStyle = '#244'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'log') {
+      // Fallen log
+      ctx.fillStyle = '#6b4a2a'; ctx.fillRect(sx, sy + o.h/3, o.w, o.h/3);
+      ctx.strokeStyle = '#3a2414'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + o.h/3 + 0.5, o.w - 1, o.h/3 - 1);
+    } else if (o.type === 'water') {
+      // Deep water pool (blocking)
+      ctx.fillStyle = '#1e4461';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#0d2233'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
     }
   }
 }

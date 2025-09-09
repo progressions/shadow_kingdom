@@ -1,4 +1,4 @@
-import { runtime, player, camera, world } from './state.js';
+import { runtime, player, camera, world, xpToNext } from './state.js';
 import { getEquipStats } from './utils.js';
 import { tryStartMusic, stopMusic } from './audio.js';
 import { playSfx } from './audio.js';
@@ -15,6 +15,8 @@ const vnChoices = document.getElementById('vn-choices');
 const vnPortraitBox = document.querySelector('.vn-portrait');
 const partyUI = document.getElementById('party-ui');
 const bannerEl = document.getElementById('banner');
+const fadeEl = document.getElementById('fade');
+const questHintEl = document.getElementById('quest-hint');
 
 // Sidebar removed: VN overlay handles all dialog UI
 
@@ -141,7 +143,42 @@ export function updatePartyUI(companions) {
   companions.forEach((c, idx) => {
     const chip = document.createElement('div');
     chip.className = 'party-chip';
-    chip.textContent = c.name || `Companion ${idx+1}`;
+    // Base name
+    const nameSpan = document.createElement('span');
+    const lv = Math.max(1, (c.level||1));
+    nameSpan.textContent = `Lv ${lv} · ${c.name || `Companion ${idx+1}`}`;
+    chip.appendChild(nameSpan);
+    // Affinity hearts (0–3 hearts, 0.5 steps). 3 hearts ≈ affinity 10; 1.5 hearts ≈ affinity 5
+    const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
+    const heartsVal = Math.max(0, Math.min(3, Math.round((aff / (10/3)) * 2) / 2));
+    const fullHearts = Math.floor(heartsVal);
+    const hasHalf = (heartsVal - fullHearts) >= 0.5;
+    const affSpan = document.createElement('span');
+    affSpan.className = 'affinity';
+    affSpan.style.marginLeft = '6px';
+    affSpan.style.opacity = '0.9';
+    affSpan.title = `Affinity ${(Math.round(aff*100)/100)} / 10`;
+    // Render full hearts
+    for (let h = 0; h < fullHearts; h++) {
+      const heart = document.createElement('span');
+      heart.textContent = '♥';
+      affSpan.appendChild(heart);
+    }
+    // Render half heart as a dimmed heart
+    if (hasHalf) {
+      const half = document.createElement('span');
+      half.textContent = '♥';
+      half.style.opacity = '0.5';
+      affSpan.appendChild(half);
+    }
+    if (affSpan.childNodes.length > 0) chip.appendChild(affSpan);
+    // Debug numeric affinity next to hearts (rounded to 2 decimals)
+    const affNum = document.createElement('span');
+    affNum.className = 'affinity-num';
+    affNum.style.marginLeft = '4px';
+    affNum.style.opacity = '0.8';
+    affNum.textContent = `${Number(aff).toFixed(2)}`;
+    chip.appendChild(affNum);
     chip.dataset.index = String(idx);
     // Role badges
     const roles = rolesForCompanion(c?.name || '');
@@ -157,6 +194,26 @@ export function updatePartyUI(companions) {
       }
       chip.appendChild(badges);
     }
+    // XP bar (small)
+    try {
+      const need = xpToNext(Math.max(1, c.level||1));
+      const cur = Math.max(0, c.xp||0);
+      const pct = Math.max(0, Math.min(1, need > 0 ? (cur / need) : 0));
+      const bar = document.createElement('div');
+      bar.style.width = '100%';
+      bar.style.height = '4px';
+      bar.style.background = '#2a2a2a';
+      bar.style.border = '1px solid #444';
+      bar.style.borderRadius = '3px';
+      bar.style.marginTop = '4px';
+      const fill = document.createElement('div');
+      fill.style.height = '100%';
+      fill.style.width = `${Math.round(pct * 100)}%`;
+      fill.style.background = '#8ab4ff';
+      fill.style.borderRadius = '2px';
+      bar.appendChild(fill);
+      chip.appendChild(bar);
+    } catch {}
     partyUI.appendChild(chip);
   });
   // Player equipped items box
@@ -176,6 +233,7 @@ export function updatePartyUI(companions) {
   partyUI.appendChild(box);
   // Buff badges from companions
   const buffs = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const f2 = (v) => Number(v || 0).toFixed(2);
   const bb = document.createElement('div');
   bb.className = 'buffs-box';
   const mk = (label, val, suffix='') => {
@@ -185,11 +243,11 @@ export function updatePartyUI(companions) {
     div.textContent = `${label}: ${val}${suffix}`;
     return div;
   };
-  bb.appendChild(mk('ATK', `+${buffs.atk||0}`));
-  bb.appendChild(mk('DR', `+${buffs.dr||0}`));
-  bb.appendChild(mk('Regen', (buffs.regen||0).toFixed(1), '/s'));
-  bb.appendChild(mk('Range', `+${buffs.range||0}`, 'px'));
-  bb.appendChild(mk('tDR', `+${buffs.touchDR||0}`));
+  bb.appendChild(mk('ATK', `+${f2(buffs.atk)}`));
+  bb.appendChild(mk('DR', `+${f2(buffs.dr)}`));
+  bb.appendChild(mk('Regen', f2(buffs.regen), '/s'));
+  bb.appendChild(mk('Range', `+${f2(buffs.range)}`, 'px'));
+  bb.appendChild(mk('tDR', `+${f2(buffs.touchDR)}`));
   partyUI.appendChild(bb);
   // Click to manage companion
   partyUI.onclick = (ev) => {
@@ -209,12 +267,13 @@ export function updateBuffBadges() {
   const bb = container.querySelector('.buffs-box');
   if (!bb) return;
   const b = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const f2 = (v) => Number(v || 0).toFixed(2);
   const texts = [
-    `ATK: +${b.atk||0}`,
-    `DR: +${b.dr||0}`,
-    `Regen: ${(b.regen||0).toFixed(1)}/s`,
-    `Range: +${b.range||0}px`,
-    `tDR: +${b.touchDR||0}`,
+    `ATK: +${f2(b.atk)}`,
+    `DR: +${f2(b.dr)}`,
+    `Regen: ${f2(b.regen)}/s`,
+    `Range: +${f2(b.range)}px`,
+    `tDR: +${f2(b.touchDR)}`,
   ];
   // Ensure we have 5 children; if not, rebuild
   const need = 5;
@@ -264,6 +323,48 @@ export function activateFocusedChoice() {
   import('../engine/dialog.js').then(mod => mod.selectChoice(idx));
 }
 
+// Simple fade transition helper
+export function fadeTransition(options) {
+  const { toBlackMs = 400, holdMs = 0, toClearMs = 400, during } = options || {};
+  if (!fadeEl) { if (typeof during === 'function') during(); return; }
+  // Fade to black
+  fadeEl.classList.add('show');
+  window.setTimeout(() => {
+    try { if (typeof during === 'function') during(); } catch {}
+    // Hold, then fade back
+    window.setTimeout(() => {
+      fadeEl.classList.remove('show');
+    }, Math.max(0, holdMs));
+  }, Math.max(0, toBlackMs));
+}
+
+export function updateQuestHint() {
+  if (!questHintEl) return;
+  let msg = '';
+  try {
+    const f = runtime.questFlags || {};
+    const c = runtime.questCounters || {};
+    if (f['yorna_knot_started'] && !f['yorna_knot_cleared']) {
+      const left = c['yorna_knot_remaining'] ?? 2;
+      msg = `Quest — Cut the Knot: ${left} target${left===1?'':'s'} left`;
+    } else if (f['canopy_triage_started'] && !f['canopy_triage_cleared']) {
+      const left = c['canopy_triage_remaining'] ?? 3;
+      msg = `Quest — Breath and Bandages: ${left} target${left===1?'':'s'} left`;
+    } else if (f['hola_practice_started'] && !f['hola_practice_cleared']) {
+      const used = c['hola_practice_uses'] ?? 0;
+      msg = `Quest — Find Her Voice: Gust ${used}/2`;
+    } else if (f['oyin_fuse_started'] && !f['oyin_fuse_cleared']) {
+      const k = c['oyin_fuse_kindled'] ?? 0; const r = f['oyin_fuse_rally'] ? '1/1' : '0/1';
+      msg = `Quest — Light the Fuse: Kindle ${k}/3, Rally ${r}`;
+    } else if (f['twil_trace_started'] && !f['twil_trace_cleared']) {
+      const left = c['twil_trace_remaining'] ?? 3;
+      msg = `Quest — Trace the Footprints: ${left} left`;
+    }
+  } catch {}
+  if (msg) { questHintEl.style.display = ''; questHintEl.textContent = msg; }
+  else { questHintEl.style.display = 'none'; questHintEl.textContent = ''; }
+}
+
 function rolesForCompanion(name) {
   const key = (name || '').toLowerCase();
   if (key.includes('canopy')) {
@@ -284,6 +385,20 @@ function rolesForCompanion(name) {
     return [
       { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
       { cls: 'td', label: 'tDR', title: 'Touch Damage Reduction' },
+      { cls: 'gs', label: 'G', title: 'Gust' },
+    ];
+  }
+  if (key.includes('oyin')) {
+    return [
+      { cls: 'a', label: 'A', title: 'Attack Aura' },
+      { cls: 'r', label: 'R', title: 'Range Aura' },
+      { cls: 'ec', label: 'E', title: 'Echo Strike' },
+    ];
+  }
+  if (key.includes('twil')) {
+    return [
+      { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
+      { cls: 'd', label: 'DR', title: 'Defense Aura' },
       { cls: 'gs', label: 'G', title: 'Gust' },
     ];
   }

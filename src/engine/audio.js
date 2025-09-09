@@ -245,6 +245,13 @@ function playSfxChip(name) {
       envTone({ type: 'sine', freq: 880.0, attack: 0.002, decay: 0.08, release: 0.05, gain: 0.06, t });
       envTone({ type: 'triangle', freq: 1320.0, attack: 0.001, decay: 0.10, release: 0.06, gain: 0.05, t: t + 0.02 });
       break;
+    case 'levelUp':
+      // Bright celebratory arpeggio
+      envTone({ type: 'triangle', freq: 523.25, attack: 0.002, decay: 0.10, release: 0.05, gain: 0.09, t }); // C5
+      envTone({ type: 'square',   freq: 659.25, attack: 0.002, decay: 0.12, release: 0.06, gain: 0.10, t: t + 0.06 }); // E5
+      envTone({ type: 'square',   freq: 783.99, attack: 0.002, decay: 0.14, release: 0.06, gain: 0.11, t: t + 0.12 }); // G5
+      envTone({ type: 'triangle', freq: 1046.5, attack: 0.002, decay: 0.16, release: 0.08, gain: 0.12, t: t + 0.18 }); // C6
+      break;
     case 'break':
       // Crunchy break sound for barrels/crates
       noiseBurst({ attack: 0.001, decay: 0.06, release: 0.05, gain: 0.16, t });

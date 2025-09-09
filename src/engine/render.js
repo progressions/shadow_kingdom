@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
@@ -57,22 +57,12 @@ export function render(terrainBitmap, obstacles) {
     ctx.restore();
   }
 
-  // Ground pickups
+  // Ground pickups (icon sprites per item type)
   if (itemsOnGround && itemsOnGround.length) {
     for (const it of itemsOnGround) {
       const sx = Math.round(it.x - camera.x);
       const sy = Math.round(it.y - camera.y);
-      ctx.save();
-      // base box
-      ctx.fillStyle = '#2a2a2a';
-      ctx.fillRect(sx, sy, it.w, it.h);
-      ctx.strokeStyle = '#b3d1ff';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(sx + 0.5, sy + 0.5, it.w - 1, it.h - 1);
-      // small highlight
-      ctx.fillStyle = '#8ab4ff';
-      ctx.fillRect(sx + 2, sy + 2, Math.max(1, it.w - 4), 1);
-      ctx.restore();
+      drawItemIcon(sx, sy, it.item);
     }
   }
 
@@ -137,15 +127,43 @@ export function render(terrainBitmap, obstacles) {
 
   // Player UI overlay
   drawBar(6, 6, 60, 5, player.hp / player.maxHp, '#4fa3ff');
+  // Player XP bar under HP
+  try {
+    const need = xpToNext(Math.max(1, player.level || 1));
+    const cur = Math.max(0, player.xp || 0);
+    const pct = Math.max(0, Math.min(1, need > 0 ? (cur / need) : 0));
+    drawBar(6, 14, 60, 3, pct, '#ffd166');
+  } catch {}
+  // Player Level label
+  try {
+    const label = `Lv ${Math.max(1, player.level || 1)}`;
+    ctx.save();
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.fillStyle = '#eaeaea';
+    const lx = 70; const ly = 6; // to the right of bars
+    ctx.strokeText(label, lx, ly);
+    ctx.fillText(label, lx, ly);
+    ctx.restore();
+  } catch {}
 
   // NPC markers
   drawNpcMarkers();
+
+  // Objective marker (temporary): point to Level 2 arena gate if locked
+  drawArenaMarker(obstacles);
 
   // Floating texts (combat barks)
   drawFloaters();
 
   // Healing sparkles
   drawSparkles();
+
+  // Quest target markers
+  drawQuestMarkers();
 }
 
 function drawNpcMarkers() {
@@ -193,6 +211,41 @@ function markerColorFor(npc) {
 
 // no pre-intro highlight needed
 
+function drawArenaMarker(obstacles) {
+  try {
+    const gateId = (runtime.currentLevel === 2) ? 'nethra_gate' : (runtime.currentLevel === 3 ? 'marsh_gate' : null);
+    if (!gateId) return;
+    const gate = obstacles && obstacles.find && obstacles.find(o => o && o.type === 'gate' && o.id === gateId && o.locked !== false);
+    if (!gate) return;
+    const tx = gate.x + gate.w / 2 - camera.x;
+    const ty = gate.y + gate.h / 2 - camera.y;
+    const margin = 14;
+    const inView = tx >= 0 && tx <= camera.w && ty >= 0 && ty <= camera.h;
+    ctx.save();
+    ctx.fillStyle = '#9ae6ff';
+    ctx.strokeStyle = '#003b5a';
+    ctx.lineWidth = 1.5;
+    if (inView) {
+      const px = Math.round(tx);
+      const py = Math.round(ty - 10);
+      ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else {
+      const cx = Math.max(margin, Math.min(camera.w - margin, tx));
+      const cy = Math.max(margin, Math.min(camera.h - margin, ty));
+      const ang = Math.atan2(ty - cy, tx - cx);
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-10, 6);
+      ctx.lineTo(-10, -6);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  } catch {}
+}
+
 function drawFloaters() {
   if (!floaters || floaters.length === 0) return;
   ctx.save();
@@ -228,5 +281,102 @@ function drawSparkles() {
     ctx.arc(sx, sy, p.r || 1.5, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+}
+
+function drawQuestMarkers() {
+  const colorFor = (qid) => {
+    switch (qid) {
+      case 'yorna_knot': return '#ff8a3d';
+      case 'canopy_triage': return '#8effc1';
+      case 'twil_trace': return '#e0b3ff';
+      case 'oyin_fuse': return '#ffd166';
+      default: return '#9ae6ff';
+    }
+  };
+  const margin = 12;
+  for (const e of enemies) {
+    if (!e || e.hp <= 0 || !e.questId) continue;
+    const tx = e.x + e.w / 2 - camera.x;
+    const ty = e.y + e.h / 2 - camera.y;
+    const inView = tx >= 0 && tx <= camera.w && ty >= 0 && ty <= camera.h;
+    ctx.save();
+    ctx.fillStyle = colorFor(e.questId);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    if (inView) {
+      const px = Math.round(tx);
+      const py = Math.round(ty - 12);
+      ctx.beginPath();
+      ctx.moveTo(px, py - 4);
+      ctx.lineTo(px + 4, py);
+      ctx.lineTo(px, py + 4);
+      ctx.lineTo(px - 4, py);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else {
+      const cx = Math.max(margin, Math.min(camera.w - margin, tx));
+      const cy = Math.max(margin, Math.min(camera.h - margin, ty));
+      const ang = Math.atan2(ty - cy, tx - cx);
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-10, 6);
+      ctx.lineTo(-10, -6);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawItemIcon(x, y, item) {
+  ctx.save();
+  // backdrop shadow
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = '#0f0f0f';
+  ctx.fillRect(x - 1, y - 1, 12, 12);
+  // Determine type and colors
+  const isKey = !!item?.keyId;
+  const slot = String(item?.slot || '').toLowerCase();
+  let color = '#8ab4ff'; let accent = '#eaeaea';
+  if (isKey) { color = '#ffd166'; accent = '#7a4a1a'; }
+  else if (slot === 'rightHand') { color = '#8ab4ff'; accent = '#3a5a9a'; }
+  else if (slot === 'leftHand') { color = '#ffb366'; accent = '#a65a1a'; }
+  else if (slot === 'head') { color = '#c9c9c9'; accent = '#7f7f7f'; }
+  else if (slot === 'torso') { color = '#9ad19a'; accent = '#3a6b3a'; }
+  else if (slot === 'legs') { color = '#b8a16a'; accent = '#6b5a2a'; }
+  // Icon shapes
+  const drawSword = () => {
+    ctx.fillStyle = color; ctx.fillRect(x + 5, y + 2, 2, 8);
+    ctx.fillStyle = accent; ctx.fillRect(x + 3, y + 6, 6, 2);
+  };
+  const drawTorch = () => {
+    ctx.fillStyle = '#a65a1a'; ctx.fillRect(x + 5, y + 5, 2, 5);
+    ctx.fillStyle = '#ffcc66'; ctx.beginPath(); ctx.arc(x + 6, y + 4, 3, 0, Math.PI * 2); ctx.fill();
+  };
+  const drawHelm = () => {
+    ctx.fillStyle = color; ctx.fillRect(x + 3, y + 4, 6, 4);
+    ctx.fillStyle = accent; ctx.fillRect(x + 2, y + 6, 8, 2);
+  };
+  const drawChest = () => {
+    ctx.fillStyle = color; ctx.fillRect(x + 3, y + 4, 6, 6);
+    ctx.fillStyle = accent; ctx.fillRect(x + 3, y + 6, 6, 1);
+  };
+  const drawKey = () => {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x + 4, y + 4, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(x + 6, y + 3, 5, 2); ctx.fillRect(x + 9, y + 5, 2, 2);
+  };
+  const drawGeneric = () => {
+    ctx.fillStyle = color; ctx.fillRect(x + 3, y + 3, 6, 6);
+    ctx.fillStyle = accent; ctx.fillRect(x + 4, y + 4, 4, 1);
+  };
+  if (isKey) drawKey();
+  else if (slot === 'rightHand') drawSword();
+  else if (slot === 'leftHand') drawTorch();
+  else if (slot === 'head') drawHelm();
+  else if (slot === 'torso') drawChest();
+  else drawGeneric();
   ctx.restore();
 }

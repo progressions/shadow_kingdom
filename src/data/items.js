@@ -4,17 +4,21 @@
 export const sampleItems = [
   { id: 'cap_leather',   name: 'Leather Cap',   slot: 'head',      dr: 1 },
   { id: 'helm_bronze',   name: 'Bronze Helm',   slot: 'head',      dr: 2 },
+  { id: 'helm_iron',     name: 'Iron Helm',     slot: 'head',      dr: 3 },
   { id: 'shirt_cloth',   name: 'Cloth Tunic',   slot: 'torso',     dr: 1 },
   { id: 'armor_leather', name: 'Leather Armor', slot: 'torso',     dr: 2 },
+  { id: 'armor_scaled',  name: 'Scaled Cuirass', slot: 'torso',     dr: 3 },
+  { id: 'armor_chain',   name: 'Chain Mail',    slot: 'torso',     dr: 4 },
   { id: 'pants_cloth',   name: 'Cloth Pants',   slot: 'legs',      dr: 1 },
   { id: 'greaves_leather', name: 'Leather Greaves', slot: 'legs',   dr: 1 },
   { id: 'stick',         name: 'Wooden Stick',  slot: 'rightHand',  atk: 1 },
   { id: 'dagger',        name: 'Rusty Dagger',  slot: 'rightHand',  atk: 2 },
   { id: 'sword_fine',    name: 'Fine Sword',    slot: 'rightHand',  atk: 4 },
   { id: 'buckler',       name: 'Small Buckler', slot: 'leftHand',   dr: 1 },
-  { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0 },
+  { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0, stackable: true, maxQty: 99 },
   // Key items (not equip slots): use slot 'misc'
   { id: 'key_bronze',    name: 'Bronze Key',    slot: 'misc',       keyId: 'castle_gate' },
+  { id: 'key_nethra',    name: 'Ruin Gate Key', slot: 'misc',       keyId: 'key_nethra' },
 ];
 
 export function cloneItem(item) {
@@ -22,5 +26,6 @@ export function cloneItem(item) {
   if (typeof item.atk === 'number') it.atk = item.atk;
   if (typeof item.dr === 'number') it.dr = item.dr;
   if (item.keyId) it.keyId = item.keyId;
+  if (item.stackable) { it.stackable = true; it.maxQty = item.maxQty || 99; it.qty = typeof item.qty === 'number' ? item.qty : 1; }
   return it;
 }

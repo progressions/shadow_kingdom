@@ -109,7 +109,14 @@ export function renderCurrentNode() {
   const { tree, nodeId } = runtime.activeDialog;
   const node = tree.nodes[nodeId];
   if (!node) { setOverlayDialog('...', []); return; }
-  setOverlayDialog(node.text || '', node.choices || []);
+  // Filter choices by optional requirements (affinity and/or flags)
+  const rawChoices = node.choices || [];
+  const filtered = [];
+  for (const ch of rawChoices) {
+    if (!ch || !ch.requires) { filtered.push(ch); continue; }
+    if (meetsRequirement(ch.requires)) filtered.push(ch);
+  }
+  setOverlayDialog(node.text || '', filtered);
   // Sidebar placeholder removed; VN overlay displays choices
 }
 
@@ -118,11 +125,18 @@ export function selectChoice(index) {
   const { tree } = runtime.activeDialog;
   const node = tree.nodes[runtime.activeDialog.nodeId];
   if (!node || !node.choices) return;
-  const choice = node.choices[index];
+  // Apply the same filter as render to maintain index mapping
+  const rawChoices = node.choices || [];
+  const choices = [];
+  for (const ch of rawChoices) { if (!ch || !ch.requires || meetsRequirement(ch.requires)) choices.push(ch); }
+  const choice = choices[index];
   if (!choice) return;
   // No turn-based battle actions; only VN/inventory/save actions are handled.
   if (choice.action === 'end') { endDialog(); exitChat(runtime); return; }
   if (choice.action === 'game_over_restart') { try { window.location.reload(); } catch {} return; }
+  if (choice.action === 'affinity_add') { handleAffinityAdd(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
+  if (choice.action === 'start_quest') { handleStartQuest(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
+  if (choice.action === 'set_flag') { handleSetFlag(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
   if (choice.action === 'join_party') {
     const npc = runtime.activeNpc;
     if (npc) {
@@ -132,7 +146,7 @@ export function selectChoice(index) {
         return;
       }
       // Spawn as companion using NPC sheet if available
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc });
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
       // Remove NPC from world
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
@@ -228,7 +242,148 @@ export function selectChoice(index) {
   if (choice.action === 'inv_transfer_pick') { openTransferSelectItem(choice.data.actorTag); return; }
   if (choice.action === 'inv_transfer_target') { openTransferSelectTarget(choice.data.actorTag, choice.data.itemId); return; }
   if (choice.action === 'inv_transfer_do') { doTransfer(choice.data.from, choice.data.to, choice.data.itemId); openInventoryMenu(choice.data.from); return; }
+  if (choice.action === 'inv_quick_list') { openQuickEquipList(choice.data.actorTag); return; }
+  if (choice.action === 'inv_quick_equip') { doEquip(choice.data.actorTag, choice.data.slot, undefined, choice.data.itemId); openQuickEquipList(choice.data.actorTag); return; }
+  if (choice.action === 'inv_item_actions') { openItemActions(choice.data.actorTag, choice.data.itemId); return; }
+  if (choice.action === 'inv_drop_one') { dropItem(choice.data.actorTag, choice.data.itemId, 1); openQuickEquipList(choice.data.actorTag); return; }
+  if (choice.action === 'inv_drop_all') { dropItem(choice.data.actorTag, choice.data.itemId, Infinity); openQuickEquipList(choice.data.actorTag); return; }
+  if (choice.action === 'inv_salvage_one') { salvageItem(choice.data.actorTag, choice.data.itemId, 1); openQuickEquipList(choice.data.actorTag); return; }
+  if (choice.action === 'inv_salvage_all') { salvageItem(choice.data.actorTag, choice.data.itemId, Infinity); openQuickEquipList(choice.data.actorTag); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
+}
+
+// ---- Affinity helpers ----
+function getCompanionByName(nameLower) {
+  const key = String(nameLower || '').toLowerCase();
+  for (const c of companions) {
+    const nm = (c.name || '').toLowerCase();
+    if (nm.includes(key)) return c;
+  }
+  return null;
+}
+
+function resolveEntityForAffinity(target) {
+  if (!target) return null;
+  const t = String(target).toLowerCase();
+  if (t === 'active') {
+    // Prefer active NPC; if absent, try companion by active name
+    const actor = runtime.activeNpc;
+    if (actor) return actor; // NPC object with affinity
+    // Fallback to a companion with matching name if any
+    return getCompanionByName(actor?.name || '');
+  }
+  // Try companions first, then NPCs by name includes
+  const comp = getCompanionByName(t);
+  if (comp) return comp;
+  const key = t;
+  for (const n of npcs) { const nm = (n.name || '').toLowerCase(); if (nm.includes(key)) return n; }
+  return null;
+}
+
+function meetsRequirement(req) {
+  try {
+    // Affinity gate
+    if (req.target || typeof req.min === 'number' || typeof req.max === 'number') {
+      const t = resolveEntityForAffinity(req.target || 'active');
+      if (!t) return false;
+      const aff = typeof t.affinity === 'number' ? t.affinity : 0;
+      if (typeof req.min === 'number' && aff < req.min) return false;
+      if (typeof req.max === 'number' && aff > req.max) return false;
+    }
+    // Flag gate
+    if (req.flag) {
+      const has = !!(runtime.questFlags && runtime.questFlags[req.flag]);
+      if (req.not) { if (has) return false; } else { if (!has) return false; }
+    }
+    if (req.hasFlag) {
+      const key = String(req.hasFlag);
+      if (!(runtime.questFlags && runtime.questFlags[key])) return false;
+    }
+    if (req.missingFlag) {
+      const key = String(req.missingFlag);
+      if (runtime.questFlags && runtime.questFlags[key]) return false;
+    }
+    return true;
+  } catch { return true; }
+}
+
+function handleAffinityAdd(data) {
+  try {
+    const amt = (typeof data?.amount === 'number') ? data.amount : 0;
+    const tgt = data?.target || 'active';
+    const flag = data?.flag || null;
+    if (flag && runtime.affinityFlags && runtime.affinityFlags[flag]) return; // already applied
+    const ent = resolveEntityForAffinity(tgt);
+    if (!ent) return;
+    ent.affinity = Math.max(1, Math.min(10, (typeof ent.affinity === 'number' ? ent.affinity : 5) + amt));
+    if (flag) runtime.affinityFlags[flag] = true;
+    // Feedback
+    try { showBanner(`${ent.name || 'Companion'} affinity ${amt >= 0 ? '+' : ''}${(Math.round(amt*100)/100)}`); } catch {}
+    // Player XP: floor(10 * positive delta)
+    try {
+      const pos = Math.max(0, amt);
+      const xp = Math.floor(10 * pos);
+      if (xp > 0) import('./state.js').then(m => m.grantXpToActor(m.player, xp));
+    } catch {}
+  } catch {}
+}
+
+function handleSetFlag(data) {
+  try {
+    const key = String(data?.key || '').trim();
+    if (!key) return;
+    if (!runtime.questFlags) runtime.questFlags = {};
+    runtime.questFlags[key] = true;
+  } catch {}
+}
+
+function handleStartQuest(data) {
+  try {
+    const id = String(data?.id || '').trim();
+    if (!id) return;
+    if (!runtime.questFlags) runtime.questFlags = {};
+    if (runtime.questFlags[id + '_started']) return; // already started
+    runtime.questFlags[id + '_started'] = true;
+    if (!runtime.questCounters) runtime.questCounters = {};
+    // Yorna: Cut the Knot — spawn two featured targets
+    if (id === 'yorna_knot') {
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Ambusher', questId: 'yorna_knot' });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Stalker', questId: 'yorna_knot' });
+      }).catch(()=>{});
+      runtime.questCounters['yorna_knot_remaining'] = 2;
+      try { showBanner('Quest started: Cut the Knot — 2 targets'); } catch {}
+    } else if (id === 'canopy_triage') {
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 120, dy = 90;
+        spawnEnemy(player.x + dx, player.y, 'mook', { name: 'Snare', questId: 'canopy_triage' });
+        spawnEnemy(player.x - dx, player.y - dy, 'mook', { name: 'Snare', questId: 'canopy_triage' });
+        spawnEnemy(player.x, player.y + dy, 'mook', { name: 'Snare', questId: 'canopy_triage' });
+      }).catch(()=>{});
+      runtime.questCounters['canopy_triage_remaining'] = 3;
+      try { showBanner('Quest started: Breath and Bandages — 3 targets'); } catch {}
+    } else if (id === 'hola_practice') {
+      runtime.questCounters['hola_practice_uses'] = 0;
+      try { showBanner('Quest started: Find Her Voice — Use Gust twice'); } catch {}
+    } else if (id === 'oyin_fuse') {
+      runtime.questCounters['oyin_fuse_kindled'] = 0;
+      runtime.questFlags['oyin_fuse_rally'] = false;
+      try { showBanner('Quest started: Light the Fuse — Kindle 3 + Rally once'); } catch {}
+    } else if (id === 'twil_trace') {
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 140, dy = 100;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
+      }).catch(()=>{});
+      runtime.questCounters['twil_trace_remaining'] = 3;
+      try { showBanner('Quest started: Trace the Footprints — 3 targets'); } catch {}
+    }
+  } catch {}
 }
 
 // Inventory menus
@@ -253,6 +408,17 @@ function slotLabel(slot) {
   return map[slot] || slot;
 }
 
+function sortItemsDefault(items) {
+  const order = { head: 0, torso: 1, legs: 2, leftHand: 3, rightHand: 4 };
+  return [...items].sort((a, b) => {
+    const sa = order[a.slot] ?? 99; const sb = order[b.slot] ?? 99;
+    if (sa !== sb) return sa - sb;
+    const na = (a.name || '').toLowerCase();
+    const nb = (b.name || '').toLowerCase();
+    if (na < nb) return -1; if (na > nb) return 1; return 0;
+  });
+}
+
 async function openInventoryMenu(actorTag) {
   // Attach player ref once (runtime has no direct player export here)
   if (!runtime._playerRef) runtime._playerRef = (await import('./state.js')).player;
@@ -264,6 +430,7 @@ async function openInventoryMenu(actorTag) {
     return { label: `${slotLabel(s)}: ${it ? it.name : '(empty)'}`, action: 'inv_slot', data: { actorTag, slot: s } };
   });
   const actions = [
+    { label: 'Backpack', action: 'inv_quick_list', data: { actorTag } },
     { label: 'Transfer Items (Backpack)', action: 'inv_transfer_pick', data: { actorTag } },
     { label: 'Add Sample Items', action: 'inv_add_samples', data: { actorTag } },
     { label: 'Back', action: 'inventory_back' },
@@ -274,14 +441,16 @@ async function openInventoryMenu(actorTag) {
 function openSlotMenu(actorTag, slot) {
   const actor = resolveActor(actorTag);
   if (!actor) { startInventoryMenu(); return; }
-  const items = (actor.inventory?.items || []).filter(it => it.slot === slot);
+  let items = (actor.inventory?.items || []).filter(it => it.slot === slot);
+  items = sortItemsDefault(items);
   const eq = actor.inventory?.equipped || {};
   const choices = [];
   if (eq[slot]) choices.push({ label: `Unequip ${eq[slot].name}`, action: 'inv_unequip', data: { actorTag, slot } });
   if (items.length) {
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      choices.push({ label: `Equip ${it.name}`, action: 'inv_equip', data: { actorTag, slot, itemId: it.id } });
+      const suffix = (it.stackable && it.qty > 1) ? ` x${it.qty}` : '';
+      choices.push({ label: `Equip ${it.name}${suffix}`, action: 'inv_equip', data: { actorTag, slot, itemId: it.id } });
     }
   } else {
     choices.push({ label: 'No items for this slot', action: 'inventory_back' });
@@ -290,23 +459,55 @@ function openSlotMenu(actorTag, slot) {
   startPrompt(actor, `${slotLabel(slot)} — Choose`, choices);
 }
 
+function openQuickEquipList(actorTag) {
+  const actor = resolveActor(actorTag);
+  if (!actor) { startInventoryMenu(); return; }
+  let items = actor.inventory?.items || [];
+  items = sortItemsDefault(items);
+  const eq = actor.inventory?.equipped || {};
+  const choices = [];
+  // Unequip options for currently equipped gear
+  const slots = ['head','torso','legs','leftHand','rightHand'];
+  for (const s of slots) {
+    const it = eq[s];
+    if (it) choices.push({ label: `Unequip ${it.name} (${slotLabel(s)})`, action: 'inv_unequip', data: { actorTag, slot: s } });
+  }
+  if (items.length === 0) {
+    choices.push({ label: 'Backpack is empty', action: 'open_inventory', data: actorTag });
+  } else {
+    for (const it of items) {
+      const slot = it.slot;
+      const suffix = (it.stackable && it.qty > 1) ? ` x${it.qty}` : '';
+      const label = `Equip ${it.name}${suffix} (${slotLabel(slot)})`;
+      choices.push({ label, action: 'inv_quick_equip', data: { actorTag, itemId: it.id, slot } });
+    }
+  }
+  choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
+  startPrompt(actor, 'Backpack — Click to Equip', choices);
+}
+
 function addSamples(actorTag) {
   const actor = resolveActor(actorTag);
   if (!actor) return;
   if (!actor.inventory) actor.inventory = { items: [], equipped: { head:null, torso:null, legs:null, leftHand:null, rightHand:null } };
-  for (const s of sampleItems) actor.inventory.items.push(cloneItem(s));
+  for (const s of sampleItems) {
+    const it = cloneItem(s);
+    import('./state.js').then(m => m.addItemToInventory(actor.inventory, it));
+  }
 }
 
 function openTransferSelectItem(actorTag) {
   const actor = resolveActor(actorTag);
   if (!actor) return;
-  const items = actor.inventory?.items || [];
+  let items = actor.inventory?.items || [];
+  items = sortItemsDefault(items);
   const choices = [];
   if (items.length === 0) {
     choices.push({ label: 'Backpack is empty', action: 'open_inventory', data: actorTag });
   } else {
     for (const it of items) {
-      choices.push({ label: `Send ${it.name} (${slotLabel(it.slot)})`, action: 'inv_transfer_target', data: { actorTag, itemId: it.id } });
+      const suffix = (it.stackable && it.qty > 1) ? ` x${it.qty}` : '';
+      choices.push({ label: `Send ${it.name}${suffix} (${slotLabel(it.slot)})`, action: 'inv_transfer_target', data: { actorTag, itemId: it.id } });
     }
   }
   choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
@@ -332,8 +533,93 @@ async function doTransfer(fromTag, toTag, itemId) {
   if (idx === -1) return;
   const it = from.inventory.items[idx];
   // Only transfer backpack items; to equip, open their inventory later
-  from.inventory.items.splice(idx, 1);
-  to.inventory.items.push(cloneItem(it));
+  const addOne = async () => {
+    const one = cloneItem(it);
+    if (one.stackable) one.qty = 1;
+    const m = await import('./state.js');
+    m.addItemToInventory(to.inventory, one);
+  };
+  if (it.stackable) {
+    it.qty = Math.max(0, (it.qty || 1) - 1);
+    if (it.qty === 0) from.inventory.items.splice(idx, 1);
+    await addOne();
+  } else {
+    from.inventory.items.splice(idx, 1);
+    await addOne();
+  }
+}
+
+function openItemActions(actorTag, itemId) {
+  const actor = resolveActor(actorTag);
+  if (!actor) { startInventoryMenu(); return; }
+  const items = actor.inventory?.items || [];
+  const idx = items.findIndex(x => x.id === itemId);
+  if (idx === -1) { openQuickEquipList(actorTag); return; }
+  const it = items[idx];
+  const suffix = (it.stackable && it.qty > 1) ? ` x${it.qty}` : '';
+  const choices = [];
+  if (it.slot) choices.push({ label: `Equip ${it.name}${suffix} (${slotLabel(it.slot)})`, action: 'inv_quick_equip', data: { actorTag, itemId: it.id, slot: it.slot } });
+  if (it.stackable && it.qty > 1) {
+    choices.push({ label: `Drop 1 ${it.name}`, action: 'inv_drop_one', data: { actorTag, itemId: it.id } });
+    choices.push({ label: `Drop all ${it.name} x${it.qty}`, action: 'inv_drop_all', data: { actorTag, itemId: it.id } });
+    choices.push({ label: `Salvage 1 ${it.name}`, action: 'inv_salvage_one', data: { actorTag, itemId: it.id } });
+    choices.push({ label: `Salvage all ${it.name} x${it.qty}`, action: 'inv_salvage_all', data: { actorTag, itemId: it.id } });
+  } else {
+    choices.push({ label: `Drop ${it.name}`, action: 'inv_drop_all', data: { actorTag, itemId: it.id } });
+    choices.push({ label: `Salvage ${it.name}`, action: 'inv_salvage_all', data: { actorTag, itemId: it.id } });
+  }
+  choices.push({ label: 'Back', action: 'inv_quick_list', data: { actorTag } });
+  startPrompt(actor, `${it.name} — Actions`, choices);
+}
+
+async function dropItem(actorTag, itemId, count) {
+  const actor = resolveActor(actorTag);
+  if (!actor || !actor.inventory) return;
+  const idx = (actor.inventory.items || []).findIndex(x => x.id === itemId);
+  if (idx === -1) return;
+  const it = actor.inventory.items[idx];
+  const n = Math.max(1, Math.floor(count || 1));
+  const m = await import('./state.js');
+  const dropOne = async () => {
+    const d = cloneItem(it);
+    if (d.stackable) d.qty = Math.min(d.qty || 1, 1);
+    m.spawnPickup((actor.x || 0) + (actor.w || 0) / 2 - 5, (actor.y || 0) + (actor.h || 0) / 2 - 5, d);
+  };
+  if (it.stackable) {
+    if (n === Infinity) {
+      const all = cloneItem(it);
+      m.spawnPickup((actor.x || 0) + (actor.w || 0) / 2 - 5, (actor.y || 0) + (actor.h || 0) / 2 - 5, all);
+      actor.inventory.items.splice(idx, 1);
+    } else {
+      let left = Math.min(n, it.qty || 1);
+      while (left-- > 0) await dropOne();
+      it.qty = Math.max(0, (it.qty || 1) - Math.min(n, it.qty || 1));
+      if (it.qty === 0) actor.inventory.items.splice(idx, 1);
+    }
+  } else {
+    // Non-stackable: drop the single item
+    await dropOne();
+    actor.inventory.items.splice(idx, 1);
+  }
+}
+
+function salvageItem(actorTag, itemId, count) {
+  const actor = resolveActor(actorTag);
+  if (!actor || !actor.inventory) return;
+  const idx = (actor.inventory.items || []).findIndex(x => x.id === itemId);
+  if (idx === -1) return;
+  const it = actor.inventory.items[idx];
+  const n = Math.max(1, Math.floor(count || 1));
+  if (it.stackable) {
+    if (n === Infinity) {
+      actor.inventory.items.splice(idx, 1);
+    } else {
+      it.qty = Math.max(0, (it.qty || 1) - Math.min(n, it.qty || 1));
+      if (it.qty === 0) actor.inventory.items.splice(idx, 1);
+    }
+  } else {
+    actor.inventory.items.splice(idx, 1);
+  }
 }
 
 async function openSaveSlotMenu(slot) {

@@ -198,6 +198,14 @@ flowchart LR
 
 While in chat (VN overlay), gameplay input is suppressed; number keys or buttons select choices, Esc/X exits unless locked (e.g., Game Over).
 
+## Level 3: Marsh (New)
+
+- Unlocks after defeating Nethra (Level 2 boss).
+- Biome: marsh terrain, with blocking water pools and scattered obstacles.
+- Featured foe: Wight — guaranteed to drop a Reed Key to open the island arena gate.
+- Boss: Luula — spawns inside the arena and has a first‑sight VN intro.
+- New companions: Tin and Nellis — recruitable with simple dialogs.
+
 ### Save/Load Path
 
 ```mermaid

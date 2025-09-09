@@ -24,6 +24,8 @@ export const player = {
   animFrame: 0,
   hp: 10,
   maxHp: 10,
+  level: 1,
+  xp: 0,
   attackCooldown: 0.35,
   lastAttack: -999,
   attacking: false,
@@ -53,6 +55,33 @@ export function spawnPickup(x, y, item) {
   const p = { id: 'p' + (_nextPickupId++), x: Math.round(x), y: Math.round(y), w, h, item };
   itemsOnGround.push(p);
   return p;
+}
+
+// Inventory helpers (stacking)
+export function addItemToInventory(inv, item) {
+  if (!inv || !item) return;
+  if (item.stackable) {
+    const max = item.maxQty || 99;
+    // try to merge with existing stacks
+    const stacks = (inv.items || []).filter(x => x && x.stackable && x.id === item.id);
+    let remaining = item.qty || 1;
+    for (const s of stacks) {
+      const room = Math.max(0, (s.maxQty || max) - (s.qty || 0));
+      if (room <= 0) continue;
+      const take = Math.min(room, remaining);
+      s.qty = (s.qty || 0) + take;
+      remaining -= take;
+      if (remaining <= 0) break;
+    }
+    if (remaining > 0) {
+      const copy = { ...item, qty: remaining };
+      if (!inv.items) inv.items = [];
+      inv.items.push(copy);
+    }
+  } else {
+    if (!inv.items) inv.items = [];
+    inv.items.push(item);
+  }
 }
 
 export function spawnEnemy(x, y, type = 'mook', opts = {}) {
@@ -87,10 +116,17 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     sheet: opts.sheet || cfg.sheet,
     // Optional portrait for VN overlay on enemies
     portraitSrc: opts.portrait || null,
+    // Optional portraits for empowered/defeated VNs (boss flow)
+    portraitPowered: opts.portraitPowered || null,
+    portraitDefeated: opts.portraitDefeated || null,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
     // Optional guaranteed drop item id (e.g., 'key_bronze')
     guaranteedDropId: opts.guaranteedDropId || null,
+    // Optional next level to transition after boss defeat
+    onDefeatNextLevel: (typeof opts.onDefeatNextLevel === 'number') ? opts.onDefeatNextLevel : null,
+    // Optional quest linkage
+    questId: opts.questId || null,
   });
 }
 
@@ -124,7 +160,21 @@ export function spawnStain(x, y, opts = {}) {
 // Floating combat text (pass-through, fades and rises)
 export const floaters = [];
 export function spawnFloatText(x, y, text, opts = {}) {
-  floaters.push({ x, y, text: String(text), color: opts.color || '#eaeaea', t: 0, life: opts.life || 0.8 });
+  let disp;
+  if (typeof text === 'number') {
+    disp = text.toFixed(2);
+  } else if (typeof text === 'string') {
+    const trimmed = text.trim();
+    if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+      const n = parseFloat(trimmed);
+      disp = Number.isFinite(n) ? n.toFixed(2) : trimmed;
+    } else {
+      disp = text;
+    }
+  } else {
+    disp = String(text);
+  }
+  floaters.push({ x, y, text: disp, color: opts.color || '#eaeaea', t: 0, life: opts.life || 0.8 });
 }
 
 // Healing sparkle particles (pass-through, fade and drift up)
@@ -153,6 +203,9 @@ export function spawnCompanion(x, y, sheet, opts = {}) {
     name: opts.name || 'Companion',
     portraitSrc: opts.portrait || opts.portraitSrc || null,
     inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
+    affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
+    level: typeof opts.level === 'number' ? opts.level : 1,
+    xp: typeof opts.xp === 'number' ? opts.xp : 0,
   };
   companions.push(comp);
   return comp;
@@ -173,6 +226,8 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     sheet: opts.sheet || null,
     // Minimal VN intro flag: if present, a simple VN appears once when first seen
     vnOnSight: opts.vnOnSight || null,
+    // Affinity before recruitment (carried into party on join)
+    affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
   };
   // Preload portrait only for image extensions
   if (npc.portraitSrc && /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(npc.portraitSrc)) {
@@ -220,5 +275,79 @@ export const runtime = {
   musicModeSwitchTimer: 0,
   // Persistence for removed breakables (ids)
   brokenBreakables: {},
+  // Level/scene management
+  currentLevel: 1,
+  pendingLevel: null,
+  // Temporary combat buffs (timed)
+  tempAtkBonus: 0,
+  _tempAtkTimer: 0,
+  // One-time VN affinity flags to prevent repeats
+  affinityFlags: {},
+  questFlags: {},
+  questCounters: {},
   
 };
+
+// ---- Leveling helpers ----
+export function xpToNext(level) {
+  const lv = Math.max(1, level|0);
+  return Math.round(50 * Math.pow(1.6, lv - 1));
+}
+
+export function recomputePlayerDerivedStats() {
+  // Damage scales: base 1 + 1 every 2 levels
+  player.damage = 1 + Math.floor((Math.max(1, player.level) - 1) / 2);
+  // DR bonus scales 0.2 per level (applied in combat DR calc)
+  player.levelDrBonus = 0.2 * (Math.max(1, player.level) - 1);
+  // Ensure HP does not exceed max
+  player.hp = Math.min(player.hp, player.maxHp);
+}
+
+export function applyLevelUp(actor) {
+  if (!actor) return;
+  if (actor === player) {
+    actor.level = Math.max(1, (actor.level|0));
+    actor.maxHp = (actor.maxHp || 10) + 2;
+    actor.hp = actor.maxHp; // heal to full on level up
+    recomputePlayerDerivedStats();
+  } else {
+    // Companions: auras/triggers scale via level in systems; no direct stat change here
+    actor.level = Math.max(1, (actor.level|0));
+  }
+  // Play level-up SFX
+  try { import('./audio.js').then(m => m.playSfx && m.playSfx('levelUp')).catch(()=>{}); } catch {}
+  // Banner showing new level (helps confirm visually)
+  try {
+    const nm = actor === player ? 'Player' : (actor.name || 'Companion');
+    import('./ui.js').then(u => u.showBanner && u.showBanner(`${nm} reached Lv ${actor.level}`));
+  } catch {}
+}
+
+export function grantXpToActor(actor, amount) {
+  const xp = Math.max(0, Math.floor(amount || 0));
+  if (!actor || xp <= 0) return;
+  actor.xp = Math.max(0, (actor.xp || 0) + xp);
+  // Level up while exceeding threshold
+  let safety = 0;
+  while (safety++ < 50) {
+    const need = xpToNext(actor.level || 1);
+    if ((actor.xp || 0) >= need) {
+      actor.xp -= need;
+      actor.level = Math.max(1, (actor.level || 1) + 1);
+      applyLevelUp(actor);
+      try { spawnFloatText((actor.x||player.x) + 6, (actor.y||player.y) - 10, 'Level Up!', { color: '#ffd166', life: 1.0 }); } catch {}
+    } else break;
+  }
+}
+
+export function grantPartyXp(amount) {
+  const xp = Math.max(0, Math.floor(amount || 0));
+  if (xp <= 0) return;
+  grantXpToActor(player, xp);
+  for (const c of companions) grantXpToActor(c, xp);
+}
+
+export function completionXpForLevel(level) {
+  // 5 + 10*level → L1=15, L2=25, L3=35, ...
+  return Math.max(0, Math.floor(5 + 10 * Math.max(1, level|0)));
+}

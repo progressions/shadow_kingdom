@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, world, runtime } from './state.js';
+import { player, enemies, companions, npcs, world, runtime, obstacles } from './state.js';
 import { itemsOnGround } from './state.js';
 import { spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
@@ -72,8 +72,7 @@ export function saveGame(slot = 1) {
 export function loadGame(slot = 1) {
   if (API_URL) {
     remote('GET', `/api/save?slot=${encodeURIComponent(slot)}`)
-      .then(json=>deserializePayload(json.payload))
-      .then(()=>showBanner('Game loaded (remote)'))
+      .then(json=>loadDataPayload(json.payload))
       .catch((e)=>{ console.error('Remote load failed', e); showBanner('Remote load failed'); });
     return;
   }
@@ -81,8 +80,7 @@ export function loadGame(slot = 1) {
     const raw = localStorage.getItem(getLocalKey(slot));
     if (!raw) { showBanner('No save found'); return; }
     const data = JSON.parse(raw);
-    deserializePayload(data);
-    showBanner('Game loaded');
+    loadDataPayload(data);
   } catch (e) {
     console.error('Load failed', e);
     showBanner('Load failed');
@@ -103,10 +101,17 @@ function serializePayload() {
   return {
     version: 1,
     at: Date.now(),
-    player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir },
-    enemies: enemies.filter(e => e.hp > 0).map(e => ({ x: e.x, y: e.y, hp: e.hp, dir: e.dir, kind: e.kind || 'mook' })),
-    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null })),
-    npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null })),
+    currentLevel: runtime.currentLevel || 1,
+    player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
+    enemies: enemies.filter(e => e.hp > 0).map(e => ({
+      x: e.x, y: e.y, hp: e.hp, dir: e.dir, kind: e.kind || 'mook',
+      name: e.name || null,
+      portraitPowered: e.portraitPowered || null,
+      portraitDefeated: e.portraitDefeated || null,
+      onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
+    })),
+    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 })),
+    npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 })),
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
     unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
@@ -114,6 +119,8 @@ function serializePayload() {
     openedChests: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'chest' && o.opened && o.id).map(o => o.id) : []),
     brokenBreakables: Object.keys(runtime?.brokenBreakables || {}),
     vnSeen: Object.keys(runtime?.vnSeen || {}),
+    affinityFlags: Object.keys(runtime?.affinityFlags || {}),
+    questFlags: Object.keys(runtime?.questFlags || {}),
   };
 }
 
@@ -122,6 +129,9 @@ function deserializePayload(data) {
   if (data.player) {
     player.x = data.player.x; player.y = data.player.y; player.dir = data.player.dir || 'down';
     if (typeof data.player.hp === 'number') player.hp = data.player.hp;
+    player.level = Math.max(1, data.player.level || 1);
+    player.xp = Math.max(0, data.player.xp || 0);
+    import('./state.js').then(m => m.recomputePlayerDerivedStats()).catch(()=>{});
   }
   // Inventory
   if (data.playerInv) player.inventory = data.playerInv;
@@ -134,6 +144,16 @@ function deserializePayload(data) {
   if (Array.isArray(data.vnSeen)) {
     for (const k of data.vnSeen) runtime.vnSeen[k] = true;
   }
+  // Restore affinity flags
+  runtime.affinityFlags = {};
+  if (Array.isArray(data.affinityFlags)) {
+    for (const k of data.affinityFlags) runtime.affinityFlags[k] = true;
+  }
+  // Restore quest flags
+  runtime.questFlags = {};
+  if (Array.isArray(data.questFlags)) {
+    for (const k of data.questFlags) runtime.questFlags[k] = true;
+  }
   // Restore enemies
   if (Array.isArray(data.enemies)) {
     for (const e of data.enemies) {
@@ -145,7 +165,10 @@ function deserializePayload(data) {
         x: e.x, y: e.y, w: 12, h: 16, speed: base.speed, dir: e.dir || 'down', moving: true,
         animTime: 0, animFrame: 0, hp: e.hp ?? base.hp, maxHp: base.hp, touchDamage: base.dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
-        name: base.name, kind,
+        name: e.name || base.name, kind,
+        portraitPowered: e.portraitPowered || null,
+        portraitDefeated: e.portraitDefeated || null,
+        onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
       });
     }
     // Attach class sheets lazily after module loads
@@ -157,6 +180,16 @@ function deserializePayload(data) {
         else e.sheet = mod.enemyMookSheet;
       }
     }).catch(()=>{});
+    // Backfill boss metadata for older saves so level transitions work
+    try {
+      for (const e of enemies) {
+        if ((e.kind || '').toLowerCase() !== 'boss') continue;
+        if (typeof e.onDefeatNextLevel !== 'number') {
+          const lv = runtime.currentLevel || 1;
+          e.onDefeatNextLevel = (lv === 1) ? 2 : (lv === 2 ? 3 : null);
+        }
+      }
+    } catch {}
   }
   // Helper: attach NPC dialog by name
   const attachDialogByName = (npc) => {
@@ -164,12 +197,14 @@ function deserializePayload(data) {
     if (key.includes('canopy')) npc.dialog = canopyDialog;
     else if (key.includes('yorna')) npc.dialog = yornaDialog;
     else if (key.includes('hola')) npc.dialog = holaDialog;
+    else if (key.includes('oyin')) import('../data/dialogs.js').then(mod => npc.dialog = mod.oyinDialog).catch(()=>{});
+    else if (key.includes('twil')) import('../data/dialogs.js').then(mod => npc.dialog = mod.twilDialog).catch(()=>{});
   };
   // Restore companions
   if (Array.isArray(data.companions)) {
     for (const c of data.companions) {
       const sheet = sheetForName(c.name);
-      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null });
+      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 });
       comp.dir = c.dir || 'down';
       if (c.inventory) comp.inventory = c.inventory;
     }
@@ -179,7 +214,7 @@ function deserializePayload(data) {
   if (Array.isArray(data.npcs)) {
     for (const n of data.npcs) {
       const sheet = sheetForName(n.name);
-      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, portrait: n.portrait || null });
+      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, portrait: n.portrait || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
       attachDialogByName(npc);
     }
   }
@@ -221,4 +256,36 @@ function deserializePayload(data) {
   };
   for (const e of enemies) markSeen(e);
   for (const n of npcs) markSeen(n);
+}
+
+// Route loaded data based on level; if different, defer restore until after level transition.
+export function loadDataPayload(data) {
+  try {
+    const target = (data && typeof data.currentLevel === 'number') ? data.currentLevel : 1;
+    if (target !== (runtime.currentLevel || 1)) {
+      runtime._pendingRestore = data;
+      runtime.pendingLevel = target;
+      showBanner(`Loading… switching to Level ${target}`);
+      return;
+    }
+    deserializePayload(data);
+    showBanner(API_URL ? 'Game loaded (remote)' : 'Game loaded');
+  } catch (e) {
+    console.error('Load route failed', e);
+    showBanner('Load failed');
+  }
+}
+
+// Called by main loop after a level has been swapped in
+export function applyPendingRestore() {
+  const data = runtime._pendingRestore;
+  if (!data) return;
+  try {
+    runtime._pendingRestore = null;
+    deserializePayload(data);
+    showBanner(API_URL ? 'Game loaded (remote)' : 'Game loaded');
+  } catch (e) {
+    console.error('Apply pending restore failed', e);
+    showBanner('Load failed');
+  }
 }
