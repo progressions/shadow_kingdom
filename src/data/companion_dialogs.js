@@ -19,8 +19,13 @@ export const companionDialogs = {
         choices: [
           { label: 'Can you watch over us?', next: 'support' },
           { label: 'How are you holding up?', next: 'mood' },
-          { label: 'Bond', next: 'bond_menu' },
-          { label: 'Quests', next: 'quests' },
+          // Bond entries (show only when available)
+          { label: 'Open up (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Share a memory (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Promise me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries (appear inline)
+          { label: 'Breath and Bandages', requires: { flag: 'canopy_triage_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared' }, next: 'quest_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -94,8 +99,13 @@ export const companionDialogs = {
         choices: [
           { label: 'What\'s your style?', next: 'style' },
           { label: 'Everything alright?', next: 'mood' },
-          { label: 'Bond', next: 'bond_menu' },
-          { label: 'Quests', next: 'quests' },
+          // Bond entries
+          { label: 'Trade tells (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Strategy talk (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Stand with me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries
+          { label: 'Cut the Knot', requires: { flag: 'yorna_knot_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared' }, next: 'quest_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -167,8 +177,13 @@ export const companionDialogs = {
         choices: [
           { label: 'What magic do you know?', next: 'magic' },
           { label: 'How\'s the journey?', next: 'mood' },
-          { label: 'Bond', next: 'bond_menu' },
-          { label: 'Quests', next: 'quests' },
+          // Bond entries
+          { label: 'Small steps (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Speak up (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Stand firm (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries
+          { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared' }, next: 'quest_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -236,8 +251,13 @@ export const companionDialogs = {
       root: {
         text: 'Oyin: I can practice… if you have time.',
         choices: [
-          { label: 'Bond', next: 'bond_menu' },
-          { label: 'Quests', next: 'quests' },
+          // Bond entries
+          { label: 'A spark (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Tinder and air (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Firelight (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries
+          { label: 'Light the Fuse', requires: { flag: 'oyin_fuse_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared' }, next: 'quest_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -294,8 +314,13 @@ export const companionDialogs = {
       root: {
         text: 'Twil: Want to race trouble to the end of a footprint?',
         choices: [
-          { label: 'Bond', next: 'bond_menu' },
-          { label: 'Quests', next: 'quests' },
+          // Bond entries
+          { label: 'Footwork (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Shortcuts (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Same stride (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries
+          { label: 'Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared' }, next: 'quest_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
