@@ -28,6 +28,19 @@ export const companionEffectsByKey = {
       gust: { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 },
     },
   },
+  oyin: {
+    auras: [
+      { type: 'range', value: 1 },
+    ],
+    // rally trigger handled in code
+  },
+  twil: {
+    auras: [
+      { type: 'slow', value: 0.15, radius: 42, anchor: 'player' },
+      { type: 'dr', value: 1 },
+    ],
+    // dust veil trigger handled in code
+  },
 };
 
 // Global caps to keep stacks reasonable

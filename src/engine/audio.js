@@ -245,6 +245,11 @@ function playSfxChip(name) {
       envTone({ type: 'sine', freq: 880.0, attack: 0.002, decay: 0.08, release: 0.05, gain: 0.06, t });
       envTone({ type: 'triangle', freq: 1320.0, attack: 0.001, decay: 0.10, release: 0.06, gain: 0.05, t: t + 0.02 });
       break;
+    case 'break':
+      // Crunchy break sound for barrels/crates
+      noiseBurst({ attack: 0.001, decay: 0.06, release: 0.05, gain: 0.16, t });
+      envTone({ type: 'triangle', freq: 220, attack: 0.001, decay: 0.05, release: 0.04, gain: 0.08, t });
+      break;
   }
 }
 

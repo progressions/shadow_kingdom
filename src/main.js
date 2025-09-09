@@ -10,7 +10,8 @@ import { step } from './systems/step.js';
 import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI } from './engine/ui.js';
+import { updatePartyUI, fadeTransition } from './engine/ui.js';
+import { loadLevel2 } from './engine/levels.js';
 
 // Initialize enemies positioned around the three NPCs
 // Goal:
@@ -52,7 +53,6 @@ spawnEnemy(
   yornaPos.y + 34,
   'featured',
   {
-    guaranteedDropId: 'key_bronze',
     name: 'Gorg',
     vnOnSight: { text: introTexts.gorg },
     portrait: 'assets/portraits/Gorg/Gorg.mp4',
@@ -137,11 +137,18 @@ setNpcDialog(hola, holaDialog);
 // Start with zero companions
 
 // Build terrain and obstacles
-const terrain = buildTerrainBitmap(world);
+let terrain = buildTerrainBitmap(world);
 obstacles.push(...buildObstacles(world, player, enemies, npcs));
 // Place a couple of starter chests near the player
 obstacles.push({ x: Math.round(player.x + TILE * 2), y: Math.round(player.y - TILE * 1), w: 12, h: 10, type: 'chest', id: 'chest_start_1', lootTier: 'common', opened: false, locked: false });
 obstacles.push({ x: Math.round(player.x - TILE * 3), y: Math.round(player.y + TILE * 2), w: 12, h: 10, type: 'chest', id: 'chest_start_2', lootTier: 'rare', opened: false, locked: false });
+// Place a couple of breakables near the player
+obstacles.push({ x: Math.round(player.x + TILE * 1), y: Math.round(player.y + TILE * 3), w: 12, h: 12, type: 'barrel', id: 'brk_start_1', hp: 2 });
+obstacles.push({ x: Math.round(player.x - TILE * 4), y: Math.round(player.y - TILE * 2), w: 12, h: 12, type: 'crate', id: 'brk_start_2', hp: 2 });
+// More breakables in the world
+obstacles.push({ x: Math.round(canopyPos.x + TILE * 2), y: Math.round(canopyPos.y + TILE * 1), w: 12, h: 12, type: 'barrel', id: 'brk_canopy_1', hp: 2 });
+obstacles.push({ x: Math.round(holaPos.x - TILE * 2), y: Math.round(holaPos.y + TILE * 0), w: 12, h: 12, type: 'crate', id: 'brk_hola_1', hp: 2 });
+obstacles.push({ x: Math.round(castle.x + castle.w/2 + TILE * 2), y: Math.round(castle.y + castle.h + TILE * 1), w: 12, h: 12, type: 'barrel', id: 'brk_castle_1', hp: 2 });
 
 // Input and UI
 setupChatInputHandlers(runtime);
@@ -160,7 +167,24 @@ function loop(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   step(dt);
+  // Handle pending level transitions after VN closes (runtime set in step.js)
+  if (runtime.gameState === 'play' && runtime.pendingLevel === 2) {
+    const doSwap = () => {
+      terrain = loadLevel2();
+      // Snap camera to player
+      camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(player.x + player.w/2 - camera.w/2)));
+      camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(player.y + player.h/2 - camera.h/2)));
+      runtime.currentLevel = 2;
+      runtime.pendingLevel = null;
+    };
+    fadeTransition({ toBlackMs: 400, holdMs: 100, toClearMs: 400, during: doSwap });
+  }
   render(terrain, obstacles);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+// Debug helpers (call from browser console):
+try {
+  window.gotoLevel2 = () => { runtime.pendingLevel = 2; };
+} catch {}

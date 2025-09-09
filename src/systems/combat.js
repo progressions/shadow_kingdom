@@ -5,6 +5,7 @@ import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
+import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, rollFromTable } from '../data/loot.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -55,6 +56,29 @@ export function handleAttacks(dt) {
     if (player.dir === 'down')  { hb.h += range; }
     // Attempt to unlock any gate hit by the attack
     tryUnlockGate(hb);
+    // Damage breakables (barrels/crates)
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      if (!o || (o.type !== 'barrel' && o.type !== 'crate')) continue;
+      const r = { x: o.x, y: o.y, w: o.w, h: o.h };
+      if (!rectsIntersect(hb, r)) continue;
+      o.hp = (typeof o.hp === 'number') ? o.hp - 1 : -1;
+      if (o.hp <= 0) {
+        // spawn loot and remove
+        try {
+          const table = BREAKABLE_LOOT[o.type] || [];
+          const drop = rollFromTable(table);
+          if (drop) import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, drop));
+        } catch {}
+        // Track broken id for persistence
+        try { if (o.id) runtime.brokenBreakables[o.id] = true; } catch {}
+        const idx = obstacles.indexOf(o);
+        if (idx !== -1) obstacles.splice(idx, 1);
+        playSfx('break');
+      }
+    }
+    const hasOyin = companions.some(c => (c.name || '').toLowerCase().includes('oyin'));
+    const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
@@ -69,9 +93,21 @@ export function handleAttacks(dt) {
         }
         if (blocked) continue;
         const mods = getEquipStats(player);
-        const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0);
+        const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
         const dmg = Math.max(1, (player.damage || 1) + add);
+        let finalDmg = dmg;
+        // Twil: mark weakness (+1 dmg) when close
+        if (hasTwil) {
+          const dxm = ex - px, dym = ey - py;
+          if ((dxm*dxm + dym*dym) <= (48*48)) finalDmg += 1;
+        }
         e.hp -= dmg;
+        if (finalDmg !== dmg) e.hp -= (finalDmg - dmg);
+        // Oyin: Kindle DoT
+        if (hasOyin) {
+          e._burnTimer = Math.max(e._burnTimer || 0, 1.5);
+          e._burnDps = Math.max(e._burnDps || 0, 0.4);
+        }
         // Yorna Echo Strike (bonus damage on hit with cooldown)
         const hasYorna = companions.some(c => (c.name || '').toLowerCase().includes('yorna'));
         if (hasYorna) {
@@ -159,22 +195,21 @@ export function tryInteract() {
       if (!o.opened) {
         // Spawn chest loot (simple: 1 item)
         const tier = o.lootTier || 'common';
-        import('../data/loot.js').then(mod => {
-          const item = mod.rollFromTable(mod.CHEST_LOOT[tier] || []);
-          if (item) {
-            import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
-            o.opened = true;
-            showBanner('Chest opened');
-            // Remove chest immediately after opening
-            const idx = obstacles.indexOf(o);
-            if (idx !== -1) obstacles.splice(idx, 1);
-          } else {
-            // No loot: remove the chest from the world immediately
-            const idx = obstacles.indexOf(o);
-            if (idx !== -1) obstacles.splice(idx, 1);
-            showBanner('Empty chest');
-          }
-        });
+        const tableSrc = (runtime.currentLevel === 2) ? CHEST_LOOT_L2 : CHEST_LOOT;
+        const item = rollFromTable(tableSrc[tier] || []);
+        if (item) {
+          import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
+          o.opened = true;
+          showBanner('Chest opened');
+          // Remove chest immediately after opening
+          const idx = obstacles.indexOf(o);
+          if (idx !== -1) obstacles.splice(idx, 1);
+        } else {
+          // No loot: remove the chest from the world immediately
+          const idx = obstacles.indexOf(o);
+          if (idx !== -1) obstacles.splice(idx, 1);
+          showBanner('Empty chest');
+        }
       } else {
         // Already opened (should have been removed), ensure removal
         const idx = obstacles.indexOf(o);

@@ -7,7 +7,7 @@ import { handleAttacks } from './combat.js';
 import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges } from '../engine/ui.js';
-import { ENEMY_LOOT, rollFromTable, itemById } from '../data/loot.js';
+import { ENEMY_LOOT, ENEMY_LOOT_L2, rollFromTable, itemById } from '../data/loot.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -199,7 +199,10 @@ export function step(dt) {
     // Enemies collide with player and other enemies; pass through companions/NPCs
     const solidsForEnemy = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
     if (Math.abs(e.knockbackX) > 0.01 || Math.abs(e.knockbackY) > 0.01) {
-      const mul = (e._slowMul || 1) * ((e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1);
+      const slowMul = (e._slowMul || 1);
+      const gustMul = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1;
+      const veilMul = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (1 - 0.5) : 1;
+      const mul = slowMul * gustMul * veilMul;
       moveWithCollision(e, e.knockbackX * dt * mul, e.knockbackY * dt * mul, solidsForEnemy);
       e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
     } else {
@@ -207,7 +210,10 @@ export function step(dt) {
       let dx = (player.x - e.x), dy = (player.y - e.y);
       const dist = Math.hypot(dx, dy) || 1; dx/=dist; dy/=dist;
       const oldX = e.x, oldY = e.y;
-      const mul = (e._slowMul || 1) * ((e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1);
+      const slowMul = (e._slowMul || 1);
+      const gustMul = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1;
+      const veilMul = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (1 - 0.5) : 1;
+      const mul = slowMul * gustMul * veilMul;
       moveWithCollision(e, dx * e.speed * mul * dt, dy * e.speed * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
@@ -240,6 +246,15 @@ export function step(dt) {
     e.y = Math.max(0, Math.min(world.h - e.h, e.y));
     e.hitTimer -= dt; if (e.hitTimer < 0) e.hitTimer = 0;
     if (e._gustSlowTimer && e._gustSlowTimer > 0) e._gustSlowTimer = Math.max(0, e._gustSlowTimer - dt);
+    if (e._veilSlowTimer && e._veilSlowTimer > 0) e._veilSlowTimer = Math.max(0, e._veilSlowTimer - dt);
+    if (e._burnTimer && e._burnTimer > 0) {
+      e._burnTimer = Math.max(0, e._burnTimer - dt);
+      const dps = e._burnDps || 0;
+      if (dps > 0) {
+        e.hp -= dps * dt;
+        if (Math.random() < 4 * dt) spawnFloatText(e.x + e.w/2, e.y - 10, 'Burn', { color: '#ff9a3d', life: 0.5 });
+      }
+    }
     if (e.hitTimer === 0) {
       const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
       const er = { x: e.x, y: e.y, w: e.w, h: e.h };
@@ -303,13 +318,16 @@ export function step(dt) {
           const actor = { name: e.name || 'Vast', portraitSrc: 'assets/portraits/Vast/Vast defeated.mp4' };
           startPrompt(actor, "Vast: I can't believe you defeated me... but my master Urathar will still prevail.", []);
         } catch {}
+        // Schedule level change to Level 2 after VN closes
+        try { runtime.pendingLevel = 2; } catch {}
       }
       // Drops
       try {
         let drop = null;
         if (e.guaranteedDropId) drop = itemById(e.guaranteedDropId);
         if (!drop) {
-          const table = ENEMY_LOOT[(e.kind || 'mook')] || [];
+          const tableSrc = (runtime.currentLevel === 2) ? ENEMY_LOOT_L2 : ENEMY_LOOT;
+          const table = tableSrc[(e.kind || 'mook')] || [];
           drop = rollFromTable(table);
         }
         if (drop) spawnPickup(e.x + e.w/2 - 5, e.y + e.h/2 - 5, drop);
@@ -535,6 +553,11 @@ function applyCompanionAuras(dt) {
       }
     }
   }
+  // Decay temporary ATK bonus from triggers (e.g., Oyin Rally)
+  if ((runtime._tempAtkTimer || 0) > 0) {
+    runtime._tempAtkTimer = Math.max(0, (runtime._tempAtkTimer || 0) - dt);
+    if (runtime._tempAtkTimer === 0) runtime.tempAtkBonus = 0;
+  }
   // Per-enemy slow multiplier for this frame
   for (let ei = 0; ei < enemies.length; ei++) {
     const s = Math.min(slowAccum[ei], COMPANION_BUFF_CAPS.slow);
@@ -550,6 +573,8 @@ function handleCompanionTriggers(dt) {
   cds.yornaEcho = Math.max(0, (cds.yornaEcho || 0) - dt);
   cds.canopyShield = Math.max(0, (cds.canopyShield || 0) - dt);
   cds.holaGust = Math.max(0, (cds.holaGust || 0) - dt);
+  cds.oyinRally = Math.max(0, (cds.oyinRally || 0) - dt);
+  cds.twilDust = Math.max(0, (cds.twilDust || 0) - dt);
 
   // Shield countdown
   if (runtime.shieldActive) {
@@ -598,6 +623,38 @@ function handleCompanionTriggers(dt) {
         cds.holaGust = def.cooldownSec || 10;
         spawnFloatText(player.x + player.w/2, player.y - 12, 'Gust!', { color: '#a1e3ff', life: 0.8 });
       }
+    }
+  }
+
+  // Oyin Rally: below HP threshold, small heal and temporary ATK buff
+  if (has('oyin')) {
+    const hpRatio = player.hp / player.maxHp;
+    if ((cds.oyinRally || 0) <= 0 && hpRatio < 0.4 && player.hp > 0) {
+      player.hp = Math.min(player.maxHp, player.hp + 2);
+      runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, 1);
+      runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, 5);
+      cds.oyinRally = 20;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Rally!', { color: '#ffd166', life: 0.9 });
+    }
+  }
+
+  // Twil Dust Veil: if 2+ enemies are close, apply heavy slow briefly
+  if (has('twil')) {
+    let nearby = 0;
+    for (const e of enemies) {
+      if (e.hp <= 0) continue;
+      const dx = e.x - player.x, dy = e.y - player.y;
+      if ((dx*dx + dy*dy) <= (40*40)) nearby++;
+      if (nearby >= 2) break;
+    }
+    if (nearby >= 2 && (cds.twilDust || 0) <= 0) {
+      for (const e of enemies) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - player.x, dy = e.y - player.y;
+        if ((dx*dx + dy*dy) <= (40*40)) e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 0.4);
+      }
+      cds.twilDust = 12;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil!', { color: '#a1e3ff', life: 0.8 });
     }
   }
 }

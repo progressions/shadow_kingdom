@@ -1,5 +1,5 @@
 import { runtime, world } from './state.js';
-import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice } from './ui.js';
+import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice, showBanner } from './ui.js';
 import { startAttack, tryInteract, willAttackHitEnemy } from '../systems/combat.js';
 import { selectChoice, startCompanionSelector, startSaveMenu, startInventoryMenu, startPrompt } from '../engine/dialog.js';
 import { initAudioUnlock, toggleMute, toggleMusic, stopMusic } from './audio.js';
@@ -61,6 +61,10 @@ export function initInput() {
       e.preventDefault(); saveGame();
     } else if (e.key === 'F7') {
       e.preventDefault(); loadGame();
+    } else if (e.shiftKey && e.key.toLowerCase() === 'd') {
+      // Debug: Shift+D → schedule Level 2 transition
+      runtime.pendingLevel = 2;
+      try { showBanner('Debug: Pending Level 2'); } catch {}
     }
   });
   window.addEventListener('keyup', (e) => runtime.keys.delete(e.key.toLowerCase()));

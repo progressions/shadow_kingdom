@@ -79,3 +79,29 @@ export const holaDialog = {
     },
   },
 };
+
+export const oyinDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: "Oyin: I—I'm not great with crowds. But I can try to help. If you want me… I can come along.",
+      choices: [
+        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Not right now.', action: 'end' },
+      ],
+    },
+  },
+};
+
+export const twilDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: "Twil: Tracks are fresh and you look slow. Kidding. You want me along or what?",
+      choices: [
+        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Not now.', action: 'end' },
+      ],
+    },
+  },
+};

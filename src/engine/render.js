@@ -141,6 +141,9 @@ export function render(terrainBitmap, obstacles) {
   // NPC markers
   drawNpcMarkers();
 
+  // Objective marker (temporary): point to Level 2 arena gate if locked
+  drawArenaMarker(obstacles);
+
   // Floating texts (combat barks)
   drawFloaters();
 
@@ -192,6 +195,40 @@ function markerColorFor(npc) {
 }
 
 // no pre-intro highlight needed
+
+function drawArenaMarker(obstacles) {
+  try {
+    if (runtime.currentLevel !== 2) return;
+    const gate = obstacles && obstacles.find && obstacles.find(o => o && o.type === 'gate' && o.id === 'nethra_gate' && o.locked !== false);
+    if (!gate) return;
+    const tx = gate.x + gate.w / 2 - camera.x;
+    const ty = gate.y + gate.h / 2 - camera.y;
+    const margin = 14;
+    const inView = tx >= 0 && tx <= camera.w && ty >= 0 && ty <= camera.h;
+    ctx.save();
+    ctx.fillStyle = '#9ae6ff';
+    ctx.strokeStyle = '#003b5a';
+    ctx.lineWidth = 1.5;
+    if (inView) {
+      const px = Math.round(tx);
+      const py = Math.round(ty - 10);
+      ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else {
+      const cx = Math.max(margin, Math.min(camera.w - margin, tx));
+      const cy = Math.max(margin, Math.min(camera.h - margin, ty));
+      const ang = Math.atan2(ty - cy, tx - cx);
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-10, 6);
+      ctx.lineTo(-10, -6);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  } catch {}
+}
 
 function drawFloaters() {
   if (!floaters || floaters.length === 0) return;

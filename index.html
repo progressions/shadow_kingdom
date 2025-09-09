@@ -114,6 +114,10 @@
         opacity: 0; transition: opacity 200ms ease-in-out; pointer-events: none; }
       #banner.show { opacity: 1; }
 
+      /* Fade overlay for level transitions */
+      #fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 400ms ease; }
+      #fade.show { opacity: 1; }
+
       .title { margin: 0; font-size: 24px; letter-spacing: 0.5px; text-transform: uppercase; }
 
       @media (max-width: 900px) { #shell { grid-template-columns: 1fr; } }
@@ -128,6 +132,7 @@
         </div>
         <div id="party-ui" aria-label="Party"></div>
         <div id="banner" role="status" aria-live="polite"></div>
+        <div id="fade" aria-hidden="true"></div>
         <div id="portrait-overlay" aria-hidden="true">
           <div class="vn">
             <div class="vn-portrait">

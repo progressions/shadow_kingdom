@@ -218,5 +218,13 @@ export const runtime = {
   musicMode: 'normal',
   musicModePending: null,
   musicModeSwitchTimer: 0,
+  // Persistence for removed breakables (ids)
+  brokenBreakables: {},
+  // Level/scene management
+  currentLevel: 1,
+  pendingLevel: null,
+  // Temporary combat buffs (timed)
+  tempAtkBonus: 0,
+  _tempAtkTimer: 0,
   
 };

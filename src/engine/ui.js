@@ -15,6 +15,7 @@ const vnChoices = document.getElementById('vn-choices');
 const vnPortraitBox = document.querySelector('.vn-portrait');
 const partyUI = document.getElementById('party-ui');
 const bannerEl = document.getElementById('banner');
+const fadeEl = document.getElementById('fade');
 
 // Sidebar removed: VN overlay handles all dialog UI
 
@@ -264,6 +265,21 @@ export function activateFocusedChoice() {
   import('../engine/dialog.js').then(mod => mod.selectChoice(idx));
 }
 
+// Simple fade transition helper
+export function fadeTransition(options) {
+  const { toBlackMs = 400, holdMs = 0, toClearMs = 400, during } = options || {};
+  if (!fadeEl) { if (typeof during === 'function') during(); return; }
+  // Fade to black
+  fadeEl.classList.add('show');
+  window.setTimeout(() => {
+    try { if (typeof during === 'function') during(); } catch {}
+    // Hold, then fade back
+    window.setTimeout(() => {
+      fadeEl.classList.remove('show');
+    }, Math.max(0, holdMs));
+  }, Math.max(0, toBlackMs));
+}
+
 function rolesForCompanion(name) {
   const key = (name || '').toLowerCase();
   if (key.includes('canopy')) {
@@ -284,6 +300,20 @@ function rolesForCompanion(name) {
     return [
       { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
       { cls: 'td', label: 'tDR', title: 'Touch Damage Reduction' },
+      { cls: 'gs', label: 'G', title: 'Gust' },
+    ];
+  }
+  if (key.includes('oyin')) {
+    return [
+      { cls: 'a', label: 'A', title: 'Attack Aura' },
+      { cls: 'r', label: 'R', title: 'Range Aura' },
+      { cls: 'ec', label: 'E', title: 'Echo Strike' },
+    ];
+  }
+  if (key.includes('twil')) {
+    return [
+      { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
+      { cls: 'd', label: 'DR', title: 'Defense Aura' },
       { cls: 'gs', label: 'G', title: 'Gust' },
     ];
   }
