@@ -145,6 +145,10 @@ obstacles.push({ x: Math.round(player.x - TILE * 3), y: Math.round(player.y + TI
 // Place a couple of breakables near the player
 obstacles.push({ x: Math.round(player.x + TILE * 1), y: Math.round(player.y + TILE * 3), w: 12, h: 12, type: 'barrel', id: 'brk_start_1', hp: 2 });
 obstacles.push({ x: Math.round(player.x - TILE * 4), y: Math.round(player.y - TILE * 2), w: 12, h: 12, type: 'crate', id: 'brk_start_2', hp: 2 });
+// More breakables in the world
+obstacles.push({ x: Math.round(canopyPos.x + TILE * 2), y: Math.round(canopyPos.y + TILE * 1), w: 12, h: 12, type: 'barrel', id: 'brk_canopy_1', hp: 2 });
+obstacles.push({ x: Math.round(holaPos.x - TILE * 2), y: Math.round(holaPos.y + TILE * 0), w: 12, h: 12, type: 'crate', id: 'brk_hola_1', hp: 2 });
+obstacles.push({ x: Math.round(castle.x + castle.w/2 + TILE * 2), y: Math.round(castle.y + castle.h + TILE * 1), w: 12, h: 12, type: 'barrel', id: 'brk_castle_1', hp: 2 });
 
 // Input and UI
 setupChatInputHandlers(runtime);

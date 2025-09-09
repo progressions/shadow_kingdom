@@ -10,6 +10,7 @@ export const sampleItems = [
   { id: 'greaves_leather', name: 'Leather Greaves', slot: 'legs',   dr: 1 },
   { id: 'stick',         name: 'Wooden Stick',  slot: 'rightHand',  atk: 1 },
   { id: 'dagger',        name: 'Rusty Dagger',  slot: 'rightHand',  atk: 2 },
+  { id: 'sword_fine',    name: 'Fine Sword',    slot: 'rightHand',  atk: 4 },
   { id: 'buckler',       name: 'Small Buckler', slot: 'leftHand',   dr: 1 },
   { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0 },
   // Key items (not equip slots): use slot 'misc'

@@ -12,6 +12,7 @@ export const ENEMY_LOOT = {
     { id: 'dagger', w: 25 },
     { id: 'buckler', w: 20 },
     { id: 'armor_leather', w: 15 },
+    { id: 'sword_fine', w: 10 },
   ],
   boss: [
     // Boss no longer drops the castle key; use featured foe key-bearer instead
@@ -28,6 +29,7 @@ export const CHEST_LOOT = {
     { id: 'helm_bronze', w: 35 },
     { id: 'dagger', w: 35 },
     { id: 'greaves_leather', w: 25 },
+    { id: 'sword_fine', w: 20 },
   ],
 };
 
@@ -41,6 +43,7 @@ export const BREAKABLE_LOOT = {
     { id: 'stick', w: 25 },
     { id: 'buckler', w: 12 },
     { id: 'shirt_cloth', w: 18 },
+    { id: 'sword_fine', w: 5 },
   ],
 };
 
