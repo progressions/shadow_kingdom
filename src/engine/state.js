@@ -185,4 +185,5 @@ export const runtime = {
   companionCDs: { yornaEcho: 0, canopyShield: 0, holaGust: 0 },
   shieldActive: false,
   shieldTimer: 0,
+  paused: false,
 };

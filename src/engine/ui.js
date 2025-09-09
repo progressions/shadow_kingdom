@@ -1,5 +1,6 @@
 import { runtime, player } from './state.js';
 import { getEquipStats } from './utils.js';
+import { tryStartMusic, stopMusic } from './audio.js';
 import { playSfx } from './audio.js';
 export const canvas = document.getElementById('game');
 export const ctx = canvas.getContext('2d');
@@ -47,6 +48,11 @@ export function exitChat(runtime) {
   playSfx('uiClose');
   // Always unlock overlay on exit
   runtime.lockOverlay = false;
+  // Resuming from pause: restart music if applicable
+  if (runtime.paused) {
+    runtime.paused = false;
+    try { tryStartMusic('ambient'); } catch {}
+  }
 }
 
 export function setupChatInputHandlers(runtime) {
@@ -68,6 +74,14 @@ export function setOverlayDialog(text, choices) {
         btn.dataset.index = String(i);
         vnChoices.appendChild(btn);
       });
+      // Append a universal Exit (X) button at the bottom when not locked
+      if (!runtime.lockOverlay) {
+        const exitBtn = document.createElement('button');
+        exitBtn.type = 'button';
+        exitBtn.textContent = 'Exit (X)';
+        exitBtn.onclick = () => exitChat(runtime);
+        vnChoices.appendChild(exitBtn);
+      }
       // Click handling (delegated)
       vnChoices.onclick = (ev) => {
         const t = ev.target;
@@ -83,6 +97,14 @@ export function setOverlayDialog(text, choices) {
     } else {
       vnChoices.onclick = null;
       runtime.vnChoiceCount = 0;
+      // Still add Exit (X) if no choices and not locked
+      if (!runtime.lockOverlay) {
+        const exitBtn = document.createElement('button');
+        exitBtn.type = 'button';
+        exitBtn.textContent = 'Exit (X)';
+        exitBtn.onclick = () => exitChat(runtime);
+        vnChoices.appendChild(exitBtn);
+      }
     }
   }
 }
