@@ -11,6 +11,7 @@ export function initInput() {
     initAudioUnlock();
     const gameplayKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "];
     if (gameplayKeys.includes(e.key)) e.preventDefault();
+    // No special freeze handling — VN intros removed
     if (runtime.gameState === 'chat') {
       if (e.key === 'Escape') {
         if (!runtime.lockOverlay) { exitChat(runtime); }

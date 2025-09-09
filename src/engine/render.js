@@ -69,7 +69,7 @@ export function render(terrainBitmap, obstacles) {
   });
   for (const e of enemies) if (e.hp > 0) drawables.push({
     x: e.x, y: e.y, w: e.w, h: e.h,
-    dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet, enemyRef: e,
+    dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet,
   });
   drawables.push({
     x: player.x, y: player.y, w: player.w, h: player.h,
@@ -171,6 +171,8 @@ function markerColorFor(npc) {
   if (name.includes('hola')) return '#6fb7ff';
   return '#ffd166';
 }
+
+// no pre-intro highlight needed
 
 function drawFloaters() {
   if (!floaters || floaters.length === 0) return;

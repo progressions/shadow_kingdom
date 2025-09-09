@@ -179,6 +179,7 @@ export const runtime = {
   lockOverlay: false,
   // Set when the player has died and Game Over screen is shown
   gameOver: false,
+  
   // Aggregated companion buffs (recomputed each frame)
   combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0 },
   // Companion ability cooldowns and shield state (Phase 2)
@@ -186,4 +187,5 @@ export const runtime = {
   shieldActive: false,
   shieldTimer: 0,
   paused: false,
+  
 };

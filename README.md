@@ -84,3 +84,93 @@ Audio Assets
 - Enemy corpses: Defeated enemies leave a small corpse (pass-through) that fades after ~2 seconds.
   - A small blood stain appears under the corpse and also fades away.
   - Corpses rotate randomly for visual variety.
+
+## Engine Flow Diagrams
+
+### Update/Render Loop
+
+```mermaid
+flowchart TD
+  A[Boot: index.html → src/main.js] --> B[Init UI + input]
+  B --> C[Build terrain bitmap]
+  C --> D[Build obstacles]
+  D --> E[Spawn NPCs/companions/enemies]
+  E --> F[requestAnimationFrame loop]
+
+  F --> G[step(dt): world update]
+  F --> H[render(): draw frame]
+
+  %% step(dt)
+  G --> G0{runtime.gameState == 'chat'?}
+  G0 -- yes --> G00[Skip world simulation this frame]
+  G0 -- no --> G1[Timers: invuln, autosave]
+  G1 --> G2[Read input → ax/ay]
+  G2 --> G3[Aggregate companion auras + triggers]
+  G3 --> G4[Move player with collision]
+  G4 --> G5[handleAttacks: hit window, damage, gate unlock]
+  G5 --> G6[Enemy AI: chase, avoidance, contact damage]
+  G6 --> G7[Companions: follow chain, warp if stuck]
+  G7 --> G8[Effects: corpses/stains/floaters/sparkles]
+  G8 --> G9[Camera follow]
+
+  %% render()
+  H --> H1[Draw terrain bitmap]
+  H1 --> H2[Draw obstacles]
+  H2 --> H3[Draw stains + corpses]
+  H3 --> H4[Build y‑sorted drawables]
+  H4 --> H5[Draw NPCs/companions/enemies/player]
+  H5 --> H6[Enemy HP bars + aggro tell]
+  H6 --> H7[Player HP bar]
+  H7 --> H8[NPC markers]
+  H8 --> H9[Floaters + sparkles]
+  H9 --> H10[DOM UI: Party chips, VN overlay]
+
+  %% Clickable links to source
+  click A "src/main.js" "src/main.js"
+  click B "src/engine/input.js" "initInput() in src/engine/input.js"
+  click C "src/engine/terrain.js" "buildTerrainBitmap() in src/engine/terrain.js"
+  click D "src/engine/terrain.js" "buildObstacles() in src/engine/terrain.js"
+  click E "src/engine/state.js" "spawnEnemy/spawnNpc/spawnCompanion in src/engine/state.js"
+  click F "src/main.js" "RAF loop in src/main.js"
+  click G "src/systems/step.js" "step(dt) in src/systems/step.js"
+  click H "src/engine/render.js" "render() in src/engine/render.js"
+  click G5 "src/systems/combat.js" "handleAttacks()/gate unlock in src/systems/combat.js"
+  click H10 "src/engine/ui.js" "DOM UI + overlay in src/engine/ui.js"
+```
+
+Key modules: `src/systems/step.js`, `src/systems/combat.js`, `src/engine/render.js`, `src/engine/ui.js`, `src/engine/state.js`.
+
+### Space: Attack vs Interact
+
+```mermaid
+flowchart LR
+  K[Space key] --> L{willAttackHitEnemy()?}
+  L -- yes --> M[startAttack()]
+  L -- no --> N{tryInteract()}
+  N -- yes --> O[startDialog() → enterChat()]
+  N -- no --> M
+
+  %% Clickable links to source
+  click L "src/systems/combat.js" "willAttackHitEnemy() in src/systems/combat.js"
+  click M "src/systems/combat.js" "startAttack() in src/systems/combat.js"
+  click N "src/systems/combat.js" "tryInteract() in src/systems/combat.js"
+  click O "src/engine/dialog.js" "startDialog()/enterChat() in src/engine/dialog.js and src/engine/ui.js"
+```
+
+While in chat (VN overlay), gameplay input is suppressed; number keys or buttons select choices, Esc/X exits unless locked (e.g., Game Over).
+
+### Save/Load Path
+
+```mermaid
+flowchart LR
+  P[User chooses Save/Load] --> Q{window.SAVE_API_URL set?}
+  Q -- yes --> R[Remote API \n POST/GET/DELETE /api/save?slot=N \n headers: x-user-id, x-api-key]
+  Q -- no --> S[LocalStorage \n key: shadow_kingdom_save_{slot}]
+
+  %% Clickable links to source
+  click P "src/engine/dialog.js" "startSaveMenu()/save menu flows in src/engine/dialog.js"
+  click R "server/server.js" "Express endpoints in server/server.js"
+  click S "src/engine/save.js" "Local save/load in src/engine/save.js"
+```
+
+Serialization includes player, live enemies, companions (with inventories), NPCs, player inventory, and unlocked gates. Remote server lives in `server/` (Express) and can be deployed to Fly.io.

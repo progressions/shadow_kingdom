@@ -11,18 +11,33 @@ import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { updatePartyUI } from './engine/ui.js';
 
-// Initialize enemies (7 mooks, 2 featured foes, 1 boss)
-// Mooks
-spawnEnemy(world.w * 0.20, world.h * 0.20, 'mook');
-spawnEnemy(world.w * 0.30, world.h * 0.60, 'mook');
-spawnEnemy(world.w * 0.75, world.h * 0.50, 'mook');
-spawnEnemy(world.w * 0.50, world.h * 0.25, 'mook');
-spawnEnemy(world.w * 0.50, world.h * 0.75, 'mook');
-spawnEnemy(world.w * 0.80, world.h * 0.20, 'mook');
-spawnEnemy(world.w * 0.80, world.h * 0.80, 'mook');
-// Featured foes
-spawnEnemy(world.w * 0.35, world.h * 0.35, 'featured');
-spawnEnemy(world.w * 0.65, world.h * 0.65, 'featured');
+// Initialize enemies positioned around the three NPCs
+// Goal:
+// - Canopy: closest to the player, with 1 mook near her
+// - Hola: next closest, in a different location, with 4 mooks around her
+// - Yorna: furthest, with 3 mooks and 1 featured foe near her
+// - Keep the boss in the castle exactly as-is (see below)
+
+// Choose relative positions from the player start to ensure distance ordering.
+// Place Canopy just off-screen to the right at game start (still closer than Hola)
+// Camera half-width is ~160px; +172 ensures she's initially not visible
+const canopyPos = { x: Math.round(player.x + 172), y: Math.round(player.y - 10) };
+const holaPos   = { x: Math.round(player.x + 140), y: Math.round(player.y + 100) };
+const yornaPos  = { x: Math.round(player.x - 220), y: Math.round(player.y - 160) };
+
+// Enemies near Canopy (1 mook), spaced a bit further
+spawnEnemy(canopyPos.x + 28, canopyPos.y + 8, 'mook');
+
+// Enemies near Hola (3 mooks, wider triangle)
+spawnEnemy(holaPos.x - 36, holaPos.y - 16, 'mook');
+spawnEnemy(holaPos.x + 36, holaPos.y - 16, 'mook');
+spawnEnemy(holaPos.x + 0,  holaPos.y + 32, 'mook');
+
+// Enemies near Yorna (3 mooks, wider spread + 1 featured)
+spawnEnemy(yornaPos.x - 30,  yornaPos.y + 0,  'mook');
+spawnEnemy(yornaPos.x + 30,  yornaPos.y + 0,  'mook');
+spawnEnemy(yornaPos.x + 0,   yornaPos.y + 30, 'mook');
+spawnEnemy(yornaPos.x + 36,  yornaPos.y + 28, 'featured');
 // Boss — placed inside a small castle enclosure near bottom-right
 const castle = (function buildCastle() {
   const cw = TILE * 14; // ~14 tiles wide
@@ -57,20 +72,20 @@ const castle = (function buildCastle() {
 // Boss at center of castle interior
 spawnEnemy(castle.x + castle.w / 2 - 6, castle.y + castle.h / 2 - 8, 'boss');
 // NPCs with portraits (place your images at assets/portraits/*.png)
-// Place them near the starting area
-// Canopy: brown hair, feminine look, pink dress
+// Repositioned per request
+// Canopy: closest to player
 const canopySheet = makeSpriteSheet({ hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff77c8', shirt: '#ffd3ea' });
-const canopy = spawnNpc(player.x + 56, player.y + 8, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy.png', sheet: canopySheet });
+const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy.png', sheet: canopySheet });
 setNpcDialog(canopy, canopyDialog);
 
-// Yorna: red hair, warm orange dress
+// Yorna: furthest
 const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#ff9a4a', shirt: '#ffd1a6' });
-const yorna = spawnNpc(player.x - 72, player.y - 24, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna.png', sheet: yornaSheet });
+const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna.png', sheet: yornaSheet });
 setNpcDialog(yorna, yornaDialog);
 
-// Hola: black hair, cool blue dress
+// Hola: next closest in a different area
 const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#6fb7ff', shirt: '#bfe1ff' });
-const hola = spawnNpc(player.x + 24, player.y + 72, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola.png', sheet: holaSheet });
+const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola.png', sheet: holaSheet });
 setNpcDialog(hola, holaDialog);
 // Start with zero companions
 

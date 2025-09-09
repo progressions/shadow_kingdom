@@ -97,13 +97,12 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 
 export function step(dt) {
   // Pause the world while VN/inventory overlay is open
-  if (runtime.gameState === 'chat') {
-    return;
-  }
+  if (runtime.gameState === 'chat') return;
   // Decay interaction lock (prevents chatting immediately after taking damage)
   if (runtime.interactLock > 0) {
     runtime.interactLock = Math.max(0, runtime.interactLock - dt);
   }
+  
   // Decay player invulnerability timer
   if (player.invulnTimer > 0) player.invulnTimer = Math.max(0, player.invulnTimer - dt);
   // Autosave timer
@@ -327,6 +326,8 @@ export function step(dt) {
   camera.y = Math.round(player.y + player.h/2 - camera.h/2);
   camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
   camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
+
+  
 }
 
 function applyCompanionAuras(dt) {
