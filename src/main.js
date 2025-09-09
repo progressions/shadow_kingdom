@@ -83,8 +83,8 @@ spawnEnemy(
 );
 // NPCs with portraits (place your images at assets/portraits/*.png)
 // Repositioned per request
-// Canopy: closest to player
-const canopySheet = makeSpriteSheet({ hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff77c8', shirt: '#ffd3ea' });
+// Canopy: closest to player — blonde-haired healer in a blue dress
+const canopySheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' });
 const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', {
   name: 'Canopy',
   portrait: 'assets/portraits/Canopy/Canopy video.mp4',
@@ -93,8 +93,8 @@ const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', {
 });
 setNpcDialog(canopy, canopyDialog);
 
-// Yorna: furthest
-const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#ff9a4a', shirt: '#ffd1a6' });
+// Yorna: furthest — red-haired fighter in a black dress
+const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
 const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', {
   name: 'Yorna',
   portrait: 'assets/portraits/Yorna/Yorna video.mp4',
@@ -103,8 +103,8 @@ const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', {
 });
 setNpcDialog(yorna, yornaDialog);
 
-// Hola: next closest in a different area
-const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#6fb7ff', shirt: '#bfe1ff' });
+// Hola: next closest — black-haired sorceress in a white dress
+const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' });
 const hola = spawnNpc(holaPos.x, holaPos.y, 'up', {
   name: 'Hola',
   portrait: 'assets/portraits/Hola/Hola video.mp4',
