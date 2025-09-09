@@ -10,7 +10,7 @@ import { step } from './systems/step.js';
 import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI, fadeTransition } from './engine/ui.js';
+import { updatePartyUI, fadeTransition, updateQuestHint } from './engine/ui.js';
 import { loadLevel2 } from './engine/levels.js';
 
 // Initialize enemies positioned around the three NPCs
@@ -168,6 +168,7 @@ function loop(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   step(dt);
+  try { updateQuestHint(); } catch {}
   // Handle pending level transitions after VN closes (runtime set in step.js)
   if (runtime.gameState === 'play' && runtime.pendingLevel === 2) {
     const doSwap = () => {

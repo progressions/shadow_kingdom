@@ -16,6 +16,7 @@ const vnPortraitBox = document.querySelector('.vn-portrait');
 const partyUI = document.getElementById('party-ui');
 const bannerEl = document.getElementById('banner');
 const fadeEl = document.getElementById('fade');
+const questHintEl = document.getElementById('quest-hint');
 
 // Sidebar removed: VN overlay handles all dialog UI
 
@@ -314,6 +315,33 @@ export function fadeTransition(options) {
       fadeEl.classList.remove('show');
     }, Math.max(0, holdMs));
   }, Math.max(0, toBlackMs));
+}
+
+export function updateQuestHint() {
+  if (!questHintEl) return;
+  let msg = '';
+  try {
+    const f = runtime.questFlags || {};
+    const c = runtime.questCounters || {};
+    if (f['yorna_knot_started'] && !f['yorna_knot_cleared']) {
+      const left = c['yorna_knot_remaining'] ?? 2;
+      msg = `Quest — Cut the Knot: ${left} target${left===1?'':'s'} left`;
+    } else if (f['canopy_triage_started'] && !f['canopy_triage_cleared']) {
+      const left = c['canopy_triage_remaining'] ?? 3;
+      msg = `Quest — Breath and Bandages: ${left} target${left===1?'':'s'} left`;
+    } else if (f['hola_practice_started'] && !f['hola_practice_cleared']) {
+      const used = c['hola_practice_uses'] ?? 0;
+      msg = `Quest — Find Her Voice: Gust ${used}/2`;
+    } else if (f['oyin_fuse_started'] && !f['oyin_fuse_cleared']) {
+      const k = c['oyin_fuse_kindled'] ?? 0; const r = f['oyin_fuse_rally'] ? '1/1' : '0/1';
+      msg = `Quest — Light the Fuse: Kindle ${k}/3, Rally ${r}`;
+    } else if (f['twil_trace_started'] && !f['twil_trace_cleared']) {
+      const left = c['twil_trace_remaining'] ?? 3;
+      msg = `Quest — Trace the Footprints: ${left} left`;
+    }
+  } catch {}
+  if (msg) { questHintEl.style.display = ''; questHintEl.textContent = msg; }
+  else { questHintEl.style.display = 'none'; questHintEl.textContent = ''; }
 }
 
 function rolesForCompanion(name) {
