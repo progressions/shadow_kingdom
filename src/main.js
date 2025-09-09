@@ -75,17 +75,26 @@ spawnEnemy(castle.x + castle.w / 2 - 6, castle.y + castle.h / 2 - 8, 'boss');
 // Repositioned per request
 // Canopy: closest to player
 const canopySheet = makeSpriteSheet({ hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff77c8', shirt: '#ffd3ea' });
-const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy.png', sheet: canopySheet });
+const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', {
+  name: 'Canopy', portrait: 'assets/portraits/Canopy.png', sheet: canopySheet,
+  vnOnSight: { text: "Canopy: Oh! Hello." },
+});
 setNpcDialog(canopy, canopyDialog);
 
 // Yorna: furthest
 const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#ff9a4a', shirt: '#ffd1a6' });
-const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna.png', sheet: yornaSheet });
+const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', {
+  name: 'Yorna', portrait: 'assets/portraits/Yorna.png', sheet: yornaSheet,
+  vnOnSight: { text: "Yorna: Don't get in my way." },
+});
 setNpcDialog(yorna, yornaDialog);
 
 // Hola: next closest in a different area
 const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#6fb7ff', shirt: '#bfe1ff' });
-const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola.png', sheet: holaSheet });
+const hola = spawnNpc(holaPos.x, holaPos.y, 'up', {
+  name: 'Hola', portrait: 'assets/portraits/Hola.png', sheet: holaSheet,
+  vnOnSight: { text: 'Hola: Hi…' },
+});
 setNpcDialog(hola, holaDialog);
 // Start with zero companions
 

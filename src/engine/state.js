@@ -153,6 +153,8 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     portrait: null,
     dialog: null,
     sheet: opts.sheet || null,
+    // Minimal VN intro flag: if present, a simple VN appears once when first seen
+    vnOnSight: opts.vnOnSight || null,
   };
   if (npc.portraitSrc) {
     const img = new Image();

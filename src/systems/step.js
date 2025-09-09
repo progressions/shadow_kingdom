@@ -4,7 +4,7 @@ import { playSfx } from '../engine/audio.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
-import { startGameOver } from '../engine/dialog.js';
+import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges } from '../engine/ui.js';
 
@@ -327,7 +327,23 @@ export function step(dt) {
   camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
   camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
 
-  
+  // Minimal VN-on-sight: for any NPC with vnOnSight, show a simple VN once when first seen
+  if (runtime.gameState === 'play') {
+    for (const n of npcs) {
+      if (!n || !n.vnOnSight || n._vnShown) continue;
+      const inView = (
+        n.x + n.w > camera.x && n.x < camera.x + camera.w &&
+        n.y + n.h > camera.y && n.y < camera.y + camera.h
+      );
+      if (!inView) continue;
+      n._vnShown = true;
+      const text = (typeof n.vnOnSight.text === 'string' && n.vnOnSight.text.length)
+        ? n.vnOnSight.text
+        : `${n.name || 'Someone'} appears.`;
+      startPrompt(n, text, [ { label: 'Exit', action: 'end' } ]);
+      break; // only one per frame
+    }
+  }
 }
 
 function applyCompanionAuras(dt) {
