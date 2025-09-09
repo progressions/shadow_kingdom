@@ -47,7 +47,7 @@ export function spawnEnemy(x, y) {
   enemies.push({
     x, y,
     w: 12, h: 16,
-    speed: 20, // move very slowly
+    speed: 5, // move extremely slowly
     dir: 'down',
     moving: true,
     animTime: 0,

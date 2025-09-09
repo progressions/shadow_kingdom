@@ -16,6 +16,10 @@ spawnEnemy(world.w * 0.25, world.h * 0.5);
 spawnEnemy(world.w * 0.75, world.h * 0.5);
 spawnEnemy(world.w * 0.5,  world.h * 0.25);
 spawnEnemy(world.w * 0.5,  world.h * 0.75);
+// Add three additional enemies
+spawnEnemy(world.w * 0.2,  world.h * 0.2);
+spawnEnemy(world.w * 0.8,  world.h * 0.2);
+spawnEnemy(world.w * 0.8,  world.h * 0.8);
 // NPCs with portraits (place your images at assets/portraits/*.png)
 // Place them near the starting area
 // Canopy: brown hair, feminine look, pink dress
