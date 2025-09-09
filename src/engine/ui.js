@@ -142,7 +142,41 @@ export function updatePartyUI(companions) {
   companions.forEach((c, idx) => {
     const chip = document.createElement('div');
     chip.className = 'party-chip';
-    chip.textContent = c.name || `Companion ${idx+1}`;
+    // Base name
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = c.name || `Companion ${idx+1}`;
+    chip.appendChild(nameSpan);
+    // Affinity hearts (0–3 hearts, 0.5 steps). 3 hearts ≈ affinity 10; 1.5 hearts ≈ affinity 5
+    const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
+    const heartsVal = Math.max(0, Math.min(3, Math.round((aff / (10/3)) * 2) / 2));
+    const fullHearts = Math.floor(heartsVal);
+    const hasHalf = (heartsVal - fullHearts) >= 0.5;
+    const affSpan = document.createElement('span');
+    affSpan.className = 'affinity';
+    affSpan.style.marginLeft = '6px';
+    affSpan.style.opacity = '0.9';
+    affSpan.title = `Affinity ${(Math.round(aff*100)/100)} / 10`;
+    // Render full hearts
+    for (let h = 0; h < fullHearts; h++) {
+      const heart = document.createElement('span');
+      heart.textContent = '♥';
+      affSpan.appendChild(heart);
+    }
+    // Render half heart as a dimmed heart
+    if (hasHalf) {
+      const half = document.createElement('span');
+      half.textContent = '♥';
+      half.style.opacity = '0.5';
+      affSpan.appendChild(half);
+    }
+    if (affSpan.childNodes.length > 0) chip.appendChild(affSpan);
+    // Debug numeric affinity next to hearts (rounded to 2 decimals)
+    const affNum = document.createElement('span');
+    affNum.className = 'affinity-num';
+    affNum.style.marginLeft = '4px';
+    affNum.style.opacity = '0.8';
+    affNum.textContent = `${Number(aff).toFixed(2)}`;
+    chip.appendChild(affNum);
     chip.dataset.index = String(idx);
     // Role badges
     const roles = rolesForCompanion(c?.name || '');
@@ -177,6 +211,7 @@ export function updatePartyUI(companions) {
   partyUI.appendChild(box);
   // Buff badges from companions
   const buffs = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const f2 = (v) => Number(v || 0).toFixed(2);
   const bb = document.createElement('div');
   bb.className = 'buffs-box';
   const mk = (label, val, suffix='') => {
@@ -186,11 +221,11 @@ export function updatePartyUI(companions) {
     div.textContent = `${label}: ${val}${suffix}`;
     return div;
   };
-  bb.appendChild(mk('ATK', `+${buffs.atk||0}`));
-  bb.appendChild(mk('DR', `+${buffs.dr||0}`));
-  bb.appendChild(mk('Regen', (buffs.regen||0).toFixed(1), '/s'));
-  bb.appendChild(mk('Range', `+${buffs.range||0}`, 'px'));
-  bb.appendChild(mk('tDR', `+${buffs.touchDR||0}`));
+  bb.appendChild(mk('ATK', `+${f2(buffs.atk)}`));
+  bb.appendChild(mk('DR', `+${f2(buffs.dr)}`));
+  bb.appendChild(mk('Regen', f2(buffs.regen), '/s'));
+  bb.appendChild(mk('Range', `+${f2(buffs.range)}`, 'px'));
+  bb.appendChild(mk('tDR', `+${f2(buffs.touchDR)}`));
   partyUI.appendChild(bb);
   // Click to manage companion
   partyUI.onclick = (ev) => {
@@ -210,12 +245,13 @@ export function updateBuffBadges() {
   const bb = container.querySelector('.buffs-box');
   if (!bb) return;
   const b = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const f2 = (v) => Number(v || 0).toFixed(2);
   const texts = [
-    `ATK: +${b.atk||0}`,
-    `DR: +${b.dr||0}`,
-    `Regen: ${(b.regen||0).toFixed(1)}/s`,
-    `Range: +${b.range||0}px`,
-    `tDR: +${b.touchDR||0}`,
+    `ATK: +${f2(b.atk)}`,
+    `DR: +${f2(b.dr)}`,
+    `Regen: ${f2(b.regen)}/s`,
+    `Range: +${f2(b.range)}px`,
+    `tDR: +${f2(b.touchDR)}`,
   ];
   // Ensure we have 5 children; if not, rebuild
   const need = 5;

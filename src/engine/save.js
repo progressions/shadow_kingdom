@@ -105,8 +105,8 @@ function serializePayload() {
     at: Date.now(),
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir },
     enemies: enemies.filter(e => e.hp > 0).map(e => ({ x: e.x, y: e.y, hp: e.hp, dir: e.dir, kind: e.kind || 'mook' })),
-    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null })),
-    npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null })),
+    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2 })),
+    npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 })),
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
     unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
@@ -114,6 +114,7 @@ function serializePayload() {
     openedChests: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'chest' && o.opened && o.id).map(o => o.id) : []),
     brokenBreakables: Object.keys(runtime?.brokenBreakables || {}),
     vnSeen: Object.keys(runtime?.vnSeen || {}),
+    affinityFlags: Object.keys(runtime?.affinityFlags || {}),
   };
 }
 
@@ -133,6 +134,11 @@ function deserializePayload(data) {
   runtime.vnSeen = {};
   if (Array.isArray(data.vnSeen)) {
     for (const k of data.vnSeen) runtime.vnSeen[k] = true;
+  }
+  // Restore affinity flags
+  runtime.affinityFlags = {};
+  if (Array.isArray(data.affinityFlags)) {
+    for (const k of data.affinityFlags) runtime.affinityFlags[k] = true;
   }
   // Restore enemies
   if (Array.isArray(data.enemies)) {
@@ -171,7 +177,7 @@ function deserializePayload(data) {
   if (Array.isArray(data.companions)) {
     for (const c of data.companions) {
       const sheet = sheetForName(c.name);
-      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null });
+      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2 });
       comp.dir = c.dir || 'down';
       if (c.inventory) comp.inventory = c.inventory;
     }
@@ -181,7 +187,7 @@ function deserializePayload(data) {
   if (Array.isArray(data.npcs)) {
     for (const n of data.npcs) {
       const sheet = sheetForName(n.name);
-      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, portrait: n.portrait || null });
+      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, portrait: n.portrait || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
       attachDialogByName(npc);
     }
   }

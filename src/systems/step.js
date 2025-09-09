@@ -200,9 +200,9 @@ export function step(dt) {
     const solidsForEnemy = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
     if (Math.abs(e.knockbackX) > 0.01 || Math.abs(e.knockbackY) > 0.01) {
       const slowMul = (e._slowMul || 1);
-      const gustMul = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1;
-      const veilMul = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (1 - 0.5) : 1;
-      const mul = slowMul * gustMul * veilMul;
+      const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
+      const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow)));
       moveWithCollision(e, e.knockbackX * dt * mul, e.knockbackY * dt * mul, solidsForEnemy);
       e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
     } else {
@@ -211,9 +211,9 @@ export function step(dt) {
       const dist = Math.hypot(dx, dy) || 1; dx/=dist; dy/=dist;
       const oldX = e.x, oldY = e.y;
       const slowMul = (e._slowMul || 1);
-      const gustMul = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (1 - 0.25) : 1;
-      const veilMul = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (1 - 0.5) : 1;
-      const mul = slowMul * gustMul * veilMul;
+      const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
+      const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow)));
       moveWithCollision(e, dx * e.speed * mul * dt, dy * e.speed * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
@@ -510,13 +510,17 @@ function applyCompanionAuras(dt) {
     const key = (c.name || '').toLowerCase();
     const def = companionEffectsByKey[key];
     if (!def || !def.auras) continue;
+    // Affinity multiplier: 1.0 at 1 → 1.5 at 10
+    const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
+    const t = Math.max(0, Math.min(9, aff - 1));
+    const mult = 1 + (t / 9) * 0.5;
     for (const a of def.auras) {
       switch (a.type) {
-        case 'atk': buffs.atk += a.value || 0; break;
-        case 'dr': buffs.dr += a.value || 0; break;
-        case 'regen': buffs.regen += a.value || 0; break;
-        case 'range': buffs.range += a.value || 0; break;
-        case 'touchDR': buffs.touchDR += a.value || 0; break;
+        case 'atk': buffs.atk += (a.value || 0) * mult; break;
+        case 'dr': buffs.dr += (a.value || 0) * mult; break;
+        case 'regen': buffs.regen += (a.value || 0) * mult; break;
+        case 'range': buffs.range += (a.value || 0) * mult; break;
+        case 'touchDR': buffs.touchDR += (a.value || 0) * mult; break;
         case 'slow': {
           const rad = a.radius || 0;
           if (rad > 0) {
@@ -526,7 +530,7 @@ function applyCompanionAuras(dt) {
             for (let ei = 0; ei < enemies.length; ei++) {
               const e = enemies[ei]; if (e.hp <= 0) continue;
               const dx = (e.x - ax), dy = (e.y - ay);
-              if ((dx*dx + dy*dy) <= rad*rad) slowAccum[ei] = Math.max(slowAccum[ei], a.value || 0);
+              if ((dx*dx + dy*dy) <= rad*rad) slowAccum[ei] = Math.max(slowAccum[ei], (a.value || 0) * mult);
             }
           }
           break;
@@ -582,45 +586,72 @@ function handleCompanionTriggers(dt) {
     if (runtime.shieldTimer <= 0) runtime.shieldActive = false;
   }
 
-  // Presence checks
+  // Presence checks and affinity multiplier
   const has = (key) => companions.some(c => (c.name || '').toLowerCase().includes(key));
+  const multFor = (key) => {
+    let m = 1;
+    for (const c of companions) {
+      const nm = (c.name || '').toLowerCase();
+      if (nm.includes(key)) {
+        const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
+        const t = Math.max(0, Math.min(9, aff - 1));
+        m = Math.max(m, 1 + (t / 9) * 0.5);
+      }
+    }
+    return m;
+  };
   // Canopy shield trigger
   if (has('canopy')) {
-    const def = companionEffectsByKey.canopy?.triggers?.shield || { hpThresh: 0.4, cooldownSec: 12, durationSec: 6 };
+    const base = companionEffectsByKey.canopy?.triggers?.shield || { hpThresh: 0.4, cooldownSec: 12, durationSec: 6 };
+    const m = multFor('canopy');
+    const eff = {
+      hpThresh: (base.hpThresh || 0.4) + ((m - 1) * 0.2),
+      cooldownSec: (base.cooldownSec || 12) / (1 + (m - 1) * 0.5),
+      durationSec: (base.durationSec || 6) * m,
+    };
     const hpRatio = player.hp / player.maxHp;
-    if (!runtime.shieldActive && (cds.canopyShield || 0) <= 0 && hpRatio < (def.hpThresh || 0.4)) {
+    if (!runtime.shieldActive && (cds.canopyShield || 0) <= 0 && hpRatio < eff.hpThresh) {
       runtime.shieldActive = true;
-      runtime.shieldTimer = def.durationSec || 6;
-      cds.canopyShield = def.cooldownSec || 12;
+      runtime.shieldTimer = eff.durationSec;
+      cds.canopyShield = eff.cooldownSec;
       spawnFloatText(player.x + player.w/2, player.y - 10, 'Shield!', { color: '#8ab4ff', life: 0.8 });
     }
   }
 
   // Hola gust trigger
   if (has('hola')) {
-    const def = companionEffectsByKey.hola?.triggers?.gust || { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 };
+    const base = companionEffectsByKey.hola?.triggers?.gust || { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 };
+    const m = multFor('hola');
+    const eff = {
+      radius: (base.radius || 24) * (1 + (m - 1) * 0.5),
+      slow: Math.min((base.slow || 0.25) * m, COMPANION_BUFF_CAPS.slow),
+      durationSec: (base.durationSec || 0.4) * m,
+      push: (base.push || 14) * m,
+      cooldownSec: (base.cooldownSec || 10) / (1 + (m - 1) * 0.5),
+    };
     if ((cds.holaGust || 0) <= 0) {
       // Any enemy in radius of player?
       let any = false;
       for (const e of enemies) {
         if (e.hp <= 0) continue;
         const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (def.radius * def.radius)) { any = true; break; }
+        if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) { any = true; break; }
       }
       if (any) {
         for (const e of enemies) {
           if (e.hp <= 0) continue;
           const dx = e.x - player.x, dy = e.y - player.y;
-          if ((dx*dx + dy*dy) <= (def.radius * def.radius)) {
+          if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) {
             const mag = Math.hypot(dx, dy) || 1;
-            const px = (dx / mag) * def.push;
-            const py = (dy / mag) * def.push;
+            const px = (dx / mag) * eff.push;
+            const py = (dy / mag) * eff.push;
             const solids = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
             moveWithCollision(e, px, py, solids);
-            e._gustSlowTimer = Math.max(e._gustSlowTimer || 0, def.durationSec || 0.4);
+            e._gustSlowTimer = Math.max(e._gustSlowTimer || 0, eff.durationSec);
+            e._gustSlowFactor = eff.slow;
           }
         }
-        cds.holaGust = def.cooldownSec || 10;
+        cds.holaGust = eff.cooldownSec;
         spawnFloatText(player.x + player.w/2, player.y - 12, 'Gust!', { color: '#a1e3ff', life: 0.8 });
       }
     }
@@ -629,11 +660,17 @@ function handleCompanionTriggers(dt) {
   // Oyin Rally: below HP threshold, small heal and temporary ATK buff
   if (has('oyin')) {
     const hpRatio = player.hp / player.maxHp;
-    if ((cds.oyinRally || 0) <= 0 && hpRatio < 0.4 && player.hp > 0) {
-      player.hp = Math.min(player.maxHp, player.hp + 2);
-      runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, 1);
-      runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, 5);
-      cds.oyinRally = 20;
+    const m = multFor('oyin');
+    const heal = Math.min(3, Math.round(2 * m));
+    const atkBonus = Math.min(2, 1 * m);
+    const dur = 5 * m;
+    const thresh = 0.4 + (m - 1) * 0.1;
+    const cd = 20 / (1 + (m - 1) * 0.5);
+    if ((cds.oyinRally || 0) <= 0 && hpRatio < thresh && player.hp > 0) {
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, atkBonus);
+      runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, dur);
+      cds.oyinRally = cd;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Rally!', { color: '#ffd166', life: 0.9 });
     }
   }
@@ -647,13 +684,18 @@ function handleCompanionTriggers(dt) {
       if ((dx*dx + dy*dy) <= (40*40)) nearby++;
       if (nearby >= 2) break;
     }
+    const m = multFor('twil');
+    const r = 40 * (1 + (m - 1) * 0.5);
+    const dur = 0.4 * m;
+    const slow = Math.min(0.6, 0.5 * m);
+    const cd = 12 / (1 + (m - 1) * 0.5);
     if (nearby >= 2 && (cds.twilDust || 0) <= 0) {
       for (const e of enemies) {
         if (e.hp <= 0) continue;
         const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (40*40)) e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 0.4);
+        if ((dx*dx + dy*dy) <= (r*r)) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, dur); e._veilSlow = slow; }
       }
-      cds.twilDust = 12;
+      cds.twilDust = cd;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil!', { color: '#a1e3ff', life: 0.8 });
     }
   }

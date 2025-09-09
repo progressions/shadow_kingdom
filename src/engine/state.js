@@ -124,7 +124,21 @@ export function spawnStain(x, y, opts = {}) {
 // Floating combat text (pass-through, fades and rises)
 export const floaters = [];
 export function spawnFloatText(x, y, text, opts = {}) {
-  floaters.push({ x, y, text: String(text), color: opts.color || '#eaeaea', t: 0, life: opts.life || 0.8 });
+  let disp;
+  if (typeof text === 'number') {
+    disp = text.toFixed(2);
+  } else if (typeof text === 'string') {
+    const trimmed = text.trim();
+    if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+      const n = parseFloat(trimmed);
+      disp = Number.isFinite(n) ? n.toFixed(2) : trimmed;
+    } else {
+      disp = text;
+    }
+  } else {
+    disp = String(text);
+  }
+  floaters.push({ x, y, text: disp, color: opts.color || '#eaeaea', t: 0, life: opts.life || 0.8 });
 }
 
 // Healing sparkle particles (pass-through, fade and drift up)
@@ -153,6 +167,7 @@ export function spawnCompanion(x, y, sheet, opts = {}) {
     name: opts.name || 'Companion',
     portraitSrc: opts.portrait || opts.portraitSrc || null,
     inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
+    affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
   };
   companions.push(comp);
   return comp;
@@ -173,6 +188,8 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     sheet: opts.sheet || null,
     // Minimal VN intro flag: if present, a simple VN appears once when first seen
     vnOnSight: opts.vnOnSight || null,
+    // Affinity before recruitment (carried into party on join)
+    affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
   };
   // Preload portrait only for image extensions
   if (npc.portraitSrc && /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(npc.portraitSrc)) {
@@ -226,5 +243,7 @@ export const runtime = {
   // Temporary combat buffs (timed)
   tempAtkBonus: 0,
   _tempAtkTimer: 0,
+  // One-time VN affinity flags to prevent repeats
+  affinityFlags: {},
   
 };

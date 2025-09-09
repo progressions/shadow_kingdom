@@ -113,9 +113,14 @@ export function handleAttacks(dt) {
         if (hasYorna) {
           const cfg = companionEffectsByKey.yorna?.onPlayerHit || { bonusPct: 0.5, cooldownSec: 1.2 };
           if ((runtime.companionCDs.yornaEcho || 0) <= 0) {
-            const bonus = Math.max(1, Math.round(dmg * (cfg.bonusPct || 0.5)));
+            // Affinity scaling for Yorna
+            let m = 1;
+            for (const c of companions) { const nm = (c.name || '').toLowerCase(); if (nm.includes('yorna')) { const aff = (typeof c.affinity==='number')?c.affinity:2; const t = Math.max(0, Math.min(9, aff-1)); m = Math.max(m, 1 + (t/9)*0.5); } }
+            const bonusPct = Math.min(0.75, (cfg.bonusPct || 0.5) * m);
+            const bonus = Math.max(1, Math.round(dmg * bonusPct));
             e.hp -= bonus;
-            runtime.companionCDs.yornaEcho = cfg.cooldownSec || 1.2;
+            const cd = (cfg.cooldownSec || 1.2) / (1 + (m - 1) * 0.5);
+            runtime.companionCDs.yornaEcho = cd;
             // small bark
             import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 8, `Echo +${bonus}`, { color: '#ffd166', life: 0.7 }));
           }

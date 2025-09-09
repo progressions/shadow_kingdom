@@ -109,7 +109,14 @@ export function renderCurrentNode() {
   const { tree, nodeId } = runtime.activeDialog;
   const node = tree.nodes[nodeId];
   if (!node) { setOverlayDialog('...', []); return; }
-  setOverlayDialog(node.text || '', node.choices || []);
+  // Filter choices by optional affinity requirements
+  const rawChoices = node.choices || [];
+  const filtered = [];
+  for (const ch of rawChoices) {
+    if (!ch || !ch.requires) { filtered.push(ch); continue; }
+    if (meetsAffinityRequirement(ch.requires)) filtered.push(ch);
+  }
+  setOverlayDialog(node.text || '', filtered);
   // Sidebar placeholder removed; VN overlay displays choices
 }
 
@@ -118,11 +125,16 @@ export function selectChoice(index) {
   const { tree } = runtime.activeDialog;
   const node = tree.nodes[runtime.activeDialog.nodeId];
   if (!node || !node.choices) return;
-  const choice = node.choices[index];
+  // Apply the same filter as render to maintain index mapping
+  const rawChoices = node.choices || [];
+  const choices = [];
+  for (const ch of rawChoices) { if (!ch || !ch.requires || meetsAffinityRequirement(ch.requires)) choices.push(ch); }
+  const choice = choices[index];
   if (!choice) return;
   // No turn-based battle actions; only VN/inventory/save actions are handled.
   if (choice.action === 'end') { endDialog(); exitChat(runtime); return; }
   if (choice.action === 'game_over_restart') { try { window.location.reload(); } catch {} return; }
+  if (choice.action === 'affinity_add') { handleAffinityAdd(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
   if (choice.action === 'join_party') {
     const npc = runtime.activeNpc;
     if (npc) {
@@ -132,7 +144,7 @@ export function selectChoice(index) {
         return;
       }
       // Spawn as companion using NPC sheet if available
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc });
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
       // Remove NPC from world
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
@@ -231,6 +243,60 @@ export function selectChoice(index) {
   if (choice.action === 'inv_quick_list') { openQuickEquipList(choice.data.actorTag); return; }
   if (choice.action === 'inv_quick_equip') { doEquip(choice.data.actorTag, choice.data.slot, undefined, choice.data.itemId); openQuickEquipList(choice.data.actorTag); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
+}
+
+// ---- Affinity helpers ----
+function getCompanionByName(nameLower) {
+  const key = String(nameLower || '').toLowerCase();
+  for (const c of companions) {
+    const nm = (c.name || '').toLowerCase();
+    if (nm.includes(key)) return c;
+  }
+  return null;
+}
+
+function resolveEntityForAffinity(target) {
+  if (!target) return null;
+  const t = String(target).toLowerCase();
+  if (t === 'active') {
+    // Prefer active NPC; if absent, try companion by active name
+    const actor = runtime.activeNpc;
+    if (actor) return actor; // NPC object with affinity
+    // Fallback to a companion with matching name if any
+    return getCompanionByName(actor?.name || '');
+  }
+  // Try companions first, then NPCs by name includes
+  const comp = getCompanionByName(t);
+  if (comp) return comp;
+  const key = t;
+  for (const n of npcs) { const nm = (n.name || '').toLowerCase(); if (nm.includes(key)) return n; }
+  return null;
+}
+
+function meetsAffinityRequirement(req) {
+  try {
+    const t = resolveEntityForAffinity(req.target || 'active');
+    if (!t) return false;
+    const aff = typeof t.affinity === 'number' ? t.affinity : 0;
+    if (typeof req.min === 'number' && aff < req.min) return false;
+    if (typeof req.max === 'number' && aff > req.max) return false;
+    return true;
+  } catch { return true; }
+}
+
+function handleAffinityAdd(data) {
+  try {
+    const amt = (typeof data?.amount === 'number') ? data.amount : 0;
+    const tgt = data?.target || 'active';
+    const flag = data?.flag || null;
+    if (flag && runtime.affinityFlags && runtime.affinityFlags[flag]) return; // already applied
+    const ent = resolveEntityForAffinity(tgt);
+    if (!ent) return;
+    ent.affinity = Math.max(1, Math.min(10, (typeof ent.affinity === 'number' ? ent.affinity : 5) + amt));
+    if (flag) runtime.affinityFlags[flag] = true;
+    // Feedback
+    try { showBanner(`${ent.name || 'Companion'} affinity ${amt >= 0 ? '+' : ''}${(Math.round(amt*100)/100)}`); } catch {}
+  } catch {}
 }
 
 // Inventory menus
