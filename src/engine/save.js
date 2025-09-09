@@ -164,6 +164,8 @@ function deserializePayload(data) {
     if (key.includes('canopy')) npc.dialog = canopyDialog;
     else if (key.includes('yorna')) npc.dialog = yornaDialog;
     else if (key.includes('hola')) npc.dialog = holaDialog;
+    else if (key.includes('oyin')) import('../data/dialogs.js').then(mod => npc.dialog = mod.oyinDialog).catch(()=>{});
+    else if (key.includes('twil')) import('../data/dialogs.js').then(mod => npc.dialog = mod.twilDialog).catch(()=>{});
   };
   // Restore companions
   if (Array.isArray(data.companions)) {

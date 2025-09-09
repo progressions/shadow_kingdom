@@ -6,6 +6,7 @@ export const sampleItems = [
   { id: 'helm_bronze',   name: 'Bronze Helm',   slot: 'head',      dr: 2 },
   { id: 'shirt_cloth',   name: 'Cloth Tunic',   slot: 'torso',     dr: 1 },
   { id: 'armor_leather', name: 'Leather Armor', slot: 'torso',     dr: 2 },
+  { id: 'armor_scaled',  name: 'Scaled Cuirass', slot: 'torso',     dr: 3 },
   { id: 'pants_cloth',   name: 'Cloth Pants',   slot: 'legs',      dr: 1 },
   { id: 'greaves_leather', name: 'Leather Greaves', slot: 'legs',   dr: 1 },
   { id: 'stick',         name: 'Wooden Stick',  slot: 'rightHand',  atk: 1 },
@@ -15,6 +16,7 @@ export const sampleItems = [
   { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0 },
   // Key items (not equip slots): use slot 'misc'
   { id: 'key_bronze',    name: 'Bronze Key',    slot: 'misc',       keyId: 'castle_gate' },
+  { id: 'key_nethra',    name: 'Ruin Gate Key', slot: 'misc',       keyId: 'key_nethra' },
 ];
 
 export function cloneItem(item) {
