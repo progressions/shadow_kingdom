@@ -70,6 +70,8 @@ export function handleAttacks(dt) {
           const drop = rollFromTable(table);
           if (drop) import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, drop));
         } catch {}
+        // Track broken id for persistence
+        try { if (o.id) runtime.brokenBreakables[o.id] = true; } catch {}
         const idx = obstacles.indexOf(o);
         if (idx !== -1) obstacles.splice(idx, 1);
         playSfx('break');
