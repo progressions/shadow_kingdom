@@ -281,6 +281,13 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
+      // If boss defeated, show a VN overlay with defeat line and video portrait
+      if ((e.kind || '').toLowerCase() === 'boss') {
+        try {
+          const actor = { name: e.name || 'Vast', portraitSrc: 'assets/portraits/Vast/Vast defeated.mp4' };
+          startPrompt(actor, "Vast: I can't believe you defeated me... but my master Urathar will still prevail.", []);
+        } catch {}
+      }
       // Drops
       try {
         let drop = null;

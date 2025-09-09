@@ -137,7 +137,7 @@ function deserializePayload(data) {
   if (Array.isArray(data.enemies)) {
     for (const e of data.enemies) {
       const kind = (e.kind || 'mook').toLowerCase();
-      const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 20, dmg: 6 }
+      const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 30, dmg: 8 }
         : (kind === 'featured') ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3 }
         : { name: 'Mook', speed: 10, hp: 3, dmg: 3 };
       enemies.push({

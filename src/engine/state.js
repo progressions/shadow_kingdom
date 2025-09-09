@@ -59,7 +59,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   // Three classes: mook, featured, boss
   const T = String(type).toLowerCase();
   const cfg = (T === 'boss')
-    ? { name: 'Boss', speed: 12, hp: 20, dmg: 6, sheet: enemyBossSheet, kind: 'boss' }
+    ? { name: 'Boss', speed: 12, hp: 30, dmg: 8, sheet: enemyBossSheet, kind: 'boss' }
     : (T === 'featured' || T === 'foe' || T === 'elite')
       ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3, sheet: enemyFeaturedSheet, kind: 'featured' }
       : { name: 'Mook', speed: 10, hp: 3, dmg: 3, sheet: enemyMookSheet, kind: 'mook' };
