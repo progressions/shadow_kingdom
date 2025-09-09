@@ -1,4 +1,5 @@
-import { runtime } from './state.js';
+import { runtime, player } from './state.js';
+import { getEquipStats } from './utils.js';
 import { playSfx } from './audio.js';
 export const canvas = document.getElementById('game');
 export const ctx = canvas.getContext('2d');
@@ -96,6 +97,21 @@ export function updatePartyUI(companions) {
     chip.dataset.index = String(idx);
     partyUI.appendChild(chip);
   });
+  // Player equipped items box
+  const eq = player?.inventory?.equipped || {};
+  const box = document.createElement('div');
+  box.className = 'equip-box';
+  const mods = getEquipStats(player);
+  const lines = [
+    `<div class="equip-title">Equipment <span class="mods">ATK +${mods.atk||0} · DR +${mods.dr||0}</span></div>`,
+    `<div>Head: ${eq.head ? eq.head.name : '(empty)'}</div>`,
+    `<div>Torso: ${eq.torso ? eq.torso.name : '(empty)'}</div>`,
+    `<div>Legs: ${eq.legs ? eq.legs.name : '(empty)'}</div>`,
+    `<div>L-Hand: ${eq.leftHand ? eq.leftHand.name : '(empty)'}</div>`,
+    `<div>R-Hand: ${eq.rightHand ? eq.rightHand.name : '(empty)'}</div>`,
+  ];
+  box.innerHTML = lines.join('');
+  partyUI.appendChild(box);
   // Click to manage companion
   partyUI.onclick = (ev) => {
     const t = ev.target;

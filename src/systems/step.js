@@ -1,6 +1,6 @@
 import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain } from '../engine/state.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
-import { rectsIntersect } from '../engine/utils.js';
+import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
 import { startGameOver } from '../engine/dialog.js';
 import { saveGame } from '../engine/save.js';
@@ -200,16 +200,21 @@ export function step(dt) {
       if (rectsTouchOrOverlap(pr, er, 0.5)) {
         // If they actually overlap, separate just enough but still allow contact
         if (rectsIntersect(pr, er)) separateEntities(player, e, 0.65);
-        // Overworld realtime damage on contact
+        // Overworld realtime damage on contact; apply armor DR
         if (player.invulnTimer <= 0) {
-          player.hp = Math.max(0, player.hp - e.touchDamage);
+          const dr = (getEquipStats(player).dr) || 0;
+          const raw = e.touchDamage || 1;
+          const taken = Math.max(0, raw - dr);
           e.hitTimer = e.hitCooldown;
-          // Minimal or no knockback; keep player controllable
-          player.knockbackX = 0;
-          player.knockbackY = 0;
-          // Invincibility window and light interaction lock
-          player.invulnTimer = 0.6;
-          runtime.interactLock = Math.max(runtime.interactLock, 0.2);
+          if (taken > 0) {
+            player.hp = Math.max(0, player.hp - taken);
+            // Minimal or no knockback; keep player controllable
+            player.knockbackX = 0;
+            player.knockbackY = 0;
+            // Invincibility window and light interaction lock
+            player.invulnTimer = 0.6;
+            runtime.interactLock = Math.max(runtime.interactLock, 0.2);
+          }
         }
       }
     }

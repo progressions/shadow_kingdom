@@ -423,6 +423,8 @@ function doEquip(actorTag, slot, index, itemId) {
   // equip selected and remove from items
   eq[slot] = it;
   items.splice(idx, 1);
+  // Refresh equipment panel
+  updatePartyUI(companions);
 }
 
 function doUnequip(actorTag, slot) {
@@ -432,4 +434,5 @@ function doUnequip(actorTag, slot) {
   if (!eq[slot]) return;
   actor.inventory.items.push(eq[slot]);
   eq[slot] = null;
+  updatePartyUI(companions);
 }

@@ -1,5 +1,5 @@
 import { player, enemies, npcs, companions, runtime } from '../engine/state.js';
-import { rectsIntersect } from '../engine/utils.js';
+import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
@@ -43,7 +43,9 @@ export function handleAttacks(dt) {
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
-        e.hp -= player.damage;
+        const mods = getEquipStats(player);
+        const dmg = Math.max(1, (player.damage || 1) + (mods.atk || 0));
+        e.hp -= dmg;
         const dx = (e.x + e.w/2) - (player.x + player.w/2);
         const dy = (e.y + e.h/2) - (player.y + player.h/2);
         const mag = Math.hypot(dx, dy) || 1;
