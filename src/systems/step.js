@@ -685,6 +685,20 @@ function handleCompanionTriggers(dt) {
         }
         cds.holaGust = eff.cooldownSec;
         spawnFloatText(player.x + player.w/2, player.y - 12, 'Gust!', { color: '#a1e3ff', life: 0.8 });
+        // Quest tracking: Hola 'Find Her Voice' — count gust uses
+        try {
+          if (runtime.questFlags && runtime.questFlags['hola_practice_started'] && !runtime.questFlags['hola_practice_cleared']) {
+            if (!runtime.questCounters) runtime.questCounters = {};
+            const used = (runtime.questCounters['hola_practice_uses'] || 0) + 1;
+            runtime.questCounters['hola_practice_uses'] = used;
+            if (used >= 2) {
+              runtime.questFlags['hola_practice_cleared'] = true;
+              showBanner('Quest updated: Find Her Voice — cleared');
+            } else {
+              showBanner(`Quest: Gust used ${used}/2`);
+            }
+          }
+        } catch {}
       }
     }
   }
