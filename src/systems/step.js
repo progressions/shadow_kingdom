@@ -321,6 +321,38 @@ export function step(dt) {
         // Schedule level change to Level 2 after VN closes
         try { runtime.pendingLevel = 2; } catch {}
       }
+      // Quest tracking: Yorna 'Cut the Knot'; Canopy 'Breath and Bandages'; Twil 'Trace the Footprints'
+      try {
+        if (e.questId === 'yorna_knot') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'yorna_knot_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) {
+            if (!runtime.questFlags) runtime.questFlags = {};
+            runtime.questFlags['yorna_knot_cleared'] = true;
+            showBanner('Quest updated: Cut the Knot — cleared');
+          } else {
+            showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+          }
+        }
+        if (e.questId === 'canopy_triage') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'canopy_triage_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_triage_cleared'] = true; showBanner('Quest updated: Breath and Bandages — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'twil_trace') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'twil_trace_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_trace_cleared'] = true; showBanner('Quest updated: Trace the Footprints — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+      } catch {}
       // Drops
       try {
         let drop = null;
@@ -672,6 +704,8 @@ function handleCompanionTriggers(dt) {
       runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, dur);
       cds.oyinRally = cd;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Rally!', { color: '#ffd166', life: 0.9 });
+      // Quest tracking: Oyin fuse — mark rally done
+      try { if (runtime.questFlags && runtime.questFlags['oyin_fuse_started']) runtime.questFlags['oyin_fuse_rally'] = true; } catch {}
     }
   }
 

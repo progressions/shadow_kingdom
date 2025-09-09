@@ -109,12 +109,12 @@ export function renderCurrentNode() {
   const { tree, nodeId } = runtime.activeDialog;
   const node = tree.nodes[nodeId];
   if (!node) { setOverlayDialog('...', []); return; }
-  // Filter choices by optional affinity requirements
+  // Filter choices by optional requirements (affinity and/or flags)
   const rawChoices = node.choices || [];
   const filtered = [];
   for (const ch of rawChoices) {
     if (!ch || !ch.requires) { filtered.push(ch); continue; }
-    if (meetsAffinityRequirement(ch.requires)) filtered.push(ch);
+    if (meetsRequirement(ch.requires)) filtered.push(ch);
   }
   setOverlayDialog(node.text || '', filtered);
   // Sidebar placeholder removed; VN overlay displays choices
@@ -128,13 +128,15 @@ export function selectChoice(index) {
   // Apply the same filter as render to maintain index mapping
   const rawChoices = node.choices || [];
   const choices = [];
-  for (const ch of rawChoices) { if (!ch || !ch.requires || meetsAffinityRequirement(ch.requires)) choices.push(ch); }
+  for (const ch of rawChoices) { if (!ch || !ch.requires || meetsRequirement(ch.requires)) choices.push(ch); }
   const choice = choices[index];
   if (!choice) return;
   // No turn-based battle actions; only VN/inventory/save actions are handled.
   if (choice.action === 'end') { endDialog(); exitChat(runtime); return; }
   if (choice.action === 'game_over_restart') { try { window.location.reload(); } catch {} return; }
   if (choice.action === 'affinity_add') { handleAffinityAdd(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
+  if (choice.action === 'start_quest') { handleStartQuest(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
+  if (choice.action === 'set_flag') { handleSetFlag(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
   if (choice.action === 'join_party') {
     const npc = runtime.activeNpc;
     if (npc) {
@@ -273,13 +275,29 @@ function resolveEntityForAffinity(target) {
   return null;
 }
 
-function meetsAffinityRequirement(req) {
+function meetsRequirement(req) {
   try {
-    const t = resolveEntityForAffinity(req.target || 'active');
-    if (!t) return false;
-    const aff = typeof t.affinity === 'number' ? t.affinity : 0;
-    if (typeof req.min === 'number' && aff < req.min) return false;
-    if (typeof req.max === 'number' && aff > req.max) return false;
+    // Affinity gate
+    if (req.target || typeof req.min === 'number' || typeof req.max === 'number') {
+      const t = resolveEntityForAffinity(req.target || 'active');
+      if (!t) return false;
+      const aff = typeof t.affinity === 'number' ? t.affinity : 0;
+      if (typeof req.min === 'number' && aff < req.min) return false;
+      if (typeof req.max === 'number' && aff > req.max) return false;
+    }
+    // Flag gate
+    if (req.flag) {
+      const has = !!(runtime.questFlags && runtime.questFlags[req.flag]);
+      if (req.not) { if (has) return false; } else { if (!has) return false; }
+    }
+    if (req.hasFlag) {
+      const key = String(req.hasFlag);
+      if (!(runtime.questFlags && runtime.questFlags[key])) return false;
+    }
+    if (req.missingFlag) {
+      const key = String(req.missingFlag);
+      if (runtime.questFlags && runtime.questFlags[key]) return false;
+    }
     return true;
   } catch { return true; }
 }
@@ -296,6 +314,64 @@ function handleAffinityAdd(data) {
     if (flag) runtime.affinityFlags[flag] = true;
     // Feedback
     try { showBanner(`${ent.name || 'Companion'} affinity ${amt >= 0 ? '+' : ''}${(Math.round(amt*100)/100)}`); } catch {}
+  } catch {}
+}
+
+function handleSetFlag(data) {
+  try {
+    const key = String(data?.key || '').trim();
+    if (!key) return;
+    if (!runtime.questFlags) runtime.questFlags = {};
+    runtime.questFlags[key] = true;
+  } catch {}
+}
+
+function handleStartQuest(data) {
+  try {
+    const id = String(data?.id || '').trim();
+    if (!id) return;
+    if (!runtime.questFlags) runtime.questFlags = {};
+    if (runtime.questFlags[id + '_started']) return; // already started
+    runtime.questFlags[id + '_started'] = true;
+    if (!runtime.questCounters) runtime.questCounters = {};
+    // Yorna: Cut the Knot — spawn two featured targets
+    if (id === 'yorna_knot') {
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Ambusher', questId: 'yorna_knot' });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Stalker', questId: 'yorna_knot' });
+      }).catch(()=>{});
+      runtime.questCounters['yorna_knot_remaining'] = 2;
+      try { showBanner('Quest started: Cut the Knot — 2 targets'); } catch {}
+    } else if (id === 'canopy_triage') {
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 120, dy = 90;
+        spawnEnemy(player.x + dx, player.y, 'mook', { name: 'Snare', questId: 'canopy_triage' });
+        spawnEnemy(player.x - dx, player.y - dy, 'mook', { name: 'Snare', questId: 'canopy_triage' });
+        spawnEnemy(player.x, player.y + dy, 'mook', { name: 'Snare', questId: 'canopy_triage' });
+      }).catch(()=>{});
+      runtime.questCounters['canopy_triage_remaining'] = 3;
+      try { showBanner('Quest started: Breath and Bandages — 3 targets'); } catch {}
+    } else if (id === 'hola_practice') {
+      runtime.questCounters['hola_practice_uses'] = 0;
+      try { showBanner('Quest started: Find Her Voice — Use Gust twice'); } catch {}
+    } else if (id === 'oyin_fuse') {
+      runtime.questCounters['oyin_fuse_kindled'] = 0;
+      runtime.questFlags['oyin_fuse_rally'] = false;
+      try { showBanner('Quest started: Light the Fuse — Kindle 3 + Rally once'); } catch {}
+    } else if (id === 'twil_trace') {
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 140, dy = 100;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
+      }).catch(()=>{});
+      runtime.questCounters['twil_trace_remaining'] = 3;
+      try { showBanner('Quest started: Trace the Footprints — 3 targets'); } catch {}
+    }
   } catch {}
 }
 

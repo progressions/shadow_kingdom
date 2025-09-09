@@ -115,6 +115,7 @@ function serializePayload() {
     brokenBreakables: Object.keys(runtime?.brokenBreakables || {}),
     vnSeen: Object.keys(runtime?.vnSeen || {}),
     affinityFlags: Object.keys(runtime?.affinityFlags || {}),
+    questFlags: Object.keys(runtime?.questFlags || {}),
   };
 }
 
@@ -139,6 +140,11 @@ function deserializePayload(data) {
   runtime.affinityFlags = {};
   if (Array.isArray(data.affinityFlags)) {
     for (const k of data.affinityFlags) runtime.affinityFlags[k] = true;
+  }
+  // Restore quest flags
+  runtime.questFlags = {};
+  if (Array.isArray(data.questFlags)) {
+    for (const k of data.questFlags) runtime.questFlags[k] = true;
   }
   // Restore enemies
   if (Array.isArray(data.enemies)) {

@@ -107,6 +107,18 @@ export function handleAttacks(dt) {
         if (hasOyin) {
           e._burnTimer = Math.max(e._burnTimer || 0, 1.5);
           e._burnDps = Math.max(e._burnDps || 0, 0.4);
+          // Quest tracking: Oyin fuse — count unique kindled enemies after start
+          try {
+            if (runtime.questFlags && runtime.questFlags['oyin_fuse_started'] && !runtime.questFlags['oyin_fuse_cleared']) {
+              if (!e._questKindled) {
+                e._questKindled = true;
+                if (!runtime.questCounters) runtime.questCounters = {};
+                const n = (runtime.questCounters['oyin_fuse_kindled'] || 0) + 1;
+                runtime.questCounters['oyin_fuse_kindled'] = n;
+                if (n >= 3 && runtime.questFlags['oyin_fuse_rally']) { runtime.questFlags['oyin_fuse_cleared'] = true; showBanner('Quest updated: Light the Fuse — cleared'); }
+              }
+            }
+          } catch {}
         }
         // Yorna Echo Strike (bonus damage on hit with cooldown)
         const hasYorna = companions.some(c => (c.name || '').toLowerCase().includes('yorna'));

@@ -149,6 +149,9 @@ export function render(terrainBitmap, obstacles) {
 
   // Healing sparkles
   drawSparkles();
+
+  // Quest target markers
+  drawQuestMarkers();
 }
 
 function drawNpcMarkers() {
@@ -266,4 +269,51 @@ function drawSparkles() {
     ctx.fill();
   }
   ctx.restore();
+}
+
+function drawQuestMarkers() {
+  const colorFor = (qid) => {
+    switch (qid) {
+      case 'yorna_knot': return '#ff8a3d';
+      case 'canopy_triage': return '#8effc1';
+      case 'twil_trace': return '#e0b3ff';
+      case 'oyin_fuse': return '#ffd166';
+      default: return '#9ae6ff';
+    }
+  };
+  const margin = 12;
+  for (const e of enemies) {
+    if (!e || e.hp <= 0 || !e.questId) continue;
+    const tx = e.x + e.w / 2 - camera.x;
+    const ty = e.y + e.h / 2 - camera.y;
+    const inView = tx >= 0 && tx <= camera.w && ty >= 0 && ty <= camera.h;
+    ctx.save();
+    ctx.fillStyle = colorFor(e.questId);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    if (inView) {
+      const px = Math.round(tx);
+      const py = Math.round(ty - 12);
+      ctx.beginPath();
+      ctx.moveTo(px, py - 4);
+      ctx.lineTo(px + 4, py);
+      ctx.lineTo(px, py + 4);
+      ctx.lineTo(px - 4, py);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else {
+      const cx = Math.max(margin, Math.min(camera.w - margin, tx));
+      const cy = Math.max(margin, Math.min(camera.h - margin, ty));
+      const ang = Math.atan2(ty - cy, tx - cx);
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-10, 6);
+      ctx.lineTo(-10, -6);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
 }

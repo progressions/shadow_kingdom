@@ -91,6 +91,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     vnOnSight: opts.vnOnSight || null,
     // Optional guaranteed drop item id (e.g., 'key_bronze')
     guaranteedDropId: opts.guaranteedDropId || null,
+    // Optional quest linkage
+    questId: opts.questId || null,
   });
 }
 
@@ -245,5 +247,7 @@ export const runtime = {
   _tempAtkTimer: 0,
   // One-time VN affinity flags to prevent repeats
   affinityFlags: {},
+  questFlags: {},
+  questCounters: {},
   
 };
