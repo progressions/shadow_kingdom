@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, world, runtime } from './state.js';
+import { player, enemies, companions, npcs, world, runtime, obstacles } from './state.js';
 import { itemsOnGround } from './state.js';
 import { spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';

@@ -54,6 +54,7 @@ spawnEnemy(
   'featured',
   {
     name: 'Gorg',
+    guaranteedDropId: 'key_bronze',
     vnOnSight: { text: introTexts.gorg },
     portrait: 'assets/portraits/Gorg/Gorg.mp4',
     sheet: gorgSheet,
