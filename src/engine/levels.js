@@ -384,29 +384,19 @@ export function loadLevel5() {
   // Small hazards near start
   obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
 
-  // Boss arena in lower-right: marble walls and golden columns (placeholder until arena map meta is provided)
-  const rw = TILE * 14, rh = TILE * 10, t = 8;
-  const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, Math.round(world.w * 0.80)));
-  const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, Math.round(world.h * 0.70)));
-  const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' || type==='marble' }, extra));
-  const gapW = 28; const gapX = rx + (rw - gapW) / 2;
-  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
-  add(rx, ry + rh - t, rw, t, 'marble');
-  add(rx, ry, t, rh, 'marble');
-  add(rx + rw - t, ry, t, rh, 'marble');
-  add(rx, ry, gapX - rx, t, 'marble');
-  add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t, 'marble');
-  obstacles.push({ x: gapX, y: ry, w: gapW, h: t, type: 'gate', id: 'temple_gate', keyId: 'key_temple', locked: true, blocksAttacks: true });
-  const cols = [
-    { x: rx + TILE * 3, y: ry + TILE * 3 },
-    { x: rx + TILE * 9, y: ry + TILE * 3 },
-    { x: rx + TILE * 3, y: ry + TILE * 6 },
-    { x: rx + TILE * 9, y: ry + TILE * 6 },
-  ];
-  for (const c of cols) obstacles.push({ x: c.x, y: c.y, w: 12, h: 12, type: 'column', blocksAttacks: false });
+  // Boss gate defined by map coordinates (two tiles wide)
+  const gateTile = { x: 103, y: 70, w: 2, h: 1 };
+  obstacles.push({
+    x: gateTile.x * TILE,
+    y: gateTile.y * TILE,
+    w: gateTile.w * TILE,
+    h: gateTile.h * TILE,
+    type: 'gate', id: 'temple_gate', keyId: 'key_temple', locked: true, blocksAttacks: true,
+  });
 
   // Key guardian: Fana (enslaved sorceress); drops the temple key
-  const kgx = gapX - TILE * 10, kgy = ry + TILE * 8;
+  // Place Fana outside the arena near the approach (keep off hazards)
+  const kgx = (gateTile.x - 10) * TILE, kgy = (gateTile.y + 8) * TILE;
   spawnEnemy(kgx, kgy, 'featured', {
     name: 'Fana',
     portrait: 'assets/portraits/Fana/Fana villain.mp4',
@@ -416,7 +406,8 @@ export function loadLevel5() {
   });
 
   // Boss Vorthak (2x visual scale)
-  const cx = rx + rw/2 - 8; const cy = ry + rh/2 - 12;
+  // Boss Vorthak inside the arena based on map tile coordinates
+  const cx = 137 * TILE - 8; const cy = 72 * TILE - 12;
   spawnEnemy(cx, cy, 'boss', {
     name: 'Vorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
     // Boss portraits for VN overlays
