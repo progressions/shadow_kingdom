@@ -137,16 +137,52 @@ async function testVnIntroCooldown() {
   return report;
 }
 
+async function testUniquePoseRoundTrip(slot = 7) {
+  const report = { name: 'UniquePoseRoundTrip', ok: false, details: '' };
+  try {
+    const ok = await goToLevel(1);
+    if (!ok) throw new Error('Failed to load Level 1');
+    const S = await import('../engine/state.js');
+    const { enemies } = S;
+    const u = enemies.find(e => e && typeof e.vnId === 'string' && e.vnId.startsWith('enemy:'));
+    if (!u) throw new Error('No unique enemy with vnId found');
+    const vnId = u.vnId;
+    // Nudge pose and damage
+    u.x = Math.max(0, Math.min(u.x + 17, S.world.w - (u.w||12)));
+    u.y = Math.max(0, Math.min(u.y + 11, S.world.h - (u.h||16)));
+    u.dir = 'left';
+    u.hp = Math.max(1, (u.hp|0) - 3);
+    const before = { x: u.x, y: u.y, dir: u.dir, hp: u.hp };
+    // Save and reload
+    saveGame(slot);
+    await sleep(100);
+    loadGame(slot);
+    await sleep(200);
+    const u2 = S.enemies.find(e => e && e.vnId === vnId);
+    if (!u2) throw new Error('Unique not present after load');
+    const after = { x: u2.x, y: u2.y, dir: u2.dir, hp: u2.hp };
+    const same = (before.x === after.x) && (before.y === after.y) && (before.dir === after.dir) && (before.hp === after.hp);
+    if (!same) throw new Error(`Pose/HP mismatch: before=${JSON.stringify(before)} after=${JSON.stringify(after)}`);
+    report.ok = true; report.details = 'Unique pose/hp round-trips';
+  } catch (e) {
+    report.ok = false; report.details = String(e && e.message || e);
+  }
+  console.log(`[TEST] ${report.name}: ${report.ok ? 'OK' : 'FAIL'} — ${report.details}`);
+  return report;
+}
+
   try {
     window.testOpenedChestPersistence = testOpenedChestPersistence;
     window.testVnIntroCooldown = testVnIntroCooldown;
     window.testEnemyIntroAfterLoadById = testEnemyIntroAfterLoadById;
+    window.testUniquePoseRoundTrip = testUniquePoseRoundTrip;
     window.runLightSaveTests = async function() {
     const r1 = await testOpenedChestPersistence(9);
     const r2 = await testVnIntroCooldown();
     const r3 = await testEnemyIntroAfterLoadById(8);
-    const ok = r1.ok && r2.ok && r3.ok;
+    const r4 = await testUniquePoseRoundTrip(7);
+    const ok = r1.ok && r2.ok && r3.ok && r4.ok;
     console.log(`[TEST] Summary: ${ok ? 'OK' : 'FAIL'}`);
-    return { ok, results: [r1, r2, r3] };
+    return { ok, results: [r1, r2, r3, r4] };
   };
 } catch {}

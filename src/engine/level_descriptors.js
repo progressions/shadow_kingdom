@@ -1,4 +1,4 @@
-// Explicit level descriptors for save v2
+// Explicit level descriptors for save system
 export const LEVEL_DESCRIPTORS = {
   1: {
     gates: ['castle_gate'],
@@ -41,4 +41,3 @@ export const LEVEL_DESCRIPTORS = {
 export function descriptorForLevel(level) {
   return LEVEL_DESCRIPTORS[level] || { gates: [], chests: [], breakables: [], uniqueActors: [] };
 }
-

@@ -1,4 +1,4 @@
-// Save System v2 — deterministic deltas + unique actor status
+// Save System — deterministic deltas + unique actor status
 import { player, companions, npcs, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { makeSpriteSheet, sheetForName } from './sprites.js';
@@ -19,7 +19,7 @@ function gatherGateStates() {
   return states;
 }
 
-export function serializeV2() {
+export function serializeSave() {
   // Unique actors: record by vnId (or name fallback)
   const uniqueActors = {};
   const level = runtime.currentLevel || 1;
@@ -29,7 +29,18 @@ export function serializeV2() {
     const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
     if (!key || !uniques.has(key)) continue;
     if (e.hp > 0) {
-      uniqueActors[key] = { state: 'alive', data: serializeEnemyEntity(e) };
+      // Store pose + core combat fields at top-level for loader simplicity
+      uniqueActors[key] = {
+        state: 'alive',
+        x: e.x, y: e.y,
+        dir: e.dir || 'down',
+        hp: e.hp,
+        w: e.w, h: e.h,
+        speed: e.speed,
+        touchDamage: e.touchDamage,
+        spriteScale: e.spriteScale || 1,
+        sheetPalette: e.sheetPalette || null,
+      };
     } else {
       uniqueActors[key] = { state: 'defeated' };
     }
@@ -55,8 +66,8 @@ export function serializeV2() {
   const vnSeenNpcOnly = Object.keys(runtime?.vnSeen || {}).filter(k => !/^enemy:/.test(k));
 
   return {
-    schema: 'v2',
-    version: 2,
+    schema: 'save',
+    version: 3,
     at: Date.now(),
     currentLevel: runtime.currentLevel || 1,
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
@@ -259,10 +270,10 @@ function spawnNpcFromRecord(d) {
   if (npc.dialogId) attachOnSightById(npc, npc.dialogId);
 }
 
-export function applyPendingRestoreV2() {
-  const data = runtime._pendingRestoreV2;
+export function applyPendingRestore() {
+  const data = runtime._pendingRestore;
   if (!data) return;
-  runtime._pendingRestoreV2 = null;
+  runtime._pendingRestore = null;
   try {
     // Player
     if (data.player) {
@@ -299,20 +310,28 @@ export function applyPendingRestoreV2() {
     const ua = data.uniqueActors || {};
     const byKey = (vnId) => enemies.find(e => e && e.vnId && e.vnId === vnId);
     const uniques = descriptorForLevel(runtime.currentLevel || 1).uniqueActors || [];
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
     for (const vn of uniques) {
       const st = ua[vn]; if (!st) continue;
       const ent = byKey(vn);
       if (!ent) continue;
       if (st.state === 'defeated' || st.state === 'unspawned') {
         const idx = enemies.indexOf(ent); if (idx !== -1) enemies.splice(idx,1);
-      } else if (st.state === 'alive' && typeof st.hp === 'number') {
-        ent.hp = Math.max(1, Math.min(ent.maxHp||st.hp, st.hp));
-        // Apply persisted palette for unique actor, if present
+      } else if (st.state === 'alive') {
+        // Apply top-level fields only (v2.1+)
+        if (typeof st.hp === 'number') ent.hp = Math.max(1, Math.min(ent.maxHp || st.hp, st.hp));
+        if (typeof st.x === 'number' && typeof st.y === 'number') {
+          ent.x = clamp(Math.round(st.x), 0, Math.max(0, (world.w || 0) - (ent.w || 12)));
+          ent.y = clamp(Math.round(st.y), 0, Math.max(0, (world.h || 0) - (ent.h || 16)));
+        }
+        if (st.dir) ent.dir = st.dir;
+        if (typeof st.w === 'number') ent.w = st.w;
+        if (typeof st.h === 'number') ent.h = st.h;
+        if (typeof st.speed === 'number') ent.speed = st.speed;
+        if (typeof st.touchDamage === 'number') ent.touchDamage = st.touchDamage;
+        if (typeof st.spriteScale === 'number') ent.spriteScale = st.spriteScale;
         if (st.sheetPalette) {
-          try {
-            ent.sheetPalette = st.sheetPalette;
-            ent.sheet = makeSpriteSheet(st.sheetPalette);
-          } catch {}
+          try { ent.sheetPalette = st.sheetPalette; ent.sheet = makeSpriteSheet(st.sheetPalette); } catch {}
         }
       }
     }
@@ -335,26 +354,26 @@ export function applyPendingRestoreV2() {
     // Ensure intros can trigger: clear any stale _vnShown and reset intro cooldown
     try { for (const e of enemies) { if (e) e._vnShown = false; } runtime.introCooldown = 0; } catch {}
 
-    showBanner('Game loaded (v2)');
+    showBanner('Game loaded');
   } catch (e) {
-    console.error('Apply v2 failed', e);
+    console.error('Apply restore failed', e);
     showBanner('Load failed');
   }
 }
 
-export function loadDataPayloadV2(data) {
+export function loadDataPayload(data) {
   try {
     const target = (data && typeof data.currentLevel === 'number') ? data.currentLevel : 1;
     if (target !== (runtime.currentLevel || 1)) {
-      runtime._pendingRestoreV2 = data;
+      runtime._pendingRestore = data;
       runtime.pendingLevel = target;
       showBanner(`Loading… switching to Level ${target}`);
       return;
     }
-    runtime._pendingRestoreV2 = data;
-    applyPendingRestoreV2();
+    runtime._pendingRestore = data;
+    applyPendingRestore();
   } catch (e) {
-    console.error('Load v2 route failed', e);
+    console.error('Load route failed', e);
     showBanner('Load failed');
   }
 }
