@@ -78,7 +78,7 @@ export function render(terrainBitmap, obstacles) {
   });
   for (const e of enemies) if (e.hp > 0) drawables.push({
     x: e.x, y: e.y, w: e.w, h: e.h,
-    dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet,
+    dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet, spriteScale: e.spriteScale || 1,
   });
   drawables.push({
     x: player.x, y: player.y, w: player.w, h: player.h,
@@ -90,16 +90,19 @@ export function render(terrainBitmap, obstacles) {
     const row = DIRECTIONS.indexOf(d.dir);
     const sx = d.frame * SPRITE_SIZE;
     const sy = row * SPRITE_SIZE;
-    const dx = Math.round(d.x - (SPRITE_SIZE - d.w) / 2 - camera.x);
-    const dy = Math.round(d.y - (SPRITE_SIZE - d.h) - camera.y);
+    const scale = d.spriteScale || 1;
+    const destW = SPRITE_SIZE * scale;
+    const destH = SPRITE_SIZE * scale;
+    const dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
+    const dy = Math.round(d.y - (destH - d.h) - camera.y);
     // Player flicker while invulnerable
     if (d.isPlayer && player.invulnTimer > 0) {
       const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
       if (!flicker) {
-        ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+        ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
       }
     } else {
-      ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+      ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
     }
   }
 

@@ -94,9 +94,11 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
       : { name: 'Mook', speed: 10, hp: 3, dmg: 3, sheet: enemyMookSheet, kind: 'mook' };
   const hp = (typeof opts.hp === 'number') ? opts.hp : cfg.hp;
   const dmg = (typeof opts.dmg === 'number') ? opts.dmg : ((typeof opts.touchDamage === 'number') ? opts.touchDamage : cfg.dmg);
+  const w = (typeof opts.w === 'number') ? opts.w : 12;
+  const h = (typeof opts.h === 'number') ? opts.h : 16;
   enemies.push({
     x, y,
-    w: 12, h: 16,
+    w, h,
     speed: cfg.speed,
     dir: 'down',
     moving: true,
@@ -127,6 +129,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     onDefeatNextLevel: (typeof opts.onDefeatNextLevel === 'number') ? opts.onDefeatNextLevel : null,
     // Optional quest linkage
     questId: opts.questId || null,
+    // Optional sprite scale for rendering (1 = 16x16, 2 = 32x32)
+    spriteScale: (typeof opts.spriteScale === 'number') ? Math.max(0.5, Math.min(4, opts.spriteScale)) : 1,
   });
 }
 

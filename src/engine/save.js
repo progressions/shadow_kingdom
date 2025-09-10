@@ -112,6 +112,7 @@ function serializePayload() {
       touchDamage: e.touchDamage,
       speed: e.speed,
       _secondPhase: !!e._secondPhase,
+      w: e.w, h: e.h, spriteScale: e.spriteScale || 1,
       // Visuals
       portrait: e.portraitSrc || null,
       portraitPowered: e.portraitPowered || null,
@@ -185,8 +186,10 @@ function deserializePayload(data) {
       const maxHp = (typeof e.maxHp === 'number') ? e.maxHp : (typeof e.hp === 'number' ? e.hp : base.hp);
       const dmg = (typeof e.touchDamage === 'number') ? e.touchDamage : base.dmg;
       const speed = (typeof e.speed === 'number') ? e.speed : base.speed;
+      const w = (typeof e.w === 'number') ? e.w : 12;
+      const h = (typeof e.h === 'number') ? e.h : 16;
       enemies.push({
-        x: e.x, y: e.y, w: 12, h: 16, speed, dir: e.dir || 'down', moving: true,
+        x: e.x, y: e.y, w, h, speed, dir: e.dir || 'down', moving: true,
         animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
         name: e.name || base.name, kind,
@@ -198,6 +201,7 @@ function deserializePayload(data) {
         guaranteedDropId: e.guaranteedDropId || null,
         _secondPhase: !!e._secondPhase,
         sheetPalette: e.sheetPalette || null,
+        spriteScale: (typeof e.spriteScale === 'number') ? e.spriteScale : 1,
       });
     }
     // Attach class sheets lazily after module loads

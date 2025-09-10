@@ -259,6 +259,23 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillStyle = grad;
       ctx.fillRect(sx, sy, o.w, o.h);
       ctx.strokeStyle = '#7a1100'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'marble') {
+      // White marble wall (blocking)
+      ctx.fillStyle = '#e9e9ef';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#c9c9d9'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // subtle gold vein
+      ctx.fillStyle = '#d4b967';
+      for (let x = 2; x < o.w - 2; x += 12) ctx.fillRect(sx + x, sy + 2, 1, Math.max(1, o.h - 4));
+    } else if (o.type === 'column') {
+      // Golden column (non-blocking by default unless blocksAttacks is set)
+      const r = Math.max(4, Math.min(10, Math.floor(Math.min(o.w, o.h) / 2)));
+      ctx.save();
+      ctx.translate(sx + o.w / 2, sy + o.h / 2);
+      ctx.fillStyle = '#d4b967';
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a7882f'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.restore();
     }
   }
 }

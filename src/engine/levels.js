@@ -1,6 +1,7 @@
 import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime } from './state.js';
 import { buildObstacles, buildTerrainBitmap } from './terrain.js';
 import { LEVEL4_CITY_WALL_RECTS, LEVEL4_SIZE } from '../data/level4_city_walls.js';
+import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.js';
 import { makeSpriteSheet } from './sprites.js';
 import { spawnEnemy, spawnNpc } from './state.js';
 import { TILE } from './constants.js';
@@ -314,6 +315,7 @@ export function loadLevel4() {
     portraitDefeated: 'assets/portraits/Vanificia/Vanificia defeated.mp4',
     hp: 60,
     dmg: 11,
+    onDefeatNextLevel: 5,
   });
   // Guards near the boss
   spawnEnemy(cx - 24, cy, 'mook', { hp: 9, dmg: 6 });
@@ -360,6 +362,62 @@ export function loadLevel4() {
     vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', sheet: varaSheet, portrait: 'assets/portraits/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
   })();
   import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
+
+  return terrain;
+}
+
+// Level 5: Temple District — upper-right marble arena overtaken by Yorthak (2x sprite)
+export function loadLevel5() {
+  world.tileW = LEVEL5_SIZE?.tileW || 190;
+  world.tileH = LEVEL5_SIZE?.tileH || 110;
+  try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level5_reached'] = true; } catch {}
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+
+  // Spawn player near lower-left
+  player.x = Math.round(world.w * 0.10);
+  player.y = Math.round(world.h * 0.85);
+  for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
+
+  const terrain = buildTerrainBitmap(world, 'city');
+  for (const r of LEVEL5_CITY_WALL_RECTS) obstacles.push({ x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type: 'wall', blocksAttacks: true });
+
+  // Small hazards near start
+  obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
+
+  // Boss arena in upper-right: marble walls and golden columns
+  const rw = TILE * 14, rh = TILE * 10, t = 8;
+  const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, Math.round(world.w * 0.80)));
+  const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, Math.round(world.h * 0.22)));
+  const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' || type==='marble' }, extra));
+  const gapW = 28; const gapX = rx + (rw - gapW) / 2;
+  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
+  add(rx, ry + rh - t, rw, t, 'marble');
+  add(rx, ry, t, rh, 'marble');
+  add(rx + rw - t, ry, t, rh, 'marble');
+  add(rx, ry, gapX - rx, t, 'marble');
+  add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t, 'marble');
+  obstacles.push({ x: gapX, y: ry, w: gapW, h: t, type: 'gate', id: 'temple_gate', keyId: 'key_temple', locked: true, blocksAttacks: true });
+  const cols = [
+    { x: rx + TILE * 3, y: ry + TILE * 3 },
+    { x: rx + TILE * 9, y: ry + TILE * 3 },
+    { x: rx + TILE * 3, y: ry + TILE * 6 },
+    { x: rx + TILE * 9, y: ry + TILE * 6 },
+  ];
+  for (const c of cols) obstacles.push({ x: c.x, y: c.y, w: 12, h: 12, type: 'column', blocksAttacks: false });
+
+  // Key guardian
+  const kgx = gapX - TILE * 10, kgy = ry + TILE * 8;
+  spawnEnemy(kgx, kgy, 'featured', { name: 'Temple Warden', guaranteedDropId: 'key_temple', hp: 22, dmg: 8 });
+
+  // Boss Yorthak (2x visual scale)
+  const cx = rx + rw/2 - 8; const cy = ry + rh/2 - 12;
+  spawnEnemy(cx, cy, 'boss', {
+    name: 'Yorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
+    onDefeatNextLevel: 6,
+    vnOnSight: { text: (introTexts && introTexts.yorthak) || 'Yorthak: The heart is mine. Turn back or burn.' },
+  });
+  spawnEnemy(cx - 28, cy, 'mook', { hp: 10, dmg: 7 });
+  spawnEnemy(cx + 28, cy, 'mook', { hp: 10, dmg: 7 });
 
   return terrain;
 }

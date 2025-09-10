@@ -332,6 +332,7 @@ export function levelNameFor(level) {
     case 2: return 'Sunbreak Expanse';   // sandy ruins biome
     case 3: return 'Marsh';              // reed marsh biome
     case 4: return 'Ruined City';        // city ruins biome
+    case 5: return 'Heart of the Temple';
     default: return `Region ${lv}`;
   }
 }
