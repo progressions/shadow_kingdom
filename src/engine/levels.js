@@ -467,10 +467,10 @@ export function loadLevel6() {
   ];
   for (const c of cols) obstacles.push({ x: c.x, y: c.y, w: 12, h: 12, type: 'column', blocksAttacks: false });
 
-  // Canopy's Sister (placeholder NPC)
+  // Ell (Canopy's sister) — placeholder NPC in the hub
   const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
   const sisterSheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#fff0c1', shirt: '#ffe39a' });
-  const sister = spawnNpc(sisterX, sisterY, 'down', { name: "Canopy's Sister", sheet: sisterSheet, portrait: 'assets/portraits/CanopySister/CanopySister.mp4', affinity: 6 });
+  const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', sheet: sisterSheet, portrait: 'assets/portraits/Ell/Ell.mp4', affinity: 6 });
   import('../data/dialogs.js').then(mod => {
     // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
     if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);

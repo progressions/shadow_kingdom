@@ -4,9 +4,9 @@ This document outlines the post‑Level 5 (Temple District) flow where defeating
 
 ## Story Beats (High Level)
 
-- Vorthak (Urathar’s servant) has captured and enslaved Fana and holds Canopy’s sister.
+– Vorthak (Urathar’s servant) has captured and enslaved Fana and holds Canopy’s sister, Ell.
 - Defeating Vorthak (triple‑phase boss) breaks the sigils and rescues Canopy’s sister.
-- The Heart of the Temple in Aurelion is cleansed and re‑occupied by the heroes — this area becomes a Hub.
+– The Heart of the Temple in Aurelion is cleansed and re‑occupied by the heroes — this area becomes a Hub.
 - In the Hub, players can recruit allies, manage party, access services (later), and take new quests.
 
 ## Game Flags
@@ -41,7 +41,7 @@ Both maps should use 1‑tile = 16 px, with suggested arena size ≈ 40×28 tile
 
 - Vorthak: base, powered, overpowered, defeated portraits wired into boss VN flow.
 - Fana: villain on‑sight VN (outside), post‑defeat recruit dialog with companion portrait.
-- Canopy’s Sister: short rescue VN in hub (placeholder until assets arrive).
+- Ell (Canopy’s sister): short rescue VN in hub (placeholder until assets arrive).
 
 ## Implementation Notes
 
@@ -52,4 +52,3 @@ Both maps should use 1‑tile = 16 px, with suggested arena size ≈ 40×28 tile
 - Future work:
   - Load maps from `assets/temple_heart.json` (L5) and `assets/temple_heart_clean.json` (L6) once finalized.
   - Add services and persistent hub features.
-
