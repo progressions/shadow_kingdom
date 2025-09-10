@@ -30,6 +30,7 @@ export function buildTerrainBitmap(world, theme = 'default') {
       let waterColor = '#1b3566';
       if (theme === 'desert') { baseColor = '#c2b280'; dirtColor = '#a6906a'; waterColor = '#6fa3c9'; }
       if (theme === 'marsh') { baseColor = '#3b4a3a'; dirtColor = '#5a5b45'; waterColor = '#2a4f6d'; }
+      if (theme === 'city')   { baseColor = '#3b3b3f'; dirtColor = '#57575e'; waterColor = '#2a4f6d'; }
       let color = baseColor;
       if (tt === 'water') color = waterColor; else if (tt === 'dirt') color = dirtColor;
       const n3 = noise2D(tx * 1.7, ty * 1.3, 99);
@@ -46,6 +47,14 @@ export function buildTerrainBitmap(world, theme = 'default') {
         if (n3 > 0.6 && tt !== 'water') {
           // reed/pebble specks
           g.fillStyle = '#6da86d';
+          const px = (tx * TILE) + (n1 * TILE) | 0;
+          const py = (ty * TILE) + (n2 * TILE) | 0;
+          g.fillRect(px, py, 1, 1);
+        }
+      } else if (theme === 'city') {
+        // cracked stone speckles
+        if (n3 > 0.55 && tt !== 'water') {
+          g.fillStyle = '#2a2a2e';
           const px = (tx * TILE) + (n1 * TILE) | 0;
           const py = (ty * TILE) + (n2 * TILE) | 0;
           g.fillRect(px, py, 1, 1);
@@ -112,6 +121,11 @@ export function buildObstacles(world, player, enemies, npcs, theme = 'default') 
       } else if (theme === 'marsh') {
         if (r > 0.97) type = 'reed';
         else if (r > 0.94) type = 'log';
+      } else if (theme === 'city') {
+        // Increase ruin density; occasional debris
+        if (r > 0.90) type = 'ruin';
+        else if (r > 0.87) type = 'crate';
+        else if (r > 0.84) type = 'barrel';
       } else {
         if (r > 0.97) type = 'tree'; else if (r > 0.94) type = 'rock';
       }
@@ -227,6 +241,41 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillStyle = '#1e4461';
       ctx.fillRect(sx, sy, o.w, o.h);
       ctx.strokeStyle = '#0d2233'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'mud') {
+      // Mud (slow zone, non-blocking)
+      ctx.fillStyle = '#5a3e24cc';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#3a2414'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'fire') {
+      // Fire (burn zone, non-blocking)
+      ctx.fillStyle = '#ff8c00aa';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#a14a00'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'lava') {
+      // Lava (strong burn zone, non-blocking)
+      const grad = ctx.createLinearGradient(sx, sy, sx + o.w, sy + o.h);
+      grad.addColorStop(0, '#ff3b00cc');
+      grad.addColorStop(1, '#ffb300cc');
+      ctx.fillStyle = grad;
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#7a1100'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'marble') {
+      // White marble wall (blocking)
+      ctx.fillStyle = '#e9e9ef';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#c9c9d9'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // subtle gold vein
+      ctx.fillStyle = '#d4b967';
+      for (let x = 2; x < o.w - 2; x += 12) ctx.fillRect(sx + x, sy + 2, 1, Math.max(1, o.h - 4));
+    } else if (o.type === 'column') {
+      // Golden column (non-blocking by default unless blocksAttacks is set)
+      const r = Math.max(4, Math.min(10, Math.floor(Math.min(o.w, o.h) / 2)));
+      ctx.save();
+      ctx.translate(sx + o.w / 2, sy + o.h / 2);
+      ctx.fillStyle = '#d4b967';
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a7882f'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.restore();
     }
   }
 }

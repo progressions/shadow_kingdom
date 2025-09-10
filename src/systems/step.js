@@ -19,7 +19,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     for (const o of obstacles) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
-      if (o.type === 'chest') continue; // chests are non-blocking
+      // non-blocking obstacle types
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -44,7 +45,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     for (const o of obstacles) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
-      if (o.type === 'chest') continue; // chests are non-blocking
+      // non-blocking obstacle types
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
@@ -107,6 +109,8 @@ export function step(dt) {
   if (runtime.gameState === 'chat') return;
   // Advance chemistry timers
   runtime._timeSec = (runtime._timeSec || 0) + dt;
+  // Decay VN intro cooldown so flagged actors don't retrigger back-to-back
+  if ((runtime.introCooldown || 0) > 0) runtime.introCooldown = Math.max(0, (runtime.introCooldown || 0) - dt);
   // Track recent low-HP window (3s) for certain pair ticks
   try {
     const below = player.hp < (player.maxHp || 10) * 0.5;
@@ -154,7 +158,7 @@ export function step(dt) {
     runtime.autosaveTimer += dt;
     if (runtime.autosaveTimer >= runtime.autosaveIntervalSec) {
       runtime.autosaveTimer = 0;
-      saveGame(1);
+      saveGame('auto');
       showBanner('Autosaved');
     }
   }
@@ -181,11 +185,31 @@ export function step(dt) {
     player.knockbackX *= Math.pow(0.001, dt);
     player.knockbackY *= Math.pow(0.001, dt);
   }
-  // Then apply input movement
+  // Terrain effects: compute slow/burn zones for player
+  let terrainSlow = 1.0;
+  let terrainBurnDps = 0;
+  try {
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    for (const o of obstacles) {
+      if (!o) continue;
+      if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
+      if (rectsIntersect(pr, o)) {
+        if (o.type === 'mud') terrainSlow = Math.min(terrainSlow, 0.6);
+        else if (o.type === 'fire') terrainBurnDps = Math.max(terrainBurnDps, 1.5);
+        else if (o.type === 'lava') terrainBurnDps = Math.max(terrainBurnDps, 3.0);
+      }
+    }
+  } catch {}
+  // Then apply input movement with terrain slow
   if (hasInput) {
-    const dx = ax * player.speed * dt;
-    const dy = ay * player.speed * dt;
+    const dx = ax * player.speed * terrainSlow * dt;
+    const dy = ay * player.speed * terrainSlow * dt;
     moveWithCollision(player, dx, dy, solidsForPlayer);
+  }
+  // Apply/refresh burn from terrain
+  if (terrainBurnDps > 0) {
+    player._burnDps = terrainBurnDps;
+    player._burnTimer = Math.max(player._burnTimer || 0, 1.0);
   }
   // Direction preference: input > knockback
   if (hasInput) {
@@ -205,16 +229,58 @@ export function step(dt) {
   // Attacks
   handleAttacks(dt);
 
+  // Player damage over time (burn)
+  if (player._burnTimer && player._burnTimer > 0) {
+    player._burnTimer = Math.max(0, player._burnTimer - dt);
+    const dps = player._burnDps || 0;
+    if (dps > 0) {
+      const before = player.hp;
+      player.hp = Math.max(0, player.hp - dps * dt);
+      if (player.hp < before) {
+        if (Math.random() < 4 * dt) spawnFloatText(player.x + player.w/2, player.y - 8, 'Burn', { color: '#ff9a3d', life: 0.5 });
+      }
+      if (player.hp <= 0 && !runtime.gameOver) {
+        // Trigger game over once when player dies to burn
+        try { startGameOver(); } catch {}
+      }
+    }
+  }
+
   // Enemies AI
   for (const e of enemies) {
     if (e.hp <= 0) continue;
     // Enemies collide with player and other enemies; pass through companions/NPCs
     const solidsForEnemy = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
+    // Environmental effects for enemies (mud slow; fire/lava burn)
+    let envSlow = 1.0;
+    let envBurnDps = 0;
+    const now = (performance && performance.now) ? performance.now() : Date.now();
+    const sinceLoadSec = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
+    try {
+      const er = { x: e.x, y: e.y, w: e.w, h: e.h };
+      for (const o of obstacles) {
+        if (!o) continue;
+        if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
+        // Skip far hazards for a tiny speed win
+        const cx = (o.x + o.w/2) - (e.x + e.w/2);
+        const cy = (o.y + o.h/2) - (e.y + e.h/2);
+        if ((cx*cx + cy*cy) > (140*140)) continue;
+        if (rectsIntersect(er, o)) {
+          if (o.type === 'mud') envSlow = Math.min(envSlow, 0.6);
+          else if (o.type === 'fire') envBurnDps = Math.max(envBurnDps, 1.5);
+          else if (o.type === 'lava') envBurnDps = Math.max(envBurnDps, 3.0);
+        }
+      }
+    } catch {}
+    // Post-load hazard grace: avoid instantly killing enemies in hazards on the first second after load
+    if (sinceLoadSec >= 1.0 && envBurnDps > 0) {
+      e._burnDps = envBurnDps; e._burnTimer = Math.max(e._burnTimer || 0, 1.0);
+    }
     if (Math.abs(e.knockbackX) > 0.01 || Math.abs(e.knockbackY) > 0.01) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow)));
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
       moveWithCollision(e, e.knockbackX * dt * mul, e.knockbackY * dt * mul, solidsForEnemy);
       e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
     } else {
@@ -225,30 +291,71 @@ export function step(dt) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow)));
-      moveWithCollision(e, dx * e.speed * mul * dt, dy * e.speed * mul * dt, solidsForEnemy);
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
+
+      // Hazard avoidance steering: pick a nearby direction with lower hazard exposure
+      const baseDir = { x: dx, y: dy };
+      const offsets = [-0.9, -0.5, 0, 0.5, 0.9]; // radians near target
+      let best = { x: baseDir.x, y: baseDir.y };
+      let bestScore = Infinity;
+      const px = e.x + e.w/2, py = e.y + e.h/2;
+      const avoidBias = (e.kind === 'boss') ? 0.5 : (e.kind === 'featured' ? 0.8 : 1.0);
+      for (const a of offsets) {
+        const ca = Math.cos(a), sa = Math.sin(a);
+        const vx = baseDir.x * ca - baseDir.y * sa;
+        const vy = baseDir.x * sa + baseDir.y * ca;
+        // Alignment penalty (prefer towards player)
+        const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
+        const alignPenalty = (1 - dot) * 0.6;
+        // Hazard exposure along a short ray with 3 samples
+        let haz = 0;
+        const samples = [0.33, 0.66, 1.0];
+        const stepLen = 26; // px
+        for (const t of samples) {
+          const cx = px + vx * stepLen * t;
+          const cy = py + vy * stepLen * t;
+          const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
+          for (const o of obstacles) {
+            if (!o) continue;
+            if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
+            // quick reject by distance
+            const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy;
+            if ((ox*ox + oy*oy) > (160*160)) continue;
+            if (rectsIntersect(probe, o)) {
+              haz += (o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12);
+            }
+          }
+        }
+        const score = alignPenalty + haz * avoidBias;
+        if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
+      }
+
+      moveWithCollision(e, best.x * e.speed * mul * dt, best.y * e.speed * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
       if (moved < 0.05) {
         e.x = oldX; e.y = oldY;
-        moveWithCollision(e, dx * e.speed * dt, 0, solidsForEnemy);
+        moveWithCollision(e, best.x * e.speed * dt, 0, solidsForEnemy);
         moved = Math.hypot(e.x - oldX, e.y - oldY);
         if (moved < 0.05) {
           e.x = oldX; e.y = oldY;
-          moveWithCollision(e, 0, dy * e.speed * dt, solidsForEnemy);
+          moveWithCollision(e, 0, best.y * e.speed * dt, solidsForEnemy);
           moved = Math.hypot(e.x - oldX, e.y - oldY);
         }
       }
       // Perpendicular sidestep if still stuck
       if (moved < 0.05) {
         e.x = oldX; e.y = oldY;
-        const px = -dy * e.avoidSign;
-        const py = dx * e.avoidSign;
-        moveWithCollision(e, px * e.speed * 0.7 * dt, py * e.speed * 0.7 * dt, solidsForEnemy);
+        const px2 = -best.y * e.avoidSign;
+        const py2 = best.x * e.avoidSign;
+        moveWithCollision(e, px2 * e.speed * 0.7 * dt, py2 * e.speed * 0.7 * dt, solidsForEnemy);
         moved = Math.hypot(e.x - oldX, e.y - oldY);
       }
 
-      e.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left':'right') : (dy < 0 ? 'up':'down');
+      // Face movement direction
+      const fdx = e.x - oldX, fdy = e.y - oldY;
+      const useX = Math.abs(fdx) > Math.abs(fdy);
+      e.dir = useX ? (fdx < 0 ? 'left' : 'right') : (fdy < 0 ? 'up' : 'down');
       e.animTime += dt; if (e.animTime > 0.22) { e.animTime = 0; e.animFrame = (e.animFrame + 1) % FRAMES_PER_DIR; }
       // Flip avoidance side if stuck for too long
       if (moved < 0.1) { e.stuckTime += dt; if (e.stuckTime > 0.6) { e.avoidSign *= -1; e.stuckTime = 0; } }
@@ -262,8 +369,10 @@ export function step(dt) {
     if (e._burnTimer && e._burnTimer > 0) {
       e._burnTimer = Math.max(0, e._burnTimer - dt);
       const dps = e._burnDps || 0;
-      if (dps > 0) {
+      if (dps > 0 && sinceLoadSec >= 1.0) {
+        const before = e.hp;
         e.hp -= dps * dt;
+        try { if (window && window.DEBUG_ENEMIES) console.log('[ENEMY BURN]', { name: e.name, kind: e.kind, x: e.x, y: e.y, dps, hpBefore: before, hpAfter: e.hp }); } catch {}
         if (Math.random() < 4 * dt) spawnFloatText(e.x + e.w/2, e.y - 10, 'Burn', { color: '#ff9a3d', life: 0.5 });
       }
     }
@@ -311,8 +420,10 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
-      // Boss two-phase behavior: on first "death", show powered VN, refill HP, and buff damage
-      if ((e.kind || '').toLowerCase() === 'boss' && !e._secondPhase) {
+      // Boss behavior: default bosses have 2 phases; Vorthak (L5) has 3
+      const isBoss = ((e.kind || '').toLowerCase() === 'boss');
+      const isVorthak = isBoss && ((e.name || '').toLowerCase().includes('vorthak'));
+      if (isBoss && !e._secondPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null };
           const line = `${e.name || 'Boss'}: I call on my master for power!`;
@@ -321,28 +432,59 @@ export function step(dt) {
         // Refill to second health bar and mark phase
         e.hp = e.maxHp;
         e._secondPhase = true;
-        // Increase boss contact damage for second phase
+        // Increase boss contact damage and attack speed for second phase
         e.touchDamage = Math.max(1, (e.touchDamage || 0) + 2);
+        e.hitCooldown = Math.max(0.5, (e.hitCooldown || 0.8) * 0.7);
+        e.speed = Math.max(8, (e.speed || 12) * 1.1);
         try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Empowered!', { color: '#ffd166', life: 0.8 }); } catch {}
         // Clear incidental timers/knockback
         e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
         continue; // do not remove this frame
       }
-      // If boss defeated, show a VN overlay with defeat line and schedule next level when appropriate
-      if ((e.kind || '').toLowerCase() === 'boss' && e._secondPhase) {
+      // Vorthak only: second death -> final form (third phase)
+      if (isVorthak && e._secondPhase && !e._thirdPhase) {
+        try {
+          const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null) };
+          const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
+          startPrompt(actor, line, []);
+        } catch {}
+        e.hp = e.maxHp;
+        e._thirdPhase = true;
+        e.touchDamage = Math.max(1, (e.touchDamage || 0) + 3);
+        e.hitCooldown = Math.max(0.35, (e.hitCooldown || 0.8) * 0.7);
+        e.speed = Math.max(9, (e.speed || 12) * 1.15);
+        try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Final Form!', { color: '#ff7a7a', life: 0.9 }); } catch {}
+        e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
+        continue;
+      }
+      // Final defeat: non-Vorthak after second phase, or Vorthak after third
+      if (isBoss && (e._thirdPhase || (!isVorthak && e._secondPhase))) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitDefeated || null };
           const line = `${e.name || 'Boss'}: ...`; // simple defeated line; customize per boss via portraits
           startPrompt(actor, line, []);
         } catch {}
-        if (typeof e.onDefeatNextLevel === 'number') {
+        // Temple victory flags and Ell VN only for Vorthak in Level 5
+        if (isVorthak && (runtime.currentLevel || 1) === 5) {
           try {
-            const bonus = completionXpForLevel(runtime.currentLevel || 1);
-            grantPartyXp(bonus);
-            runtime.pendingLevel = e.onDefeatNextLevel;
-            runtime._levelSwapTimer = 1.2;
+            if (!runtime.questFlags) runtime.questFlags = {};
+            runtime.questFlags['canopy_sister_rescued'] = true;
+            runtime.questFlags['temple_cleansed'] = true;
+            runtime.questFlags['hub_unlocked'] = true;
+            const ellActor = { name: 'Ell', portraitSrc: 'assets/portraits/level06/Ell/Ell.mp4' };
+            const ellLine = "Ell: Thank you… The light in Aurelion still answers. I can stand.";
+            if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
+            runtime._queuedVNs.push({ actor: ellActor, text: ellLine });
           } catch {}
         }
+        try {
+          const bonus = completionXpForLevel(runtime.currentLevel || 1);
+          grantPartyXp(bonus);
+          if (typeof e.onDefeatNextLevel === 'number') {
+            // Always defer level transition until after the defeated VN (and any queued VNs) is closed
+            runtime._afterQueuePendingLevel = e.onDefeatNextLevel;
+          }
+        } catch {}
       }
       // Quest tracking: Yorna 'Cut the Knot'; Canopy 'Breath and Bandages'; Twil 'Trace the Footprints'
       try {
@@ -496,6 +638,25 @@ export function step(dt) {
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
       } catch {}
+      // If Fana (enslaved sorceress) is defeated, she becomes a recruitable NPC
+      try {
+        const nm = (e.name || '').toLowerCase();
+        if (nm.includes('fana')) {
+          // Spawn an NPC at or near the defeat spot with a recruit dialog
+          const nx = e.x, ny = e.y;
+          Promise.all([
+            import('../engine/sprites.js'),
+            import('../engine/state.js'),
+            import('../engine/dialog.js'),
+            import('../data/dialogs.js'),
+          ]).then(([sm, st, dm, dd]) => {
+            const sheet = (sm.sheetForName ? sm.sheetForName('Fana') : null);
+            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/level05/Fana/Fana.mp4', affinity: 6 });
+            if (dd.fanaFreedDialog) dm.setNpcDialog(npc, dd.fanaFreedDialog);
+            else if (dd.fanaDialog) dm.setNpcDialog(npc, dd.fanaDialog);
+          }).catch(()=>{});
+        }
+      } catch {}
       // Drops
       try {
         let drop = null;
@@ -516,8 +677,23 @@ export function step(dt) {
         if (kind === 'featured' && e.guaranteedDropId) val = 10;
         grantPartyXp(val);
       } catch {}
-      spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
-      spawnStain(e.x, e.y, { life: 2.8 });
+      // Skip corpse/stain for Fana (she becomes an NPC immediately)
+      try {
+        const nm2 = (e.name || '').toLowerCase();
+        const skipCorpse = nm2.includes('fana');
+        if (!skipCorpse) {
+          spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
+          spawnStain(e.x, e.y, { life: 2.8 });
+        }
+      } catch { /* fall back to spawning if needed */ }
+      // Debug: log removals (always when DEBUG_ENEMIES) and early after load with extra flag
+      try {
+        const now = (performance && performance.now) ? performance.now() : Date.now();
+        const since = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
+        if ((window && window.DEBUG_ENEMIES) || (since <= 2.0 && (window && window.DEBUG_LOG_ENEMY_REMOVALS))) {
+          console.log('[ENEMY REMOVED]', { name: e.name, kind: e.kind, x: e.x, y: e.y, hp: e.hp, burnDps: e._burnDps || 0, sinceLoadSec: since.toFixed(2) });
+        }
+      } catch {}
       enemies.splice(i, 1);
       // Record kill time for chemistry rare ticks
       try {
@@ -689,13 +865,13 @@ export function step(dt) {
 
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
   // then show a simple VN once when first seen
-  if (runtime.gameState === 'play') {
+  if (runtime.gameState === 'play' && (runtime.introCooldown || 0) <= 0) {
     const actors = [...npcs, ...enemies];
     for (const a of actors) {
       if (!a || !a.vnOnSight || a._vnShown) continue;
       // Skip if we've seen this intro before in this session/save
       const type = (typeof a.touchDamage === 'number') ? 'enemy' : 'npc';
-      const key = `${type}:${(a.name || '').toLowerCase()}`;
+      const key = a.vnId || `${type}:${(a.name || '').toLowerCase()}`;
       if (runtime.vnSeen && runtime.vnSeen[key]) { a._vnShown = true; continue; }
       const inView = (
         a.x + a.w > camera.x && a.x < camera.x + camera.w &&
@@ -704,6 +880,8 @@ export function step(dt) {
       if (!inView) continue;
       a._vnShown = true;
       if (runtime.vnSeen) runtime.vnSeen[key] = true;
+      // Start a short cooldown to prevent immediate follow-ups
+      runtime.introCooldown = Math.max(runtime.introCooldown || 0, 0.8);
       // Schedule a short camera pan to the actor
       const toX = Math.round(a.x + a.w/2 - camera.w/2);
       const toY = Math.round(a.y + a.h/2 - camera.h/2);
@@ -723,14 +901,7 @@ export function step(dt) {
     }
   }
 
-  // Auto-close defeat VN to ensure level transition proceeds without manual input
-  if (runtime.pendingLevel && runtime.gameState === 'chat') {
-    runtime._levelSwapTimer = Math.max(0, (runtime._levelSwapTimer || 1.2) - dt);
-    if (runtime._levelSwapTimer === 0) {
-      try { exitChat(runtime); } catch {}
-      runtime._levelSwapTimer = null;
-    }
-  }
+  // Removed auto-close of VN when a level is pending; transition happens after user closes the VN.
 }
 
 function applyCompanionAuras(dt) {

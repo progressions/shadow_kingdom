@@ -249,6 +249,42 @@ export const urnDialog = {
   },
 };
 
+export const fanaDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: "Fana: The chains broke when you struck me down. I won't wear them again. If you'll have me, I'll fight beside you.",
+      choices: [
+        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'You’re free now. Breathe, then walk with me.', action: 'affinity_add', data: { target: 'active', amount: 0.6, flag: 'fana_intro_reassure' }, next: 'after_aff' },
+        { label: 'Not now.', action: 'end' },
+      ],
+    },
+    after_aff: {
+      text: "Fana: Thank you. I'll keep pace—and keep the fire pointed forward.",
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+    },
+  },
+};
+
+export const fanaFreedDialog = {
+  start: 'freed',
+  nodes: {
+    freed: {
+      text: "Fana: The sigils are ash. My hands are my own.\nI remember Aurelion's halls—the light, the vows. If you'll have me, I'll help set them right.",
+      choices: [
+        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Take a breath. Walk with me when you’re ready.', action: 'affinity_add', data: { target: 'active', amount: 0.6, flag: 'fana_freed_reassure' }, next: 'after_aff' },
+        { label: 'Later.', action: 'end' },
+      ],
+    },
+    after_aff: {
+      text: "Fana: Thank you. I won't look back.",
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+    },
+  },
+};
+
 export const varabellaDialog = {
   start: 'intro',
   nodes: {

@@ -10,149 +10,13 @@ import { step } from './systems/step.js';
 import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI, fadeTransition, updateQuestHint, exitChat } from './engine/ui.js';
+import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save.js';
-import { loadLevel2, loadLevel3, loadLevel4 } from './engine/levels.js';
+import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
 
-// Initialize enemies positioned around the three NPCs
-// Goal:
-// - Canopy: closest to the player, with 1 mook near her
-// - Hola: next closest, in a different location, with 4 mooks around her
-// - Yorna: furthest, with 3 mooks and 1 featured foe near her
-// - Keep the boss in the castle exactly as-is (see below)
-
-// Choose relative positions from the player start to ensure distance ordering.
-// Place Canopy just off-screen to the right at game start (still closer than Hola)
-// Camera half-width is ~160px; +172 ensures she's initially not visible
-const canopyPos = { x: Math.round(player.x + 172), y: Math.round(player.y - 10) };
-// Push Hola and Yorna further from the player start
-const holaPos   = { x: Math.round(player.x + 260), y: Math.round(player.y + 180) };
-const yornaPos  = { x: Math.round(player.x - 340), y: Math.round(player.y - 240) };
-
-// Enemies near Canopy (1 mook), spaced a bit further
-spawnEnemy(canopyPos.x + 28, canopyPos.y + 8, 'mook');
-
-// Enemies near Hola (3 mooks, wider triangle) — repositioned with Hola
-spawnEnemy(holaPos.x - 42, holaPos.y - 20, 'mook');
-spawnEnemy(holaPos.x + 42, holaPos.y - 20, 'mook');
-spawnEnemy(holaPos.x + 0,  holaPos.y + 38, 'mook');
-
-// Enemies near Yorna (3 mooks, wider spread + 1 featured) — repositioned with Yorna
-spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,  'mook');
-spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,  'mook');
-spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36, 'mook');
-// Gorg — featured key-bearer with VN intro and custom red-tinted sheet
-const gorgSheet = makeSpriteSheet({
-  skin: '#ff4a4a',
-  shirt: '#8a1a1a',
-  pants: '#6a0f0f',
-  hair: '#2a0000',
-  outline: '#000000',
-});
-spawnEnemy(
-  yornaPos.x + 44,
-  yornaPos.y + 34,
-  'featured',
-  {
-    name: 'Gorg',
-    guaranteedDropId: 'key_bronze',
-    vnOnSight: { text: introTexts.gorg },
-    portrait: 'assets/portraits/Gorg/Gorg.mp4',
-    sheet: gorgSheet,
-    hp: 16,
-    dmg: 5,
-  }
-);
-// Boss — placed inside a small castle enclosure near bottom-right
-const castle = (function buildCastle() {
-  const cw = TILE * 14; // ~14 tiles wide
-  const ch = TILE * 10; // ~10 tiles tall
-  const t = 8;          // wall thickness in px
-  const gap = 16;       // opening width
-  const cx = Math.min(world.w - cw - TILE * 2, Math.max(TILE * 2, world.w * 0.82));
-  const cy = Math.min(world.h - ch - TILE * 2, Math.max(TILE * 2, world.h * 0.78));
-  // clear interior obstacles
-  const inner = { x: cx + t, y: cy + t, w: cw - 2 * t, h: ch - 2 * t };
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const o = obstacles[i];
-    if (o.x < inner.x + inner.w && o.x + o.w > inner.x && o.y < inner.y + inner.h && o.y + o.h > inner.y) {
-      obstacles.splice(i, 1);
-    }
-  }
-  // walls (top with a centered gap)
-  const gapX = cx + (cw - gap) / 2;
-  const add = (x, y, w, h, type='wall', extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
-  // top left and right segments
-  add(cx, cy, gapX - cx, t);
-  add(gapX + gap, cy, (cx + cw) - (gapX + gap), t);
-  // Gate in the opening (locked until key used by attacking it)
-  add(gapX, cy, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
-  // bottom wall
-  add(cx, cy + ch - t, cw, t);
-  // left and right walls
-  add(cx, cy, t, ch);
-  add(cx + cw - t, cy, t, ch);
-  return { x: cx, y: cy, w: cw, h: ch, gapX, gapW: gap };
-})();
-// Boss at center of castle interior
-spawnEnemy(
-  castle.x + castle.w / 2 - 6,
-  castle.y + castle.h / 2 - 8,
-  'boss',
-  {
-    name: 'Vast',
-    portrait: 'assets/portraits/Vast/Vast video.mp4',
-    portraitPowered: 'assets/portraits/Vast/Vast powered.mp4',
-    portraitDefeated: 'assets/portraits/Vast/Vast defeated.mp4',
-    onDefeatNextLevel: 2,
-    vnOnSight: { text: introTexts.vast },
-  }
-);
-// NPCs with portraits (place your images at assets/portraits/*.png)
-// Repositioned per request
-// Canopy: closest to player — blonde-haired healer in a blue dress
-const canopySheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' });
-const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', {
-  name: 'Canopy',
-  portrait: 'assets/portraits/Canopy/Canopy video.mp4',
-  sheet: canopySheet,
-  vnOnSight: { text: introTexts.canopy },
-});
-setNpcDialog(canopy, canopyDialog);
-
-// Yorna: furthest — red-haired fighter in a black dress
-const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
-const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', {
-  name: 'Yorna',
-  portrait: 'assets/portraits/Yorna/Yorna video.mp4',
-  sheet: yornaSheet,
-  vnOnSight: { text: introTexts.yorna },
-});
-setNpcDialog(yorna, yornaDialog);
-
-// Hola: next closest — black-haired sorceress in a white dress
-const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' });
-const hola = spawnNpc(holaPos.x, holaPos.y, 'up', {
-  name: 'Hola',
-  portrait: 'assets/portraits/Hola/Hola video.mp4',
-  sheet: holaSheet,
-  vnOnSight: { text: introTexts.hola },
-});
-setNpcDialog(hola, holaDialog);
-// Start with zero companions
-
-// Build terrain and obstacles
-let terrain = buildTerrainBitmap(world);
-obstacles.push(...buildObstacles(world, player, enemies, npcs));
-// Place a couple of starter chests near the player (one fixed Fine Sword)
-obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_sword', fixedItemId: 'sword_fine', opened: false, locked: false });
-obstacles.push({ x: Math.round(player.x - TILE * 8), y: Math.round(player.y + TILE * 6), w: 12, h: 10, type: 'chest', id: 'chest_l1_extra', lootTier: 'rare', opened: false, locked: false });
-// Breakables spaced out across the world
-obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y + TILE * 6), w: 12, h: 12, type: 'barrel', id: 'brk_l1_a', hp: 2 });
-obstacles.push({ x: Math.round(player.x - TILE * 12), y: Math.round(player.y - TILE * 8), w: 12, h: 12, type: 'crate', id: 'brk_l1_b', hp: 2 });
-obstacles.push({ x: Math.round(canopyPos.x + TILE * 6), y: Math.round(canopyPos.y + TILE * 2), w: 12, h: 12, type: 'barrel', id: 'brk_l1_c', hp: 2 });
-obstacles.push({ x: Math.round(holaPos.x - TILE * 6), y: Math.round(holaPos.y + TILE * 1), w: 12, h: 12, type: 'crate', id: 'brk_l1_d', hp: 2 });
-obstacles.push({ x: Math.round(castle.x + castle.w/2 + TILE * 4), y: Math.round(castle.y + castle.h + TILE * 2), w: 12, h: 12, type: 'barrel', id: 'brk_l1_e', hp: 2 });
+// Initial level: use loader registry (Level 1 by default)
+let terrain = loadLevel1();
+try { showLevelTitle(levelNameFor(1)); } catch {}
 
 // Input and UI
 setupChatInputHandlers(runtime);
@@ -172,11 +36,14 @@ function loop(now) {
   last = now;
   step(dt);
   try { updateQuestHint(); } catch {}
+  // Avoid rendering default level spawns between a level swap and save restore
+  if (runtime._suspendRenderUntilRestore) { requestAnimationFrame(loop); return; }
   // Handle pending level transitions after VN closes (runtime set in step.js)
-  if (runtime.pendingLevel === 2 || runtime.pendingLevel === 3 || runtime.pendingLevel === 4) {
+  if (typeof runtime.pendingLevel === 'number' && runtime.pendingLevel > 0) {
     const lvl = runtime.pendingLevel;
     const doSwap = () => {
-      terrain = (lvl === 2) ? loadLevel2() : (lvl === 3 ? loadLevel3() : loadLevel4());
+      const loader = LEVEL_LOADERS[lvl] || loadLevel1;
+      terrain = loader();
       // Snap camera to player
       camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(player.x + player.w/2 - camera.w/2)));
       camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(player.y + player.h/2 - camera.h/2)));
@@ -187,7 +54,7 @@ function loop(now) {
     };
     // Ensure any VN overlay is closed before transitioning
     if (runtime.gameState === 'chat') { try { exitChat(runtime); } catch {} }
-    fadeTransition({ toBlackMs: 400, holdMs: 100, toClearMs: 400, during: doSwap });
+    fadeTransition({ toBlackMs: 400, holdMs: 100, toClearMs: 400, during: () => { doSwap(); try { showLevelTitle(levelNameFor(lvl)); } catch {} } });
   }
   render(terrain, obstacles);
   requestAnimationFrame(loop);
@@ -196,7 +63,31 @@ requestAnimationFrame(loop);
 
 // Debug helpers (call from browser console):
 try {
+  // Enable enemy debug logs by default
+  window.DEBUG_ENEMIES = true;
   window.gotoLevel2 = () => { runtime.pendingLevel = 2; };
   window.gotoLevel3 = () => { runtime.pendingLevel = 3; };
   window.gotoLevel4 = () => { runtime.pendingLevel = 4; };
+  window.gotoLevel5 = () => { runtime.pendingLevel = 5; };
+  window.gotoLevel1 = () => { runtime.pendingLevel = 1; };
+  window.gotoLevel6 = () => { runtime.pendingLevel = 6; };
+  window.centerOn = (x, y) => { camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(x - camera.w/2))); camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(y - camera.h/2))); };
+  window.gotoEnemy = async (matcher) => {
+    const S = await import('./engine/state.js');
+    const enemies = S.enemies || [];
+    let found = null;
+    if (typeof matcher === 'string') {
+      found = enemies.find(e => e && ((e.vnId && e.vnId === matcher) || ((e.name||'').toLowerCase().includes(matcher.toLowerCase()))));
+    } else if (typeof matcher === 'function') {
+      found = enemies.find(matcher);
+    }
+    if (found) {
+      window.centerOn(found.x + found.w/2, found.y + found.h/2);
+      return found;
+    }
+    return null;
+  };
 } catch {}
+
+// Load lightweight debug tests (exposes window.testOpenedChestPersistence, window.testVnIntroCooldown)
+try { import('./dev/light_tests.js').catch(()=>{}); } catch {}

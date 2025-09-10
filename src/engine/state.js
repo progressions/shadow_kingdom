@@ -94,9 +94,11 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
       : { name: 'Mook', speed: 10, hp: 3, dmg: 3, sheet: enemyMookSheet, kind: 'mook' };
   const hp = (typeof opts.hp === 'number') ? opts.hp : cfg.hp;
   const dmg = (typeof opts.dmg === 'number') ? opts.dmg : ((typeof opts.touchDamage === 'number') ? opts.touchDamage : cfg.dmg);
-  enemies.push({
+  const w = (typeof opts.w === 'number') ? opts.w : 12;
+  const h = (typeof opts.h === 'number') ? opts.h : 16;
+  const ent = {
     x, y,
-    w: 12, h: 16,
+    w, h,
     speed: cfg.speed,
     dir: 'down',
     moving: true,
@@ -118,16 +120,29 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     portraitSrc: opts.portrait || null,
     // Optional portraits for empowered/defeated VNs (boss flow)
     portraitPowered: opts.portraitPowered || null,
+    portraitOverpowered: opts.portraitOverpowered || null,
     portraitDefeated: opts.portraitDefeated || null,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
+    // Stable VN identity key (e.g., 'enemy:gorg') for persistence
+    vnId: opts.vnId || null,
     // Optional guaranteed drop item id (e.g., 'key_bronze')
     guaranteedDropId: opts.guaranteedDropId || null,
     // Optional next level to transition after boss defeat
     onDefeatNextLevel: (typeof opts.onDefeatNextLevel === 'number') ? opts.onDefeatNextLevel : null,
     // Optional quest linkage
     questId: opts.questId || null,
-  });
+    // Optional sprite scale for rendering (1 = 16x16, 2 = 32x32)
+    spriteScale: (typeof opts.spriteScale === 'number') ? Math.max(0.5, Math.min(4, opts.spriteScale)) : 1,
+  };
+  enemies.push(ent);
+  try {
+    if (window && window.DEBUG_ENEMIES) {
+      console.log('[ENEMY SPAWN]', {
+        name: ent.name, kind: ent.kind, x: ent.x, y: ent.y, hp: ent.hp, vnId: ent.vnId || null,
+      });
+    }
+  } catch {}
 }
 
 // Lightweight corpse entity (pass-through, fades out)
@@ -200,6 +215,7 @@ export function spawnCompanion(x, y, sheet, opts = {}) {
     animTime: 0,
     animFrame: 0,
     sheet,
+    sheetPalette: opts.sheetPalette || null,
     name: opts.name || 'Companion',
     portraitSrc: opts.portrait || opts.portraitSrc || null,
     inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
@@ -224,16 +240,22 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     portrait: null,
     dialog: null,
     sheet: opts.sheet || null,
+    sheetPalette: opts.sheetPalette || null,
     // Minimal VN intro flag: if present, a simple VN appears once when first seen
     vnOnSight: opts.vnOnSight || null,
     // Affinity before recruitment (carried into party on join)
     affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
   };
-  // Preload portrait only for image extensions
+  // Preload portrait only for image extensions (with asset version)
   if (npc.portraitSrc && /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(npc.portraitSrc)) {
     try {
       const img = new Image();
-      img.src = npc.portraitSrc;
+      let src = npc.portraitSrc;
+      try {
+        const v = (window && window.ASSET_VERSION) ? String(window.ASSET_VERSION) : null;
+        if (v) src = `${src}${src.includes('?') ? '&' : '?'}v=${encodeURIComponent(v)}`;
+      } catch {}
+      img.src = src;
       npc.portrait = img;
     } catch {}
   }
@@ -261,6 +283,8 @@ export const runtime = {
   cameraPan: null, // { fromX, fromY, toX, toY, t, dur }
   pendingIntro: null, // { actor, text }
   vnSeen: {}, // map of intro keys that have been shown
+  // Cooldown preventing back-to-back VN intros (seconds)
+  introCooldown: 0,
   
   // Aggregated companion buffs (recomputed each frame)
   combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, aspd: 0 },
@@ -275,6 +299,8 @@ export const runtime = {
   musicModeSwitchTimer: 0,
   // Persistence for removed breakables (ids)
   brokenBreakables: {},
+  // Persistence for opened chests (ids)
+  openedChests: {},
   // Level/scene management
   currentLevel: 1,
   pendingLevel: null,
@@ -289,7 +315,10 @@ export const runtime = {
   _timeSec: 0,
   _lowHpTimer: 0,
   _recentKillTimes: [],
-  
+  _loadedAt: 0,
+  // Rendering guard during level swap+restore to avoid showing default spawns
+  _suspendRenderUntilRestore: false,
+
 };
 
 // ---- Leveling helpers ----

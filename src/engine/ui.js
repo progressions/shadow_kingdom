@@ -17,6 +17,7 @@ const partyUI = document.getElementById('party-ui');
 const bannerEl = document.getElementById('banner');
 const fadeEl = document.getElementById('fade');
 const questHintEl = document.getElementById('quest-hint');
+const levelTitleEl = document.getElementById('level-title');
 
 // Sidebar removed: VN overlay handles all dialog UI
 
@@ -34,12 +35,12 @@ export function enterChat(runtime) {
       const isVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(npc.portraitSrc);
       if (isVideo && overlayVideo) {
         if (overlayImg) { overlayImg.src = ''; overlayImg.style.display = 'none'; }
-        overlayVideo.src = npc.portraitSrc;
+        overlayVideo.src = addAssetVersion(npc.portraitSrc);
         overlayVideo.style.display = '';
         try { overlayVideo.play().catch(()=>{}); } catch {}
       } else {
         if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
-        if (overlayImg) { overlayImg.src = npc.portraitSrc; overlayImg.style.display = ''; }
+        if (overlayImg) { overlayImg.src = addAssetVersion(npc.portraitSrc); overlayImg.style.display = ''; }
       }
       if (overlayName) overlayName.textContent = npc.name || 'NPC';
       if (vnName) vnName.textContent = npc.name || 'NPC';
@@ -66,6 +67,19 @@ export function exitChat(runtime) {
     runtime.paused = false;
     try { tryStartMusic('ambient'); } catch {}
   }
+  // If there are queued VN prompts, show the next one immediately instead of panning/transitioning
+  try {
+    if (Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0) {
+      const next = runtime._queuedVNs.shift();
+      if (next && next.text) {
+        import('../engine/dialog.js').then(mod => {
+          const actor = next.actor || null;
+          mod.startPrompt(actor, next.text, []);
+        }).catch(()=>{});
+        return;
+      }
+    }
+  } catch {}
   // Smooth pan back to player after VN exits
   const toX = Math.round(player.x + player.w/2 - camera.w/2);
   const toY = Math.round(player.y + player.h/2 - camera.h/2);
@@ -81,6 +95,13 @@ export function exitChat(runtime) {
   }
   // Stop any portrait video playback after exit
   if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
+  // If there is a pending level change queued until after VN sequence, set it now
+  try {
+    if (typeof runtime._afterQueuePendingLevel === 'number' && runtime._afterQueuePendingLevel > 0) {
+      runtime.pendingLevel = runtime._afterQueuePendingLevel;
+      runtime._afterQueuePendingLevel = null;
+    }
+  } catch {}
 }
 
 export function setupChatInputHandlers(runtime) {
@@ -300,6 +321,41 @@ export function showBanner(text, durationMs = 1800) {
   showBanner._t = window.setTimeout(() => {
     bannerEl.classList.remove('show');
   }, durationMs);
+}
+
+// Append cache-busting version to asset URLs
+function addAssetVersion(url) {
+  try {
+    const v = (window && window.ASSET_VERSION) ? String(window.ASSET_VERSION) : null;
+    if (!v || typeof url !== 'string') return url;
+    const hasQuery = url.includes('?');
+    return `${url}${hasQuery ? '&' : '?'}v=${encodeURIComponent(v)}`;
+  } catch { return url; }
+}
+
+// Level title overlay
+export function showLevelTitle(text, durationMs = 2200) {
+  if (!levelTitleEl) return;
+  levelTitleEl.textContent = text || '';
+  levelTitleEl.classList.add('show');
+  window.clearTimeout(showLevelTitle._t);
+  showLevelTitle._t = window.setTimeout(() => {
+    levelTitleEl.classList.remove('show');
+  }, Math.max(0, durationMs));
+}
+
+// Simple mapping from level index to biome-based name
+export function levelNameFor(level) {
+  const lv = Math.max(1, level|0);
+  switch (lv) {
+    case 1: return 'Greenwood';          // default grass/stone biome
+    case 2: return 'Sunbreak Expanse';   // sandy ruins biome
+    case 3: return 'Marsh';              // reed marsh biome
+    case 4: return 'Aurelion';           // ruined city name
+    case 5: return 'Heart of the Temple';
+    case 6: return 'Temple of Aurelion'; // Hub
+    default: return `Region ${lv}`;
+  }
 }
 
 export function refreshChoiceFocus() {

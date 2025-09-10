@@ -104,6 +104,18 @@ function timeAgo(ts) {
   return `${d}d ago`;
 }
 
+// Debug menu
+export function startDebugMenu() {
+  const choices = [
+    { label: 'Run Light Tests (both)', action: 'debug_run_all' },
+    { label: 'Test: Opened Chest Persistence', action: 'debug_run_chest' },
+    { label: 'Test: VN Intro Cooldown', action: 'debug_run_vn' },
+    { label: 'Test: Enemy Intro After Load (vnId)', action: 'debug_run_enemy_intro' },
+    { label: 'Back', action: 'end' },
+  ];
+  startPrompt(null, 'Debug', choices);
+}
+
 export function renderCurrentNode() {
   if (!runtime.activeDialog) return;
   const { tree, nodeId } = runtime.activeDialog;
@@ -231,9 +243,63 @@ export function selectChoice(index) {
   if (choice.action === 'clear_save_slot') { requestClearSlot(choice.data || 1); return; }
   if (choice.action === 'toggle_autosave') { runtime.autosaveEnabled = !runtime.autosaveEnabled; buildAndShowSaveMenu(); return; }
   if (choice.action === 'open_slot') { openSaveSlotMenu(choice.data || 1); return; }
+  if (choice.action === 'open_save_menu') { startSaveMenu(); return; }
   if (choice.action === 'confirm_save_slot') { saveGame(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'confirm_clear_slot') { clearSave(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'save_menu_back') { buildAndShowSaveMenu(); return; }
+  if (choice.action === 'open_debug') { startDebugMenu(); return; }
+  if (choice.action === 'debug_run_all') {
+    (async () => {
+      try {
+        const mod = await import('../dev/light_tests.js');
+        const res = await (mod.runLightSaveTests ? mod.runLightSaveTests() : window.runLightSaveTests());
+        const text = res && res.ok ? 'All debug tests passed.' : 'Debug tests failed. See console.';
+        startPrompt(null, text, [ { label: 'OK', action: 'end' } ]);
+      } catch (e) {
+        startPrompt(null, 'Could not run debug tests.', [ { label: 'OK', action: 'end' } ]);
+      }
+    })();
+    return;
+  }
+  if (choice.action === 'debug_run_chest') {
+    (async () => {
+      try {
+        const mod = await import('../dev/light_tests.js');
+        const res = await (mod.testOpenedChestPersistence ? mod.testOpenedChestPersistence(9) : window.testOpenedChestPersistence(9));
+        const text = res && res.ok ? 'Chest persistence: OK' : `Chest persistence: FAIL (${res && res.details || 'See console'})`;
+        startPrompt(null, text, [ { label: 'OK', action: 'end' } ]);
+      } catch (e) {
+        startPrompt(null, 'Could not run chest test.', [ { label: 'OK', action: 'end' } ]);
+      }
+    })();
+    return;
+  }
+  if (choice.action === 'debug_run_vn') {
+    (async () => {
+      try {
+        const mod = await import('../dev/light_tests.js');
+        const res = await (mod.testVnIntroCooldown ? mod.testVnIntroCooldown() : window.testVnIntroCooldown());
+        const text = res && res.ok ? 'VN intro cooldown: OK' : `VN intro cooldown: FAIL (${res && res.details || 'See console'})`;
+        startPrompt(null, text, [ { label: 'OK', action: 'end' } ]);
+      } catch (e) {
+        startPrompt(null, 'Could not run VN cooldown test.', [ { label: 'OK', action: 'end' } ]);
+      }
+    })();
+    return;
+  }
+  if (choice.action === 'debug_run_enemy_intro') {
+    (async () => {
+      try {
+        const mod = await import('../dev/light_tests.js');
+        const res = await (mod.testEnemyIntroAfterLoadById ? mod.testEnemyIntroAfterLoadById(8) : window.testEnemyIntroAfterLoadById(8));
+        const text = res && res.ok ? 'Enemy intro after load: OK' : `Enemy intro after load: FAIL (${res && res.details || 'See console'})`;
+        startPrompt(null, text, [ { label: 'OK', action: 'end' } ]);
+      } catch (e) {
+        startPrompt(null, 'Could not run enemy intro test.', [ { label: 'OK', action: 'end' } ]);
+      }
+    })();
+    return;
+  }
   if (choice.action === 'inventory_back') { startInventoryMenu(); return; }
   if (choice.action === 'inv_slot') { openSlotMenu(choice.data.actorTag, choice.data.slot); return; }
   if (choice.action === 'inv_equip') { doEquip(choice.data.actorTag, choice.data.slot, undefined, choice.data.itemId); openInventoryMenu(choice.data.actorTag); return; }

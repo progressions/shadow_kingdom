@@ -22,6 +22,8 @@ export const sampleItems = [
   { id: 'key_reed',      name: 'Reed Key',      slot: 'misc',       keyId: 'key_reed' },
   // Level 4 key (Ruined City)
   { id: 'key_sigil',     name: 'Iron Sigil',     slot: 'misc',      keyId: 'key_sigil' },
+  // Level 5 key (Temple Gate)
+  { id: 'key_temple',    name: 'Temple Key',    slot: 'misc',       keyId: 'key_temple' },
 ];
 
 export function cloneItem(item) {
