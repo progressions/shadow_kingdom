@@ -384,8 +384,8 @@ export function loadLevel5() {
   // Small hazards near start
   obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
 
-  // Boss gate defined by map coordinates (two tiles wide)
-  const gateTile = { x: 103, y: 70, w: 2, h: 1 };
+  // Boss gate defined by map coordinates — vertical (two tiles tall)
+  const gateTile = { x: 103, y: 70, w: 1, h: 2 };
   obstacles.push({
     x: gateTile.x * TILE,
     y: gateTile.y * TILE,
@@ -393,15 +393,17 @@ export function loadLevel5() {
     h: gateTile.h * TILE,
     type: 'gate', id: 'temple_gate', keyId: 'key_temple', locked: true, blocksAttacks: true,
   });
-  // Carve a thin approach corridor to the gate (if the merged wall line is too thick)
-  (function carveGateApproach() {
-    const carve = { x: (gateTile.x - 1) * TILE, y: (gateTile.y - 6) * TILE, w: 1 * TILE, h: 12 * TILE };
+  // Carve 1-tile passages immediately left and right of the vertical gate, matching its height
+  (function carveGateSides() {
+    const left = { x: (gateTile.x - 1) * TILE, y: gateTile.y * TILE, w: 1 * TILE, h: gateTile.h * TILE };
+    const right = { x: (gateTile.x + gateTile.w) * TILE, y: gateTile.y * TILE, w: 1 * TILE, h: gateTile.h * TILE };
     const inter = (a,b)=> !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      const o = obstacles[i];
-      if (!o || o.type !== 'wall') continue;
-      if (inter(o, carve)) {
-        obstacles.splice(i, 1);
+    for (let pass = 0; pass < 2; pass++) {
+      const carve = pass === 0 ? left : right;
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        if (!o || o.type !== 'wall') continue;
+        if (inter(o, carve)) obstacles.splice(i, 1);
       }
     }
   })();
