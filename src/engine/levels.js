@@ -428,7 +428,7 @@ export function loadLevel4() {
   const varaPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
   const urnSheet = makeSpriteSheet(urnPalette);
   const varaSheet = makeSpriteSheet(varaPalette);
-  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', sheet: urnSheet, sheetPalette: urnPalette, portrait: 'assets/portraits/level04/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
+  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', dialogId: 'urn', sheet: urnSheet, sheetPalette: urnPalette, portrait: 'assets/portraits/level04/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
   let vara;
   // Place Varabella; avoid spawning on fire/lava tiles
   (function placeVarabella() {
@@ -447,7 +447,7 @@ export function loadLevel4() {
       { x: start.x - TILE * 4, y: start.y - TILE * 4 },
     ];
     let spot = candidates.find(p => !overlapsHazard(rect(p.x, p.y))) || start;
-    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
+    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', dialogId: 'varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
   })();
   import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
 
@@ -619,7 +619,7 @@ export function loadLevel6() {
   const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
   const sisterPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0' };
   const sisterSheet = makeSpriteSheet(sisterPalette);
-  const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', sheet: sisterSheet, sheetPalette: sisterPalette, portrait: 'assets/portraits/Ell/Ell.mp4', affinity: 6 });
+  const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', dialogId: 'villager', sheet: sisterSheet, sheetPalette: sisterPalette, portrait: 'assets/portraits/Ell/Ell.mp4', affinity: 6 });
   import('../data/dialogs.js').then(mod => {
     // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
     if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);
