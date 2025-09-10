@@ -377,7 +377,26 @@ export function loadLevel4() {
   const urnSheet = makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' });
   const varaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
   const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', sheet: urnSheet, portrait: 'assets/portraits/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
-  const vara = spawnNpc(player.x + 140, player.y - 120, 'down', { name: 'Varabella', sheet: varaSheet, portrait: 'assets/portraits/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
+  let vara;
+  // Place Varabella; avoid spawning on fire/lava tiles
+  (function placeVarabella() {
+    const start = { x: player.x + 140, y: player.y - 120 };
+    const rect = (x,y) => ({ x, y, w: 12, h: 16 });
+    const overlapsHazard = (r) => obstacles.some(o => (o.type === 'fire' || o.type === 'lava') && !(r.x + r.w <= o.x || r.x >= o.x + o.w || r.y + r.h <= o.y || r.y >= o.y + o.h));
+    const candidates = [
+      { x: start.x, y: start.y },
+      { x: start.x + TILE * 4, y: start.y },
+      { x: start.x - TILE * 4, y: start.y },
+      { x: start.x, y: start.y + TILE * 4 },
+      { x: start.x, y: start.y - TILE * 4 },
+      { x: start.x + TILE * 4, y: start.y + TILE * 4 },
+      { x: start.x - TILE * 4, y: start.y + TILE * 4 },
+      { x: start.x + TILE * 4, y: start.y - TILE * 4 },
+      { x: start.x - TILE * 4, y: start.y - TILE * 4 },
+    ];
+    let spot = candidates.find(p => !overlapsHazard(rect(p.x, p.y))) || start;
+    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', sheet: varaSheet, portrait: 'assets/portraits/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
+  })();
   import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
 
   return terrain;
