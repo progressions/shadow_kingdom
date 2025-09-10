@@ -329,7 +329,7 @@ function deserializePayload(data) {
       const resolvedName = (e && e.name && String(e.name).trim().length)
         ? e.name
         : (kind === 'featured' ? (featuredNameFor(e.guaranteedDropId) || base.name) : base.name);
-      const ent = {
+      let ent = {
         x: e.x, y: e.y, w, h, speed, dir: e.dir || 'down', moving: true,
         animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
@@ -349,9 +349,28 @@ function deserializePayload(data) {
         // vnOnSight is not persisted in saves; reattach by id below if not seen
         vnOnSight: null,
       };
-      enemies.push(ent);
+      // Validate coordinates; if missing/invalid, try to recover from baseline essential spawns
+      const badX = !(typeof ent.x === 'number' && Number.isFinite(ent.x));
+      const badY = !(typeof ent.y === 'number' && Number.isFinite(ent.y));
+      if (badX || badY) {
+        try {
+          const key = ent.vnId || (ent.name ? `enemy:${String(ent.name).toLowerCase()}` : null);
+          let pos = null;
+          if (key && Array.isArray(baselineEssential)) {
+            pos = baselineEssential.find(b => (b.vnId && b.vnId === ent.vnId) || (!b.vnId && key === (b.name ? `enemy:${String(b.name).toLowerCase()}` : '')));
+          }
+          if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+            ent.x = pos.x; ent.y = pos.y;
+            if (window && window.DEBUG_ENEMIES) console.warn('[ENEMY RESTORE COORD FIX]', { name: ent.name, key, x: ent.x, y: ent.y });
+          } else {
+            if (window && window.DEBUG_ENEMIES) console.warn('[ENEMY RESTORE SKIP_INVALID_XY]', { name: ent.name, key, x: ent.x, y: ent.y });
+            ent = null;
+          }
+        } catch {}
+      }
+      if (ent) enemies.push(ent);
       try {
-        if (window && window.DEBUG_ENEMIES) {
+        if (ent && window && window.DEBUG_ENEMIES) {
           console.log('[ENEMY RESTORE]', { name: ent.name, kind: ent.kind, x: ent.x, y: ent.y, hp: ent.hp, vnId: ent.vnId || null });
         }
       } catch {}
