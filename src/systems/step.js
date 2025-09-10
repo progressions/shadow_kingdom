@@ -249,11 +249,31 @@ export function step(dt) {
     if (e.hp <= 0) continue;
     // Enemies collide with player and other enemies; pass through companions/NPCs
     const solidsForEnemy = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
+    // Environmental effects for enemies (mud slow; fire/lava burn)
+    let envSlow = 1.0;
+    let envBurnDps = 0;
+    try {
+      const er = { x: e.x, y: e.y, w: e.w, h: e.h };
+      for (const o of obstacles) {
+        if (!o) continue;
+        if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
+        // Skip far hazards for a tiny speed win
+        const cx = (o.x + o.w/2) - (e.x + e.w/2);
+        const cy = (o.y + o.h/2) - (e.y + e.h/2);
+        if ((cx*cx + cy*cy) > (140*140)) continue;
+        if (rectsIntersect(er, o)) {
+          if (o.type === 'mud') envSlow = Math.min(envSlow, 0.6);
+          else if (o.type === 'fire') envBurnDps = Math.max(envBurnDps, 1.5);
+          else if (o.type === 'lava') envBurnDps = Math.max(envBurnDps, 3.0);
+        }
+      }
+    } catch {}
+    if (envBurnDps > 0) { e._burnDps = envBurnDps; e._burnTimer = Math.max(e._burnTimer || 0, 1.0); }
     if (Math.abs(e.knockbackX) > 0.01 || Math.abs(e.knockbackY) > 0.01) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow)));
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
       moveWithCollision(e, e.knockbackX * dt * mul, e.knockbackY * dt * mul, solidsForEnemy);
       e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
     } else {
@@ -264,30 +284,71 @@ export function step(dt) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow)));
-      moveWithCollision(e, dx * e.speed * mul * dt, dy * e.speed * mul * dt, solidsForEnemy);
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
+
+      // Hazard avoidance steering: pick a nearby direction with lower hazard exposure
+      const baseDir = { x: dx, y: dy };
+      const offsets = [-0.9, -0.5, 0, 0.5, 0.9]; // radians near target
+      let best = { x: baseDir.x, y: baseDir.y };
+      let bestScore = Infinity;
+      const px = e.x + e.w/2, py = e.y + e.h/2;
+      const avoidBias = (e.kind === 'boss') ? 0.5 : (e.kind === 'featured' ? 0.8 : 1.0);
+      for (const a of offsets) {
+        const ca = Math.cos(a), sa = Math.sin(a);
+        const vx = baseDir.x * ca - baseDir.y * sa;
+        const vy = baseDir.x * sa + baseDir.y * ca;
+        // Alignment penalty (prefer towards player)
+        const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
+        const alignPenalty = (1 - dot) * 0.6;
+        // Hazard exposure along a short ray with 3 samples
+        let haz = 0;
+        const samples = [0.33, 0.66, 1.0];
+        const stepLen = 26; // px
+        for (const t of samples) {
+          const cx = px + vx * stepLen * t;
+          const cy = py + vy * stepLen * t;
+          const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
+          for (const o of obstacles) {
+            if (!o) continue;
+            if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
+            // quick reject by distance
+            const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy;
+            if ((ox*ox + oy*oy) > (160*160)) continue;
+            if (rectsIntersect(probe, o)) {
+              haz += (o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12);
+            }
+          }
+        }
+        const score = alignPenalty + haz * avoidBias;
+        if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
+      }
+
+      moveWithCollision(e, best.x * e.speed * mul * dt, best.y * e.speed * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
       if (moved < 0.05) {
         e.x = oldX; e.y = oldY;
-        moveWithCollision(e, dx * e.speed * dt, 0, solidsForEnemy);
+        moveWithCollision(e, best.x * e.speed * dt, 0, solidsForEnemy);
         moved = Math.hypot(e.x - oldX, e.y - oldY);
         if (moved < 0.05) {
           e.x = oldX; e.y = oldY;
-          moveWithCollision(e, 0, dy * e.speed * dt, solidsForEnemy);
+          moveWithCollision(e, 0, best.y * e.speed * dt, solidsForEnemy);
           moved = Math.hypot(e.x - oldX, e.y - oldY);
         }
       }
       // Perpendicular sidestep if still stuck
       if (moved < 0.05) {
         e.x = oldX; e.y = oldY;
-        const px = -dy * e.avoidSign;
-        const py = dx * e.avoidSign;
-        moveWithCollision(e, px * e.speed * 0.7 * dt, py * e.speed * 0.7 * dt, solidsForEnemy);
+        const px2 = -best.y * e.avoidSign;
+        const py2 = best.x * e.avoidSign;
+        moveWithCollision(e, px2 * e.speed * 0.7 * dt, py2 * e.speed * 0.7 * dt, solidsForEnemy);
         moved = Math.hypot(e.x - oldX, e.y - oldY);
       }
 
-      e.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left':'right') : (dy < 0 ? 'up':'down');
+      // Face movement direction
+      const fdx = e.x - oldX, fdy = e.y - oldY;
+      const useX = Math.abs(fdx) > Math.abs(fdy);
+      e.dir = useX ? (fdx < 0 ? 'left' : 'right') : (fdy < 0 ? 'up' : 'down');
       e.animTime += dt; if (e.animTime > 0.22) { e.animTime = 0; e.animFrame = (e.animFrame + 1) % FRAMES_PER_DIR; }
       // Flip avoidance side if stuck for too long
       if (moved < 0.1) { e.stuckTime += dt; if (e.stuckTime > 0.6) { e.avoidSign *= -1; e.stuckTime = 0; } }
