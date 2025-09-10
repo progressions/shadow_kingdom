@@ -370,7 +370,9 @@ export function step(dt) {
       e._burnTimer = Math.max(0, e._burnTimer - dt);
       const dps = e._burnDps || 0;
       if (dps > 0 && sinceLoadSec >= 1.0) {
+        const before = e.hp;
         e.hp -= dps * dt;
+        try { if (window && window.DEBUG_ENEMIES) console.log('[ENEMY BURN]', { name: e.name, kind: e.kind, x: e.x, y: e.y, dps, hpBefore: before, hpAfter: e.hp }); } catch {}
         if (Math.random() < 4 * dt) spawnFloatText(e.x + e.w/2, e.y - 10, 'Burn', { color: '#ff9a3d', life: 0.5 });
       }
     }
@@ -684,12 +686,12 @@ export function step(dt) {
           spawnStain(e.x, e.y, { life: 2.8 });
         }
       } catch { /* fall back to spawning if needed */ }
-      // Debug: log removals shortly after load to diagnose unexpected despawns
+      // Debug: log removals (always when DEBUG_ENEMIES) and early after load with extra flag
       try {
         const now = (performance && performance.now) ? performance.now() : Date.now();
         const since = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
-        if (since <= 2.0 && (window && window.DEBUG_LOG_ENEMY_REMOVALS)) {
-          console.log('[ENEMY REMOVED]', { name: e.name, kind: e.kind, x: e.x, y: e.y, hp: e.hp, burnDps: e._burnDps, sinceLoadSec: since.toFixed(2) });
+        if ((window && window.DEBUG_ENEMIES) || (since <= 2.0 && (window && window.DEBUG_LOG_ENEMY_REMOVALS))) {
+          console.log('[ENEMY REMOVED]', { name: e.name, kind: e.kind, x: e.x, y: e.y, hp: e.hp, burnDps: e._burnDps || 0, sinceLoadSec: since.toFixed(2) });
         }
       } catch {}
       enemies.splice(i, 1);

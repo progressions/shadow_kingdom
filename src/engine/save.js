@@ -281,6 +281,7 @@ function deserializePayload(data) {
   }
   // Restore enemies
   if (Array.isArray(data.enemies)) {
+    try { if (window && window.DEBUG_ENEMIES) console.log('[LOAD] restoring enemies:', data.enemies.length); } catch {}
     for (const e of data.enemies) {
       const kind = (e.kind || 'mook').toLowerCase();
       const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 30, dmg: 8 }
@@ -306,7 +307,7 @@ function deserializePayload(data) {
       const resolvedName = (e && e.name && String(e.name).trim().length)
         ? e.name
         : (kind === 'featured' ? (featuredNameFor(e.guaranteedDropId) || base.name) : base.name);
-      enemies.push({
+      const ent = {
         x: e.x, y: e.y, w, h, speed, dir: e.dir || 'down', moving: true,
         animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
@@ -325,7 +326,13 @@ function deserializePayload(data) {
         vnId: (typeof e.vnId === 'string' && e.vnId) ? e.vnId : vnIdForEnemy(e),
         // vnOnSight is not persisted in saves; reattach by id below if not seen
         vnOnSight: null,
-      });
+      };
+      enemies.push(ent);
+      try {
+        if (window && window.DEBUG_ENEMIES) {
+          console.log('[ENEMY RESTORE]', { name: ent.name, kind: ent.kind, x: ent.x, y: ent.y, hp: ent.hp, vnId: ent.vnId || null });
+        }
+      } catch {}
     }
     // Reattach VN-on-sight text for known enemies (featured/boss) using vnId when loading, if not already seen
     import('../data/intro_texts.js').then(mod => {
@@ -414,7 +421,7 @@ function deserializePayload(data) {
       const speed = (typeof b.speed === 'number') ? b.speed : base.speed;
       const w = (typeof b.w === 'number') ? b.w : 12;
       const h = (typeof b.h === 'number') ? b.h : 16;
-      enemies.push({
+      const ent = {
         x: b.x, y: b.y, w, h, speed, dir: b.dir || 'down', moving: true,
         animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
@@ -430,7 +437,13 @@ function deserializePayload(data) {
         sheetPalette: b.sheetPalette || null,
         spriteScale: (typeof b.spriteScale === 'number') ? b.spriteScale : 1,
         vnId: b.vnId || null,
-      });
+      };
+      enemies.push(ent);
+      try {
+        if (window && window.DEBUG_ENEMIES) {
+          console.log('[ENEMY MERGE BASELINE]', { name: ent.name, kind: ent.kind, x: ent.x, y: ent.y, hp: ent.hp, vnId: ent.vnId || null });
+        }
+      } catch {}
     }
   } catch {}
   // Helper: attach NPC dialog by name

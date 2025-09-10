@@ -96,7 +96,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   const dmg = (typeof opts.dmg === 'number') ? opts.dmg : ((typeof opts.touchDamage === 'number') ? opts.touchDamage : cfg.dmg);
   const w = (typeof opts.w === 'number') ? opts.w : 12;
   const h = (typeof opts.h === 'number') ? opts.h : 16;
-  enemies.push({
+  const ent = {
     x, y,
     w, h,
     speed: cfg.speed,
@@ -134,7 +134,15 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     questId: opts.questId || null,
     // Optional sprite scale for rendering (1 = 16x16, 2 = 32x32)
     spriteScale: (typeof opts.spriteScale === 'number') ? Math.max(0.5, Math.min(4, opts.spriteScale)) : 1,
-  });
+  };
+  enemies.push(ent);
+  try {
+    if (window && window.DEBUG_ENEMIES) {
+      console.log('[ENEMY SPAWN]', {
+        name: ent.name, kind: ent.kind, x: ent.x, y: ent.y, hp: ent.hp, vnId: ent.vnId || null,
+      });
+    }
+  } catch {}
 }
 
 // Lightweight corpse entity (pass-through, fades out)

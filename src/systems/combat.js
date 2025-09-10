@@ -104,8 +104,16 @@ export function handleAttacks(dt) {
           const dxm = ex - px, dym = ey - py;
           if ((dxm*dxm + dym*dym) <= (48*48)) finalDmg += 1;
         }
+        const before = e.hp;
         e.hp -= dmg;
         if (finalDmg !== dmg) e.hp -= (finalDmg - dmg);
+        try {
+          if (window && window.DEBUG_ENEMIES) {
+            console.log('[ENEMY HIT]', {
+              name: e.name, kind: e.kind, x: e.x, y: e.y, hpBefore: before, hpAfter: e.hp, base: dmg, add: (finalDmg - dmg), total: finalDmg,
+            });
+          }
+        } catch {}
         // Oyin: Kindle DoT
         if (hasOyin) {
           e._burnTimer = Math.max(e._burnTimer || 0, 1.5);
