@@ -319,7 +319,7 @@ export function levelNameFor(level) {
   const lv = Math.max(1, level|0);
   switch (lv) {
     case 1: return 'Greenwood';          // default grass/stone biome
-    case 2: return 'Desert';             // sandy ruins biome
+    case 2: return 'Sunbreak Expanse';   // sandy ruins biome
     case 3: return 'Marsh';              // reed marsh biome
     case 4: return 'Ruined City';        // city ruins biome
     default: return `Region ${lv}`;
