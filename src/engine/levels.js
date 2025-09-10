@@ -393,6 +393,18 @@ export function loadLevel5() {
     h: gateTile.h * TILE,
     type: 'gate', id: 'temple_gate', keyId: 'key_temple', locked: true, blocksAttacks: true,
   });
+  // Carve a thin approach corridor to the gate (if the merged wall line is too thick)
+  (function carveGateApproach() {
+    const carve = { x: (gateTile.x - 1) * TILE, y: (gateTile.y - 6) * TILE, w: 1 * TILE, h: 12 * TILE };
+    const inter = (a,b)=> !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      if (!o || o.type !== 'wall') continue;
+      if (inter(o, carve)) {
+        obstacles.splice(i, 1);
+      }
+    }
+  })();
 
   // Key guardian: Fana (enslaved sorceress); drops the temple key
   // Place Fana outside the arena near the approach (keep off hazards)
