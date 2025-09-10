@@ -434,7 +434,7 @@ export function step(dt) {
       if ((e.kind || '').toLowerCase() === 'boss' && e._secondPhase && !e._thirdPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null) };
-          const line = `${e.name || 'Boss'}: I will not fall!`; // final form cue
+          const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
           startPrompt(actor, line, []);
         } catch {}
         e.hp = e.maxHp;
