@@ -158,7 +158,7 @@ export function step(dt) {
     runtime.autosaveTimer += dt;
     if (runtime.autosaveTimer >= runtime.autosaveIntervalSec) {
       runtime.autosaveTimer = 0;
-      saveGame(1);
+      saveGame('auto');
       showBanner('Autosaved');
     }
   }

@@ -5,7 +5,10 @@ import { updatePartyUI, showBanner } from './ui.js';
 import { sheetForName, makeSpriteSheet } from './sprites.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 
-function getLocalKey(slot = 1) { return `shadow_kingdom_save_${slot}`; }
+function getLocalKey(slot = 1) {
+  if (slot === 'auto' || slot === 0) return 'shadow_kingdom_autosave';
+  return `shadow_kingdom_save_${slot}`;
+}
 const API_URL = window.SAVE_API_URL || null; // e.g., 'https://your-app.fly.dev'
 const API_KEY = window.SAVE_API_KEY || null; // optional shared secret
 function getUserId() {
