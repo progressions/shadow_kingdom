@@ -38,7 +38,6 @@ export function serializeV2() {
 
   // Dynamic enemies (non-unique)
   const dynamicEnemies = [];
-  const uniques = uniqueSetForLevel(level);
   for (const e of enemies) {
     if (!e || e.hp <= 0) continue;
     const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
