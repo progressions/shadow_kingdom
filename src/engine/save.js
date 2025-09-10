@@ -266,6 +266,24 @@ function deserializePayload(data) {
     else if (key.includes('oyin')) import('../data/dialogs.js').then(mod => npc.dialog = mod.oyinDialog).catch(()=>{});
     else if (key.includes('twil')) import('../data/dialogs.js').then(mod => npc.dialog = mod.twilDialog).catch(()=>{});
   };
+  // Helper: reattach VN-on-sight text for known NPCs when loading, if not already seen
+  const attachOnSightByName = (npc) => {
+    const nameKey = (npc.name || '').toLowerCase();
+    const seenKey = `npc:${nameKey.replace(/\s+/g,'')}`;
+    if (runtime.vnSeen && runtime.vnSeen[seenKey]) return; // already shown
+    import('../data/intro_texts.js').then(mod => {
+      const t = mod.introTexts || {};
+      let text = null;
+      if (nameKey.includes('canopy')) text = t.canopy;
+      else if (nameKey.includes('yorna')) text = t.yorna;
+      else if (nameKey.includes('hola')) text = t.hola;
+      else if (nameKey.includes('tin')) text = t.tin;
+      else if (nameKey.includes('nellis')) text = t.nellis;
+      else if (nameKey.includes('urn')) text = t.urn;
+      else if (nameKey.includes('varabella')) text = t.varabella;
+      if (text && !npc.vnOnSight) npc.vnOnSight = { text };
+    }).catch(()=>{});
+  };
   // Restore companions
   if (Array.isArray(data.companions)) {
     for (const c of data.companions) {
@@ -282,6 +300,7 @@ function deserializePayload(data) {
       const sheet = sheetForName(n.name);
       const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, portrait: n.portrait || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
       attachDialogByName(npc);
+      attachOnSightByName(npc);
     }
   }
   // Apply unlocked gates
