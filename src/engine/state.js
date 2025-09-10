@@ -229,11 +229,16 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     // Affinity before recruitment (carried into party on join)
     affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
   };
-  // Preload portrait only for image extensions
+  // Preload portrait only for image extensions (with asset version)
   if (npc.portraitSrc && /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(npc.portraitSrc)) {
     try {
       const img = new Image();
-      img.src = npc.portraitSrc;
+      let src = npc.portraitSrc;
+      try {
+        const v = (window && window.ASSET_VERSION) ? String(window.ASSET_VERSION) : null;
+        if (v) src = `${src}${src.includes('?') ? '&' : '?'}v=${encodeURIComponent(v)}`;
+      } catch {}
+      img.src = src;
       npc.portrait = img;
     } catch {}
   }

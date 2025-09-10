@@ -35,12 +35,12 @@ export function enterChat(runtime) {
       const isVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(npc.portraitSrc);
       if (isVideo && overlayVideo) {
         if (overlayImg) { overlayImg.src = ''; overlayImg.style.display = 'none'; }
-        overlayVideo.src = npc.portraitSrc;
+        overlayVideo.src = addAssetVersion(npc.portraitSrc);
         overlayVideo.style.display = '';
         try { overlayVideo.play().catch(()=>{}); } catch {}
       } else {
         if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
-        if (overlayImg) { overlayImg.src = npc.portraitSrc; overlayImg.style.display = ''; }
+        if (overlayImg) { overlayImg.src = addAssetVersion(npc.portraitSrc); overlayImg.style.display = ''; }
       }
       if (overlayName) overlayName.textContent = npc.name || 'NPC';
       if (vnName) vnName.textContent = npc.name || 'NPC';
@@ -301,6 +301,16 @@ export function showBanner(text, durationMs = 1800) {
   showBanner._t = window.setTimeout(() => {
     bannerEl.classList.remove('show');
   }, durationMs);
+}
+
+// Append cache-busting version to asset URLs
+function addAssetVersion(url) {
+  try {
+    const v = (window && window.ASSET_VERSION) ? String(window.ASSET_VERSION) : null;
+    if (!v || typeof url !== 'string') return url;
+    const hasQuery = url.includes('?');
+    return `${url}${hasQuery ? '&' : '?'}v=${encodeURIComponent(v)}`;
+  } catch { return url; }
 }
 
 // Level title overlay
