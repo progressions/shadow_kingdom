@@ -225,6 +225,26 @@ function deserializePayload(data) {
   }
   // Inventory
   if (data.playerInv) player.inventory = data.playerInv;
+  // Capture essential enemies from current scene (loader baseline) to merge back
+  const baselineEssential = enemies
+    .filter(e => e && (String(e.kind).toLowerCase() === 'boss' || !!e.guaranteedDropId))
+    .map(e => ({
+      x: e.x, y: e.y, dir: e.dir, kind: e.kind || 'mook',
+      name: e.name || null,
+      vnId: (typeof e.vnId === 'string' && e.vnId) ? e.vnId : null,
+      hp: e.hp, maxHp: e.maxHp, touchDamage: e.touchDamage, speed: e.speed,
+      w: e.w, h: e.h, spriteScale: e.spriteScale || 1,
+      portrait: e.portraitSrc || null,
+      portraitPowered: e.portraitPowered || null,
+      portraitOverpowered: e.portraitOverpowered || null,
+      portraitDefeated: e.portraitDefeated || null,
+      sheetPalette: e.sheetPalette || null,
+      questId: e.questId || null,
+      guaranteedDropId: e.guaranteedDropId || null,
+      onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
+      _secondPhase: !!e._secondPhase,
+    }));
+
   // Clear arrays
   enemies.length = 0;
   companions.length = 0;
@@ -368,6 +388,48 @@ function deserializePayload(data) {
       }
     } catch {}
   }
+
+  // Merge back essential baseline enemies (bosses/key guardians) if they were not present in the saved payload
+  try {
+    const presentKeys = new Set();
+    for (const e of enemies) {
+      if (!e) continue;
+      const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
+      if (key) presentKeys.add(key);
+    }
+    for (const b of baselineEssential) {
+      const key = b.vnId || (b.name ? `enemy:${String(b.name).toLowerCase()}` : null);
+      if (key && presentKeys.has(key)) continue;
+      // Re-spawn baseline essential enemy since it was missing from the save
+      const kind = (b.kind || 'mook').toLowerCase();
+      const base = (kind === 'boss') ? { speed: 12, hp: 30, dmg: 8 }
+        : (kind === 'featured') ? { speed: 11, hp: 5, dmg: 3 }
+        : { speed: 10, hp: 3, dmg: 3 };
+      const hp = (typeof b.hp === 'number') ? b.hp : base.hp;
+      const maxHp = (typeof b.maxHp === 'number') ? b.maxHp : hp;
+      const dmg = (typeof b.touchDamage === 'number') ? b.touchDamage : base.dmg;
+      const speed = (typeof b.speed === 'number') ? b.speed : base.speed;
+      const w = (typeof b.w === 'number') ? b.w : 12;
+      const h = (typeof b.h === 'number') ? b.h : 16;
+      enemies.push({
+        x: b.x, y: b.y, w, h, speed, dir: b.dir || 'down', moving: true,
+        animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
+        knockbackX: 0, knockbackY: 0,
+        name: b.name || (kind === 'boss' ? 'Boss' : 'Featured Foe'), kind,
+        portraitSrc: normalizePortraitPath(b.portrait || null, b.name, b.vnId),
+        portraitPowered: normalizePortraitPath(b.portraitPowered || null, b.name, b.vnId),
+        portraitOverpowered: normalizePortraitPath(b.portraitOverpowered || null, b.name, b.vnId),
+        portraitDefeated: normalizePortraitPath(b.portraitDefeated || null, b.name, b.vnId),
+        onDefeatNextLevel: (typeof b.onDefeatNextLevel === 'number') ? b.onDefeatNextLevel : null,
+        questId: b.questId || null,
+        guaranteedDropId: b.guaranteedDropId || null,
+        _secondPhase: !!b._secondPhase,
+        sheetPalette: b.sheetPalette || null,
+        spriteScale: (typeof b.spriteScale === 'number') ? b.spriteScale : 1,
+        vnId: b.vnId || null,
+      });
+    }
+  } catch {}
   // Helper: attach NPC dialog by name
   const attachDialogByName = (npc) => {
     const key = (npc.name || '').toLowerCase();
