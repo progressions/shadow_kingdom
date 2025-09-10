@@ -668,8 +668,15 @@ export function step(dt) {
         if (kind === 'featured' && e.guaranteedDropId) val = 10;
         grantPartyXp(val);
       } catch {}
-      spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
-      spawnStain(e.x, e.y, { life: 2.8 });
+      // Skip corpse/stain for Fana (she becomes an NPC immediately)
+      try {
+        const nm2 = (e.name || '').toLowerCase();
+        const skipCorpse = nm2.includes('fana');
+        if (!skipCorpse) {
+          spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
+          spawnStain(e.x, e.y, { life: 2.8 });
+        }
+      } catch { /* fall back to spawning if needed */ }
       enemies.splice(i, 1);
       // Record kill time for chemistry rare ticks
       try {
