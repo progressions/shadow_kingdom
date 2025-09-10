@@ -411,7 +411,7 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
-      // Boss two-phase behavior: on first "death", show powered VN, refill HP, and buff damage
+      // Boss multi-phase behavior: power up twice (3 total phases)
       if ((e.kind || '').toLowerCase() === 'boss' && !e._secondPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null };
@@ -421,15 +421,33 @@ export function step(dt) {
         // Refill to second health bar and mark phase
         e.hp = e.maxHp;
         e._secondPhase = true;
-        // Increase boss contact damage for second phase
+        // Increase boss contact damage and attack speed for second phase
         e.touchDamage = Math.max(1, (e.touchDamage || 0) + 2);
+        e.hitCooldown = Math.max(0.5, (e.hitCooldown || 0.8) * 0.7);
+        e.speed = Math.max(8, (e.speed || 12) * 1.1);
         try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Empowered!', { color: '#ffd166', life: 0.8 }); } catch {}
         // Clear incidental timers/knockback
         e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
         continue; // do not remove this frame
       }
-      // If boss defeated, show a VN overlay with defeat line and schedule next level when appropriate
-      if ((e.kind || '').toLowerCase() === 'boss' && e._secondPhase) {
+      // Second power-up -> final form (third phase)
+      if ((e.kind || '').toLowerCase() === 'boss' && e._secondPhase && !e._thirdPhase) {
+        try {
+          const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null };
+          const line = `${e.name || 'Boss'}: I will not fall!`; // final form cue
+          startPrompt(actor, line, []);
+        } catch {}
+        e.hp = e.maxHp;
+        e._thirdPhase = true;
+        e.touchDamage = Math.max(1, (e.touchDamage || 0) + 3);
+        e.hitCooldown = Math.max(0.35, (e.hitCooldown || 0.8) * 0.7);
+        e.speed = Math.max(9, (e.speed || 12) * 1.15);
+        try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Final Form!', { color: '#ff7a7a', life: 0.9 }); } catch {}
+        e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
+        continue;
+      }
+      // If boss defeated after final form, show a VN overlay with defeat line and schedule next level when appropriate
+      if ((e.kind || '').toLowerCase() === 'boss' && e._thirdPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitDefeated || null };
           const line = `${e.name || 'Boss'}: ...`; // simple defeated line; customize per boss via portraits
