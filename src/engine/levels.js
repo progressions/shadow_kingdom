@@ -418,6 +418,10 @@ export function loadLevel5() {
   const cx = rx + rw/2 - 8; const cy = ry + rh/2 - 12;
   spawnEnemy(cx, cy, 'boss', {
     name: 'Vorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
+    // Boss portraits for VN overlays
+    portrait: 'assets/portraits/Vorthak/Vorthak.mp4',
+    portraitPowered: 'assets/portraits/Vorthak/Vorthak powered.mp4',
+    portraitDefeated: 'assets/portraits/Vorthak/Vorthak defeated.mp4',
     onDefeatNextLevel: 6,
     vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' },
   });
