@@ -1,180 +1,97 @@
-# Save System — Full Game State Persistence
+# Save System v2 — Deterministic World + Explicit Enemies
 
-This document describes what the game saves, how the payload is structured, and how each field maps to in‑game systems. The save system is designed to fully restore a session so the player can continue exactly where they left off — level, positions, actors, inventory, flags, VN intros, key guardians, and ground items.
+This document describes the current, single save system (v2). It stores stable world deltas and explicit enemies, and restores the scene deterministically. There is no legacy mode.
 
 ## Goals
 
-- Resume precisely: same level, camera context, player position, HP, companions, enemies, NPCs.
-- Persist everything that changes as you play (gates unlocked, chests opened, breakables broken, items on the ground, quests)
-- Keep saves robust across versions by adding fields conservatively and handling defaults.
+- Click Save → Load resumes exactly: level, player position/HP/dir/XP, companions (with palette), inventory, gates/chests/breakables, ground items, VN/quest flags, and enemies (both bosses/guardians and newly spawned generics) in the same positions with the same HP.
+- Avoid saving static geometry; loaders build levels, saves apply deltas and actors.
 
 ## Where Saves Live
 
-- Local: `localStorage` key per slot — `shadow_kingdom_save_<slot>`
-- Remote: if `API_URL` is configured, saves load/store via `/api/save?slot=<n>` with JSON payload
+- Local: `localStorage` per slot — `shadow_kingdom_save_<slot>`
+- Autosave: `shadow_kingdom_autosave` (does not overwrite slots)
 
-## Save/Load Flow
+## Load Flow
 
-- Serialize: `serializePayload()` gathers all state into a plain JSON object.
-- Load route: `loadDataPayload(data)` compares `data.currentLevel` to the current level.
-  - If different, it stashes the payload, sets `runtime.pendingLevel = target`, and shows a banner.
-  - The main loop swaps to the requested level via the loader registry, then calls `applyPendingRestore()` to apply the saved payload to the new scene.
-- VN/overlays are closed before a level swap; after swap the saved state is applied.
+- `loadGame(slot)`: parses payload (schema `v2`). If `currentLevel` differs, stashes payload and sets `runtime.pendingLevel`. The main loop loads the level, then `applyPendingRestoreV2()` applies the payload.
+- VN overlays are closed before swap; after swap the saved world/enemies are applied.
 
-## Payload Structure (Top‑Level)
+## Payload Structure (Top‑Level, v2)
 
 ```jsonc
 {
-  "version": 1,
-  "at": 1712345678901,              // ms timestamp
-  "currentLevel": 1,                // numeric level id
-  "player": { ... },                // player state
-  "enemies": [ ... ],               // live enemies (hp > 0)
-  "companions": [ ... ],            // current party
-  "npcs": [ ... ],                  // wandering/talkable NPCs
-  "playerInv": { ... },             // inventory + equipped items
-  "world": { "w": 1600, "h": 960 },    // px dimensions at time of save
-  "unlockedGates": [ ... ],         // gate ids that are unlocked
-  "groundItems": [ ... ],           // items on the ground
-  "openedChests": [ ... ],          // chest ids opened
-  "brokenBreakables": [ ... ],      // barrel/crate ids removed
-  "vnSeen": [ ... ],                // VN-on-sight ids (e.g., "npc:canopy")
-  "affinityFlags": [ ... ],         // one-time affinity awards
-  "questFlags": [ ... ],            // quest flags
-  "questCounters": { ... }          // quest counters/progress
-}
-```
-
-## Player
-
-```jsonc
-"player": {
-  "x": 123.4, "y": 567.8,          // position in px (bottom/left of sprite box)
-  "hp": 9.5,                       // current HP
-  "dir": "left",                   // facing dir ('up'|'down'|'left'|'right')
-  "level": 1, "xp": 10             // player progression
-}
-```
-
-- Derived stats (e.g., `player.damage`, DR bonuses) are recomputed on load.
-
-## Inventory
-
-- `playerInv.items`: stacked/loose items in the backpack.
-- `playerInv.equipped`: equipment by slot (`head`, `torso`, `legs`, `leftHand`, `rightHand`).
-- Items are defined by id (see `src/data/items.js`) and include attributes (`atk`, `dr`, `keyId`, etc.).
-- Key items use slot `misc` with a `keyId` that matches a gate’s `keyId`.
-
-## Enemies (live)
-
-Each live enemy entry restores an entity verbatim:
-
-```jsonc
-{
-  "x": 1107.99, "y": 725.10,
-  "dir": "right",
-  "kind": "mook|featured|boss",
-  "name": "Mook|Gorg|...",
-  "hp": 7, "maxHp": 7,
-  "touchDamage": 5, "speed": 10,
-  "w": 12, "h": 16, "spriteScale": 1,
-  "_secondPhase": false,            // boss phase marker
-  "portrait": "...",                // VN portraits (bosses/featured)
-  "portraitPowered": "...",
-  "portraitOverpowered": "...",
-  "portraitDefeated": "...",
-  "sheetPalette": null,             // custom tinting (optional)
-  "questId": null,                  // quest linkage if spawned for a quest
-  "guaranteedDropId": null,         // e.g., key_bronze, key_temple
-  "onDefeatNextLevel": null         // boss transitions
+  "schema": "v2",
+  "version": 2,
+  "at": 1757600000000,
+  "currentLevel": 1,
+  "player": { "x": 800, "y": 520, "hp": 10, "dir": "down", "level": 1, "xp": 6 },
+  "companions": [ { "name": "Canopy", "x": 792, "y": 520, "dir": "left", "sheetPalette": { /* colors */ }, "affinity": 6.0, "level": 1, "xp": 0 } ],
+  "playerInv": { /* items, equipped */ },
+  "world": { "w": 1600, "h": 960 },
+  "gateStates": { "castle_gate": "locked" },
+  "openedChests": [ "chest_l1_sword" ],
+  "brokenBreakables": [ "brk_l1_0" ],
+  "groundItems": [ { "id": "p1", "x": 900, "y": 600, "item": { "id": "torch", "qty": 2 } } ],
+  "vnSeen": [ "npc:canopy" ],
+  "affinityFlags": [ "canopy_intro_encourage" ],
+  "questFlags": [ "yorna_knot_started" ],
+  "questCounters": { "yorna_knot_remaining": 2 },
+  "uniqueActors": {                // boss/guardian status by vnId
+    "enemy:vast": { "state": "alive", "hp": 30 },
+    "enemy:gorg": { "state": "defeated" }
+  },
+  "dynamicEnemies": [             // all non-unique enemies are explicit
+    { "id": "de_kx9...", "kind": "mook", "x": 760, "y": 540, "hp": 3, "dir": "left", "w": 12, "h": 16, "spriteScale": 1 }
+  ]
 }
 ```
 
 Notes:
-- Only enemies with `hp > 0` are saved (dead entities are not serialized).
-- Featured foes (key guardians) retain identity by `name` and `guaranteedDropId`. On load, if `name` is missing in older payloads, identity is inferred from `guaranteedDropId` (e.g., `key_bronze` ⇒ `Gorg`) and default tints may be applied.
-- Boss phase markers: `_secondPhase` persisted. Some bosses (e.g., Vorthak) may also track `_thirdPhase` at runtime; a missing field defaults safely.
+- uniqueActors uses stable ids (vnId: `enemy:vast`, `enemy:gorg`, etc.). Loaders spawn defaults; v2 removes/keeps and sets HP based on this map.
+- dynamicEnemies preserves every non-unique enemy exactly (position, HP, basic stats), so a saved crowd loads identically.
 
-## Companions
+## Player / Companions / Inventory
 
-```jsonc
-{
-  "name": "Canopy",
-  "x": 1177.99, "y": 765.05, "dir": "up",
-  "portrait": "assets/portraits/Canopy/Canopy video.mp4",
-  "inventory": { ... },
-  "affinity": 5.3, "level": 1, "xp": 0
-}
-```
+- Player: position/hp/dir/level/xp persisted; derived stats recomputed.
+- Companions: restored with `sheetPalette` if present; legacy saves fallback to canonical palettes by name (blue dress for Canopy, etc.).
+- Inventory: backpack items and equipped slots persisted.
 
-- On load, companions are spawned and their auras/derived values are recomputed per tick.
+## World Deltas
 
-## NPCs
-
-```jsonc
-{
-  "name": "Hola",
-  "x": 1168.9, "y": 775.7, "dir": "up",
-  "portrait": "assets/portraits/Hola/Hola video.mp4",
-  "affinity": 5
-}
-```
-
-- Dialog trees are reattached by name (`Canopy`, `Yorna`, `Hola`, etc.).
-- VN-on-sight restoration: if the VN hasn’t been seen (`vnSeen` lacks `npc:<name>`), a default intro text is reattached so VN intros can still trigger after load.
-
-## World/Geometry State
-
-- `world`: pixel dimensions at save time (`w`, `h`). Actual geometry is produced by the level loader; dynamic states below patch that geometry.
-- `unlockedGates`: array of gate `id`s that are unlocked. On load, any gate with a matching `id` is set to `locked=false`.
-- `openedChests`: array of chest `id`s that should be loaded as opened (`opened=true`).
-- `brokenBreakables`: array of obstacle ids (`barrel`/`crate`) that should be removed on load.
-- Hazards (`mud`, `fire`, `lava`) and static walls are rebuilt by the current level loader; only dynamic deltas are saved.
-
-## Ground Items
-
-```jsonc
-"groundItems": [
-  { "id": "p17", "x": 1012, "y": 744, "item": { "id": "key_temple", "name": "Temple Key", "slot": "misc", "keyId": "key_temple" } }
-]
-```
-
-- All world items (drops, key items from featured foes) are persisted with their position and full item data.
-- On load, `itemsOnGround` is rebuilt, so the player can pick them up later.
+- gateStates: `{ id: 'locked'|'unlocked' }` (applied to obstacle gates).
+- openedChests: chest ids set `opened=true`.
+- brokenBreakables: obstacle ids removed.
+- groundItems: all items on the ground with positions and full item data.
 
 ## VN / Flags / Quests
 
-- `vnSeen`: string keys of intro VNs that have been shown (e.g., `npc:canopy`, `enemy:gorg`). Prevents re‑playing intros after load.
-- `affinityFlags`: one‑time affinity rewards earned (prevents repeat awards in dialog trees).
-- `questFlags`: boolean flags for quest state (e.g., `..._started`, `..._cleared`, `..._done`, hub/unlock flags, etc.).
-- `questCounters`: numeric progress for active quests (e.g., remaining kills, uses).
+- vnSeen: prevents re‑playing VN intros.
+- affinityFlags: once-only affinity awards.
+- questFlags / questCounters: booleans and numeric progress.
 
-## Level Switching on Load
+## Enemies
 
-- Saves include `currentLevel`.
-- On load:
-  1) If the saved level differs from the current scene, the payload is stashed and the game sets `runtime.pendingLevel`.
-  2) The main loop swaps to the correct level via `LEVEL_LOADERS[level]`.
-  3) After the swap, `applyPendingRestore()` applies the saved payload (actors, flags, items), ensuring a precise resume.
+- uniqueActors (bosses/guardians by vnId):
+  - `unspawned` (default), `alive` (with optional hp), `defeated`.
+  - On load: if `defeated`/`unspawned`, remove default spawn; if `alive`, keep default and set hp if provided.
+- dynamicEnemies (all non-unique):
+  - Saved explicitly with x/y/dir/hp/size/speed/touchDamage/spriteScale and optional `sheetPalette` and tags (`questId`, `source`).
+  - On load: validated/clamped and spawned exactly so that “three mooks at these positions with this hp” round-trips.
 
-## Identity and VN Robustness (Compatibility)
+## Portraits
 
-- Named featured foes: if older payloads lacked `name`, we infer name from `guaranteedDropId` and set default tints to preserve identity.
-- NPC VN-on-sight: if an NPC’s intro hasn’t been seen, we restore `vnOnSight` text from `introTexts` so intros still trigger after load.
+- Portrait paths use level-scoped layout: `assets/portraits/levelXX/<Name>/<File>.mp4`.
+- Legacy saves are normalized on load.
 
-## Not Persisted (By Design)
+## Autosave
 
-- Transient runtime effects (e.g., camera pans, pre‑intro freezes, queued VNs) are not saved. The world will be unfrozen after load and won’t auto‑replay pre‑intros.
-- Static level geometry is not serialized; loaders build walls/terrain and the save applies dynamic deltas (gates/chests/breakables/ground items).
+- Autosave writes to `shadow_kingdom_autosave` and never overwrites manual slots.
 
-## Versioning and Extensions
+## Debug
 
-- `version` at top‑level allows migration in future.
-- Adding new fields:
-  - Default missing fields in `deserializePayload`.
-  - Gatekeeper checks: keep new fields optional and compute safe defaults when absent.
+- Set `window.DEBUG_ENEMIES = true` to log spawns/restores/removals and draw enemy markers on screen.
 
-## Example (Truncated)
 
 ```jsonc
 {

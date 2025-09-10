@@ -3,6 +3,7 @@ import { player, companions, obstacles, itemsOnGround, world, enemies, runtime, 
 import { updatePartyUI, showBanner } from './ui.js';
 import { makeSpriteSheet, sheetForName } from './sprites.js';
 import { descriptorForLevel } from './level_descriptors.js';
+import { introTexts } from '../data/intro_texts.js';
 
 function uniqueSetForLevel(level) {
   const d = descriptorForLevel(level);
@@ -191,6 +192,49 @@ export function applyPendingRestoreV2() {
         });
       } catch {}
     }
+    // Reattach VN-on-sight for enemies (unique and dynamic) if not yet seen
+    try {
+      for (const e of enemies) {
+        if (!e || e._vnShown || e.vnOnSight) continue;
+        const key = e.vnId || null;
+        if (!key) continue;
+        if (runtime.vnSeen && runtime.vnSeen[key]) { e._vnShown = true; continue; }
+        const id = String(key).replace(/^enemy:/,'');
+        const text = (
+          id === 'gorg' ? introTexts.gorg
+          : id === 'aarg' ? introTexts.aarg
+          : id === 'wight' ? introTexts.wight
+          : id === 'blurb' ? introTexts.blurb
+          : id === 'fana' ? (introTexts.fana_enslaved || introTexts.fana)
+          : id === 'nethra' ? introTexts.nethra
+          : id === 'luula' ? introTexts.luula
+          : id === 'vanificia' ? introTexts.vanificia
+          : id === 'vorthak' ? introTexts.vorthak
+          : id === 'vast' ? introTexts.vast
+          : null
+        );
+        if (text) e.vnOnSight = { text };
+      }
+    } catch {}
+
+    // Ensure visual identity for known featured foes if their sheet is missing
+    try {
+      for (const e of enemies) {
+        if (!e || e.sheet) continue;
+        if ((e.kind || '').toLowerCase() !== 'featured') continue;
+        const id = (e.vnId || '').toLowerCase();
+        if (id === 'enemy:gorg') {
+          e.sheet = makeSpriteSheet({ skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' });
+        } else if (id === 'enemy:aarg') {
+          e.sheet = makeSpriteSheet({ skin: '#6fb3ff', hair: '#0a1b4a', longHair: false, dress: true, dressColor: '#274b9a', shirt: '#7aa6ff', pants: '#1b2e5a', outline: '#000000' });
+        } else if (id === 'enemy:wight') {
+          e.sheet = makeSpriteSheet({ skin: '#f5f5f5', hair: '#e6e6e6', shirt: '#cfcfcf', pants: '#9e9e9e', outline: '#000000' });
+        } else if (id === 'enemy:blurb') {
+          e.sheet = makeSpriteSheet({ skin: '#6fdd6f', hair: '#0a2a0a', longHair: false, dress: false, shirt: '#4caf50', pants: '#2e7d32', outline: '#000000' });
+        }
+      }
+    } catch {}
+
     showBanner('Game loaded (v2)');
   } catch (e) {
     console.error('Apply v2 failed', e);
