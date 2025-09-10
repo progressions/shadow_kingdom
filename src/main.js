@@ -63,12 +63,30 @@ requestAnimationFrame(loop);
 
 // Debug helpers (call from browser console):
 try {
+  // Enable enemy debug logs by default
+  window.DEBUG_ENEMIES = true;
   window.gotoLevel2 = () => { runtime.pendingLevel = 2; };
   window.gotoLevel3 = () => { runtime.pendingLevel = 3; };
   window.gotoLevel4 = () => { runtime.pendingLevel = 4; };
   window.gotoLevel5 = () => { runtime.pendingLevel = 5; };
   window.gotoLevel1 = () => { runtime.pendingLevel = 1; };
   window.gotoLevel6 = () => { runtime.pendingLevel = 6; };
+  window.centerOn = (x, y) => { camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(x - camera.w/2))); camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(y - camera.h/2))); };
+  window.gotoEnemy = async (matcher) => {
+    const S = await import('./engine/state.js');
+    const enemies = S.enemies || [];
+    let found = null;
+    if (typeof matcher === 'string') {
+      found = enemies.find(e => e && ((e.vnId && e.vnId === matcher) || ((e.name||'').toLowerCase().includes(matcher.toLowerCase()))));
+    } else if (typeof matcher === 'function') {
+      found = enemies.find(matcher);
+    }
+    if (found) {
+      window.centerOn(found.x + found.w/2, found.y + found.h/2);
+      return found;
+    }
+    return null;
+  };
 } catch {}
 
 // Load lightweight debug tests (exposes window.testOpenedChestPersistence, window.testVnIntroCooldown)

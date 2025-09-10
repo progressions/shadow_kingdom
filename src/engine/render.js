@@ -106,6 +106,27 @@ export function render(terrainBitmap, obstacles) {
     }
   }
 
+  // Debug: draw enemy markers when enabled
+  try {
+    if (window && window.DEBUG_ENEMIES && enemies && enemies.length) {
+      ctx.save();
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      for (const e of enemies) {
+        if (!e || e.hp <= 0) continue;
+        const sx = Math.round(e.x + e.w/2 - camera.x);
+        const sy = Math.round(e.y + e.h/2 - camera.y);
+        ctx.fillStyle = '#ff4a4a';
+        ctx.beginPath(); ctx.arc(sx, sy, 2, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffd166';
+        const label = (e.name || e.kind || 'enemy');
+        ctx.fillText(label, sx + 4, sy + 2);
+      }
+      ctx.restore();
+    }
+  } catch {}
+
   // Enemy health bars (overlay)
   for (const e of enemies) {
     if (e.hp <= 0) continue;
