@@ -469,7 +469,7 @@ export function loadLevel6() {
 
   // Ell (Canopy's sister) — placeholder NPC in the hub
   const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
-  const sisterSheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#fff0c1', shirt: '#ffe39a' });
+  const sisterSheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0' });
   const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', sheet: sisterSheet, portrait: 'assets/portraits/Ell/Ell.mp4', affinity: 6 });
   import('../data/dialogs.js').then(mod => {
     // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
