@@ -410,19 +410,23 @@ export function loadLevel5() {
 
   // Ensure the wall closes above and below the vertical gate (in case the map left a gap)
   (function capGateEnds() {
-    const top = { x: gateTile.x * TILE, y: (gateTile.y - 1) * TILE, w: TILE, h: TILE };
-    const bottom = { x: gateTile.x * TILE, y: (gateTile.y + gateTile.h) * TILE, w: TILE, h: TILE };
-    // Only add caps if there isn't already a wall there
+    // Add three tiles of wall above the gate and two tiles below it, if missing
     const overlaps = (a,b)=> !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
-    let hasTop=false, hasBottom=false;
-    for (const o of obstacles) {
-      if (o && o.type === 'wall') {
-        if (overlaps(o, top)) hasTop = true;
-        if (overlaps(o, bottom)) hasBottom = true;
-      }
+    const addIfMissing = (rect) => {
+      for (const o of obstacles) { if (o && o.type === 'wall' && overlaps(o, rect)) return; }
+      obstacles.push({ ...rect, type: 'wall', blocksAttacks: true });
+    };
+    const gx = gateTile.x * TILE;
+    // Above (3 tiles)
+    for (let d = 1; d <= 3; d++) {
+      const r = { x: gx, y: (gateTile.y - d) * TILE, w: TILE, h: TILE };
+      addIfMissing(r);
     }
-    if (!hasTop) obstacles.push({ ...top, type: 'wall', blocksAttacks: true });
-    if (!hasBottom) obstacles.push({ ...bottom, type: 'wall', blocksAttacks: true });
+    // Below (2 tiles)
+    for (let d = 0; d < 2; d++) {
+      const r = { x: gx, y: (gateTile.y + gateTile.h + d) * TILE, w: TILE, h: TILE };
+      addIfMissing(r);
+    }
   })();
 
   // Key guardian: Fana (enslaved sorceress); drops the temple key
