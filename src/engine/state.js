@@ -207,6 +207,7 @@ export function spawnCompanion(x, y, sheet, opts = {}) {
     animTime: 0,
     animFrame: 0,
     sheet,
+    sheetPalette: opts.sheetPalette || null,
     name: opts.name || 'Companion',
     portraitSrc: opts.portrait || opts.portraitSrc || null,
     inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
@@ -231,6 +232,7 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     portrait: null,
     dialog: null,
     sheet: opts.sheet || null,
+    sheetPalette: opts.sheetPalette || null,
     // Minimal VN intro flag: if present, a simple VN appears once when first seen
     vnOnSight: opts.vnOnSight || null,
     // Affinity before recruitment (carried into party on join)

@@ -125,8 +125,8 @@ function serializePayload() {
       guaranteedDropId: e.guaranteedDropId || null,
       onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
     })),
-    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 })),
-    npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 })),
+    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, sheetPalette: c.sheetPalette || null, inventory: c.inventory || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 })),
+    npcs: npcs.map(n => ({ name: n.name, x: n.x, y: n.y, dir: n.dir, portrait: n.portraitSrc || null, sheetPalette: n.sheetPalette || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 })),
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
     unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
@@ -365,8 +365,8 @@ function deserializePayload(data) {
   // Restore companions
   if (Array.isArray(data.companions)) {
     for (const c of data.companions) {
-      const sheet = sheetForName(c.name);
-      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 });
+      const sheet = c.sheetPalette ? makeSpriteSheet(c.sheetPalette) : sheetForName(c.name);
+      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null, sheetPalette: c.sheetPalette || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 });
       comp.dir = c.dir || 'down';
       if (c.inventory) comp.inventory = c.inventory;
     }
@@ -375,8 +375,8 @@ function deserializePayload(data) {
   // Restore NPCs
   if (Array.isArray(data.npcs)) {
     for (const n of data.npcs) {
-      const sheet = sheetForName(n.name);
-      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, portrait: n.portrait || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
+      const sheet = n.sheetPalette ? makeSpriteSheet(n.sheetPalette) : sheetForName(n.name);
+      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, sheetPalette: n.sheetPalette || null, portrait: n.portrait || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
       attachDialogByName(npc);
       attachOnSightByName(npc);
     }

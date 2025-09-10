@@ -69,12 +69,15 @@ export function loadLevel1() {
   });
 
   // NPCs
-  const canopySheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' });
-  const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
-  const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' });
-  const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy/Canopy video.mp4', sheet: canopySheet, vnOnSight: { text: introTexts.canopy } });
-  const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna/Yorna video.mp4', sheet: yornaSheet, vnOnSight: { text: introTexts.yorna } });
-  const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola/Hola video.mp4', sheet: holaSheet, vnOnSight: { text: introTexts.hola } });
+  const canopyPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' };
+  const yornaPalette  = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  const holaPalette   = { hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
+  const canopySheet = makeSpriteSheet(canopyPalette);
+  const yornaSheet = makeSpriteSheet(yornaPalette);
+  const holaSheet = makeSpriteSheet(holaPalette);
+  const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy/Canopy video.mp4', sheet: canopySheet, sheetPalette: canopyPalette, vnOnSight: { text: introTexts.canopy } });
+  const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
+  const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
   setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
 
   return terrain;
@@ -208,16 +211,18 @@ export function loadLevel2() {
 
   // New recruitable companions for level 2: Oyin and Twil
   // Appearances: Oyin (blonde hair, green dress), Twil (red hair, black dress)
-  const oyinSheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9' });
-  const twilSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
+  const oyinPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9' };
+  const twilPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  const oyinSheet = makeSpriteSheet(oyinPalette);
+  const twilSheet = makeSpriteSheet(twilPalette);
   // Place Oyin/Twil away from initial camera so VN intros don't trigger immediately
   const off = 240; // px offset to ensure out of view (camera ~160x90 half extents)
   const oyinX = Math.max(0, Math.min(world.w - 12, player.x - off));
   const oyinY = Math.max(0, Math.min(world.h - 16, player.y - off)); // upper-left quadrant
   const twilX = Math.max(0, Math.min(world.w - 12, player.x - off));
   const twilY = Math.max(0, Math.min(world.h - 16, player.y + off)); // lower-left quadrant
-  const oyin = spawnNpc(oyinX, oyinY, 'right', { name: 'Oyin', sheet: oyinSheet, portrait: 'assets/portraits/Oyin/Oyin.mp4', vnOnSight: { text: introTexts.oyin } });
-  const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', sheet: twilSheet, portrait: 'assets/portraits/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
+  const oyin = spawnNpc(oyinX, oyinY, 'right', { name: 'Oyin', sheet: oyinSheet, sheetPalette: oyinPalette, portrait: 'assets/portraits/Oyin/Oyin.mp4', vnOnSight: { text: introTexts.oyin } });
+  const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
   // Attach basic recruit dialogs
   import('../data/dialogs.js').then(mod => { setNpcDialog(oyin, mod.oyinDialog); setNpcDialog(twil, mod.twilDialog); }).catch(()=>{});
 
@@ -308,10 +313,12 @@ export function loadLevel3() {
   spawnEnemy(cx + 24, cy, 'mook', { hp: 7, dmg: 5 });
 
   // Recruitable NPCs: Tin & Nellis
-  const tinSheet = makeSpriteSheet({ hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' });
-  const nellisSheet = makeSpriteSheet({ hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' });
-  const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', sheet: tinSheet, portrait: 'assets/portraits/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
-  const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', sheet: nellisSheet, portrait: 'assets/portraits/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
+  const tinPalette = { hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' };
+  const nellisPalette = { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
+  const tinSheet = makeSpriteSheet(tinPalette);
+  const nellisSheet = makeSpriteSheet(nellisPalette);
+  const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
+  const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
   import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
 
   return terrain;
@@ -417,9 +424,11 @@ export function loadLevel4() {
   }
 
   // Recruitable NPCs: Urn & Varabella
-  const urnSheet = makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' });
-  const varaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
-  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', sheet: urnSheet, portrait: 'assets/portraits/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
+  const urnPalette = { hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' };
+  const varaPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  const urnSheet = makeSpriteSheet(urnPalette);
+  const varaSheet = makeSpriteSheet(varaPalette);
+  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', sheet: urnSheet, sheetPalette: urnPalette, portrait: 'assets/portraits/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
   let vara;
   // Place Varabella; avoid spawning on fire/lava tiles
   (function placeVarabella() {
@@ -438,7 +447,7 @@ export function loadLevel4() {
       { x: start.x - TILE * 4, y: start.y - TILE * 4 },
     ];
     let spot = candidates.find(p => !overlapsHazard(rect(p.x, p.y))) || start;
-    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', sheet: varaSheet, portrait: 'assets/portraits/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
+    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
   })();
   import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
 
@@ -608,8 +617,9 @@ export function loadLevel6() {
 
   // Ell (Canopy's sister) — placeholder NPC in the hub
   const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
-  const sisterSheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0' });
-  const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', sheet: sisterSheet, portrait: 'assets/portraits/Ell/Ell.mp4', affinity: 6 });
+  const sisterPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0' };
+  const sisterSheet = makeSpriteSheet(sisterPalette);
+  const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', sheet: sisterSheet, sheetPalette: sisterPalette, portrait: 'assets/portraits/Ell/Ell.mp4', affinity: 6 });
   import('../data/dialogs.js').then(mod => {
     // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
     if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);
