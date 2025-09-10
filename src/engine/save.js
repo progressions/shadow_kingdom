@@ -116,6 +116,7 @@ function serializePayload() {
       // Visuals
       portrait: e.portraitSrc || null,
       portraitPowered: e.portraitPowered || null,
+      portraitOverpowered: e.portraitOverpowered || null,
       portraitDefeated: e.portraitDefeated || null,
       sheetPalette: e.sheetPalette || null,
       // Logic/quest
@@ -195,6 +196,7 @@ function deserializePayload(data) {
         name: e.name || base.name, kind,
         portraitSrc: e.portrait || null,
         portraitPowered: e.portraitPowered || null,
+        portraitOverpowered: e.portraitOverpowered || null,
         portraitDefeated: e.portraitDefeated || null,
         onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
         questId: e.questId || null,

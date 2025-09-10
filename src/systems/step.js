@@ -433,7 +433,7 @@ export function step(dt) {
       // Second power-up -> final form (third phase)
       if ((e.kind || '').toLowerCase() === 'boss' && e._secondPhase && !e._thirdPhase) {
         try {
-          const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null };
+          const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null) };
           const line = `${e.name || 'Boss'}: I will not fall!`; // final form cue
           startPrompt(actor, line, []);
         } catch {}

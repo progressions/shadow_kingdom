@@ -120,6 +120,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     portraitSrc: opts.portrait || null,
     // Optional portraits for empowered/defeated VNs (boss flow)
     portraitPowered: opts.portraitPowered || null,
+    portraitOverpowered: opts.portraitOverpowered || null,
     portraitDefeated: opts.portraitDefeated || null,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
