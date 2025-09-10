@@ -250,10 +250,9 @@ export function loadLevel4() {
   player.y = Math.floor(world.h / 2);
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
 
-  // Build ruined city terrain and obstacles
-  // Use default theme (greens/stone) and procedural obstacles; arena walls form the city plaza
+  // Build ruined city terrain
   const terrain = buildTerrainBitmap(world, 'city');
-  obstacles.push(...buildObstacles(world, player, enemies, npcs, 'city'));
+  // We'll populate city obstacles from an authored JSON mask (assets/level4.json)
   // City hazards: scattered fire tiles
   obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 8), w: TILE * 3, h: TILE * 2, type: 'fire' });
 
@@ -372,6 +371,64 @@ export function loadLevel4() {
     const inter = !(o.x + o.w <= spawnSafe.x || o.x >= spawnSafe.x + spawnSafe.w || o.y + o.h <= spawnSafe.y || o.y >= spawnSafe.y + spawnSafe.h);
     if (inter) obstacles.splice(i, 1);
   }
+
+  // Load authored city mask (async) and add walls/ruins; then re-clear arena and spawn safety
+  (function loadCityMask() {
+    try {
+      fetch('assets/level4.json', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+          const w = Number(data.width)||170, h = Number(data.height)||100;
+          const grid = Array.isArray(data.grid) ? data.grid : [];
+          // Build blocking walls from cell types 3 (wall) and 4 (damaged_wall)
+          const isWall = (v) => (v === 3 || v === 4);
+          const rects = [];
+          // Horizontal run-length encode per row
+          for (let y = 0; y < h; y++) {
+            let x = 0;
+            while (x < w) {
+              if (!grid[y] || !isWall(grid[y][x])) { x++; continue; }
+              let x2 = x+1;
+              while (x2 < w && grid[y] && isWall(grid[y][x2])) x2++;
+              rects.push({ x, y, w: x2 - x, h: 1 });
+              x = x2;
+            }
+          }
+          // Merge vertically adjacent rects with same x and width
+          rects.sort((a,b)=> a.x - b.x || a.y - b.y);
+          const merged = [];
+          for (const r of rects) {
+            const last = merged[merged.length - 1];
+            if (last && last.x === r.x && last.w === r.w && last.y + last.h === r.y) { last.h += r.h; }
+            else merged.push({ ...r });
+          }
+          // Push as pixel obstacles; convert tiles->px via TILE
+          for (const r of merged) {
+            obstacles.push({ x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type: 'wall', blocksAttacks: true });
+          }
+          // Optional: sprinkle rubble blocks for cell type 2 (small blocking flavor)
+          const rubbleSize = 10;
+          for (let y = 0; y < h; y++) {
+            const row = grid[y] || [];
+            for (let x = 0; x < w; x++) {
+              if (row[x] === 2 && Math.random() < 0.05) {
+                obstacles.push({ x: x * TILE + 3, y: y * TILE + 4, w: rubbleSize, h: rubbleSize - 2, type: 'ruin', blocksAttacks: false });
+              }
+            }
+          }
+          // Re-clear arena and gate opening
+          clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
+          // Ensure spawn safety again
+          for (let i = obstacles.length - 1; i >= 0; i--) {
+            const o = obstacles[i]; if (!o) continue;
+            if (o.type !== 'wall') continue;
+            const inter = !(o.x + o.w <= spawnSafe.x || o.x >= spawnSafe.x + spawnSafe.w || o.y + o.h <= spawnSafe.y || o.y >= spawnSafe.y + spawnSafe.h);
+            if (inter) obstacles.splice(i, 1);
+          }
+        })
+        .catch(()=>{});
+    } catch {}
+  })();
 
   // Recruitable NPCs: Urn & Varabella
   const urnSheet = makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' });
