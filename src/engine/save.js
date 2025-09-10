@@ -118,6 +118,12 @@ export function loadGame(slot = 1) {
     const raw = localStorage.getItem(getLocalKey(slot));
     if (!raw) { showBanner('No save found'); return; }
     const data = JSON.parse(raw);
+    if (!data || data.schema !== 'v2') {
+      // Clear old/legacy saves automatically
+      try { localStorage.removeItem(getLocalKey(slot)); } catch {}
+      showBanner('Old save cleared');
+      return;
+    }
     loadDataPayloadV2(data);
   } catch (e) {
     console.error('Load failed', e);

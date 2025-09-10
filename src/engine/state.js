@@ -97,6 +97,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   const w = (typeof opts.w === 'number') ? opts.w : 12;
   const h = (typeof opts.h === 'number') ? opts.h : 16;
   const ent = {
+    id: opts.id || (`de_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
     x, y,
     w, h,
     speed: cfg.speed,
@@ -134,6 +135,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     questId: opts.questId || null,
     // Optional sprite scale for rendering (1 = 16x16, 2 = 32x32)
     spriteScale: (typeof opts.spriteScale === 'number') ? Math.max(0.5, Math.min(4, opts.spriteScale)) : 1,
+    source: opts.source || null,
+    createdAt: typeof opts.createdAt === 'number' ? opts.createdAt : (performance && performance.now ? performance.now() : Date.now()),
   };
   enemies.push(ent);
   try {

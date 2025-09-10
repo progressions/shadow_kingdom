@@ -36,6 +36,36 @@ export function serializeV2() {
   // Ensure keys exist for current level's known uniques if absent
   for (const k of uniques) { if (!uniqueActors[k]) uniqueActors[k] = { state: 'unspawned' }; }
 
+  // Dynamic enemies (non-unique)
+  const dynamicEnemies = [];
+  const uniques = uniqueSetForLevel(level);
+  for (const e of enemies) {
+    if (!e || e.hp <= 0) continue;
+    const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
+    if (key && uniques.has(key)) continue; // skip uniques; tracked separately
+    const rec = {
+      id: e.id || null,
+      kind: e.kind || 'mook',
+      name: e.name || null,
+      vnId: e.vnId || null,
+      x: e.x, y: e.y,
+      dir: e.dir || 'down',
+      hp: e.hp, maxHp: e.maxHp,
+      touchDamage: e.touchDamage, speed: e.speed,
+      w: e.w, h: e.h, spriteScale: e.spriteScale || 1,
+      sheetPalette: e.sheetPalette || null,
+      questId: e.questId || null,
+      source: e.source || null,
+      createdAt: e.createdAt || null,
+    };
+    // Guard against invalid coords
+    if (typeof rec.x !== 'number' || typeof rec.y !== 'number' || !Number.isFinite(rec.x) || !Number.isFinite(rec.y)) continue;
+    dynamicEnemies.push(rec);
+  }
+  // Cap to avoid bloat
+  const DYNAMIC_CAP = 200;
+  if (dynamicEnemies.length > DYNAMIC_CAP) dynamicEnemies.length = DYNAMIC_CAP;
+
   return {
     schema: 'v2',
     version: 2,
@@ -54,6 +84,7 @@ export function serializeV2() {
     questFlags: Object.keys(runtime?.questFlags || {}),
     questCounters: Object.assign({}, runtime?.questCounters || {}),
     uniqueActors,
+    dynamicEnemies,
   };
 }
 
@@ -117,6 +148,49 @@ export function applyPendingRestoreV2() {
       } else if (st.state === 'alive' && typeof st.hp === 'number') {
         ent.hp = Math.max(1, Math.min(ent.maxHp||st.hp, st.hp));
       }
+    }
+    // Dynamic enemies: append serialized spawns (non-unique)
+    const dyn = Array.isArray(data.dynamicEnemies) ? data.dynamicEnemies : [];
+    for (const d of dyn) {
+      try {
+        // Validate and clamp
+        let x = Number(d.x), y = Number(d.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        x = Math.max(0, Math.min(world.w - 12, x));
+        y = Math.max(0, Math.min(world.h - 16, y));
+        const kind = String(d.kind || 'mook').toLowerCase();
+        const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 30, dmg: 8 }
+          : (kind === 'featured') ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3 }
+          : { name: 'Mook', speed: 10, hp: 3, dmg: 3 };
+        const hp = (typeof d.hp === 'number') ? d.hp : base.hp;
+        const maxHp = (typeof d.maxHp === 'number') ? d.maxHp : hp;
+        const dmg = (typeof d.touchDamage === 'number') ? d.touchDamage : base.dmg;
+        const speed = (typeof d.speed === 'number') ? d.speed : base.speed;
+        const w = (typeof d.w === 'number') ? d.w : 12;
+        const h = (typeof d.h === 'number') ? d.h : 16;
+        enemies.push({
+          id: d.id || (`de_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
+          x, y, w, h,
+          speed, dir: d.dir || 'down', moving: true,
+          animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
+          knockbackX: 0, knockbackY: 0,
+          name: d.name || base.name, kind,
+          portraitSrc: null,
+          portraitPowered: null,
+          portraitOverpowered: null,
+          portraitDefeated: null,
+          onDefeatNextLevel: null,
+          questId: d.questId || null,
+          guaranteedDropId: null,
+          _secondPhase: false,
+          sheetPalette: d.sheetPalette || null,
+          spriteScale: (typeof d.spriteScale === 'number') ? d.spriteScale : 1,
+          vnId: d.vnId || null,
+          vnOnSight: null,
+          source: d.source || null,
+          createdAt: d.createdAt || null,
+        });
+      } catch {}
     }
     showBanner('Game loaded (v2)');
   } catch (e) {
