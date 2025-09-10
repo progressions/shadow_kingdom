@@ -263,7 +263,7 @@ export const runtime = {
   vnSeen: {}, // map of intro keys that have been shown
   
   // Aggregated companion buffs (recomputed each frame)
-  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0 },
+  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, aspd: 0 },
   // Companion ability cooldowns and shield state (Phase 2)
   companionCDs: { yornaEcho: 0, canopyShield: 0, holaGust: 0 },
   shieldActive: false,
@@ -285,6 +285,10 @@ export const runtime = {
   affinityFlags: {},
   questFlags: {},
   questCounters: {},
+  // Chemistry/tension helpers
+  _timeSec: 0,
+  _lowHpTimer: 0,
+  _recentKillTimes: [],
   
 };
 

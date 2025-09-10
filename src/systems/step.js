@@ -105,6 +105,16 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 export function step(dt) {
   // Pause the world while VN/inventory overlay is open
   if (runtime.gameState === 'chat') return;
+  // Advance chemistry timers
+  runtime._timeSec = (runtime._timeSec || 0) + dt;
+  // Track recent low-HP window (3s) for certain pair ticks
+  try {
+    const below = player.hp < (player.maxHp || 10) * 0.5;
+    if (below) runtime._lowHpTimer = 3.0;
+    else if ((runtime._lowHpTimer || 0) > 0) runtime._lowHpTimer = Math.max(0, runtime._lowHpTimer - dt);
+    // Recent-hit timer for triggers that respond to damage taken
+    if ((runtime._recentPlayerHitTimer || 0) > 0) runtime._recentPlayerHitTimer = Math.max(0, runtime._recentPlayerHitTimer - dt);
+  } catch {}
   // Handle simple camera pan for VN intros (pauses simulation)
   if (runtime.cameraPan) {
     const p = runtime.cameraPan;
@@ -282,6 +292,8 @@ export function step(dt) {
             // Invincibility window and light interaction lock
             player.invulnTimer = 0.6;
             runtime.interactLock = Math.max(runtime.interactLock, 0.2);
+            // Mark recent hit for companion triggers
+            runtime._recentPlayerHitTimer = 0.25;
             // Damage feedback
             spawnFloatText(player.x + player.w/2, player.y - 6, `-${taken}`, { color: '#ff7a7a', life: 0.7 });
             playSfx('hit');
@@ -347,6 +359,22 @@ export function step(dt) {
             showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
           }
         }
+        if (e.questId === 'urn_rooftops') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'urn_rooftops_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['urn_rooftops_cleared'] = true; showBanner('Quest updated: Secure the Rooftops — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'varabella_crossfire') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'varabella_crossfire_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['varabella_crossfire_cleared'] = true; showBanner('Quest updated: Cut the Crossfire — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
         if (e.questId === 'canopy_triage') {
           if (!runtime.questCounters) runtime.questCounters = {};
           const key = 'canopy_triage_remaining';
@@ -361,6 +389,110 @@ export function step(dt) {
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
           if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_trace_cleared'] = true; showBanner('Quest updated: Trace the Footprints — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'yorna_ring') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'yorna_ring_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['yorna_ring_cleared'] = true; showBanner('Quest updated: Shatter the Ring — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'yorna_causeway') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'yorna_causeway_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['yorna_causeway_cleared'] = true; showBanner('Quest updated: Hold the Causeway — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'hola_silence') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'hola_silence_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['hola_silence_cleared'] = true; showBanner('Quest updated: Break the Silence — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'hola_breath_bog') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'hola_breath_bog_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['hola_breath_bog_cleared'] = true; showBanner('Quest updated: Breath Over Bog — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'oyin_ember') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'oyin_ember_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['oyin_ember_cleared'] = true; showBanner('Quest updated: Carry the Ember — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'twil_wake') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'twil_wake_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_wake_cleared'] = true; showBanner('Quest updated: Cut the Wake — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'tin_shallows') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'tin_shallows_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tin_shallows_cleared'] = true; showBanner('Quest updated: Mark the Shallows — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'tin_gaps4') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'tin_gaps4_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tin_gaps4_cleared'] = true; showBanner('Quest updated: Flag the Gaps — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'nellis_beacon') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'nellis_beacon_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['nellis_beacon_cleared'] = true; showBanner('Quest updated: Raise the Beacon — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'nellis_crossroads4') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'nellis_crossroads4_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['nellis_crossroads4_cleared'] = true; showBanner('Quest updated: Light the Crossroads — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'canopy_sister2') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'canopy_sister2_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_sister2_cleared'] = true; showBanner('Quest updated: Ribbon in the Dust — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'canopy_sister3') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'canopy_sister3_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_sister3_cleared'] = true; showBanner('Quest updated: Reeds and Echoes — cleared'); }
+          else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
+        }
+        if (e.questId === 'canopy_streets4') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'canopy_streets4_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_streets4_cleared'] = true; showBanner('Quest updated: Stitch the Streets — cleared'); }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
       } catch {}
@@ -387,6 +519,41 @@ export function step(dt) {
       spawnCorpse(e.x, e.y, { dir: e.dir, kind: e.kind || 'enemy', life: 1.8, sheet: e.sheet || null });
       spawnStain(e.x, e.y, { life: 2.8 });
       enemies.splice(i, 1);
+      // Record kill time for chemistry rare ticks
+      try {
+        const t = runtime._timeSec || 0;
+        if (!Array.isArray(runtime._recentKillTimes)) runtime._recentKillTimes = [];
+        runtime._recentKillTimes.push(t);
+        // keep last 30s
+        runtime._recentKillTimes = runtime._recentKillTimes.filter(x => t - x <= 30);
+        const last20 = runtime._recentKillTimes.filter(x => t - x <= 20).length;
+        const last3 = runtime._recentKillTimes.filter(x => t - x <= 3).length;
+        const names = companions.map(c => (c.name||'').toLowerCase());
+        const has = (n) => names.some(x => x.includes(String(n).toLowerCase()));
+        const flags = runtime.questFlags || {};
+        const lvl = runtime.currentLevel || 1;
+        // Twil ↔ Hola rare tick: 3 quick kills in 20s, no truce, once per level
+        if (has('twil') && has('hola') && !flags['hola_twil_truce'] && last20 >= 3) {
+          const cdKey = `hola_twil_tick_l${lvl}`;
+          if (!flags[cdKey]) {
+            // apply small negative tick to Hola
+            const hola = companions.find(c => (c.name||'').toLowerCase().includes('hola'));
+            if (hola) { hola.affinity = Math.max(1, (hola.affinity||5) - 0.2); }
+            try { showBanner('Hola affinity -0.2'); } catch {}
+            try { runtime.questFlags[cdKey] = true; } catch {}
+          }
+        }
+        // Yorna ↔ Oyin rare tick: 2 kills in 3s and recent low HP, no truce, once per level
+        if (has('yorna') && has('oyin') && !flags['yorna_oyin_truce'] && last3 >= 2 && (runtime._lowHpTimer||0) > 0) {
+          const cdKey = `yorna_oyin_tick_l${lvl}`;
+          if (!flags[cdKey]) {
+            const oyin = companions.find(c => (c.name||'').toLowerCase().includes('oyin'));
+            if (oyin) { oyin.affinity = Math.max(1, (oyin.affinity||5) - 0.2); }
+            try { showBanner('Oyin affinity -0.2'); } catch {}
+            try { runtime.questFlags[cdKey] = true; } catch {}
+          }
+        }
+      } catch {}
     }
   }
 
@@ -569,9 +736,13 @@ export function step(dt) {
 function applyCompanionAuras(dt) {
   // Reset buffs
   const buffs = runtime.combatBuffs;
-  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0;
+  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0; buffs.aspd = 0;
   // Prepare per-enemy slow accumulation
   const slowAccum = new Array(enemies.length).fill(0);
+  // Synergy: Urn + Varabella small boost when both are present
+  const hasUrn = companions.some(c => (c.name || '').toLowerCase().includes('urn'));
+  const hasVarabella = companions.some(c => (c.name || '').toLowerCase().includes('varabella'));
+  const pairBoost = (hasUrn && hasVarabella) ? 1.1 : 1.0;
   // Iterate companions
   for (let i = 0; i < companions.length; i++) {
     const c = companions[i];
@@ -581,7 +752,8 @@ function applyCompanionAuras(dt) {
     // Affinity multiplier: 1.0 at 1 → 1.5 at 10
     const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
     const t = Math.max(0, Math.min(9, aff - 1));
-    const mult = (1 + (t / 9) * 0.5) * (1 + 0.10 * Math.max(0, (c.level||1) - 1));
+    let mult = (1 + (t / 9) * 0.5) * (1 + 0.10 * Math.max(0, (c.level||1) - 1));
+    if (pairBoost > 1 && (key.includes('urn') || key.includes('varabella'))) mult *= pairBoost;
     for (const a of def.auras) {
       switch (a.type) {
         case 'atk': buffs.atk += (a.value || 0) * mult; break;
@@ -589,6 +761,7 @@ function applyCompanionAuras(dt) {
         case 'regen': buffs.regen += (a.value || 0) * mult; break;
         case 'range': buffs.range += (a.value || 0) * mult; break;
         case 'touchDR': buffs.touchDR += (a.value || 0) * mult; break;
+        case 'aspd': buffs.aspd += (a.value || 0) * mult; break; // attack speed bonus (fractional)
         case 'slow': {
           const rad = a.radius || 0;
           if (rad > 0) {
@@ -610,8 +783,12 @@ function applyCompanionAuras(dt) {
   buffs.atk = Math.min(buffs.atk, COMPANION_BUFF_CAPS.atk);
   buffs.dr = Math.min(buffs.dr, COMPANION_BUFF_CAPS.dr);
   buffs.regen = Math.min(buffs.regen, COMPANION_BUFF_CAPS.regen);
+  // Add any temporary range bonus from triggers before capping
+  buffs.range += (runtime.tempRangeBonus || 0);
   buffs.range = Math.min(buffs.range, COMPANION_BUFF_CAPS.range);
-  buffs.touchDR = Math.min(buffs.touchDR, COMPANION_BUFF_CAPS.touchDR);
+  // Include temporary touch DR from triggers (e.g., Nellis Keep the Line)
+  buffs.touchDR = Math.min(buffs.touchDR + (runtime.tempTouchDr || 0), COMPANION_BUFF_CAPS.touchDR);
+  buffs.aspd = Math.min(buffs.aspd, COMPANION_BUFF_CAPS.aspd);
   // Regen
   if (buffs.regen > 0 && player.hp > 0) {
     player.hp = Math.min(player.maxHp, player.hp + buffs.regen * dt);
@@ -630,6 +807,16 @@ function applyCompanionAuras(dt) {
     runtime._tempAtkTimer = Math.max(0, (runtime._tempAtkTimer || 0) - dt);
     if (runtime._tempAtkTimer === 0) runtime.tempAtkBonus = 0;
   }
+  // Decay temporary Range bonus from triggers (e.g., Varabella Angle)
+  if ((runtime._tempRangeTimer || 0) > 0) {
+    runtime._tempRangeTimer = Math.max(0, (runtime._tempRangeTimer || 0) - dt);
+    if (runtime._tempRangeTimer === 0) runtime.tempRangeBonus = 0;
+  }
+  // Decay temporary touch DR from triggers (e.g., Nellis Keep the Line)
+  if ((runtime._tempTouchDrTimer || 0) > 0) {
+    runtime._tempTouchDrTimer = Math.max(0, (runtime._tempTouchDrTimer || 0) - dt);
+    if (runtime._tempTouchDrTimer === 0) runtime.tempTouchDr = 0;
+  }
   // Per-enemy slow multiplier for this frame
   for (let ei = 0; ei < enemies.length; ei++) {
     const s = Math.min(slowAccum[ei], COMPANION_BUFF_CAPS.slow);
@@ -647,6 +834,13 @@ function handleCompanionTriggers(dt) {
   cds.holaGust = Math.max(0, (cds.holaGust || 0) - dt);
   cds.oyinRally = Math.max(0, (cds.oyinRally || 0) - dt);
   cds.twilDust = Math.max(0, (cds.twilDust || 0) - dt);
+  cds.tinSlip = Math.max(0, (cds.tinSlip || 0) - dt);
+  cds.tinTumble = Math.max(0, (cds.tinTumble || 0) - dt);
+  cds.nellisVeil = Math.max(0, (cds.nellisVeil || 0) - dt);
+  cds.nellisBeacon = Math.max(0, (cds.nellisBeacon || 0) - dt);
+  cds.nellisLine = Math.max(0, (cds.nellisLine || 0) - dt);
+  cds.urnCheer = Math.max(0, (cds.urnCheer || 0) - dt);
+  cds.varaAngle = Math.max(0, (cds.varaAngle || 0) - dt);
 
   // Shield countdown
   if (runtime.shieldActive) {
@@ -668,6 +862,8 @@ function handleCompanionTriggers(dt) {
         m = Math.max(m, affMul * lvlMul);
       }
     }
+    // Synergy boost when Urn and Varabella are both present
+    if ((key === 'urn' || key === 'varabella') && has('urn') && has('varabella')) m *= 1.1;
     return m;
   };
   // Canopy shield trigger
@@ -685,6 +881,7 @@ function handleCompanionTriggers(dt) {
       runtime.shieldTimer = eff.durationSec;
       cds.canopyShield = eff.cooldownSec;
       spawnFloatText(player.x + player.w/2, player.y - 10, 'Shield!', { color: '#8ab4ff', life: 0.8 });
+      try { playSfx('shield'); } catch {}
     }
   }
 
@@ -723,6 +920,7 @@ function handleCompanionTriggers(dt) {
         }
         cds.holaGust = eff.cooldownSec;
         spawnFloatText(player.x + player.w/2, player.y - 12, 'Gust!', { color: '#a1e3ff', life: 0.8 });
+        try { playSfx('gust'); } catch {}
         // Quest tracking: Hola 'Find Her Voice' — count gust uses
         try {
           if (runtime.questFlags && runtime.questFlags['hola_practice_started'] && !runtime.questFlags['hola_practice_cleared']) {
@@ -756,11 +954,188 @@ function handleCompanionTriggers(dt) {
       runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, dur);
       cds.oyinRally = cd;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Rally!', { color: '#ffd166', life: 0.9 });
+      try { playSfx('rally'); } catch {}
       // Quest tracking: Oyin fuse — mark rally done
       try { if (runtime.questFlags && runtime.questFlags['oyin_fuse_started']) runtime.questFlags['oyin_fuse_rally'] = true; } catch {}
     }
   }
 
+  // Urn Cheer: burst heal when HP dips low
+  if (has('urn')) {
+    const base = companionEffectsByKey.urn?.triggers?.cheer || { hpThresh: 0.5, heal: 3, radius: 80, cooldownSec: 12 };
+    const m = multFor('urn');
+    const eff = {
+      hpThresh: (base.hpThresh || 0.5),
+      heal: Math.round((base.heal || 3) * m),
+      radius: (base.radius || 80),
+      cooldownSec: (base.cooldownSec || 12) / (1 + (m - 1) * 0.5),
+    };
+    const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
+    if ((cds.urnCheer || 0) <= 0 && player.hp > 0 && hpRatio <= eff.hpThresh) {
+      // Heal player (companions do not track HP in this slice)
+      player.hp = Math.min(player.maxHp, player.hp + eff.heal);
+      // Visuals and SFX
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Cheer!', { color: '#8effc1', life: 0.9 });
+      for (let i = 0; i < 8; i++) spawnSparkle(player.x + player.w/2 + (Math.random()*12-6), player.y - 6 + (Math.random()*8-4));
+      try { playSfx('cheer'); } catch {}
+      cds.urnCheer = eff.cooldownSec;
+    }
+  }
+
+  // Varabella Call the Angle: brief ATK + range window when enemies nearby
+  if (has('varabella')) {
+    const base = companionEffectsByKey.varabella?.triggers?.angle || { atk: 1, range: 2, durationSec: 3, cooldownSec: 9, proximity: 140 };
+    const m = multFor('varabella');
+    const eff = {
+      atk: Math.min(2, (base.atk || 1) * m),
+      range: Math.min(3, (base.range || 2) * m),
+      durationSec: (base.durationSec || 3) * m,
+      cooldownSec: (base.cooldownSec || 9) / (1 + (m - 1) * 0.5),
+      proximity: (base.proximity || 140),
+    };
+    if ((cds.varaAngle || 0) <= 0) {
+      let any = false;
+      for (const e of enemies) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - player.x, dy = e.y - player.y;
+        if ((dx*dx + dy*dy) <= (eff.proximity * eff.proximity)) { any = true; break; }
+      }
+      if (any) {
+        runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, eff.atk);
+        runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, eff.durationSec);
+        runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, eff.range);
+        runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, eff.durationSec);
+        cds.varaAngle = eff.cooldownSec;
+        spawnFloatText(player.x + player.w/2, player.y - 12, 'Angle!', { color: '#ffd166', life: 0.8 });
+        try { playSfx('angle'); } catch {}
+      }
+    }
+  }
+
+  // Tin Slipstream: breezy micro-push + small slow, short range boost
+  if (has('tin')) {
+    const base = { radius: 26, push: 10, slow: 0.15, slowDur: 0.4, rangeBonus: 2, rangeDur: 2.0, cooldownSec: 10 };
+    const m = multFor('tin');
+    const eff = {
+      radius: base.radius * (1 + (m - 1) * 0.3),
+      push: base.push * m,
+      slow: Math.min(base.slow * m, COMPANION_BUFF_CAPS.slow),
+      slowDur: base.slowDur * m,
+      rangeBonus: Math.min(3, base.rangeBonus * m),
+      rangeDur: base.rangeDur * m,
+      cooldownSec: base.cooldownSec / (1 + (m - 1) * 0.5),
+    };
+    if ((cds.tinSlip || 0) <= 0) {
+      let any = false;
+      for (const e of enemies) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - player.x, dy = e.y - player.y;
+        if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) { any = true; break; }
+      }
+      if (any) {
+        for (const e of enemies) {
+          if (e.hp <= 0) continue;
+          const dx = e.x - player.x, dy = e.y - player.y;
+          if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) {
+            const mag = Math.hypot(dx, dy) || 1;
+            moveWithCollision(e, (dx / mag) * eff.push, (dy / mag) * eff.push, [player, ...enemies.filter(x=>x!==e&&x.hp>0)]);
+            e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, eff.slowDur);
+            e._veilSlow = eff.slow;
+          }
+        }
+        runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, eff.rangeBonus);
+        runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, eff.rangeDur);
+        cds.tinSlip = eff.cooldownSec;
+        spawnFloatText(player.x + player.w/2, player.y - 12, 'Slipstream!', { color: '#a1e3ff', life: 0.8 });
+        try { playSfx('slipstream'); } catch {}
+      }
+    }
+  }
+
+  // Tin Tumble Up: on recent hit, quick heal and brief ATK boost
+  if (has('tin')) {
+    const m = multFor('tin');
+    const heal = Math.max(1, Math.round(1 * m));
+    const atk = Math.min(2, 1 * m);
+    const dur = 3 * m;
+    const cd = 20 / (1 + (m - 1) * 0.5);
+    if ((cds.tinTumble || 0) <= 0 && (runtime._recentPlayerHitTimer || 0) > 0 && player.hp > 0) {
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, atk);
+      runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, dur);
+      cds.tinTumble = cd;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Tumble Up!', { color: '#ffd166', life: 0.9 });
+      try { playSfx('tumbleUp'); } catch {}
+    }
+  }
+
+  // Nellis Mourner's Veil: heavier slow when multiple enemies nearby
+  if (has('nellis')) {
+    let nearby = 0;
+    for (const e of enemies) {
+      if (e.hp <= 0) continue;
+      const dx = e.x - player.x, dy = e.y - player.y;
+      if ((dx*dx + dy*dy) <= (40*40)) { nearby++; if (nearby >= 2) break; }
+    }
+    const m = multFor('nellis');
+    const r = 36 * (1 + (m - 1) * 0.4);
+    const dur = 0.4 * m;
+    const slow = Math.min(0.6, 0.35 * m);
+    const cd = 11 / (1 + (m - 1) * 0.5);
+    if (nearby >= 2 && (cds.nellisVeil || 0) <= 0) {
+      for (const e of enemies) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - player.x, dy = e.y - player.y;
+        if ((dx*dx + dy*dy) <= (r*r)) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, dur); e._veilSlow = slow; }
+      }
+      cds.nellisVeil = cd;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil.', { color: '#a1e3ff', life: 0.8 });
+      try { playSfx('mournerVeil'); } catch {}
+    }
+  }
+
+  // Nellis Beacon: short range buff when enemies are near
+  if (has('nellis')) {
+    const m = multFor('nellis');
+    const range = Math.min(3, 2 * m);
+    const dur = 3 * m;
+    const cd = 9 / (1 + (m - 1) * 0.5);
+    if ((cds.nellisBeacon || 0) <= 0) {
+      let any = false;
+      for (const e of enemies) { if (e.hp > 0) { const dx = e.x - player.x, dy = e.y - player.y; if ((dx*dx + dy*dy) <= (140*140)) { any = true; break; } } }
+      if (any) {
+        runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, range);
+        runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, dur);
+        cds.nellisBeacon = cd;
+        spawnFloatText(player.x + player.w/2, player.y - 12, 'Beacon.', { color: '#9ae6ff', life: 0.8 });
+        try { playSfx('beacon'); } catch {}
+      }
+    }
+  }
+
+  // Nellis Keep the Line: when HP low, DR boost and small enemy slow
+  if (has('nellis')) {
+    const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
+    const m = multFor('nellis');
+    const dr = Math.min(2, 1 * m);
+    const dur = 4 * m;
+    const cd = 18 / (1 + (m - 1) * 0.5);
+    const slow = Math.min(0.25, 0.2 * m);
+    if ((cds.nellisLine || 0) <= 0 && player.hp > 0 && hpRatio <= (0.5 + (m - 1) * 0.05)) {
+      // Apply DR via tempAtkBonus? DR is in combatBuffs; we can temporarily add to touchDR via runtime.tempTouchDr
+      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, dr);
+      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, dur);
+      // Slight slow around player
+      for (const e of enemies) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - player.x, dy = e.y - player.y;
+        if ((dx*dx + dy*dy) <= (40*40)) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 0.3 * m); e._veilSlow = slow; }
+      }
+      cds.nellisLine = cd;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Keep the Line.', { color: '#8ab4ff', life: 0.8 });
+      try { playSfx('keepLine'); } catch {}
+    }
+  }
   // Twil Dust Veil: if 2+ enemies are close, apply heavy slow briefly
   if (has('twil')) {
     let nearby = 0;
@@ -783,6 +1158,7 @@ function handleCompanionTriggers(dt) {
       }
       cds.twilDust = cd;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil!', { color: '#a1e3ff', life: 0.8 });
+      try { playSfx('veil'); } catch {}
     }
   }
 }

@@ -255,6 +255,7 @@ export function selectChoice(index) {
 // ---- Affinity helpers ----
 function getCompanionByName(nameLower) {
   const key = String(nameLower || '').toLowerCase();
+  if (!key) return null; // avoid matching every name with empty string
   for (const c of companions) {
     const nm = (c.name || '').toLowerCase();
     if (nm.includes(key)) return c;
@@ -266,11 +267,9 @@ function resolveEntityForAffinity(target) {
   if (!target) return null;
   const t = String(target).toLowerCase();
   if (t === 'active') {
-    // Prefer active NPC; if absent, try companion by active name
+    // Prefer active NPC; if absent, do not guess — fail gating cleanly
     const actor = runtime.activeNpc;
-    if (actor) return actor; // NPC object with affinity
-    // Fallback to a companion with matching name if any
-    return getCompanionByName(actor?.name || '');
+    return actor || null;
   }
   // Try companions first, then NPCs by name includes
   const comp = getCompanionByName(t);
@@ -303,6 +302,21 @@ function meetsRequirement(req) {
       const key = String(req.missingFlag);
       if (runtime.questFlags && runtime.questFlags[key]) return false;
     }
+    // Party composition gates
+    if (req.partyHas) {
+      const names = Array.isArray(req.partyHas) ? req.partyHas : [req.partyHas];
+      for (const nm of names) {
+        const key = String(nm || '').toLowerCase();
+        if (!key) return false;
+        const found = companions.some(c => (c.name || '').toLowerCase().includes(key));
+        if (!found) return false; // require all listed to be present
+      }
+    }
+    if (req.partyHasAny) {
+      const list = Array.isArray(req.partyHasAny) ? req.partyHasAny : [req.partyHasAny];
+      const hasAny = list.some(nm => companions.some(c => (c.name || '').toLowerCase().includes(String(nm || '').toLowerCase())));
+      if (!hasAny) return false;
+    }
     return true;
   } catch { return true; }
 }
@@ -315,13 +329,40 @@ function handleAffinityAdd(data) {
     if (flag && runtime.affinityFlags && runtime.affinityFlags[flag]) return; // already applied
     const ent = resolveEntityForAffinity(tgt);
     if (!ent) return;
-    ent.affinity = Math.max(1, Math.min(10, (typeof ent.affinity === 'number' ? ent.affinity : 5) + amt));
+    let delta = amt;
+    // Chemistry dampeners (only for positive deltas and companions in party)
+    try {
+      if (delta > 0 && Array.isArray(companions) && companions.includes(ent)) {
+        const names = companions.map(c => (c.name || '').toLowerCase());
+        const has = (n) => names.some(x => x.includes(String(n).toLowerCase()));
+        const flags = runtime.questFlags || {};
+        // Twil ↔ Hola: Hola gets -40% while Twil present and no truce
+        if (!flags['hola_twil_truce'] && has('twil') && has('hola')) {
+          if ((ent.name || '').toLowerCase().includes('hola')) delta *= 0.6;
+        }
+        // Yorna ↔ Oyin: Oyin -30%, Yorna -10% while together without truce
+        if (!flags['yorna_oyin_truce'] && has('yorna') && has('oyin')) {
+          const nm = (ent.name || '').toLowerCase();
+          if (nm.includes('oyin')) delta *= 0.7;
+          else if (nm.includes('yorna')) delta *= 0.9;
+        }
+        // Canopy ↔ Yorna: soft cap at 8.0 until respect
+        if (!flags['canopy_yorna_respect'] && has('canopy') && has('yorna')) {
+          const current = (typeof ent.affinity === 'number') ? ent.affinity : 5;
+          const cap = 8.0;
+          if (current < cap && current + delta > cap) delta = cap - current;
+        }
+      }
+    } catch {}
+    ent.affinity = Math.max(1, Math.min(10, (typeof ent.affinity === 'number' ? ent.affinity : 5) + delta));
     if (flag) runtime.affinityFlags[flag] = true;
     // Feedback
-    try { showBanner(`${ent.name || 'Companion'} affinity ${amt >= 0 ? '+' : ''}${(Math.round(amt*100)/100)}`); } catch {}
+    try { const shown = Math.round(delta * 100) / 100; if (shown !== 0) showBanner(`${ent.name || 'Companion'} affinity ${delta >= 0 ? '+' : ''}${shown}`); } catch {}
+    // Refresh party UI so hearts/values reflect the new affinity immediately
+    try { updatePartyUI(companions); } catch {}
     // Player XP: floor(10 * positive delta)
     try {
-      const pos = Math.max(0, amt);
+      const pos = Math.max(0, delta);
       const xp = Math.floor(10 * pos);
       if (xp > 0) import('./state.js').then(m => m.grantXpToActor(m.player, xp));
     } catch {}
@@ -350,8 +391,8 @@ function handleStartQuest(data) {
       import('./state.js').then(m => {
         const { player, spawnEnemy } = m;
         const dx = 160, dy = 120;
-        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Ambusher', questId: 'yorna_knot' });
-        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Stalker', questId: 'yorna_knot' });
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Ambusher', questId: 'yorna_knot', hp: 7, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Stalker', questId: 'yorna_knot', hp: 7, dmg: 4 });
       }).catch(()=>{});
       runtime.questCounters['yorna_knot_remaining'] = 2;
       try { showBanner('Quest started: Cut the Knot — 2 targets'); } catch {}
@@ -359,13 +400,13 @@ function handleStartQuest(data) {
       import('./state.js').then(m => {
         const { player, spawnEnemy } = m;
         const dx = 120, dy = 90;
-        spawnEnemy(player.x + dx, player.y, 'mook', { name: 'Snare', questId: 'canopy_triage' });
-        spawnEnemy(player.x - dx, player.y - dy, 'mook', { name: 'Snare', questId: 'canopy_triage' });
-        spawnEnemy(player.x, player.y + dy, 'mook', { name: 'Snare', questId: 'canopy_triage' });
+        spawnEnemy(player.x + dx, player.y, 'mook', { name: 'Snare', questId: 'canopy_triage', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y - dy, 'mook', { name: 'Snare', questId: 'canopy_triage', hp: 6, dmg: 5 });
+        spawnEnemy(player.x, player.y + dy, 'mook', { name: 'Snare', questId: 'canopy_triage', hp: 6, dmg: 5 });
       }).catch(()=>{});
       runtime.questCounters['canopy_triage_remaining'] = 3;
       try { showBanner('Quest started: Breath and Bandages — 3 targets'); } catch {}
-    } else if (id === 'hola_practice') {
+  } else if (id === 'hola_practice') {
       runtime.questCounters['hola_practice_uses'] = 0;
       try { showBanner('Quest started: Find Her Voice — Use Gust twice'); } catch {}
     } else if (id === 'oyin_fuse') {
@@ -376,12 +417,177 @@ function handleStartQuest(data) {
       import('./state.js').then(m => {
         const { player, spawnEnemy } = m;
         const dx = 140, dy = 100;
-        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
-        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
-        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace' });
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Shadow', questId: 'twil_trace', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace', hp: 6, dmg: 5 });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Shadow', questId: 'twil_trace', hp: 6, dmg: 5 });
       }).catch(()=>{});
       runtime.questCounters['twil_trace_remaining'] = 3;
       try { showBanner('Quest started: Trace the Footprints — 3 targets'); } catch {}
+    } else if (id === 'yorna_ring') {
+      // Level 2 Yorna quest: defeat three Ring Captains (featured foes)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Ring Captain', questId: 'yorna_ring', hp: 8, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Ring Captain', questId: 'yorna_ring', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Ring Captain', questId: 'yorna_ring', hp: 8, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['yorna_ring_remaining'] = 3;
+      try { showBanner('Quest started: Shatter the Ring — 3 targets'); } catch {}
+    } else if (id === 'yorna_causeway') {
+      // Level 3 Yorna quest: defeat three Causeway Wardens (tougher mooks)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Causeway Warden', questId: 'yorna_causeway', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Causeway Warden', questId: 'yorna_causeway', hp: 6, dmg: 5 });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Causeway Warden', questId: 'yorna_causeway', hp: 6, dmg: 5 });
+      }).catch(()=>{});
+      runtime.questCounters['yorna_causeway_remaining'] = 3;
+      try { showBanner('Quest started: Hold the Causeway — 3 targets'); } catch {}
+    } else if (id === 'canopy_sister2') {
+      // Level 2 quest: defeat three Urathar scouts to recover a ribbon clue
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 150, dy = 110;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Urathar Scout', questId: 'canopy_sister2', hp: 7, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Urathar Scout', questId: 'canopy_sister2', hp: 7, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Urathar Scout', questId: 'canopy_sister2', hp: 7, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['canopy_sister2_remaining'] = 3;
+      try { showBanner('Quest started: Ribbon in the Dust — 3 scouts'); } catch {}
+    } else if (id === 'canopy_sister3') {
+      // Level 3 quest: defeat three Marsh Whisperers to fix the direction of the sister
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Marsh Whisperer', questId: 'canopy_sister3', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Marsh Whisperer', questId: 'canopy_sister3', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y - dy, 'mook', { name: 'Marsh Whisperer', questId: 'canopy_sister3', hp: 6, dmg: 5 });
+      }).catch(()=>{});
+      runtime.questCounters['canopy_sister3_remaining'] = 3;
+      try { showBanner('Quest started: Reeds and Echoes — 3 whisperers'); } catch {}
+    } else if (id === 'hola_silence') {
+      // Level 2 Hola quest: defeat three Silencers
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 150, dy = 110;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Silencer', questId: 'hola_silence', hp: 7, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Silencer', questId: 'hola_silence', hp: 7, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Silencer', questId: 'hola_silence', hp: 7, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['hola_silence_remaining'] = 3;
+      try { showBanner('Quest started: Break the Silence — 3 targets'); } catch {}
+    } else if (id === 'hola_breath_bog') {
+      // Level 3 Hola quest: defeat three Marsh Whisperers
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Marsh Whisperer', questId: 'hola_breath_bog', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Marsh Whisperer', questId: 'hola_breath_bog', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y - dy, 'mook', { name: 'Marsh Whisperer', questId: 'hola_breath_bog', hp: 6, dmg: 5 });
+      }).catch(()=>{});
+      runtime.questCounters['hola_breath_bog_remaining'] = 3;
+      try { showBanner('Quest started: Breath Over Bog — 3 whisperers'); } catch {}
+    } else if (id === 'oyin_ember') {
+      // Level 3 Oyin quest: defeat three Lantern Bearers (featured foes)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Lantern Bearer', questId: 'oyin_ember', hp: 8, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'oyin_ember', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'oyin_ember', hp: 8, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['oyin_ember_remaining'] = 3;
+      try { showBanner('Quest started: Carry the Ember — 3 targets'); } catch {}
+    } else if (id === 'twil_wake') {
+      // Level 3 Twil quest: defeat three Skimmers (tough mooks)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Skimmer', questId: 'twil_wake', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Skimmer', questId: 'twil_wake', hp: 6, dmg: 5 });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Skimmer', questId: 'twil_wake', hp: 6, dmg: 5 });
+      }).catch(()=>{});
+      runtime.questCounters['twil_wake_remaining'] = 3;
+      try { showBanner('Quest started: Cut the Wake — 3 targets'); } catch {}
+    } else if (id === 'tin_shallows') {
+      // Level 3 Tin quest: defeat three Marsh Stalkers (featured foes)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Marsh Stalker', questId: 'tin_shallows', hp: 8, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Marsh Stalker', questId: 'tin_shallows', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Marsh Stalker', questId: 'tin_shallows', hp: 8, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['tin_shallows_remaining'] = 3;
+      try { showBanner('Quest started: Mark the Shallows — 3 targets'); } catch {}
+    } else if (id === 'nellis_beacon') {
+      // Level 3 Nellis quest: defeat three Lantern Bearers (featured foes)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Lantern Bearer', questId: 'nellis_beacon', hp: 8, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'nellis_beacon', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'nellis_beacon', hp: 8, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['nellis_beacon_remaining'] = 3;
+      try { showBanner('Quest started: Raise the Beacon — 3 targets'); } catch {}
+    } else if (id === 'canopy_streets4') {
+      // Level 4 Canopy quest: defeat three Street Bleeders (mooks)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 150, dy = 110;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Street Bleeder', questId: 'canopy_streets4', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Street Bleeder', questId: 'canopy_streets4', hp: 6, dmg: 5 });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Street Bleeder', questId: 'canopy_streets4', hp: 6, dmg: 5 });
+      }).catch(()=>{});
+      runtime.questCounters['canopy_streets4_remaining'] = 3;
+      try { showBanner('Quest started: Stitch the Streets — 3 bleeders'); } catch {}
+    } else if (id === 'tin_gaps4') {
+      // Level 4 Tin quest: defeat three Gap Runners (mooks)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 150, dy = 110;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Gap Runner', questId: 'tin_gaps4', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Gap Runner', questId: 'tin_gaps4', hp: 6, dmg: 5 });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Gap Runner', questId: 'tin_gaps4', hp: 6, dmg: 5 });
+      }).catch(()=>{});
+      runtime.questCounters['tin_gaps4_remaining'] = 3;
+      try { showBanner('Quest started: Flag the Gaps — 3 runners'); } catch {}
+    } else if (id === 'nellis_crossroads4') {
+      // Level 4 Nellis quest: defeat three Signal Thieves (featured foes)
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Signal Thief', questId: 'nellis_crossroads4', hp: 8, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Signal Thief', questId: 'nellis_crossroads4', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Signal Thief', questId: 'nellis_crossroads4', hp: 8, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['nellis_crossroads4_remaining'] = 3;
+      try { showBanner('Quest started: Light the Crossroads — 3 thieves'); } catch {}
+    } else if (id === 'urn_rooftops') {
+      // Level 4 Urn quest: defeat three Rooftop Lurkers (mooks) to secure paths
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 150, dy = 110;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Rooftop Lurker', questId: 'urn_rooftops', hp: 6, dmg: 5 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Rooftop Lurker', questId: 'urn_rooftops', hp: 6, dmg: 5 });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Rooftop Lurker', questId: 'urn_rooftops', hp: 6, dmg: 5 });
+      }).catch(()=>{});
+      runtime.questCounters['urn_rooftops_remaining'] = 3;
+      try { showBanner('Quest started: Secure the Rooftops — 3 nests'); } catch {}
+    } else if (id === 'varabella_crossfire') {
+      // Level 4 Varabella quest: defeat three Crossfire Captains (featured) to break posts
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 160, dy = 120;
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Crossfire Captain', questId: 'varabella_crossfire', hp: 8, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Crossfire Captain', questId: 'varabella_crossfire', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Crossfire Captain', questId: 'varabella_crossfire', hp: 8, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['varabella_crossfire_remaining'] = 3;
+      try { showBanner('Quest started: Cut the Crossfire — 3 posts'); } catch {}
     }
   } catch {}
 }

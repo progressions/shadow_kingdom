@@ -19,6 +19,9 @@ export const sampleItems = [
   // Key items (not equip slots): use slot 'misc'
   { id: 'key_bronze',    name: 'Bronze Key',    slot: 'misc',       keyId: 'castle_gate' },
   { id: 'key_nethra',    name: 'Ruin Gate Key', slot: 'misc',       keyId: 'key_nethra' },
+  { id: 'key_reed',      name: 'Reed Key',      slot: 'misc',       keyId: 'key_reed' },
+  // Level 4 key (Ruined City)
+  { id: 'key_sigil',     name: 'Iron Sigil',     slot: 'misc',      keyId: 'key_sigil' },
 ];
 
 export function cloneItem(item) {

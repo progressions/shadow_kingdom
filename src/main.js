@@ -12,7 +12,7 @@ import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI, fadeTransition, updateQuestHint, exitChat } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save.js';
-import { loadLevel2, loadLevel3 } from './engine/levels.js';
+import { loadLevel2, loadLevel3, loadLevel4 } from './engine/levels.js';
 
 // Initialize enemies positioned around the three NPCs
 // Goal:
@@ -173,10 +173,10 @@ function loop(now) {
   step(dt);
   try { updateQuestHint(); } catch {}
   // Handle pending level transitions after VN closes (runtime set in step.js)
-  if (runtime.pendingLevel === 2 || runtime.pendingLevel === 3) {
+  if (runtime.pendingLevel === 2 || runtime.pendingLevel === 3 || runtime.pendingLevel === 4) {
     const lvl = runtime.pendingLevel;
     const doSwap = () => {
-      terrain = (lvl === 2) ? loadLevel2() : loadLevel3();
+      terrain = (lvl === 2) ? loadLevel2() : (lvl === 3 ? loadLevel3() : loadLevel4());
       // Snap camera to player
       camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(player.x + player.w/2 - camera.w/2)));
       camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(player.y + player.h/2 - camera.h/2)));
@@ -198,4 +198,5 @@ requestAnimationFrame(loop);
 try {
   window.gotoLevel2 = () => { runtime.pendingLevel = 2; };
   window.gotoLevel3 = () => { runtime.pendingLevel = 3; };
+  window.gotoLevel4 = () => { runtime.pendingLevel = 4; };
 } catch {}

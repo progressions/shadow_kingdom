@@ -1,10 +1,11 @@
-import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles } from './state.js';
+import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime } from './state.js';
 import { buildObstacles, buildTerrainBitmap } from './terrain.js';
 import { makeSpriteSheet } from './sprites.js';
 import { spawnEnemy, spawnNpc } from './state.js';
 import { TILE } from './constants.js';
 import { setNpcDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
+import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
 
 // Returns a new terrain bitmap after building the level.
@@ -12,6 +13,8 @@ export function loadLevel2() {
   // Resize world for level 2
   world.tileW = 120;
   world.tileH = 70;
+  // Mark progression flag for gating dialog/quests
+  try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level2_reached'] = true; } catch {}
   // Clear dynamic arrays
   enemies.length = 0;
   npcs.length = 0;
@@ -56,23 +59,11 @@ export function loadLevel2() {
   const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 220));
   const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 180));
   const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
-  // Clear any procedural obstacles inside the arena footprint and where the gate opening will be
-  (function clearArenaInteriorAndGap() {
-    const inner = { x: rx + t, y: ry + t, w: rw - 2 * t, h: rh - 2 * t };
-    const gapW = 24; // must match below
-    const gapX = rx + (rw - gapW) / 2;
-    const gapRect = { x: gapX, y: ry, w: gapW, h: t };
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      const o = obstacles[i]; if (!o) continue;
-      const r = { x: o.x, y: o.y, w: o.w, h: o.h };
-      const intersects = !(r.x + r.w <= inner.x || r.x >= inner.x + inner.w || r.y + r.h <= inner.y || r.y >= inner.y + inner.h);
-      const gapOverlap = !(r.x + r.w <= gapRect.x || r.x >= gapRect.x + gapRect.w || r.y + r.h <= gapRect.y || r.y >= gapRect.y + gapRect.h);
-      if (intersects || gapOverlap) obstacles.splice(i, 1);
-    }
-  })();
   // Top wall with a central gap for the gate
   const gapW = 24;
   const gapX = rx + (rw - gapW) / 2;
+  // Clear any procedural obstacles inside the arena footprint and at the gate opening
+  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
   // left and right top segments
   add(rx, ry, gapX - rx, t);
   add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t);
@@ -147,6 +138,8 @@ export function loadLevel3() {
   // Resize world for level 3
   world.tileW = 130;
   world.tileH = 80;
+  // Mark progression flag for gating dialog/quests
+  try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level3_reached'] = true; } catch {}
   enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
   // Place player near center
   player.x = Math.floor(world.w / 2);
@@ -188,18 +181,8 @@ export function loadLevel3() {
   const rw = TILE * 12, rh = TILE * 8, t = 8; const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260)); const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 160));
   const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
   const gapW = 24; const gapX = rx + (rw - gapW) / 2;
-  // Clear any procedural obstacles inside the arena footprint and in the gate opening
-  (function clearArena2InteriorAndGap() {
-    const inner = { x: rx + t, y: ry + t, w: rw - 2 * t, h: rh - 2 * t };
-    const gapRect = { x: gapX, y: ry, w: gapW, h: t };
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      const o = obstacles[i]; if (!o) continue;
-      const r = { x: o.x, y: o.y, w: o.w, h: o.h };
-      const intersects = !(r.x + r.w <= inner.x || r.x >= inner.x + inner.w || r.y + r.h <= inner.y || r.y >= inner.y + inner.h);
-      const gapOverlap = !(r.x + r.w <= gapRect.x || r.x >= gapRect.x + gapRect.w || r.y + r.h <= gapRect.y || r.y >= gapRect.y + gapRect.h);
-      if (intersects || gapOverlap) obstacles.splice(i, 1);
-    }
-  })();
+  // Clear any procedural obstacles inside the arena footprint and at the gate opening
+  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
   add(rx, ry + rh - t, rw, t); add(rx, ry, t, rh); add(rx + rw - t, ry, t, rh); // bottom, left, right
   // Top splits around gate
   add(rx, ry, gapX - rx, t); add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t);
@@ -219,8 +202,10 @@ export function loadLevel3() {
     name: 'Luula',
     vnOnSight: { text: introTexts.luula },
     sheet: luulaSheet,
+    portrait: 'assets/portraits/Luula/Luula.mp4',
     portraitPowered: 'assets/portraits/Luula/Luula powered.mp4',
     portraitDefeated: 'assets/portraits/Luula/Luula defeated.mp4',
+    onDefeatNextLevel: 4,
   });
   // A couple of mooks near Luula
   spawnEnemy(cx - 24, cy, 'mook');
@@ -232,6 +217,92 @@ export function loadLevel3() {
   const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', sheet: tinSheet, portrait: 'assets/portraits/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
   const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', sheet: nellisSheet, portrait: 'assets/portraits/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
   import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
+
+  return terrain;
+}
+
+// Level 4: Ruined City — plaza arena with a portcullis gate keyed by Blurb's drop; boss Vanificia
+export function loadLevel4() {
+  // Resize world for level 4
+  world.tileW = 140;
+  world.tileH = 85;
+  // Mark progression flag for gating dialog/quests
+  try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level4_reached'] = true; } catch {}
+  // Clear dynamic arrays
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+  // Place player near center and gather companions near
+  player.x = Math.floor(world.w / 2);
+  player.y = Math.floor(world.h / 2);
+  for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
+
+  // Build ruined city terrain and obstacles
+  // Use default theme (greens/stone) and procedural obstacles; arena walls form the city plaza
+  const terrain = buildTerrainBitmap(world, 'default');
+  obstacles.push(...buildObstacles(world, player, enemies, npcs, 'default'));
+
+  // Scatter a few enemy mooks around (off-camera)
+  for (let k = 0; k < 6; k++) {
+    const bx = Math.round(player.x + (Math.random() * 400 - 200));
+    const by = Math.round(player.y + (Math.random() * 300 - 150));
+    spawnEnemy(bx, by, 'mook');
+  }
+
+  // Featured foe: Blurb — drops City Sigil Key
+  const blurbX = player.x - 200, blurbY = player.y - 120;
+  const blurbSheet = makeSpriteSheet({
+    // Green grotesque tinting, similar to Gorg/Aarg/Wight style overrides
+    skin: '#6fdd6f',
+    hair: '#0a2a0a',
+    longHair: false,
+    dress: false,
+    shirt: '#4caf50',
+    pants: '#2e7d32',
+    outline: '#000000'
+  });
+  spawnEnemy(blurbX, blurbY, 'featured', {
+    name: 'Blurb', sheet: blurbSheet,
+    portrait: 'assets/portraits/Blurb/Blurb.mp4',
+    vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
+    guaranteedDropId: 'key_sigil', hp: 14, dmg: 4
+  });
+
+  // Boss arena (city plaza) with a top gate requiring Iron Sigil
+  const rw = TILE * 12, rh = TILE * 8, t = 8;
+  const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260));
+  const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 140));
+  const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
+  const gapW = 24; const gapX = rx + (rw - gapW) / 2;
+  // Clear any procedural obstacles inside the arena footprint and at the gate opening
+  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
+  // Build walls with a gap for the gate
+  add(rx, ry + rh - t, rw, t); // bottom
+  add(rx, ry, t, rh);          // left
+  add(rx + rw - t, ry, t, rh); // right
+  add(rx, ry, gapX - rx, t);   // top-left
+  add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t); // top-right
+  // Locked gate requires key_sigil
+  obstacles.push({ x: gapX, y: ry, w: gapW, h: t, type: 'gate', id: 'city_gate', keyId: 'key_sigil', locked: true, blocksAttacks: true });
+
+  // Boss: Vanificia inside arena
+  const cx = rx + rw/2 - 6; const cy = ry + rh/2 - 8;
+  const vaniSheet = makeSpriteSheet({ hair: '#8a3dff', longHair: true, dress: true, dressColor: '#2a123a', shirt: '#4a2a6b', outline: '#000000' });
+  spawnEnemy(cx, cy, 'boss', {
+    name: 'Vanificia', sheet: vaniSheet,
+    vnOnSight: { text: (introTexts && introTexts.vanificia) || 'Vanificia: You trespass in Urathar\'s city. Kneel, or be unmade.' },
+    portrait: 'assets/portraits/Vanificia/Vanificia.mp4',
+    portraitPowered: 'assets/portraits/Vanificia/Vanificia powered.mp4',
+    portraitDefeated: 'assets/portraits/Vanificia/Vanificia defeated.mp4',
+  });
+  // Guards near the boss
+  spawnEnemy(cx - 24, cy, 'mook');
+  spawnEnemy(cx + 24, cy, 'mook');
+
+  // Recruitable NPCs: Urn & Varabella
+  const urnSheet = makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' });
+  const varaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
+  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', sheet: urnSheet, portrait: 'assets/portraits/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
+  const vara = spawnNpc(player.x + 140, player.y - 120, 'down', { name: 'Varabella', sheet: varaSheet, portrait: 'assets/portraits/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
+  import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
 
   return terrain;
 }

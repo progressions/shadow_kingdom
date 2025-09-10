@@ -62,16 +62,11 @@ export function initInput() {
     } else if (e.key === 'F7') {
       e.preventDefault(); loadGame();
     } else if (e.shiftKey && e.key.toLowerCase() === 'd') {
-      // Debug: Shift+D — jump forward contextually
-      if (runtime.currentLevel === 2) {
-        // From Level 2 → schedule Level 3 (companions are preserved by loadLevel3)
-        runtime.pendingLevel = 3;
-        try { showBanner('Debug: Pending Level 3'); } catch {}
-      } else {
-        // From Level 1 (or other) → schedule Level 2
-        runtime.pendingLevel = 2;
-        try { showBanner('Debug: Pending Level 2'); } catch {}
-      }
+      // Shift+D — schedule next level (cur+1). Main loop loads if implemented.
+      const cur = runtime.currentLevel || 1;
+      const next = cur + 1;
+      runtime.pendingLevel = next;
+      try { showBanner(`Next Level: Pending Level ${next}`); } catch {}
     }
   });
   window.addEventListener('keyup', (e) => runtime.keys.delete(e.key.toLowerCase()));

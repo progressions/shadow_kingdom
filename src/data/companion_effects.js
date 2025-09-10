@@ -41,6 +41,40 @@ export const companionEffectsByKey = {
     ],
     // dust veil trigger handled in code
   },
+  tin: {
+    auras: [
+      // Hype: increase attack speed (reduces attack cooldown)
+      { type: 'aspd', value: 0.12 },
+    ],
+    // Triggers can be added later (Slipstream, Tumble Up, etc.)
+  },
+  urn: {
+    auras: [
+      // Light ambient positivity: small passive regen
+      { type: 'regen', value: 0.1 },
+    ],
+    triggers: {
+      // Burst heal when HP dips low
+      cheer: { hpThresh: 0.5, heal: 3, radius: 80, cooldownSec: 12 },
+    },
+  },
+  varabella: {
+    auras: [
+      // Tactical awareness: slightly extended range
+      { type: 'range', value: 1 },
+    ],
+    triggers: {
+      // Timing window: brief ATK + range buff when enemies are nearby
+      angle: { atk: 1, range: 2, durationSec: 3, cooldownSec: 9, proximity: 140 },
+    },
+  },
+  nellis: {
+    auras: [
+      // Steady Pace: small, constant damage reduction
+      { type: 'dr', value: 1 },
+    ],
+    // Triggers implemented in code: Mourner's Veil, Beacon, Keep the Line
+  },
 };
 
 // Global caps to keep stacks reasonable
@@ -51,4 +85,5 @@ export const COMPANION_BUFF_CAPS = {
   range: 3,   // pixels
   touchDR: 1,
   slow: 0.25, // 25%
+  aspd: 0.5,  // +50% attack speed (cooldown reduction factor)
 };

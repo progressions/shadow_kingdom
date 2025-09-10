@@ -19,28 +19,48 @@ export const companionDialogs = {
         choices: [
           { label: 'Can you watch over us?', next: 'support' },
           { label: 'How are you holding up?', next: 'mood' },
+          { label: 'Tell me about your sister.', next: 'sister_chat' },
           // Bond entries (show only when available)
-          { label: 'Open up (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Open up', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
           { label: 'Share a memory (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Promise me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           // Quest entries (appear inline)
           { label: 'Breath and Bandages', requires: { flag: 'canopy_triage_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared', missingFlag: 'canopy_triage_done' }, next: 'quest_turnin' },
+          // Level 2 storyline
+          { label: 'Ribbon in the Dust (L2)', requires: { hasFlag: 'level2_reached', flag: 'canopy_sister2_started', not: true }, next: 'sister_l2_intro' },
+          { label: 'Turn in: Ribbon in the Dust', requires: { flag: 'canopy_sister2_cleared', missingFlag: 'canopy_sister2_done' }, next: 'sister_l2_turnin' },
+          // Level 3 storyline
+          { label: 'Reeds and Echoes (L3)', requires: { hasFlag: 'level3_reached', flag: 'canopy_sister3_started', not: true }, next: 'sister_l3_intro' },
+          { label: 'Turn in: Reeds and Echoes', requires: { flag: 'canopy_sister3_cleared', missingFlag: 'canopy_sister3_done' }, next: 'sister_l3_turnin' },
+          // Level 4: Ruined City quest
+          { label: 'Stitch the Streets (L4)', requires: { hasFlag: 'level4_reached', flag: 'canopy_streets4_started', not: true }, next: 'streets_l4_intro' },
+          { label: 'Turn in: Stitch the Streets', requires: { flag: 'canopy_streets4_cleared', missingFlag: 'canopy_streets4_done' }, next: 'streets_l4_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
       bond_menu: {
         text: 'Canopy: Breathe. Then tell me what you need.',
         choices: [
-          { label: 'Open up (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Open up', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
           { label: 'Share a memory (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Promise me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Mediate: Hold and Push', requires: { partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'mediate_yorna_intro' },
+          { label: 'After hold and push', requires: { partyHas: 'yorna', hasFlag: 'canopy_yorna_respect' }, next: 'ack_yorna_c' },
           { label: 'Back', next: 'root' },
         ],
       },
-      bond6: {
-        text: "Canopy: I worry about the quiet ones most. You included. If you can't rest, I'll sit with you until you can.",
-        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      bond6a: {
+        text: "Canopy: I keep to the woods when I can. Quieter there. I follow scraps—frayed ribbon ends, a boot-heel trace—anything that might be my sister. I can find the crumbs, but… keeping at it alone is hard.",
+        choices: [ { label: 'Continue', next: 'bond6b' } ],
+      },
+      bond6b: {
+        text: "Canopy: Larch is stubborn. She learned to stitch reeds so they wouldn't split, and she taught me to breathe when the world ran too fast. If I see that stitch again, I won't blink. Not this time.",
+        choices: [ { label: 'Continue', next: 'bond6c' } ],
+      },
+      bond6c: {
+        text: "Canopy: If you walk beside me, I'll stop mistaking shadows for her. And if you hold still a moment longer, I might mistake you for a reason to smile.",
+        choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'canopy_bond6c_reward' }, next: 'bond_menu' } ],
       },
       bond8: {
         text: "Canopy: When I was small, I stopped a bleeding with willow bark and pressure. It wasn't the bark—it was not giving up.",
@@ -54,7 +74,7 @@ export const companionDialogs = {
         text: 'Canopy: We can help those in need.',
         choices: [
           { label: 'Breath and Bandages', requires: { flag: 'canopy_triage_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared', missingFlag: 'canopy_triage_done' }, next: 'quest_turnin' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -70,6 +90,20 @@ export const companionDialogs = {
           { label: 'Back', action: 'companion_back' },
         ],
       },
+      // Sister storyline chats (non-quest, small affinity bumps)
+      sister_chat: {
+        text: "Canopy: Her name is Larch. We got split when Urathar's line cut the valley. I keep catching the same ribbon color in crowds… then it isn't her.",
+        choices: [
+          { label: 'We will find her. I promise.', action: 'affinity_add', data: { target: 'active', amount: 0.5, flag: 'canopy_aff_sister_promise' }, next: 'sister_chat_more' },
+          { label: 'Tell me what to look for.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_aff_sister_look' }, next: 'sister_chat_more' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      sister_chat_more: {
+        text: "Canopy: A reed-stitched ribbon at her wrist, and a laugh that doesn't apologize. If you see either… call me. Please.",
+        choices: [ { label: 'We will.', next: 'root' } ],
+      },
+
       quest_intro: {
         text: 'Canopy: Three cry out first. If we clear the snare, the rest may breathe easier.',
         choices: [
@@ -89,6 +123,96 @@ export const companionDialogs = {
         text: 'Canopy: We move again when you\'re ready.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_triage_done' } } ],
       },
+
+      // Level 2: Sister clue — defeat scouts
+      sister_l2_intro: {
+        text: "Canopy: In the desert, Urathar's scouts wear reed-stitched cords. Larch stitched like that. If we thin three patrols, maybe we find a ribbon." ,
+        choices: [
+          { label: 'We cut their line.', action: 'start_quest', data: { id: 'canopy_sister2' }, next: 'sister_l2_started' },
+          { label: 'Later.', next: 'root' },
+        ],
+      },
+      sister_l2_started: {
+        text: "Canopy: Three patrols. If you see the ribbon first, shout. I won't miss it this time.",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      sister_l2_turnin: {
+        text: "Canopy: This… it's her stitch. Not hers, but her hands taught it. We're closer.",
+        choices: [ { label: 'We\'ll follow it.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'canopy_sister2_reward' }, next: 'sister_l2_done' } ],
+      },
+      sister_l2_done: {
+        text: 'Canopy: Thank you. I can breathe again. For a while.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_sister2_done' } } ],
+      },
+
+      // Level 3: Marsh whisperers — defeat to orient the trail
+      sister_l3_intro: {
+        text: "Canopy: Marsh folk say whispers carry names. If we still three of them, the wind might stop pointing wrong for once.",
+        choices: [
+          { label: 'Silence three whispers.', action: 'start_quest', data: { id: 'canopy_sister3' }, next: 'sister_l3_started' },
+          { label: 'Later.', next: 'root' },
+        ],
+      },
+      sister_l3_started: {
+        text: "Canopy: Stay near. If the wind says Larch, I don't want to miss it.",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      sister_l3_turnin: {
+        text: "Canopy: The reeds bent east when they quieted. If Urathar's shadow took her, it's east we go.",
+        choices: [ { label: 'We go together.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'canopy_sister3_reward' }, next: 'sister_l3_done' } ],
+      },
+      sister_l3_done: {
+        text: 'Canopy: Whatever waits under Urathar, I won\'t let it take her breath. Or yours.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_sister3_done' } } ],
+      },
+
+      // Level 4: Stitch the Streets — defeat three street bleeders
+      streets_l4_intro: {
+        text: 'Canopy: Stone bleeds too. Three streets run red—if we clear the hands that did it, people can pass.',
+        choices: [
+          { label: 'Bind them.', action: 'start_quest', data: { id: 'canopy_streets4' }, next: 'streets_l4_started' },
+          { label: 'Later.', next: 'root' },
+        ],
+      },
+      streets_l4_started: {
+        text: 'Canopy: I\'ll keep pressure. You make space.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      streets_l4_turnin: {
+        text: 'Canopy: It\'s quieter. Breathe. We did good.',
+        choices: [ { label: 'We did.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'canopy_streets4_reward' }, next: 'streets_l4_done' } ],
+      },
+      streets_l4_done: {
+        text: 'Canopy: I\'ll keep stitching what they break.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_streets4_done' } } ],
+      },
+
+      // Mediate: Canopy and Yorna (hold and push)
+      mediate_yorna_intro: {
+        text: '(You name the tension: Canopy needs space to heal; Yorna wants to drive. You set a simple rule so both can work.)\nCanopy: Five breaths. On six, you push. I\'ll hold the line.',
+        choices: [ { label: 'Continue', next: 'mediate_yorna_b' } ],
+      },
+      mediate_yorna_b: {
+        text: 'Yorna: On six. I won\'t waste it.',
+        choices: [ { label: 'Continue', next: 'mediate_yorna_c' } ],
+      },
+      mediate_yorna_c: {
+        text: 'Canopy: In. Out. One. Two. Three. Four. Five.',
+        choices: [ { label: 'Deal', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'canopy_yorna_respect_reward_canopy' }, next: 'mediate_yorna_apply_yorna' } ],
+      },
+      mediate_yorna_apply_yorna: {
+        text: 'Yorna: Six.',
+        choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'yorna', amount: 0.2, flag: 'canopy_yorna_respect_reward_yorna' }, next: 'mediate_yorna_done' } ],
+      },
+      mediate_yorna_done: {
+        text: 'Canopy: Then we understand each other.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_yorna_respect' }, next: 'bond_menu' } ],
+      },
+      // Post-truce acknowledgement (Canopy ↔ Yorna)
+      ack_yorna_c: {
+        text: 'Canopy: Five breaths for me. Six for her. We can work with that.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
     },
   },
   yorna: {
@@ -100,27 +224,47 @@ export const companionDialogs = {
           { label: 'What\'s your style?', next: 'style' },
           { label: 'Everything alright?', next: 'mood' },
           // Bond entries
-          { label: 'Trade tells (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Open space', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
           { label: 'Strategy talk (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Stand with me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           // Quest entries
           { label: 'Cut the Knot', requires: { flag: 'yorna_knot_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared', missingFlag: 'yorna_knot_done' }, next: 'quest_turnin' },
+          { label: 'Shatter the Ring (L2)', requires: { hasFlag: 'level2_reached', flag: 'yorna_ring_started', not: true }, next: 'ring_intro' },
+          { label: 'Turn in: Shatter the Ring', requires: { flag: 'yorna_ring_cleared', missingFlag: 'yorna_ring_done' }, next: 'ring_turnin' },
+          { label: 'Hold the Causeway (L3)', requires: { hasFlag: 'level3_reached', flag: 'yorna_causeway_started', not: true }, next: 'causeway_intro' },
+          { label: 'Turn in: Hold the Causeway', requires: { flag: 'yorna_causeway_cleared', missingFlag: 'yorna_causeway_done' }, next: 'causeway_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
       bond_menu: {
         text: "Yorna: If you want my respect, earn it. You're halfway there.",
         choices: [
-          { label: 'Trade tells (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Open space', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
           { label: 'Strategy talk (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Stand with me (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'About Oyin…', requires: { partyHas: 'oyin', missingFlag: 'yorna_oyin_truce' }, next: 'hint_oyin_y' },
+          { label: 'About Canopy…', requires: { partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'hint_canopy_y' },
+          { label: 'On three.', requires: { partyHas: 'oyin', hasFlag: 'yorna_oyin_truce' }, next: 'ack_oyin_y' },
+          { label: 'Five and six.', requires: { partyHas: 'canopy', hasFlag: 'canopy_yorna_respect' }, next: 'ack_canopy_y' },
+          { label: 'Twil reads the wind', requires: { partyHas: 'twil' }, next: 'xc_twil' },
+          { label: 'Canopy keeps them standing', requires: { partyHas: 'canopy' }, next: 'xc_canopy' },
+          { label: 'Hola sets her breath', requires: { partyHas: 'hola' }, next: 'xc_hola' },
+          { label: 'Oyin echoes my strike', requires: { partyHas: 'oyin' }, next: 'xc_oyin' },
           { label: 'Back', next: 'root' },
         ],
       },
-      bond6: {
-        text: "Yorna: Watch the shoulder. Everyone telegraphs. Even me—if you look close.",
-        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      bond6a: {
+        text: "Yorna: Momentum is a blade. If I stop, it's because I'm picking which wall to use.",
+        choices: [ { label: 'Continue', next: 'bond6b' } ],
+      },
+      bond6b: {
+        text: "Yorna: People flinch. I don't mind. I'd rather you tell me where you're going.",
+        choices: [ { label: 'Continue', next: 'bond6c' } ],
+      },
+      bond6c: {
+        text: "Yorna: If you walk ahead, I'll hit harder. If you walk beside me… I forget to look for walls.",
+        choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'yorna_bond6c_reward' }, next: 'bond_menu' } ],
       },
       bond8: {
         text: "Yorna: I don't hit hard for fun. I hit hard because it keeps you moving. That's the whole point.",
@@ -134,7 +278,11 @@ export const companionDialogs = {
         text: 'Yorna: Let\'s cut the knot.',
         choices: [
           { label: 'Cut the Knot', requires: { flag: 'yorna_knot_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared', missingFlag: 'yorna_knot_done' }, next: 'quest_turnin' },
+          { label: 'Shatter the Ring (L2)', requires: { hasFlag: 'level2_reached', flag: 'yorna_ring_started', not: true }, next: 'ring_intro' },
+          { label: 'Turn in: Shatter the Ring', requires: { flag: 'yorna_ring_cleared', missingFlag: 'yorna_ring_done' }, next: 'ring_turnin' },
+          { label: 'Hold the Causeway (L3)', requires: { hasFlag: 'level3_reached', flag: 'yorna_causeway_started', not: true }, next: 'causeway_intro' },
+          { label: 'Turn in: Hold the Causeway', requires: { flag: 'yorna_causeway_cleared', missingFlag: 'yorna_causeway_done' }, next: 'causeway_turnin' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -167,6 +315,84 @@ export const companionDialogs = {
         text: 'Yorna: On to the next knot.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_knot_done' } } ],
       },
+
+      // L2: Shatter the Ring
+      ring_intro: {
+        text: "Yorna: Three captains pin the lanes around these ruins. We cave the ring, we move.",
+        choices: [
+          { label: "Crack it.", action: 'start_quest', data: { id: 'yorna_ring' }, next: 'ring_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ],
+      },
+      ring_started: {
+        text: 'Yorna: I\'ll point the lanes. Hit what leans.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      ring_turnin: {
+        text: "Yorna: Ring's cracked. The road breathes.",
+        choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'yorna_ring_reward' }, next: 'ring_done' } ],
+      },
+      ring_done: {
+        text: 'Yorna: Next ring, same plan.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_ring_done' } } ],
+      },
+
+      // L3: Hold the Causeway
+      causeway_intro: {
+        text: 'Yorna: Three wardens keep the causeway narrow. We widen it with their mistakes.',
+        choices: [
+          { label: 'Take it.', action: 'start_quest', data: { id: 'yorna_causeway' }, next: 'causeway_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ],
+      },
+      causeway_started: {
+        text: "Yorna: Clear space. If I push, you follow.",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      causeway_turnin: {
+        text: 'Yorna: Wide enough for a caravan.',
+        choices: [ { label: 'Nice.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'yorna_causeway_reward' }, next: 'causeway_done' } ],
+      },
+      causeway_done: {
+        text: 'Yorna: Keep moving.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_causeway_done' } } ],
+      },
+
+      // Cross-companion touches
+      xc_twil: {
+        text: "Yorna: Twil calls gaps. I cut them. If we're late, it's because we were done early.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      xc_canopy: {
+        text: "Yorna: You keep them standing; I keep things off you. That's a good trade.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      xc_hola: {
+        text: 'Yorna: Short words, strong steps. I\'ll hit; you breathe.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      xc_oyin: {
+        text: 'Yorna: Echo on my strike. I break the front; you clean the stagger.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      // Tension hints from Yorna
+      hint_oyin_y: {
+        text: 'Yorna: Oyin has a good count. If she calls it, I\'ll hit on three.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      hint_canopy_y: {
+        text: 'Yorna: Canopy wants five breaths. I can use six. That\'s fine.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      // Post-truce acknowledgement (Yorna side)
+      ack_oyin_y: {
+        text: "Yorna: You call, I hit. Works.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      ack_canopy_y: {
+        text: 'Yorna: Five, then six. We move.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
     },
   },
   hola: {
@@ -183,7 +409,11 @@ export const companionDialogs = {
           { label: 'Stand firm (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           // Quest entries
           { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared', missingFlag: 'hola_practice_done' }, next: 'quest_turnin' },
+          { label: 'Break the Silence (L2)', requires: { hasFlag: 'level2_reached', flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
+          { label: 'Turn in: Break the Silence', requires: { flag: 'hola_silence_cleared', missingFlag: 'hola_silence_done' }, next: 'silence_turnin' },
+          { label: 'Breath Over Bog (L3)', requires: { hasFlag: 'level3_reached', flag: 'hola_breath_bog_started', not: true }, next: 'bog_intro' },
+          { label: 'Turn in: Breath Over Bog', requires: { flag: 'hola_breath_bog_cleared', missingFlag: 'hola_breath_bog_done' }, next: 'bog_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -193,6 +423,12 @@ export const companionDialogs = {
           { label: 'Small steps (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
           { label: 'Speak up (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Stand firm (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'About Twil…', requires: { partyHas: 'twil', missingFlag: 'hola_twil_truce' }, next: 'hint_twil' },
+          { label: 'Mediate: Set the cadence', requires: { partyHas: 'twil', missingFlag: 'hola_twil_truce' }, next: 'mediate_twil_intro' },
+          { label: 'After the cadence', requires: { partyHas: 'twil', hasFlag: 'hola_twil_truce' }, next: 'ack_twil_h' },
+          { label: 'Breathe with Canopy', requires: { partyHas: 'canopy' }, next: 'xc_canopy' },
+          { label: "Twil's shortcut", requires: { partyHas: 'twil' }, next: 'xc_twil' },
+          { label: 'Between them', requires: { partyHas: ['canopy','twil'] }, next: 'xc_both' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -212,7 +448,11 @@ export const companionDialogs = {
         text: 'Hola: I can practice… if you stay close.',
         choices: [
           { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared', missingFlag: 'hola_practice_done' }, next: 'quest_turnin' },
+          { label: 'Break the Silence (L2)', requires: { hasFlag: 'level2_reached', flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
+          { label: 'Turn in: Break the Silence', requires: { flag: 'hola_silence_cleared', missingFlag: 'hola_silence_done' }, next: 'silence_turnin' },
+          { label: 'Breath Over Bog (L3)', requires: { hasFlag: 'level3_reached', flag: 'hola_breath_bog_started', not: true }, next: 'bog_intro' },
+          { label: 'Turn in: Breath Over Bog', requires: { flag: 'hola_breath_bog_cleared', missingFlag: 'hola_breath_bog_done' }, next: 'bog_turnin' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -243,6 +483,95 @@ export const companionDialogs = {
         text: 'Hola: I\'ll keep trying.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'hola_practice_done' } } ],
       },
+
+      // Tension hint with Twil
+      hint_twil: {
+        text: "Hola: I know she moves fast. If she says it out loud, I can match it. I just… don't want to slow you down.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+
+      // Mediate: Hola and Twil (set a cadence)
+      mediate_twil_intro: {
+        text: '(You step in as tension between Hola and Twil keeps bubbling about pace. You propose setting a cadence you can all follow.)\nHola: If you call the pace, I can match it. If you… call it out loud.',
+        choices: [ { label: 'Continue', next: 'mediate_twil_b' } ],
+      },
+      mediate_twil_b: {
+        text: 'Twil: Fine. I\'ll count. You keep your feet where I say.',
+        choices: [ { label: 'Continue', next: 'mediate_twil_c' } ],
+      },
+      mediate_twil_c: {
+        text: 'Hola: Okay. One… two… three.',
+        choices: [ { label: 'Deal', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'hola_twil_truce_reward_hola' }, next: 'mediate_twil_apply_twil' } ],
+      },
+      mediate_twil_apply_twil: {
+        text: 'Twil: See? Faster already.',
+        choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'twil', amount: 0.2, flag: 'hola_twil_truce_reward_twil' }, next: 'mediate_twil_done' } ],
+      },
+      mediate_twil_done: {
+        text: 'Hola: I\'ll keep your count.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'hola_twil_truce' }, next: 'bond_menu' } ],
+      },
+      // Post-truce acknowledgement (Hola ↔ Twil)
+      ack_twil_h: {
+        text: 'Hola: If you call it, I won\'t run. Thank you.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+
+      // Cross-companion touches
+      xc_canopy: {
+        text: "Hola: When Canopy counts breaths, I can match them. I don't trip over every word if someone else sets the pace.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      xc_twil: {
+        text: "Hola: Twil says ten words are faster than twenty. I'm learning to pick the right ten.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      xc_both: {
+        text: "Hola: Canopy keeps my breathing steady; Twil keeps my feet moving. Between them… I almost sound brave.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+
+      // L2: Break the Silence (defeat Silencers)
+      silence_intro: {
+        text: "Hola: Silencers feel like rooms that breathe in. If we break three, maybe I won't have to whisper all the time.",
+        choices: [
+          { label: "Let's break them.", action: 'start_quest', data: { id: 'hola_silence' }, next: 'silence_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ],
+      },
+      silence_started: {
+        text: "Hola: I'll stay behind you. If I shake, just… keep walking. I'll match you.",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      silence_turnin: {
+        text: "Hola: It's… quieter in my head. Thank you for not rushing me.",
+        choices: [ { label: 'You did great.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'hola_silence_reward' }, next: 'silence_done' } ],
+      },
+      silence_done: {
+        text: 'Hola: I can talk a little louder now.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'hola_silence_done' } } ],
+      },
+
+      // L3: Breath Over Bog (defeat Marsh Whisperers)
+      bog_intro: {
+        text: 'Hola: Marsh air eats words. If we still three whisperers, wind might hold a path.',
+        choices: [
+          { label: "Let's try.", action: 'start_quest', data: { id: 'hola_breath_bog' }, next: 'bog_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ],
+      },
+      bog_started: {
+        text: "Hola: I’ll stay close. If I start to run, just say my name.",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      bog_turnin: {
+        text: 'Hola: People can follow this air. Maybe my mentor will. Maybe I will.',
+        choices: [ { label: 'Proud of you.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'hola_breath_bog_reward' }, next: 'bog_done' } ],
+      },
+      bog_done: {
+        text: "Hola: If you walk, I won't run.",
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'hola_breath_bog_done' } } ],
+      },
     },
   },
   oyin: {
@@ -257,7 +586,9 @@ export const companionDialogs = {
           { label: 'Firelight (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           // Quest entries
           { label: 'Light the Fuse', requires: { flag: 'oyin_fuse_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared', missingFlag: 'oyin_fuse_done' }, next: 'quest_turnin' },
+          { label: 'Carry the Ember (L3)', requires: { hasFlag: 'level3_reached', flag: 'oyin_ember_started', not: true }, next: 'ember_intro' },
+          { label: 'Turn in: Carry the Ember', requires: { flag: 'oyin_ember_cleared', missingFlag: 'oyin_ember_done' }, next: 'ember_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -267,6 +598,9 @@ export const companionDialogs = {
           { label: 'A spark (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
           { label: 'Tinder and air (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Firelight (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'About Yorna…', requires: { partyHas: 'yorna', missingFlag: 'yorna_oyin_truce' }, next: 'hint_yorna' },
+          { label: 'Mediate: Call and Echo', requires: { partyHas: 'yorna', missingFlag: 'yorna_oyin_truce' }, next: 'mediate_yorna_intro' },
+          { label: 'After call and echo', requires: { partyHas: 'yorna', hasFlag: 'yorna_oyin_truce' }, next: 'ack_yorna_o' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -282,11 +616,45 @@ export const companionDialogs = {
         text: "Oyin: If you keep walking, I can be brave. I can match you.",
         choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
+
+      // Mediate: Oyin and Yorna (call and echo)
+      mediate_yorna_intro: {
+        text: '(You step between Yorna\'s push and Oyin\'s hesitation. You suggest a simple call-and-echo so they can move together.)\nOyin: If you… count, I can match you. Three is good.',
+        choices: [ { label: 'Continue', next: 'mediate_yorna_b' } ],
+      },
+      mediate_yorna_b: {
+        text: 'Yorna: I call. You echo. We hit on three.',
+        choices: [ { label: 'Continue', next: 'mediate_yorna_c' } ],
+      },
+      mediate_yorna_c: {
+        text: 'Oyin: One. Two. Three.',
+        choices: [ { label: 'Deal', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'yorna_oyin_truce_reward_oyin' }, next: 'mediate_yorna_apply_yorna' } ],
+      },
+      mediate_yorna_apply_yorna: {
+        text: 'Yorna: Good count.',
+        choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'yorna', amount: 0.2, flag: 'yorna_oyin_truce_reward_yorna' }, next: 'mediate_yorna_done' } ],
+      },
+      mediate_yorna_done: {
+        text: 'Oyin: I\'ll speak on three.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_oyin_truce' }, next: 'bond_menu' } ],
+      },
+      // Tension hint with Yorna
+      hint_yorna: {
+        text: 'Oyin: When Yorna pushes, my hands shake. If we… counted first, I could move on three.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      // Post-truce acknowledgement (Oyin ↔ Yorna)
+      ack_yorna_o: {
+        text: 'Oyin: Call. Echo. Move. I can do that.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
       quests: {
         text: 'Oyin: I can try the spark tactics.',
         choices: [
           { label: 'Light the Fuse', requires: { flag: 'oyin_fuse_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared', missingFlag: 'oyin_fuse_done' }, next: 'quest_turnin' },
+          { label: 'Carry the Ember (L3)', requires: { hasFlag: 'level3_reached', flag: 'oyin_ember_started', not: true }, next: 'ember_intro' },
+          { label: 'Turn in: Carry the Ember', requires: { flag: 'oyin_ember_cleared', missingFlag: 'oyin_ember_done' }, next: 'ember_turnin' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -306,6 +674,24 @@ export const companionDialogs = {
         text: 'Oyin: Thank you for trusting me.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'oyin_fuse_done' } } ],
       },
+
+      // L3: Carry the Ember (defeat Lantern Bearers)
+      ember_intro: {
+        text: 'Oyin: Marsh air eats sparks. If we keep three burning, others will see the way.',
+        choices: [ { label: 'Let\'s carry it.', action: 'start_quest', data: { id: 'oyin_ember' }, next: 'ember_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      ember_started: {
+        text: 'Oyin: I\'ll watch the flame. You take what reaches for it.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      ember_turnin: {
+        text: 'Oyin: We kept them lit. Someone will see this.',
+        choices: [ { label: 'Well done.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'oyin_ember_reward' }, next: 'ember_done' } ],
+      },
+      ember_done: {
+        text: 'Oyin: I can keep pace a little longer.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'oyin_ember_done' } } ],
+      },
     },
   },
   twil: {
@@ -320,7 +706,9 @@ export const companionDialogs = {
           { label: 'Same stride (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           // Quest entries
           { label: 'Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared', missingFlag: 'twil_trace_done' }, next: 'quest_turnin' },
+          { label: 'Cut the Wake (L3)', requires: { hasFlag: 'level3_reached', flag: 'twil_wake_started', not: true }, next: 'wake_intro' },
+          { label: 'Turn in: Cut the Wake', requires: { flag: 'twil_wake_cleared', missingFlag: 'twil_wake_done' }, next: 'wake_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -330,6 +718,8 @@ export const companionDialogs = {
           { label: 'Footwork (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
           { label: 'Shortcuts (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Same stride (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'About Hola…', requires: { partyHas: 'hola', missingFlag: 'hola_twil_truce' }, next: 'hint_hola_t' },
+          { label: 'Count\'s set.', requires: { partyHas: 'hola', hasFlag: 'hola_twil_truce' }, next: 'ack_hola_t' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -345,11 +735,23 @@ export const companionDialogs = {
         text: "Twil: If you run, I'll run. If you stop, I'll stand.",
         choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
+      // Tension hint from Twil
+      hint_hola_t: {
+        text: "Twil: Hola can match pace if I call it. I don't always remember to call it.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      // Post-truce acknowledgement (Twil ↔ Hola)
+      ack_hola_t: {
+        text: "Twil: Count's set. We move.",
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
       quests: {
         text: 'Twil: Keep up.',
         choices: [
           { label: 'Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared' }, next: 'quest_turnin' },
+          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared', missingFlag: 'twil_trace_done' }, next: 'quest_turnin' },
+          { label: 'Cut the Wake (L3)', requires: { hasFlag: 'level3_reached', flag: 'twil_wake_started', not: true }, next: 'wake_intro' },
+          { label: 'Turn in: Cut the Wake', requires: { flag: 'twil_wake_cleared', missingFlag: 'twil_wake_done' }, next: 'wake_turnin' },
           { label: 'Back', next: 'root' },
         ],
       },
@@ -368,6 +770,178 @@ export const companionDialogs = {
       quest_done: {
         text: 'Twil: On to the next trace.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'twil_trace_done' } } ],
+      },
+
+      // L3: Cut the Wake (defeat Skimmers)
+      wake_intro: {
+        text: 'Twil: Three skimmers keep the path slick. We trim their wake.',
+        choices: [ { label: 'Cut it.', action: 'start_quest', data: { id: 'twil_wake' }, next: 'wake_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      wake_started: {
+        text: 'Twil: Keep up. I\'ll call the gap, you take it.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      wake_turnin: {
+        text: 'Twil: Path\'s clean. Faster now.',
+        choices: [ { label: 'Nice work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'twil_wake_reward' }, next: 'wake_done' } ],
+      },
+      wake_done: {
+        text: 'Twil: Next wake, same cut.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'twil_wake_done' } } ],
+      },
+    },
+  },
+  tin: {
+    start: 'root',
+    nodes: {
+      root: {
+        text: 'Tin: I can help scout the marsh. Want to set a path?',
+        choices: [
+          // Bond entries
+          { label: 'Footing (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Wind over water (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Take you home (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries
+          { label: 'Mark the Shallows (L3)', requires: { hasFlag: 'level3_reached', flag: 'tin_shallows_started', not: true }, next: 'shallows_intro' },
+          { label: 'Turn in: Mark the Shallows', requires: { flag: 'tin_shallows_cleared', missingFlag: 'tin_shallows_done' }, next: 'shallows_turnin' },
+          // Level 4 quest
+          { label: 'Flag the Gaps (L4)', requires: { hasFlag: 'level4_reached', flag: 'tin_gaps4_started', not: true }, next: 'gaps_l4_intro' },
+          { label: 'Turn in: Flag the Gaps', requires: { flag: 'tin_gaps4_cleared', missingFlag: 'tin_gaps4_done' }, next: 'gaps_l4_turnin' },
+          { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      bond_menu: {
+        text: 'Tin: Watch your footing; I\'ll watch the wind.',
+        choices: [
+          { label: 'Footing (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Wind over water (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Take you home (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      bond6: {
+        text: 'Tin: Water lies. If you look a step ahead, it tells the truth.',
+        choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'tin_bond6_reward' }, next: 'bond_menu' } ],
+      },
+      bond8: {
+        text: 'Tin: The wind lines the water. Read both and you won\'t sink.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond10: {
+        text: 'Tin: If you take point, I\'ll take you home. That\'s a promise.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      // L3: Mark the Shallows (defeat Marsh Stalkers)
+      shallows_intro: {
+        text: 'Tin: Three stretches look shallow. Stalkers hold them. We mark them so people don\'t drown.',
+        choices: [ { label: 'Mark them.', action: 'start_quest', data: { id: 'tin_shallows' }, next: 'shallows_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      shallows_started: {
+        text: 'Tin: I\'ll call footing. You clear what breaks the surface.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      shallows_turnin: {
+        text: 'Tin: Marked. Safer than it was.',
+        choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'tin_shallows_reward' }, next: 'shallows_done' } ],
+      },
+      shallows_done: {
+        text: 'Tin: I\'ll keep marking where we pass.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'tin_shallows_done' } } ],
+      },
+
+      // Level 4: Flag the Gaps — defeat three Gap Runners
+      gaps_l4_intro: {
+        text: 'Tin: Alley lines break where runners cut across. If we stop three, people can pass without looking back.',
+        choices: [ { label: 'Flag them.', action: 'start_quest', data: { id: 'tin_gaps4' }, next: 'gaps_l4_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      gaps_l4_started: {
+        text: 'Tin: I\'ll call the gap; you close it.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      gaps_l4_turnin: {
+        text: 'Tin: Lines hold. Better than it was.',
+        choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'tin_gaps4_reward' }, next: 'gaps_l4_done' } ],
+      },
+      gaps_l4_done: {
+        text: 'Tin: We\'ll keep flags where they matter.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'tin_gaps4_done' } } ],
+      },
+    },
+  },
+  nellis: {
+    start: 'root',
+    nodes: {
+      root: {
+        text: 'Nellis: You lead; I\'ll match your pace. Want me to light the way?',
+        choices: [
+          // Bond entries
+          { label: 'Match your pace (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Hold a line (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Stop or run (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries
+          { label: 'Raise the Beacon (L3)', requires: { hasFlag: 'level3_reached', flag: 'nellis_beacon_started', not: true }, next: 'beacon_intro' },
+          { label: 'Turn in: Raise the Beacon', requires: { flag: 'nellis_beacon_cleared', missingFlag: 'nellis_beacon_done' }, next: 'beacon_turnin' },
+          // Level 4 quest
+          { label: 'Light the Crossroads (L4)', requires: { hasFlag: 'level4_reached', flag: 'nellis_crossroads4_started', not: true }, next: 'crossroads_l4_intro' },
+          { label: 'Turn in: Light the Crossroads', requires: { flag: 'nellis_crossroads4_cleared', missingFlag: 'nellis_crossroads4_done' }, next: 'crossroads_l4_turnin' },
+          { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      bond_menu: {
+        text: 'Nellis: I\'ll mirror your step until you ask me not to.',
+        choices: [
+          { label: 'Match your pace (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Hold a line (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Stop or run (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      bond6: {
+        text: 'Nellis: If you keep a steady pace, I won\'t slow you down.',
+        choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'nellis_bond6_reward' }, next: 'bond_menu' } ],
+      },
+      bond8: {
+        text: 'Nellis: I can hold a line so others don\'t drift.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      bond10: {
+        text: 'Nellis: If you stop, I stop. If you run, I\'ll try.',
+        choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      // L3: Raise the Beacon (defeat Lantern Bearers)
+      beacon_intro: {
+        text: 'Nellis: Three lanterns stay dark. If we raise them, people will find each other.',
+        choices: [ { label: 'Light them.', action: 'start_quest', data: { id: 'nellis_beacon' }, next: 'beacon_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      beacon_started: {
+        text: 'Nellis: I\'ll set the posts. You clear the keepers.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      beacon_turnin: {
+        text: 'Nellis: The marsh will see itself again.',
+        choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'nellis_beacon_reward' }, next: 'beacon_done' } ],
+      },
+      beacon_done: {
+        text: 'Nellis: I\'ll keep watch while you lead.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'nellis_beacon_done' } } ],
+      },
+
+      // Level 4: Light the Crossroads — defeat three Signal Thieves
+      crossroads_l4_intro: {
+        text: 'Nellis: The city forgot where to meet. If we take three signal thieves off the roads, people will find each other again.',
+        choices: [ { label: 'Light them.', action: 'start_quest', data: { id: 'nellis_crossroads4' }, next: 'crossroads_l4_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      crossroads_l4_started: {
+        text: 'Nellis: I\'ll set signs. You make space around them.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      crossroads_l4_turnin: {
+        text: 'Nellis: The crossroads glow again.',
+        choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'nellis_crossroads4_reward' }, next: 'crossroads_l4_done' } ],
+      },
+      crossroads_l4_done: {
+        text: 'Nellis: Keep moving; I\'ll keep the lights.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'nellis_crossroads4_done' } } ],
       },
     },
   },

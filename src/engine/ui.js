@@ -248,6 +248,10 @@ export function updatePartyUI(companions) {
   bb.appendChild(mk('Regen', f2(buffs.regen), '/s'));
   bb.appendChild(mk('Range', `+${f2(buffs.range)}`, 'px'));
   bb.appendChild(mk('tDR', `+${f2(buffs.touchDR)}`));
+  if (typeof buffs.aspd === 'number') {
+    const pct = (Number(buffs.aspd || 0) * 100).toFixed(0);
+    bb.appendChild(mk('ASpd', `+${pct}`, '%'));
+  }
   partyUI.appendChild(bb);
   // Click to manage companion
   partyUI.onclick = (ev) => {
@@ -359,6 +363,51 @@ export function updateQuestHint() {
     } else if (f['twil_trace_started'] && !f['twil_trace_cleared']) {
       const left = c['twil_trace_remaining'] ?? 3;
       msg = `Quest — Trace the Footprints: ${left} left`;
+    } else if (f['yorna_ring_started'] && !f['yorna_ring_cleared']) {
+      const left = c['yorna_ring_remaining'] ?? 3;
+      msg = `Quest — Shatter the Ring: ${left} left`;
+    } else if (f['yorna_causeway_started'] && !f['yorna_causeway_cleared']) {
+      const left = c['yorna_causeway_remaining'] ?? 3;
+      msg = `Quest — Hold the Causeway: ${left} left`;
+    } else if (f['hola_silence_started'] && !f['hola_silence_cleared']) {
+      const left = c['hola_silence_remaining'] ?? 3;
+      msg = `Quest — Break the Silence: ${left} left`;
+    } else if (f['hola_breath_bog_started'] && !f['hola_breath_bog_cleared']) {
+      const left = c['hola_breath_bog_remaining'] ?? 3;
+      msg = `Quest — Breath Over Bog: ${left} left`;
+    } else if (f['oyin_ember_started'] && !f['oyin_ember_cleared']) {
+      const left = c['oyin_ember_remaining'] ?? 3;
+      msg = `Quest — Carry the Ember: ${left} left`;
+    } else if (f['twil_wake_started'] && !f['twil_wake_cleared']) {
+      const left = c['twil_wake_remaining'] ?? 3;
+      msg = `Quest — Cut the Wake: ${left} left`;
+    } else if (f['tin_shallows_started'] && !f['tin_shallows_cleared']) {
+      const left = c['tin_shallows_remaining'] ?? 3;
+      msg = `Quest — Mark the Shallows: ${left} left`;
+    } else if (f['nellis_beacon_started'] && !f['nellis_beacon_cleared']) {
+      const left = c['nellis_beacon_remaining'] ?? 3;
+      msg = `Quest — Raise the Beacon: ${left} left`;
+    } else if (f['canopy_sister2_started'] && !f['canopy_sister2_cleared']) {
+      const left = c['canopy_sister2_remaining'] ?? 3;
+      msg = `Quest — Ribbon in the Dust: ${left} left`;
+    } else if (f['canopy_sister3_started'] && !f['canopy_sister3_cleared']) {
+      const left = c['canopy_sister3_remaining'] ?? 3;
+      msg = `Quest — Reeds and Echoes: ${left} left`;
+    } else if (f['urn_rooftops_started'] && !f['urn_rooftops_cleared']) {
+      const left = c['urn_rooftops_remaining'] ?? 3;
+      msg = `Quest — Secure the Rooftops: ${left} left`;
+    } else if (f['varabella_crossfire_started'] && !f['varabella_crossfire_cleared']) {
+      const left = c['varabella_crossfire_remaining'] ?? 3;
+      msg = `Quest — Cut the Crossfire: ${left} left`;
+    } else if (f['canopy_streets4_started'] && !f['canopy_streets4_cleared']) {
+      const left = c['canopy_streets4_remaining'] ?? 3;
+      msg = `Quest — Stitch the Streets: ${left} left`;
+    } else if (f['tin_gaps4_started'] && !f['tin_gaps4_cleared']) {
+      const left = c['tin_gaps4_remaining'] ?? 3;
+      msg = `Quest — Flag the Gaps: ${left} left`;
+    } else if (f['nellis_crossroads4_started'] && !f['nellis_crossroads4_cleared']) {
+      const left = c['nellis_crossroads4_remaining'] ?? 3;
+      msg = `Quest — Light the Crossroads: ${left} left`;
     }
   } catch {}
   if (msg) { questHintEl.style.display = ''; questHintEl.textContent = msg; }
@@ -400,6 +449,29 @@ function rolesForCompanion(name) {
       { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
       { cls: 'd', label: 'DR', title: 'Defense Aura' },
       { cls: 'gs', label: 'G', title: 'Gust' },
+    ];
+  }
+  if (key.includes('tin')) {
+    return [
+      { cls: 'as', label: 'AS', title: 'Hype (Attack Speed)' },
+    ];
+  }
+  if (key.includes('nellis')) {
+    return [
+      { cls: 'd', label: 'DR', title: 'Steady Pace (Defense Aura)' },
+      { cls: 'be', label: 'Be', title: 'Beacon (Range Boost)' },
+    ];
+  }
+  if (key.includes('urn')) {
+    return [
+      { cls: 'rg', label: 'Rg', title: 'Regen Aura' },
+      { cls: 'ch', label: 'Ch', title: 'Cheer (Burst Heal)' },
+    ];
+  }
+  if (key.includes('varabella')) {
+    return [
+      { cls: 'r', label: 'R', title: 'Range Aura' },
+      { cls: 'an', label: 'An', title: 'Call the Angle' },
     ];
   }
   return [];

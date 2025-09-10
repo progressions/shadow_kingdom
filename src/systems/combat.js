@@ -10,7 +10,10 @@ import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, rollFromTable, itemById } fr
 export function startAttack() {
   const now = performance.now() / 1000;
   if (player.attacking) return;
-  if (now - player.lastAttack < player.attackCooldown) return;
+  // Effective cooldown reduced by attack speed buffs (aspd)
+  const aspd = (runtime?.combatBuffs?.aspd || 0);
+  const effCd = Math.max(0.12, player.attackCooldown / Math.max(1e-6, (1 + aspd)));
+  if (now - player.lastAttack < effCd) return;
   player.attacking = true;
   player.attackTimer = 0;
   player.lastAttack = now;
@@ -133,8 +136,9 @@ export function handleAttacks(dt) {
             e.hp -= bonus;
             const cd = (cfg.cooldownSec || 1.2) / (1 + (m - 1) * 0.5);
             runtime.companionCDs.yornaEcho = cd;
-            // small bark
+            // small bark + audio sting
             import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 8, `Echo +${bonus}`, { color: '#ffd166', life: 0.7 }));
+            try { playSfx('echo'); } catch {}
           }
         }
         const dx = (e.x + e.w/2) - (player.x + player.w/2);

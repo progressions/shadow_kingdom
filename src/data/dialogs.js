@@ -181,3 +181,137 @@ export const nellisDialog = {
     },
   },
 };
+
+export const urnDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: "Urn: Hi! I'm Urn. The city looks rough, but we can make it shine again. Want me with you?",
+      choices: [
+        { label: 'Yes, join me.', action: 'join_party' },
+        { label: "I like your energy—let's lift together.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'urn_intro_encourage' }, next: 'after_aff' },
+        { label: 'Tell me what you do.', next: 'about' },
+        { label: 'Quests', next: 'quests' },
+        { label: 'Not right now.', action: 'end' },
+      ],
+    },
+    about: {
+      text: "Urn: I grew up on these streets. When the city fell, I hid in the arches and waited out the worst. That's where I met Varabella—we kept each other moving. I keep eyes up and steps light, and I can mark safe paths and keep spirits up.",
+      choices: [
+        { label: 'Sounds perfect—join me.', action: 'join_party' },
+        { label: 'Maybe later.', action: 'end' },
+      ],
+    },
+    after_aff: {
+      text: "Urn: Yes! Okay—short steps, long view. Let's go.",
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+    },
+    quests: {
+      text: 'Urn: We can make the paths safer. Where do we start?',
+      choices: [
+        { label: 'Secure the Rooftops (Level 4)', requires: { hasFlag: 'level4_reached', missingFlag: 'urn_rooftops_started' }, next: 'urn_rooftops_intro' },
+        { label: 'Turn in: Secure the Rooftops', requires: { flag: 'urn_rooftops_cleared' }, next: 'urn_rooftops_turnin' },
+        // Future quest hooks
+        { label: 'Rebuild the Lines (Level 6)', requires: { hasFlag: 'level6_reached', missingFlag: 'urn_lines6_started' }, next: 'urn_lines6_locked' },
+        { label: 'Guide the Return (Level 7)', requires: { hasFlag: 'level7_reached', missingFlag: 'urn_return7_started' }, next: 'urn_return7_locked' },
+        { label: 'Back', action: 'end' },
+      ],
+    },
+    urn_rooftops_intro: {
+      text: "Urn: Lurkers camp above the alleys. If we clear a few nests, people can move again.",
+      choices: [
+        { label: 'Start: Secure the Rooftops', action: 'start_quest', data: { id: 'urn_rooftops' }, next: 'urn_rooftops_started' },
+        { label: 'Back', next: 'quests' },
+      ],
+    },
+    urn_rooftops_started: {
+      text: 'Urn: Rooftops first. Three nests.',
+      choices: [ { label: 'Okay', action: 'end' } ],
+    },
+    urn_rooftops_turnin: {
+      text: 'Urn: Lanes are clearer already. Thank you.',
+      choices: [
+        { label: 'You did great. (Affinity +0.8)', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'urn_rooftops_reward' }, next: 'urn_rooftops_done' },
+      ],
+    },
+    urn_rooftops_done: {
+      text: 'Urn: On to the next street when you are.',
+      choices: [ { label: 'Back', action: 'end' }, { label: 'More quests', next: 'quests' } ],
+    },
+    urn_lines6_locked: {
+      text: 'Urn: When the next district opens, we can map safe lines.',
+      choices: [ { label: 'Back', next: 'quests' } ],
+    },
+    urn_return7_locked: {
+      text: 'Urn: If people come back, someone should walk beside them.',
+      choices: [ { label: 'Back', next: 'quests' } ],
+    },
+  },
+};
+
+export const varabellaDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: "Varabella: Another brave face in a dead city. Do you want competence or compliments?",
+      choices: [
+        { label: 'Competence. Join me.', action: 'join_party' },
+        { label: "Spare the sarcasm; I value sharp eyes.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'varabella_intro_respect' }, next: 'after_aff' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Quests', next: 'quests' },
+        { label: 'Pass.', action: 'end' },
+      ],
+    },
+    about: {
+      text: "Varabella: I had a window over the plaza when it cracked. I learned where to stand and when to move, because staying put gets you eaten. Urn and I found each other in the ruins and refused to die alone. Sightlines, angles, timing. I cut openings—and I don't miss the exit.",
+      choices: [
+        { label: 'Good. I need that—join me.', action: 'join_party' },
+        { label: 'Maybe later.', action: 'end' },
+      ],
+    },
+    after_aff: {
+      text: "Varabella: Huh. You listen. Fine—I'll keep you standing.",
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+    },
+    quests: {
+      text: 'Varabella: Clear sightlines, clean exits. Pick one.',
+      choices: [
+        { label: 'Cut the Crossfire (Level 4)', requires: { hasFlag: 'level4_reached', missingFlag: 'varabella_crossfire_started' }, next: 'varabella_crossfire_intro' },
+        { label: 'Turn in: Cut the Crossfire', requires: { flag: 'varabella_crossfire_cleared' }, next: 'varabella_crossfire_turnin' },
+        // Future quest hooks
+        { label: 'Angles and Arches (Level 6)', requires: { hasFlag: 'level6_reached', missingFlag: 'varabella_angles6_started' }, next: 'varabella_angles6_locked' },
+        { label: 'Watch the Wires (Level 7)', requires: { hasFlag: 'level7_reached', missingFlag: 'varabella_wires7_started' }, next: 'varabella_wires7_locked' },
+        { label: 'Back', action: 'end' },
+      ],
+    },
+    varabella_crossfire_intro: {
+      text: 'Varabella: Captains set crossfire in the alleys. Break three posts and the lanes breathe.',
+      choices: [
+        { label: 'Start: Cut the Crossfire', action: 'start_quest', data: { id: 'varabella_crossfire' }, next: 'varabella_crossfire_started' },
+        { label: 'Back', next: 'quests' },
+      ],
+    },
+    varabella_crossfire_started: {
+      text: 'Varabella: Three posts. Quick in, clean out.',
+      choices: [ { label: 'Okay', action: 'end' } ],
+    },
+    varabella_crossfire_turnin: {
+      text: 'Varabella: Better. You left them nothing to aim at.',
+      choices: [
+        { label: 'We cut a good lane. (Affinity +1.0)', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'varabella_crossfire_reward' }, next: 'varabella_crossfire_done' },
+      ],
+    },
+    varabella_crossfire_done: {
+      text: 'Varabella: Next time, we do it faster.',
+      choices: [ { label: 'Back', action: 'end' }, { label: 'More quests', next: 'quests' } ],
+    },
+    varabella_angles6_locked: {
+      text: 'Varabella: When the arches open up, we can fix their angles.',
+      choices: [ { label: 'Back', next: 'quests' } ],
+    },
+    varabella_wires7_locked: {
+      text: 'Varabella: If they string wires again, I’ll teach them to cut their own.',
+      choices: [ { label: 'Back', next: 'quests' } ],
+    },
+  },
+};

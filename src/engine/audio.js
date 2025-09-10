@@ -22,6 +22,18 @@ const files = {
     uiMove: 'assets/audio/sfx/ui-move.wav',
     uiSelect: 'assets/audio/sfx/ui-select.wav',
     uiClose: 'assets/audio/sfx/ui-close.wav',
+    cheer: 'assets/audio/sfx/cheer.wav',
+    angle: 'assets/audio/sfx/angle.wav',
+    shield: 'assets/audio/sfx/shield.wav',
+    gust: 'assets/audio/sfx/gust.wav',
+    rally: 'assets/audio/sfx/rally.wav',
+    veil: 'assets/audio/sfx/veil.wav',
+    echo: 'assets/audio/sfx/echo.wav',
+    slipstream: 'assets/audio/sfx/slipstream.wav',
+    tumbleUp: 'assets/audio/sfx/tumbleUp.wav',
+    mournerVeil: 'assets/audio/sfx/mournerVeil.wav',
+    beacon: 'assets/audio/sfx/beacon.wav',
+    keepLine: 'assets/audio/sfx/keepLine.wav',
   },
 };
 
@@ -256,6 +268,66 @@ function playSfxChip(name) {
       // Crunchy break sound for barrels/crates
       noiseBurst({ attack: 0.001, decay: 0.06, release: 0.05, gain: 0.16, t });
       envTone({ type: 'triangle', freq: 220, attack: 0.001, decay: 0.05, release: 0.04, gain: 0.08, t });
+      break;
+    case 'cheer':
+      // Bright upward triad to signal a supportive burst heal
+      envTone({ type: 'triangle', freq: 523.25, attack: 0.002, decay: 0.08, release: 0.05, gain: 0.10, t }); // C5
+      envTone({ type: 'triangle', freq: 659.25, attack: 0.002, decay: 0.10, release: 0.06, gain: 0.10, t: t + 0.04 }); // E5
+      envTone({ type: 'square',   freq: 783.99, attack: 0.002, decay: 0.12, release: 0.06, gain: 0.11, t: t + 0.08 }); // G5
+      break;
+    case 'angle':
+      // Quick precise click + chime to indicate a tactical opening
+      noiseBurst({ attack: 0.001, decay: 0.02, release: 0.02, gain: 0.10, t });
+      envTone({ type: 'square', freq: 880.0, attack: 0.001, decay: 0.07, release: 0.04, gain: 0.10, t: t + 0.02 });
+      break;
+    case 'shield':
+      // Soft shimmer to indicate a protective layer
+      envTone({ type: 'sine', freq: 660.0, attack: 0.004, decay: 0.18, release: 0.14, gain: 0.08, t });
+      envTone({ type: 'sine', freq: 990.0, attack: 0.004, decay: 0.22, release: 0.16, gain: 0.07, t: t + 0.05 });
+      break;
+    case 'gust':
+      // Airy whoosh + tiny chime
+      noiseBurst({ attack: 0.002, decay: 0.06, release: 0.04, gain: 0.1, t });
+      envTone({ type: 'triangle', freq: 740.0, attack: 0.001, decay: 0.06, release: 0.04, gain: 0.08, t: t + 0.03 });
+      break;
+    case 'rally':
+      // Confident two-note upstep
+      envTone({ type: 'square', freq: 659.25, attack: 0.002, decay: 0.08, release: 0.06, gain: 0.1, t }); // E5
+      envTone({ type: 'square', freq: 783.99, attack: 0.002, decay: 0.10, release: 0.08, gain: 0.11, t: t + 0.06 }); // G5
+      break;
+    case 'veil':
+      // Hushed, short downstep
+      envTone({ type: 'triangle', freq: 523.25, attack: 0.002, decay: 0.10, release: 0.08, gain: 0.07, t }); // C5
+      envTone({ type: 'triangle', freq: 440.00, attack: 0.002, decay: 0.12, release: 0.10, gain: 0.06, t: t + 0.05 }); // A4
+      break;
+    case 'echo':
+      // Tight click + mid chime
+      noiseBurst({ attack: 0.001, decay: 0.02, release: 0.02, gain: 0.08, t });
+      envTone({ type: 'square', freq: 988.0, attack: 0.001, decay: 0.06, release: 0.04, gain: 0.09, t: t + 0.02 });
+      break;
+    case 'slipstream':
+      // Breezy whoosh + quick up chime
+      noiseBurst({ attack: 0.002, decay: 0.05, release: 0.03, gain: 0.09, t });
+      envTone({ type: 'triangle', freq: 932.33, attack: 0.001, decay: 0.06, release: 0.04, gain: 0.08, t: t + 0.025 });
+      break;
+    case 'tumbleUp':
+      // Stumble—then a cheerful blip
+      noiseBurst({ attack: 0.001, decay: 0.03, release: 0.02, gain: 0.07, t });
+      envTone({ type: 'square', freq: 880.0, attack: 0.001, decay: 0.08, release: 0.06, gain: 0.1, t: t + 0.03 });
+      break;
+    case 'mournerVeil':
+      // Soft downward sigh
+      envTone({ type: 'triangle', freq: 523.25, attack: 0.004, decay: 0.10, release: 0.10, gain: 0.07, t });
+      envTone({ type: 'triangle', freq: 440.00, attack: 0.004, decay: 0.12, release: 0.12, gain: 0.06, t: t + 0.04 });
+      break;
+    case 'beacon':
+      // Gentle, lifting chime
+      envTone({ type: 'sine', freq: 659.25, attack: 0.004, decay: 0.10, release: 0.08, gain: 0.08, t });
+      envTone({ type: 'sine', freq: 783.99, attack: 0.003, decay: 0.12, release: 0.10, gain: 0.09, t: t + 0.04 });
+      break;
+    case 'keepLine':
+      // Grounding tone
+      envTone({ type: 'triangle', freq: 392.00, attack: 0.003, decay: 0.12, release: 0.12, gain: 0.08, t });
       break;
   }
 }

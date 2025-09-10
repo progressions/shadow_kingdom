@@ -41,4 +41,29 @@ export const introTexts = {
   luula:
     "The marsh hushes. At the island's heart, a figure raises a reed crown and the water stills. Her voice is moon‑thin over the bog.\n" +
     "\nLuula: \"Step light, wanderer. The marsh remembers every footfall… and it will remember yours.\"",
+
+  // Level 4 — Ruined City personalities
+  blurb:
+    "Something heaves between fallen arches—a grotesque, green bulk wobbling with each wet breath. Grease-slick skin and greedy eyes fix on the prize at his waist: an iron sigil on a chain.\n" +
+    "\nBlurb: \"Hhhrrk… pretty little sigil. Mine. You want it? Come take it.\"",
+
+  vanificia:
+    "White hair falls like frost over a black dress as she steps into the ruined plaza. Every motion is measured, every glance a verdict. Dust hangs, waiting for her sentence.\n" +
+    "\nVanificia: \"You trespass in Urathar's city. I hold these ruins in his name. Kneel—or be unmade.\"",
+
+  urn:
+    "Green hair tucked under a hopeful grin, she bounces on her toes among broken streets. This was her home. When the city fell, she learned to move and hope at the same time—and she kept another survivor alive doing it.\n" +
+    "\nUrn: \"We can fix this—one street at a time. I’ll keep up!\"",
+
+  varabella:
+    "A red-haired figure leans against a shattered plinth, black dress dusted with ash. She grew up in these blocks; now she reads the ruins like a map and keeps the people she loves standing. Sarcasm is a shield that never cracks.\n" +
+    "\nVarabella: \"Oh good. Another hero. Try not to trip over the bodies while you impress me.\"",
+
+  tin:
+    "Blue hair, bright eyes, and bouncing steps—Tin nearly trips over her own feet and laughs anyway. She points at three paths at once and somehow means all of them.\n" +
+    "\nTin: \"I can help! I just—okay—this way! No—this way! You'll keep up, right?\"",
+
+  nellis:
+    "A blue-haired girl in a white dress keeps to your shoulder, gaze lowered, counting breaths. The city feels quieter near her—like the space between bell tolls.\n" +
+    "\nNellis: \"If you lead, I’ll keep the line. I can hold a light.\"",
 };

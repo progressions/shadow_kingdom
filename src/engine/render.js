@@ -213,7 +213,13 @@ function markerColorFor(npc) {
 
 function drawArenaMarker(obstacles) {
   try {
-    const gateId = (runtime.currentLevel === 2) ? 'nethra_gate' : (runtime.currentLevel === 3 ? 'marsh_gate' : null);
+    const gateId = (runtime.currentLevel === 2)
+      ? 'nethra_gate'
+      : (runtime.currentLevel === 3)
+        ? 'marsh_gate'
+        : (runtime.currentLevel === 4)
+          ? 'city_gate'
+          : null;
     if (!gateId) return;
     const gate = obstacles && obstacles.find && obstacles.find(o => o && o.type === 'gate' && o.id === gateId && o.locked !== false);
     if (!gate) return;
