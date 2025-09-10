@@ -596,6 +596,21 @@ export function step(dt) {
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
       } catch {}
+      // If Fana (enslaved sorceress) is defeated, she becomes a recruitable NPC
+      try {
+        const nm = (e.name || '').toLowerCase();
+        if (nm.includes('fana')) {
+          // Spawn an NPC at or near the defeat spot with a recruit dialog
+          const nx = e.x, ny = e.y;
+          import('../engine/sprites.js').then(mod => {
+            const sheet = (mod.sheetForName ? mod.sheetForName('Fana') : null);
+            const npc = (require('../engine/state.js').spawnNpc)(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/Fana/Fana.mp4', affinity: 6 });
+            import('../engine/dialog.js').then(dmod => {
+              import('../data/dialogs.js').then(dd => { if (dd.fanaDialog) dmod.setNpcDialog(npc, dd.fanaDialog); }).catch(()=>{});
+            }).catch(()=>{});
+          }).catch(()=>{});
+        }
+      } catch {}
       // Drops
       try {
         let drop = null;

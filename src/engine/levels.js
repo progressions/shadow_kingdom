@@ -405,9 +405,14 @@ export function loadLevel5() {
   ];
   for (const c of cols) obstacles.push({ x: c.x, y: c.y, w: 12, h: 12, type: 'column', blocksAttacks: false });
 
-  // Key guardian
+  // Key guardian: Fana (enslaved sorceress); drops the temple key
   const kgx = gapX - TILE * 10, kgy = ry + TILE * 8;
-  spawnEnemy(kgx, kgy, 'featured', { name: 'Temple Warden', guaranteedDropId: 'key_temple', hp: 22, dmg: 8 });
+  spawnEnemy(kgx, kgy, 'featured', {
+    name: 'Fana',
+    portrait: 'assets/portraits/Fana/Fana.mp4',
+    guaranteedDropId: 'key_temple',
+    hp: 22, dmg: 8,
+  });
 
   // Boss Yorthak (2x visual scale)
   const cx = rx + rw/2 - 8; const cy = ry + rh/2 - 12;
