@@ -479,8 +479,8 @@ export function step(dt) {
           const bonus = completionXpForLevel(runtime.currentLevel || 1);
           grantPartyXp(bonus);
           if (typeof e.onDefeatNextLevel === 'number') {
-            if (Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0) runtime._afterQueuePendingLevel = e.onDefeatNextLevel;
-            else { runtime.pendingLevel = e.onDefeatNextLevel; runtime._levelSwapTimer = 1.2; }
+            // Always defer level transition until after the defeated VN (and any queued VNs) is closed
+            runtime._afterQueuePendingLevel = e.onDefeatNextLevel;
           }
         } catch {}
       }
@@ -899,14 +899,7 @@ export function step(dt) {
     }
   }
 
-  // Auto-close defeat VN to ensure level transition proceeds without manual input
-  if (runtime.pendingLevel && runtime.gameState === 'chat') {
-    runtime._levelSwapTimer = Math.max(0, (runtime._levelSwapTimer || 1.2) - dt);
-    if (runtime._levelSwapTimer === 0) {
-      try { exitChat(runtime); } catch {}
-      runtime._levelSwapTimer = null;
-    }
-  }
+  // Removed auto-close of VN when a level is pending; transition happens after user closes the VN.
 }
 
 function applyCompanionAuras(dt) {
