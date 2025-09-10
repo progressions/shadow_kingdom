@@ -12,7 +12,7 @@ import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save.js';
-import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6 } from './engine/levels.js';
+import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
 
 // Initialize enemies positioned around the three NPCs
 // Goal:
@@ -180,10 +180,11 @@ function loop(now) {
   step(dt);
   try { updateQuestHint(); } catch {}
   // Handle pending level transitions after VN closes (runtime set in step.js)
-  if (runtime.pendingLevel === 1 || runtime.pendingLevel === 2 || runtime.pendingLevel === 3 || runtime.pendingLevel === 4 || runtime.pendingLevel === 5 || runtime.pendingLevel === 6) {
+  if (typeof runtime.pendingLevel === 'number' && runtime.pendingLevel > 0) {
     const lvl = runtime.pendingLevel;
     const doSwap = () => {
-      terrain = (lvl === 1) ? loadLevel1() : (lvl === 2) ? loadLevel2() : (lvl === 3 ? loadLevel3() : (lvl === 4 ? loadLevel4() : (lvl === 5 ? loadLevel5() : loadLevel6())));
+      const loader = LEVEL_LOADERS[lvl] || loadLevel1;
+      terrain = loader();
       // Snap camera to player
       camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(player.x + player.w/2 - camera.w/2)));
       camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(player.y + player.h/2 - camera.h/2)));

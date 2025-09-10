@@ -79,6 +79,16 @@ export function loadLevel1() {
 
   return terrain;
 }
+
+// Registry of level loaders by numeric id
+export const LEVEL_LOADERS = {
+  1: loadLevel1,
+  2: loadLevel2,
+  3: loadLevel3,
+  4: loadLevel4,
+  5: loadLevel5,
+  6: loadLevel6,
+};
 // Returns a new terrain bitmap after building the level.
 export function loadLevel2() {
   // Resize world for level 2
