@@ -19,7 +19,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     for (const o of obstacles) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
-      if (o.type === 'chest') continue; // chests are non-blocking
+      // non-blocking obstacle types
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -44,7 +45,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     for (const o of obstacles) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
-      if (o.type === 'chest') continue; // chests are non-blocking
+      // non-blocking obstacle types
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
@@ -181,11 +183,31 @@ export function step(dt) {
     player.knockbackX *= Math.pow(0.001, dt);
     player.knockbackY *= Math.pow(0.001, dt);
   }
-  // Then apply input movement
+  // Terrain effects: compute slow/burn zones for player
+  let terrainSlow = 1.0;
+  let terrainBurnDps = 0;
+  try {
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    for (const o of obstacles) {
+      if (!o) continue;
+      if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
+      if (rectsIntersect(pr, o)) {
+        if (o.type === 'mud') terrainSlow = Math.min(terrainSlow, 0.6);
+        else if (o.type === 'fire') terrainBurnDps = Math.max(terrainBurnDps, 1.5);
+        else if (o.type === 'lava') terrainBurnDps = Math.max(terrainBurnDps, 3.0);
+      }
+    }
+  } catch {}
+  // Then apply input movement with terrain slow
   if (hasInput) {
-    const dx = ax * player.speed * dt;
-    const dy = ay * player.speed * dt;
+    const dx = ax * player.speed * terrainSlow * dt;
+    const dy = ay * player.speed * terrainSlow * dt;
     moveWithCollision(player, dx, dy, solidsForPlayer);
+  }
+  // Apply/refresh burn from terrain
+  if (terrainBurnDps > 0) {
+    player._burnDps = terrainBurnDps;
+    player._burnTimer = Math.max(player._burnTimer || 0, 1.0);
   }
   // Direction preference: input > knockback
   if (hasInput) {
@@ -204,6 +226,23 @@ export function step(dt) {
 
   // Attacks
   handleAttacks(dt);
+
+  // Player damage over time (burn)
+  if (player._burnTimer && player._burnTimer > 0) {
+    player._burnTimer = Math.max(0, player._burnTimer - dt);
+    const dps = player._burnDps || 0;
+    if (dps > 0) {
+      const before = player.hp;
+      player.hp = Math.max(0, player.hp - dps * dt);
+      if (player.hp < before) {
+        if (Math.random() < 4 * dt) spawnFloatText(player.x + player.w/2, player.y - 8, 'Burn', { color: '#ff9a3d', life: 0.5 });
+      }
+      if (player.hp <= 0 && !runtime.gameOver) {
+        // Trigger game over once when player dies to burn
+        try { startGameOver(); } catch {}
+      }
+    }
+  }
 
   // Enemies AI
   for (const e of enemies) {

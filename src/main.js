@@ -146,6 +146,9 @@ setNpcDialog(hola, holaDialog);
 // Build terrain and obstacles
 let terrain = buildTerrainBitmap(world);
 obstacles.push(...buildObstacles(world, player, enemies, npcs));
+// Starter environmental examples: a small mud patch and a fire tile
+obstacles.push({ x: Math.round(player.x - TILE * 5), y: Math.round(player.y + TILE * 5), w: TILE * 3, h: TILE * 2, type: 'mud' });
+obstacles.push({ x: Math.round(castle.x + castle.w/2 - TILE * 2), y: Math.round(castle.y + castle.h + TILE * 1), w: TILE * 3, h: TILE * 2, type: 'fire' });
 // Show initial level title
 try { showLevelTitle(levelNameFor(runtime.currentLevel || 1)); } catch {}
 // Place a couple of starter chests near the player (one fixed Fine Sword)

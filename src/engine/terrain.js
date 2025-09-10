@@ -227,6 +227,24 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillStyle = '#1e4461';
       ctx.fillRect(sx, sy, o.w, o.h);
       ctx.strokeStyle = '#0d2233'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'mud') {
+      // Mud (slow zone, non-blocking)
+      ctx.fillStyle = '#5a3e24cc';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#3a2414'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'fire') {
+      // Fire (burn zone, non-blocking)
+      ctx.fillStyle = '#ff8c00aa';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#a14a00'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+    } else if (o.type === 'lava') {
+      // Lava (strong burn zone, non-blocking)
+      const grad = ctx.createLinearGradient(sx, sy, sx + o.w, sy + o.h);
+      grad.addColorStop(0, '#ff3b00cc');
+      grad.addColorStop(1, '#ffb300cc');
+      ctx.fillStyle = grad;
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#7a1100'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
     }
   }
 }

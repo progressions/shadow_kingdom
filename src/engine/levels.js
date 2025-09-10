@@ -35,6 +35,9 @@ export function loadLevel2() {
   // Build terrain + obstacles (desert theme)
   const terrain = buildTerrainBitmap(world, 'desert');
   obstacles.push(...buildObstacles(world, player, enemies, npcs, 'desert'));
+  // Environmental tiles: patches of mud (slow) and fire (burn) in the desert
+  obstacles.push({ x: Math.round(player.x + TILE * 8), y: Math.round(player.y + TILE * 6), w: TILE * 4, h: TILE * 2, type: 'mud' });
+  obstacles.push({ x: Math.round(player.x - TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
   // New spawns for level 2
   // Space enemies farther from the player spawn so the immediate vicinity is calmer
   // A few mook packs in an annulus 280–460px away from player
@@ -155,6 +158,8 @@ export function loadLevel3() {
   // Build marsh terrain and obstacles
   const terrain = buildTerrainBitmap(world, 'marsh');
   obstacles.push(...buildObstacles(world, player, enemies, npcs, 'marsh'));
+  // Marsh mud pools near player
+  obstacles.push({ x: Math.round(player.x - TILE * 6), y: Math.round(player.y + TILE * 6), w: TILE * 5, h: TILE * 3, type: 'mud' });
   // Add a few large water pools (blocking)
   const pools = [
     { x: player.x + 120, y: player.y - 60, w: TILE * 10, h: TILE * 6 },
@@ -249,6 +254,8 @@ export function loadLevel4() {
   // Use default theme (greens/stone) and procedural obstacles; arena walls form the city plaza
   const terrain = buildTerrainBitmap(world, 'default');
   obstacles.push(...buildObstacles(world, player, enemies, npcs, 'default'));
+  // City hazards: scattered fire tiles
+  obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 8), w: TILE * 3, h: TILE * 2, type: 'fire' });
 
   // Scatter a few enemy mooks around (off-camera)
   for (let k = 0; k < 6; k++) {
