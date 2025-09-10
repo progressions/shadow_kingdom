@@ -35,6 +35,34 @@ async function remote(method, path, body) {
   return json;
 }
 
+// --- Atomic localStorage with checksum ---
+const NS = 'shadow_kingdom_save';
+function checksum(str){ let h=0x811c9dc5>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,0x01000193); } return (h>>>0).toString(16); }
+function wrapForStorage(payload){
+  const base = { meta:{ schema:payload.schema, version:payload.version, at:payload.at }, payload, checksum:'' };
+  const tmp = JSON.stringify({ ...base, checksum:'' });
+  return JSON.stringify({ ...base, checksum: checksum(tmp) });
+}
+function readWrapped(json){
+  const obj = JSON.parse(json); const cs=obj.checksum; const tmp=JSON.stringify({ ...obj, checksum:'' });
+  if (checksum(tmp)!==cs) throw new Error('Corrupt save (checksum mismatch)');
+  return obj.payload;
+}
+function slotPrefix(slot){ return `${NS}_${slot}`; }
+function writeSaveAtomic(slot, payload){
+  const ptrKey=`${slotPrefix(slot)}_ptr`; const active=localStorage.getItem(ptrKey)||'A';
+  const next= active==='A' ? 'B' : 'A'; const keyNext=`${slotPrefix(slot)}_${next}`;
+  const blob=wrapForStorage(payload);
+  localStorage.setItem(keyNext, blob); // 1) write
+  localStorage.setItem(ptrKey, next);  // 2) flip pointer
+}
+function readSaveAtomic(slot){
+  const ptrKey=`${slotPrefix(slot)}_ptr`; const active=localStorage.getItem(ptrKey)||'A';
+  const keys=[ `${slotPrefix(slot)}_${active}`, `${slotPrefix(slot)}_${active==='A'?'B':'A'}` ];
+  for (const k of keys){ const j=localStorage.getItem(k); if(!j) continue; try { return readWrapped(j); } catch(e){} }
+  throw new Error('No valid save buffers');
+}
+
 export async function getSaveMeta(slot = 1) {
   if (API_URL) {
     try {
@@ -44,20 +72,14 @@ export async function getSaveMeta(slot = 1) {
       return { exists: false, at: null };
     }
   }
-  try {
-    const raw = localStorage.getItem(getLocalKey(slot));
-    if (!raw) return { exists: false, at: null };
-    const data = JSON.parse(raw);
-    return { exists: true, at: data.at || null };
-  } catch {
-    return { exists: false, at: null };
-  }
+  try { const data = readSaveAtomic(getLocalKey(slot)); return { exists: true, at: data.at || null }; }
+  catch { return { exists: false, at: null }; }
 }
 
 export function saveGame(slot = 1) {
   try {
     const payload = serializeSave();
-    localStorage.setItem(getLocalKey(slot), JSON.stringify(payload));
+    writeSaveAtomic(getLocalKey(slot), payload);
     showBanner('Game saved');
   } catch (e) {
     console.error('Save failed', e);
@@ -67,14 +89,8 @@ export function saveGame(slot = 1) {
 
 export function loadGame(slot = 1) {
   try {
-    const raw = localStorage.getItem(getLocalKey(slot));
-    if (!raw) { showBanner('No save found'); return; }
-    const data = JSON.parse(raw);
-    if (!data || data.schema !== 'save') {
-      try { localStorage.removeItem(getLocalKey(slot)); } catch {}
-      showBanner('Old save cleared');
-      return;
-    }
+    const data = readSaveAtomic(getLocalKey(slot));
+    if (!data || data.schema !== 'save') { showBanner('Save schema mismatch'); return; }
     loadDataPayload(data);
   } catch (e) {
     console.error('Load failed', e);
@@ -84,11 +100,13 @@ export function loadGame(slot = 1) {
 
 export function clearSave(slot = 1) {
   try {
-    localStorage.removeItem(getLocalKey(slot));
+    const pref = slotPrefix(getLocalKey(slot));
+    localStorage.removeItem(`${pref}_A`);
+    localStorage.removeItem(`${pref}_B`);
+    localStorage.removeItem(`${pref}_ptr`);
     showBanner('Save cleared');
   } catch (e) {
     console.error('Clear save failed', e);
     showBanner('Clear save failed');
   }
 }
-

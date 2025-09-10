@@ -308,6 +308,12 @@ export const runtime = {
   // Level/scene management
   currentLevel: 1,
   pendingLevel: null,
+  // Global pause toggle for race-free load/restore
+  paused: false,
+  // Disable VN triggers during critical phases
+  disableVN: false,
+  // RNG seeds bucket (optional systems)
+  rng: { world: null, combat: null, loot: null },
   // Temporary combat buffs (timed)
   tempAtkBonus: 0,
   _tempAtkTimer: 0,

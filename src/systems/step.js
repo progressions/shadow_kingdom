@@ -107,6 +107,7 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 export function step(dt) {
   // Pause the world while VN/inventory overlay is open
   if (runtime.gameState === 'chat') return;
+  if (runtime.paused) return;
   // Advance chemistry timers
   runtime._timeSec = (runtime._timeSec || 0) + dt;
   // Decay VN intro cooldown so flagged actors don't retrigger back-to-back
@@ -865,7 +866,7 @@ export function step(dt) {
 
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
   // then show a simple VN once when first seen
-  if (runtime.gameState === 'play' && (runtime.introCooldown || 0) <= 0) {
+  if (runtime.gameState === 'play' && (runtime.introCooldown || 0) <= 0 && !runtime.disableVN) {
     const actors = [...npcs, ...enemies];
     for (const a of actors) {
       if (!a || !a.vnOnSight || a._vnShown) continue;

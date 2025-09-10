@@ -20,6 +20,8 @@ function gatherGateStates() {
 }
 
 export function serializeSave() {
+  // Optional: capture RNG seeds if present
+  const rng = (runtime && runtime.rng) ? { ...runtime.rng } : undefined;
   // Unique actors: record by vnId (or name fallback)
   const uniqueActors = {};
   const level = runtime.currentLevel || 1;
@@ -65,11 +67,12 @@ export function serializeSave() {
   // Persist VN seen only for NPCs; enemy intro seen state is derived by encounter
   const vnSeenNpcOnly = Object.keys(runtime?.vnSeen || {}).filter(k => !/^enemy:/.test(k));
 
-  return {
+  const payload = {
     schema: 'save',
     version: 3,
     at: Date.now(),
     currentLevel: runtime.currentLevel || 1,
+    rng,
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
     companions: companions.map(c => serializeCompanionEntity(c)),
     npcs: npcs.map(n => serializeNpcEntity(n)),
@@ -86,6 +89,7 @@ export function serializeSave() {
     uniqueActors,
     dynamicEnemies,
   };
+  return normalizeSave(payload);
 }
 
 function applyGateStates(data) {
@@ -271,10 +275,14 @@ function spawnNpcFromRecord(d) {
 }
 
 export function applyPendingRestore() {
-  const data = runtime._pendingRestore;
+  let data = runtime._pendingRestore;
   if (!data) return;
   runtime._pendingRestore = null;
   try {
+    runtime._suspendRenderUntilRestore = false;
+    // Normalize and pause systems during restore
+    data = normalizeSave(data);
+    runtime.paused = true; runtime.disableVN = true;
     // Player
     if (data.player) {
       player.x = data.player.x; player.y = data.player.y; player.dir = data.player.dir || 'down';
@@ -282,6 +290,8 @@ export function applyPendingRestore() {
       player.level = Math.max(1, data.player.level || 1);
       player.xp = Math.max(0, data.player.xp || 0);
     }
+    // RNG seeds
+    if (data.rng && runtime.rng) { Object.assign(runtime.rng, data.rng); }
     // Flags
     runtime.vnSeen = {}; (data.vnSeen||[]).forEach(k => runtime.vnSeen[k]=true);
     runtime.affinityFlags = {}; (data.affinityFlags||[]).forEach(k => runtime.affinityFlags[k]=true);
@@ -351,13 +361,16 @@ export function applyPendingRestore() {
     for (const d of dyn) { try { spawnEnemyFromRecord(d); } catch {} }
     // Ensure enemy identity (intro + default palette) for all enemies based on vnId and registry
     try { for (const e of enemies) ensureEnemyIdentity(e, runtime); } catch {}
-    // Ensure intros can trigger: clear any stale _vnShown and reset intro cooldown
-    try { for (const e of enemies) { if (e) e._vnShown = false; } runtime.introCooldown = 0; } catch {}
+    // Ensure intros can trigger later: clear stale flags but keep VN disabled until next tick
+    try { for (const e of enemies) { if (e) e._vnShown = false; } runtime.introCooldown = 0.2; } catch {}
 
     showBanner('Game loaded');
+    // Resume systems next tick; re-enable VN
+    try { setTimeout(() => { runtime.disableVN = false; runtime.paused = false; }, 0); } catch { runtime.disableVN = false; runtime.paused = false; }
   } catch (e) {
     console.error('Apply restore failed', e);
     showBanner('Load failed');
+    runtime.disableVN = false; runtime.paused = false;
   }
 }
 
@@ -367,6 +380,7 @@ export function loadDataPayload(data) {
     if (target !== (runtime.currentLevel || 1)) {
       runtime._pendingRestore = data;
       runtime.pendingLevel = target;
+      runtime._suspendRenderUntilRestore = true;
       showBanner(`Loading… switching to Level ${target}`);
       return;
     }
@@ -376,4 +390,40 @@ export function loadDataPayload(data) {
     console.error('Load route failed', e);
     showBanner('Load failed');
   }
+}
+
+// --- Normalization helpers ---
+function normalizeSave(s) {
+  const out = JSON.parse(JSON.stringify(s || {}));
+  const uniq = a => Array.from(new Set(Array.isArray(a) ? a : [])).sort();
+  const clamp = (v,min,max) => Math.max(min, Math.min(v, max));
+  const W = out?.world?.w ?? world.w ?? 1e9;
+  const H = out?.world?.h ?? world.h ?? 1e9;
+  out.openedChests = uniq(out.openedChests);
+  out.brokenBreakables = uniq(out.brokenBreakables);
+  out.vnSeen = uniq(out.vnSeen);
+  out.affinityFlags = uniq(out.affinityFlags);
+  out.questFlags = uniq(out.questFlags);
+  if (Array.isArray(out.dynamicEnemies)) {
+    out.dynamicEnemies = out.dynamicEnemies.map(e => ({
+      ...e,
+      x: clamp(Math.round(e.x|0), 0, Math.max(0, W-1)),
+      y: clamp(Math.round(e.y|0), 0, Math.max(0, H-1)),
+      dir: e.dir || 'down',
+      hp: Math.max(0, e.hp|0),
+      spriteScale: (typeof e.spriteScale === 'number') ? e.spriteScale : 1,
+    }));
+  }
+  if (out.uniqueActors && typeof out.uniqueActors === 'object') {
+    for (const k of Object.keys(out.uniqueActors)) {
+      const u = out.uniqueActors[k];
+      if (!u || u.state !== 'alive') continue;
+      if (typeof u.x === 'number') u.x = clamp(Math.round(u.x|0), 0, Math.max(0, W-1));
+      if (typeof u.y === 'number') u.y = clamp(Math.round(u.y|0), 0, Math.max(0, H-1));
+      if (!u.dir) u.dir = 'down';
+      if (typeof u.hp === 'number') u.hp = Math.max(0, u.hp|0);
+      if (typeof u.spriteScale !== 'number') u.spriteScale = 1;
+    }
+  }
+  return out;
 }
