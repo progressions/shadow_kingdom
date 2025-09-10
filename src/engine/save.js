@@ -189,11 +189,25 @@ function deserializePayload(data) {
       const speed = (typeof e.speed === 'number') ? e.speed : base.speed;
       const w = (typeof e.w === 'number') ? e.w : 12;
       const h = (typeof e.h === 'number') ? e.h : 16;
+      // Preserve identity for named featured foes even if older saves lacked names
+      const featuredNameFor = (dropId) => {
+        switch ((dropId || '').toLowerCase()) {
+          case 'key_bronze': return 'Gorg';
+          case 'key_nethra': return 'Aarg';
+          case 'key_reed': return 'Wight';
+          case 'key_sigil': return 'Blurb';
+          case 'key_temple': return 'Fana';
+          default: return null;
+        }
+      };
+      const resolvedName = (e && e.name && String(e.name).trim().length)
+        ? e.name
+        : (kind === 'featured' ? (featuredNameFor(e.guaranteedDropId) || base.name) : base.name);
       enemies.push({
         x: e.x, y: e.y, w, h, speed, dir: e.dir || 'down', moving: true,
         animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
-        name: e.name || base.name, kind,
+        name: resolvedName, kind,
         portraitSrc: e.portrait || null,
         portraitPowered: e.portraitPowered || null,
         portraitOverpowered: e.portraitOverpowered || null,
@@ -211,6 +225,19 @@ function deserializePayload(data) {
       for (const e of enemies) {
         if (e.sheetPalette) {
           try { e.sheet = makeSpriteSheet(e.sheetPalette); } catch { /* fallback below */ }
+        }
+        // If a known named featured foe lacks a custom palette sheet, assign defaults for visual identity
+        if (!e.sheet && e.kind === 'featured') {
+          const name = (e.name || '').toLowerCase();
+          if (name.includes('gorg')) {
+            try { e.sheet = makeSpriteSheet({ skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' }); } catch {}
+          } else if (name.includes('aarg')) {
+            try { e.sheet = makeSpriteSheet({ skin: '#6fb3ff', hair: '#0a1b4a', longHair: false, dress: true, dressColor: '#274b9a', shirt: '#7aa6ff', pants: '#1b2e5a', outline: '#000000' }); } catch {}
+          } else if (name.includes('wight')) {
+            try { e.sheet = makeSpriteSheet({ skin: '#f5f5f5', hair: '#e6e6e6', shirt: '#cfcfcf', pants: '#9e9e9e', outline: '#000000' }); } catch {}
+          } else if (name.includes('blurb')) {
+            try { e.sheet = makeSpriteSheet({ skin: '#6fdd6f', hair: '#0a2a0a', longHair: false, dress: false, shirt: '#4caf50', pants: '#2e7d32', outline: '#000000' }); } catch {}
+          }
         }
         if (!e.sheet) {
           if (e.kind === 'boss') e.sheet = mod.enemyBossSheet;
