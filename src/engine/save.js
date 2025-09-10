@@ -188,6 +188,13 @@ function deserializePayload(data) {
     if (typeof data.player.hp === 'number') player.hp = data.player.hp;
     player.level = Math.max(1, data.player.level || 1);
     player.xp = Math.max(0, data.player.xp || 0);
+    // Clear transient combat/motion state to avoid unintended hits/knockback on load
+    player.attacking = false;
+    player._didHit = false;
+    player.attackTimer = 0;
+    player.lastAttack = -999;
+    player.knockbackX = 0; player.knockbackY = 0;
+    player.invulnTimer = Math.max(player.invulnTimer || 0, 0.3); // brief safety window
     import('./state.js').then(m => m.recomputePlayerDerivedStats()).catch(()=>{});
   }
   // Inventory
