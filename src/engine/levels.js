@@ -384,10 +384,10 @@ export function loadLevel5() {
   // Small hazards near start
   obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
 
-  // Boss arena in upper-right: marble walls and golden columns
+  // Boss arena in lower-right: marble walls and golden columns (placeholder until arena map meta is provided)
   const rw = TILE * 14, rh = TILE * 10, t = 8;
   const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, Math.round(world.w * 0.80)));
-  const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, Math.round(world.h * 0.22)));
+  const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, Math.round(world.h * 0.70)));
   const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' || type==='marble' }, extra));
   const gapW = 28; const gapX = rx + (rw - gapW) / 2;
   clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
