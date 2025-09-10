@@ -60,7 +60,7 @@ export function serializeV2() {
     at: Date.now(),
     currentLevel: runtime.currentLevel || 1,
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
-    companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, sheetPalette: c.sheetPalette || null, inventory: c.inventory || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 })),
+    companions: companions.map(c => serializeCompanionEntity(c)),
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
     gateStates: gatherGateStates(),
@@ -152,6 +152,45 @@ function spawnEnemyFromRecord(d) {
   });
 }
 
+function serializeCompanionEntity(c) {
+  return {
+    name: c.name || 'Companion',
+    x: c.x, y: c.y,
+    w: c.w || 12, h: c.h || 16,
+    speed: (typeof c.speed === 'number') ? c.speed : 110,
+    dir: c.dir || 'down',
+    moving: !!c.moving,
+    animTime: c.animTime || 0,
+    animFrame: c.animFrame || 0,
+    portrait: c.portraitSrc || null,
+    sheetPalette: c.sheetPalette || null,
+    inventory: c.inventory || null,
+    affinity: (typeof c.affinity === 'number') ? c.affinity : 2,
+    level: (typeof c.level === 'number') ? c.level : 1,
+    xp: (typeof c.xp === 'number') ? c.xp : 0,
+  };
+}
+
+function spawnCompanionFromRecord(d) {
+  const sheet = d.sheetPalette ? makeSpriteSheet(d.sheetPalette) : sheetForName(d.name);
+  const comp = spawnCompanion(d.x, d.y, sheet, {
+    name: d.name,
+    portrait: d.portrait || null,
+    sheetPalette: d.sheetPalette || null,
+    affinity: (typeof d.affinity === 'number') ? d.affinity : 2,
+    level: (typeof d.level === 'number') ? d.level : 1,
+    xp: (typeof d.xp === 'number') ? d.xp : 0,
+  });
+  comp.dir = d.dir || 'down';
+  if (typeof d.w === 'number') comp.w = d.w;
+  if (typeof d.h === 'number') comp.h = d.h;
+  if (typeof d.speed === 'number') comp.speed = d.speed;
+  if (typeof d.moving === 'boolean') comp.moving = d.moving;
+  if (typeof d.animTime === 'number') comp.animTime = d.animTime;
+  if (typeof d.animFrame === 'number') comp.animFrame = d.animFrame;
+  if (d.inventory) comp.inventory = d.inventory;
+}
+
 export function applyPendingRestoreV2() {
   const data = runtime._pendingRestoreV2;
   if (!data) return;
@@ -172,12 +211,7 @@ export function applyPendingRestoreV2() {
     // Companions
     companions.length = 0;
     if (Array.isArray(data.companions)) {
-      for (const c of data.companions) {
-        const sheet = c.sheetPalette ? makeSpriteSheet(c.sheetPalette) : sheetForName(c.name);
-        const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null, sheetPalette: c.sheetPalette || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 });
-        comp.dir = c.dir || 'down';
-        if (c.inventory) comp.inventory = c.inventory;
-      }
+      for (const c of data.companions) { try { spawnCompanionFromRecord(c); } catch {} }
       updatePartyUI(companions);
     }
     // World deltas
