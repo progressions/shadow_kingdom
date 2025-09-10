@@ -60,6 +60,28 @@ function normalizePortraitPath(p, name, vnId) {
   return `assets/portraits/${level}/${nm}/${rest}`;
 }
 
+// Canonical companion/NPC palettes used when legacy saves lack a sheetPalette
+function canonicalPaletteForName(name) {
+  const key = (name || '').toLowerCase();
+  if (!key) return null;
+  // Level 1 companions
+  if (key.includes('canopy')) return { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' };
+  if (key.includes('yorna'))  return { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  if (key.includes('hola'))   return { hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
+  // Level 2
+  if (key.includes('oyin'))   return { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9' };
+  if (key.includes('twil'))   return { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  // Level 3
+  if (key.includes('tin'))    return { hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' };
+  if (key.includes('nellis')) return { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
+  // Level 4
+  if (key.includes('urn'))    return { hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' };
+  if (key.includes('varabella')) return { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  // Level 6
+  if (key.includes('ell'))    return { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0' };
+  return null;
+}
+
 export async function getSaveMeta(slot = 1) {
   if (API_URL) {
     try {
@@ -476,8 +498,9 @@ function deserializePayload(data) {
   // Restore companions
   if (Array.isArray(data.companions)) {
     for (const c of data.companions) {
-      const sheet = c.sheetPalette ? makeSpriteSheet(c.sheetPalette) : sheetForName(c.name);
-      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null, sheetPalette: c.sheetPalette || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 });
+      let pal = c.sheetPalette || canonicalPaletteForName(c.name);
+      const sheet = pal ? makeSpriteSheet(pal) : sheetForName(c.name);
+      const comp = spawnCompanion(c.x, c.y, sheet, { name: c.name, portrait: c.portrait || null, sheetPalette: pal || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 });
       comp.dir = c.dir || 'down';
       if (c.inventory) comp.inventory = c.inventory;
     }
@@ -486,8 +509,9 @@ function deserializePayload(data) {
   // Restore NPCs
   if (Array.isArray(data.npcs)) {
     for (const n of data.npcs) {
-      const sheet = n.sheetPalette ? makeSpriteSheet(n.sheetPalette) : sheetForName(n.name);
-      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, sheetPalette: n.sheetPalette || null, portrait: normalizePortraitPath(n.portrait || null, n.name, null), affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
+      let pal = n.sheetPalette || canonicalPaletteForName(n.name);
+      const sheet = pal ? makeSpriteSheet(pal) : sheetForName(n.name);
+      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, sheetPalette: pal || null, portrait: normalizePortraitPath(n.portrait || null, n.name, null), affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
       attachDialogByName(npc);
       attachOnSightByName(npc);
     }
