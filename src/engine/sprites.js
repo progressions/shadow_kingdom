@@ -105,5 +105,17 @@ export function sheetForName(name) {
   if (key.includes('canopy')) return makeSpriteSheet({ hair: '#6b3f2b', longHair: true, dress: true, dressColor: '#ff77c8', shirt: '#ffd3ea' });
   if (key.includes('yorna'))  return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#ff9a4a', shirt: '#ffd1a6' });
   if (key.includes('hola'))   return makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#6fb7ff', shirt: '#bfe1ff' });
+  // Level 2 companions
+  if (key.includes('oyin'))   return makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9' });
+  if (key.includes('twil'))   return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
+  // Level 3 companions
+  if (key.includes('tin'))    return makeSpriteSheet({ hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' });
+  if (key.includes('nellis')) return makeSpriteSheet({ hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' });
+  // Level 4 companions
+  if (key.includes('urn'))    return makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' });
+  if (key.includes('varabella')) return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
+  // Level 5/6 — notable NPCs
+  if (key.includes('ell'))    return makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0' });
+  if (key.includes('fana'))   return makeSpriteSheet({ hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#e6d5ff', shirt: '#c7b0ff' });
   return npcSheet;
 }
