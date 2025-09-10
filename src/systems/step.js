@@ -469,7 +469,7 @@ export function step(dt) {
             runtime.questFlags['canopy_sister_rescued'] = true;
             runtime.questFlags['temple_cleansed'] = true;
             runtime.questFlags['hub_unlocked'] = true;
-            const ellActor = { name: 'Ell', portraitSrc: 'assets/portraits/Ell/Ell.mp4' };
+            const ellActor = { name: 'Ell', portraitSrc: 'assets/portraits/level06/Ell/Ell.mp4' };
             const ellLine = "Ell: Thank you… The light in Aurelion still answers. I can stand.";
             if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
             runtime._queuedVNs.push({ actor: ellActor, text: ellLine });
@@ -649,7 +649,7 @@ export function step(dt) {
             import('../data/dialogs.js'),
           ]).then(([sm, st, dm, dd]) => {
             const sheet = (sm.sheetForName ? sm.sheetForName('Fana') : null);
-            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/Fana/Fana.mp4', affinity: 6 });
+            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/level05/Fana/Fana.mp4', affinity: 6 });
             if (dd.fanaFreedDialog) dm.setNpcDialog(npc, dd.fanaFreedDialog);
             else if (dd.fanaDialog) dm.setNpcDialog(npc, dd.fanaDialog);
           }).catch(()=>{});

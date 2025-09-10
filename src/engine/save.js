@@ -31,6 +31,32 @@ async function remote(method, path, body) {
   return json;
 }
 
+// Normalize legacy portrait paths (without level folders) to new level-based layout.
+function levelForNameOrId(nameLower, vnId) {
+  const id = (vnId || '').toLowerCase();
+  const nm = (nameLower || '').toLowerCase();
+  const is = (s) => id === s || nm.includes(s.replace(/^enemy:/,''));
+  if (is('enemy:gorg') || is('enemy:vast') || nm.includes('canopy') || nm.includes('yorna') || nm.includes('hola')) return 'level01';
+  if (is('enemy:aarg') || is('enemy:nethra') || nm.includes('oyin') || nm.includes('twil')) return 'level02';
+  if (is('enemy:wight') || is('enemy:luula') || nm.includes('tin') || nm.includes('nellis')) return 'level03';
+  if (is('enemy:blurb') || is('enemy:vanificia') || nm.includes('urn') || nm.includes('varabella')) return 'level04';
+  if (is('enemy:fana') || is('enemy:vorthak')) return 'level05';
+  if (nm.includes('ell')) return 'level06';
+  return null;
+}
+
+function normalizePortraitPath(p, name, vnId) {
+  if (!p || typeof p !== 'string') return p;
+  if (p.includes('/level0')) return p; // already normalized
+  const m = p.match(/^assets\/portraits\/([^\/]+)\/(.+)$/i);
+  if (!m) return p;
+  const level = levelForNameOrId((name || m[1] || '').toLowerCase(), vnId);
+  if (!level) return p;
+  const nm = m[1];
+  const rest = m[2];
+  return `assets/portraits/${level}/${nm}/${rest}`;
+}
+
 export async function getSaveMeta(slot = 1) {
   if (API_URL) {
     try {
@@ -262,10 +288,10 @@ function deserializePayload(data) {
         animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
         name: resolvedName, kind,
-        portraitSrc: e.portrait || null,
-        portraitPowered: e.portraitPowered || null,
-        portraitOverpowered: e.portraitOverpowered || null,
-        portraitDefeated: e.portraitDefeated || null,
+        portraitSrc: normalizePortraitPath(e.portrait || null, e.name, e.vnId),
+        portraitPowered: normalizePortraitPath(e.portraitPowered || null, e.name, e.vnId),
+        portraitOverpowered: normalizePortraitPath(e.portraitOverpowered || null, e.name, e.vnId),
+        portraitDefeated: normalizePortraitPath(e.portraitDefeated || null, e.name, e.vnId),
         onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
         questId: e.questId || null,
         guaranteedDropId: e.guaranteedDropId || null,
@@ -383,7 +409,7 @@ function deserializePayload(data) {
   if (Array.isArray(data.npcs)) {
     for (const n of data.npcs) {
       const sheet = n.sheetPalette ? makeSpriteSheet(n.sheetPalette) : sheetForName(n.name);
-      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, sheetPalette: n.sheetPalette || null, portrait: n.portrait || null, affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
+      const npc = spawnNpc(n.x, n.y, n.dir || 'down', { name: n.name, sheet, sheetPalette: n.sheetPalette || null, portrait: normalizePortraitPath(n.portrait || null, n.name, null), affinity: (typeof n.affinity === 'number') ? n.affinity : 5 });
       attachDialogByName(npc);
       attachOnSightByName(npc);
     }

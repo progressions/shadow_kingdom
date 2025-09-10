@@ -48,7 +48,7 @@ export function loadLevel1() {
   // Gorg — featured key-bearer
   const gorgSheet = makeSpriteSheet({ skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' });
   spawnEnemy(yornaPos.x + 44, yornaPos.y + 34, 'featured', {
-    name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/Gorg/Gorg.mp4', sheet: gorgSheet,
+    name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/level01/Gorg/Gorg.mp4', sheet: gorgSheet,
   });
 
   // Castle with boss Vast
@@ -65,7 +65,7 @@ export function loadLevel1() {
   add(gapX, cyw, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
   // Boss Vast inside
   spawnEnemy(cxw + cw/2 - 6, cyw + ch/2 - 8, 'boss', {
-    name: 'Vast', vnId: 'enemy:vast', portrait: 'assets/portraits/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
+    name: 'Vast', vnId: 'enemy:vast', portrait: 'assets/portraits/level01/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
   });
 
   // NPCs
@@ -75,9 +75,9 @@ export function loadLevel1() {
   const canopySheet = makeSpriteSheet(canopyPalette);
   const yornaSheet = makeSpriteSheet(yornaPalette);
   const holaSheet = makeSpriteSheet(holaPalette);
-  const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy/Canopy video.mp4', sheet: canopySheet, sheetPalette: canopyPalette, vnOnSight: { text: introTexts.canopy } });
-  const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
-  const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
+  const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4', sheet: canopySheet, sheetPalette: canopyPalette, vnOnSight: { text: introTexts.canopy } });
+  const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
+  const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
   setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
 
   return terrain;
@@ -165,9 +165,9 @@ export function loadLevel2() {
   const cy = ry + rh/2 - 8;
   spawnEnemy(cx, cy, 'boss', {
     name: 'Nethra', vnId: 'enemy:nethra',
-    portrait: 'assets/portraits/Nethra/Nethra.mp4',
-    portraitPowered: 'assets/portraits/Nethra/Nethra powered.mp4',
-    portraitDefeated: 'assets/portraits/Nethra/Nethra defeated.mp4',
+    portrait: 'assets/portraits/level02/Nethra/Nethra.mp4',
+    portraitPowered: 'assets/portraits/level02/Nethra/Nethra powered.mp4',
+    portraitDefeated: 'assets/portraits/level02/Nethra/Nethra defeated.mp4',
     onDefeatNextLevel: 3,
     // Level 2 boss: HP and contact damage bump
     hp: 40,
@@ -199,7 +199,7 @@ export function loadLevel2() {
       name: 'Aarg', vnId: 'enemy:aarg',
       sheet: aargSheet,
       sheetPalette: aargPalette,
-      portrait: 'assets/portraits/Aarg/Aarg.mp4',
+      portrait: 'assets/portraits/level02/Aarg/Aarg.mp4',
       vnOnSight: { text: introTexts.aarg },
       guaranteedDropId: 'key_nethra',
       // Level 2 featured foe: higher HP and dmg
@@ -221,8 +221,8 @@ export function loadLevel2() {
   const oyinY = Math.max(0, Math.min(world.h - 16, player.y - off)); // upper-left quadrant
   const twilX = Math.max(0, Math.min(world.w - 12, player.x - off));
   const twilY = Math.max(0, Math.min(world.h - 16, player.y + off)); // lower-left quadrant
-  const oyin = spawnNpc(oyinX, oyinY, 'right', { name: 'Oyin', sheet: oyinSheet, sheetPalette: oyinPalette, portrait: 'assets/portraits/Oyin/Oyin.mp4', vnOnSight: { text: introTexts.oyin } });
-  const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
+  const oyin = spawnNpc(oyinX, oyinY, 'right', { name: 'Oyin', sheet: oyinSheet, sheetPalette: oyinPalette, portrait: 'assets/portraits/level02/Oyin/Oyin.mp4', vnOnSight: { text: introTexts.oyin } });
+  const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/level02/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
   // Attach basic recruit dialogs
   import('../data/dialogs.js').then(mod => { setNpcDialog(oyin, mod.oyinDialog); setNpcDialog(twil, mod.twilDialog); }).catch(()=>{});
 
@@ -274,7 +274,7 @@ export function loadLevel3() {
     dress: false,
   };
   const wightSheet = makeSpriteSheet(wightPalette);
-  spawnEnemy(wx, wy, 'featured', { name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, sheetPalette: wightPalette, hp: 16, dmg: 6 });
+  spawnEnemy(wx, wy, 'featured', { name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, sheetPalette: wightPalette, hp: 16, dmg: 6 });
 
   // Boss arena (island with gate requiring Reed Key)
   const rw = TILE * 12, rh = TILE * 8, t = 8; const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260)); const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 160));
@@ -301,9 +301,9 @@ export function loadLevel3() {
     name: 'Luula', vnId: 'enemy:luula',
     vnOnSight: { text: introTexts.luula },
     sheet: luulaSheet,
-    portrait: 'assets/portraits/Luula/Luula.mp4',
-    portraitPowered: 'assets/portraits/Luula/Luula powered.mp4',
-    portraitDefeated: 'assets/portraits/Luula/Luula defeated.mp4',
+    portrait: 'assets/portraits/level03/Luula/Luula.mp4',
+    portraitPowered: 'assets/portraits/level03/Luula/Luula powered.mp4',
+    portraitDefeated: 'assets/portraits/level03/Luula/Luula defeated.mp4',
     onDefeatNextLevel: 4,
     hp: 50,
     dmg: 10,
@@ -317,8 +317,8 @@ export function loadLevel3() {
   const nellisPalette = { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
   const tinSheet = makeSpriteSheet(tinPalette);
   const nellisSheet = makeSpriteSheet(nellisPalette);
-  const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
-  const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
+  const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/level03/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
+  const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
   import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
 
   return terrain;
@@ -367,7 +367,7 @@ export function loadLevel4() {
   const blurbSheet = makeSpriteSheet(blurbPalette);
   spawnEnemy(blurbX, blurbY, 'featured', {
     name: 'Blurb', vnId: 'enemy:blurb', sheet: blurbSheet,
-    portrait: 'assets/portraits/Blurb/Blurb.mp4',
+    portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
     vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
     guaranteedDropId: 'key_sigil', hp: 18, dmg: 6,
     sheetPalette: blurbPalette,
@@ -396,9 +396,9 @@ export function loadLevel4() {
   spawnEnemy(cx, cy, 'boss', {
     name: 'Vanificia', vnId: 'enemy:vanificia', sheet: vaniSheet,
     vnOnSight: { text: (introTexts && introTexts.vanificia) || 'Vanificia: You trespass in Urathar\'s city. Kneel, or be unmade.' },
-    portrait: 'assets/portraits/Vanificia/Vanificia.mp4',
-    portraitPowered: 'assets/portraits/Vanificia/Vanificia powered.mp4',
-    portraitDefeated: 'assets/portraits/Vanificia/Vanificia defeated.mp4',
+    portrait: 'assets/portraits/level04/Vanificia/Vanificia.mp4',
+    portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4',
+    portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4',
     hp: 60,
     dmg: 11,
     onDefeatNextLevel: 5,
@@ -428,7 +428,7 @@ export function loadLevel4() {
   const varaPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
   const urnSheet = makeSpriteSheet(urnPalette);
   const varaSheet = makeSpriteSheet(varaPalette);
-  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', sheet: urnSheet, sheetPalette: urnPalette, portrait: 'assets/portraits/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
+  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', sheet: urnSheet, sheetPalette: urnPalette, portrait: 'assets/portraits/level04/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
   let vara;
   // Place Varabella; avoid spawning on fire/lava tiles
   (function placeVarabella() {
@@ -447,7 +447,7 @@ export function loadLevel4() {
       { x: start.x - TILE * 4, y: start.y - TILE * 4 },
     ];
     let spot = candidates.find(p => !overlapsHazard(rect(p.x, p.y))) || start;
-    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
+    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
   })();
   import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
 
@@ -535,7 +535,7 @@ export function loadLevel5() {
   const kgx = (gateTile.x - 10) * TILE, kgy = (gateTile.y + 8) * TILE;
   spawnEnemy(kgx, kgy, 'featured', {
     name: 'Fana', vnId: 'enemy:fana',
-    portrait: 'assets/portraits/Fana/Fana villain.mp4',
+    portrait: 'assets/portraits/level05/Fana/Fana villain.mp4',
     vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: Aurelion… I remember light, not chains.', lock: true, preDelaySec: 0.8 },
     guaranteedDropId: 'key_temple',
     hp: 22, dmg: 8,
@@ -551,10 +551,10 @@ export function loadLevel5() {
   spawnEnemy(cx, cy, 'boss', {
     name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
     // Boss portraits for VN overlays
-    portrait: 'assets/portraits/Vorthak/Vorthak.mp4',
-    portraitPowered: 'assets/portraits/Vorthak/Vorthak powered.mp4',
-    portraitOverpowered: 'assets/portraits/Vorthak/Vorthak overpowered.mp4',
-    portraitDefeated: 'assets/portraits/Vorthak/Vorthak defeated.mp4',
+    portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4',
+    portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4',
+    portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4',
+    portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4',
     onDefeatNextLevel: 6,
     vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' },
   });
