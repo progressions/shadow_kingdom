@@ -17,6 +17,7 @@ const partyUI = document.getElementById('party-ui');
 const bannerEl = document.getElementById('banner');
 const fadeEl = document.getElementById('fade');
 const questHintEl = document.getElementById('quest-hint');
+const levelTitleEl = document.getElementById('level-title');
 
 // Sidebar removed: VN overlay handles all dialog UI
 
@@ -300,6 +301,29 @@ export function showBanner(text, durationMs = 1800) {
   showBanner._t = window.setTimeout(() => {
     bannerEl.classList.remove('show');
   }, durationMs);
+}
+
+// Level title overlay
+export function showLevelTitle(text, durationMs = 2200) {
+  if (!levelTitleEl) return;
+  levelTitleEl.textContent = text || '';
+  levelTitleEl.classList.add('show');
+  window.clearTimeout(showLevelTitle._t);
+  showLevelTitle._t = window.setTimeout(() => {
+    levelTitleEl.classList.remove('show');
+  }, Math.max(0, durationMs));
+}
+
+// Simple mapping from level index to biome-based name
+export function levelNameFor(level) {
+  const lv = Math.max(1, level|0);
+  switch (lv) {
+    case 1: return 'Greenwood';          // default grass/stone biome
+    case 2: return 'Desert';             // sandy ruins biome
+    case 3: return 'Marsh';              // reed marsh biome
+    case 4: return 'Ruined City';        // city ruins biome
+    default: return `Region ${lv}`;
+  }
 }
 
 export function refreshChoiceFocus() {

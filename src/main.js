@@ -10,7 +10,7 @@ import { step } from './systems/step.js';
 import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI, fadeTransition, updateQuestHint, exitChat } from './engine/ui.js';
+import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save.js';
 import { loadLevel2, loadLevel3, loadLevel4 } from './engine/levels.js';
 
@@ -146,6 +146,8 @@ setNpcDialog(hola, holaDialog);
 // Build terrain and obstacles
 let terrain = buildTerrainBitmap(world);
 obstacles.push(...buildObstacles(world, player, enemies, npcs));
+// Show initial level title
+try { showLevelTitle(levelNameFor(runtime.currentLevel || 1)); } catch {}
 // Place a couple of starter chests near the player (one fixed Fine Sword)
 obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_sword', fixedItemId: 'sword_fine', opened: false, locked: false });
 obstacles.push({ x: Math.round(player.x - TILE * 8), y: Math.round(player.y + TILE * 6), w: 12, h: 10, type: 'chest', id: 'chest_l1_extra', lootTier: 'rare', opened: false, locked: false });
@@ -189,7 +191,7 @@ function loop(now) {
     };
     // Ensure any VN overlay is closed before transitioning
     if (runtime.gameState === 'chat') { try { exitChat(runtime); } catch {} }
-    fadeTransition({ toBlackMs: 400, holdMs: 100, toClearMs: 400, during: doSwap });
+    fadeTransition({ toBlackMs: 400, holdMs: 100, toClearMs: 400, during: () => { doSwap(); try { showLevelTitle(levelNameFor(lvl)); } catch {} } });
   }
   render(terrain, obstacles);
   requestAnimationFrame(loop);
