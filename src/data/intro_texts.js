@@ -66,4 +66,13 @@ export const introTexts = {
   nellis:
     "A blue-haired girl in a white dress keeps to your shoulder, gaze lowered, counting breaths. The city feels quieter near her—like the space between bell tolls.\n" +
     "\nNellis: \"If you lead, I’ll keep the line. I can hold a light.\"",
+
+  // Level 5 — Temple District
+  vorthak:
+    "The air tightens as something vast leans forward out of the temple's heart. White stone blushes with heat, and a molten voice spills into the hall.\n" +
+    "\nVorthak: \"Aurelion's heart is mine. Urathar wills it. Turn back, or burn.\"",
+
+  fana_enslaved:
+    "A young sorceress stands amid broken sigils, eyes unfocused, lips moving to someone else's words. Gold dust clings to tears she doesn't seem to notice.\n" +
+    "\nFana: \"Aurelion… I remember light, not chains. Vorthak speaks for Urathar. He says ‘kneel’, and my hands obey. Please… if you’re brave—break this.\"",
 };

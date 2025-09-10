@@ -331,7 +331,7 @@ export function levelNameFor(level) {
     case 1: return 'Greenwood';          // default grass/stone biome
     case 2: return 'Sunbreak Expanse';   // sandy ruins biome
     case 3: return 'Marsh';              // reed marsh biome
-    case 4: return 'Ruined City';        // city ruins biome
+    case 4: return 'Aurelion';           // ruined city name
     case 5: return 'Heart of the Temple';
     default: return `Region ${lv}`;
   }

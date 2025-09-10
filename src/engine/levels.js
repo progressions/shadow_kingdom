@@ -409,7 +409,8 @@ export function loadLevel5() {
   const kgx = gapX - TILE * 10, kgy = ry + TILE * 8;
   spawnEnemy(kgx, kgy, 'featured', {
     name: 'Fana',
-    portrait: 'assets/portraits/Fana/Fana.mp4',
+    portrait: 'assets/portraits/Fana/Fana villain.mp4',
+    vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: Aurelion… I remember light, not chains.', lock: true, preDelaySec: 0.8 },
     guaranteedDropId: 'key_temple',
     hp: 22, dmg: 8,
   });

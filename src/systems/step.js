@@ -602,12 +602,15 @@ export function step(dt) {
         if (nm.includes('fana')) {
           // Spawn an NPC at or near the defeat spot with a recruit dialog
           const nx = e.x, ny = e.y;
-          import('../engine/sprites.js').then(mod => {
-            const sheet = (mod.sheetForName ? mod.sheetForName('Fana') : null);
-            const npc = (require('../engine/state.js').spawnNpc)(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/Fana/Fana.mp4', affinity: 6 });
-            import('../engine/dialog.js').then(dmod => {
-              import('../data/dialogs.js').then(dd => { if (dd.fanaDialog) dmod.setNpcDialog(npc, dd.fanaDialog); }).catch(()=>{});
-            }).catch(()=>{});
+          Promise.all([
+            import('../engine/sprites.js'),
+            import('../engine/state.js'),
+            import('../engine/dialog.js'),
+            import('../data/dialogs.js'),
+          ]).then(([sm, st, dm, dd]) => {
+            const sheet = (sm.sheetForName ? sm.sheetForName('Fana') : null);
+            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/Fana/Fana.mp4', affinity: 6 });
+            if (dd.fanaDialog) dm.setNpcDialog(npc, dd.fanaDialog);
           }).catch(()=>{});
         }
       } catch {}
