@@ -381,6 +381,19 @@ export function loadLevel5() {
   const terrain = buildTerrainBitmap(world, 'city');
   for (const r of LEVEL5_CITY_WALL_RECTS) obstacles.push({ x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type: 'wall', blocksAttacks: true });
 
+  // Additional short wall segments to tighten lanes (avoid blocking the gate approach)
+  (function addExtraWalls() {
+    const bars = [
+      // Horizontal bars near the approach corridors
+      { x: (gateTile.x - 14) * TILE, y: (gateTile.y + 6) * TILE, w: TILE * 6, h: 8 },
+      { x: (gateTile.x + 6) * TILE,  y: (gateTile.y - 10) * TILE, w: TILE * 6, h: 8 },
+      // Vertical stubs guarding side rooms
+      { x: (gateTile.x - 18) * TILE, y: (gateTile.y - 4) * TILE, w: 8, h: TILE * 4 },
+      { x: (gateTile.x + 12) * TILE, y: (gateTile.y + 2) * TILE, w: 8, h: TILE * 4 },
+    ];
+    for (const b of bars) obstacles.push({ ...b, type: 'wall', blocksAttacks: true });
+  })();
+
   // Small hazards near start
   obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
 
@@ -440,6 +453,10 @@ export function loadLevel5() {
     hp: 22, dmg: 8,
   });
 
+  // Additional featured foe outside the arena
+  const ff2x = (gateTile.x + 12) * TILE, ff2y = (gateTile.y - 10) * TILE;
+  spawnEnemy(ff2x, ff2y, 'featured', { name: 'Temple Sentinel', hp: 26, dmg: 8 });
+
   // Boss Vorthak (2x visual scale)
   // Boss Vorthak inside the arena based on map tile coordinates
   const cx = 137 * TILE - 8; const cy = 72 * TILE - 12;
@@ -455,6 +472,23 @@ export function loadLevel5() {
   });
   spawnEnemy(cx - 28, cy, 'mook', { hp: 10, dmg: 7 });
   spawnEnemy(cx + 28, cy, 'mook', { hp: 10, dmg: 7 });
+
+  // Ambient mooks around corridors (stronger than L4)
+  (function addMooks() {
+    const tiles = [
+      { x: gateTile.x - 8, y: gateTile.y + 6 },
+      { x: gateTile.x - 6, y: gateTile.y - 7 },
+      { x: gateTile.x + 8, y: gateTile.y - 8 },
+      { x: gateTile.x + 10, y: gateTile.y + 9 },
+      { x: gateTile.x - 15, y: gateTile.y + 2 },
+      { x: gateTile.x + 15, y: gateTile.y - 3 },
+      { x: gateTile.x - 20, y: gateTile.y - 6 },
+      { x: gateTile.x + 18, y: gateTile.y + 5 },
+    ];
+    for (const t of tiles) {
+      spawnEnemy(t.x * TILE, t.y * TILE, 'mook', { hp: 12, dmg: 7 });
+    }
+  })();
 
   return terrain;
 }
