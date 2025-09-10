@@ -63,8 +63,8 @@ requestAnimationFrame(loop);
 
 // Debug helpers (call from browser console):
 try {
-  // Enable enemy debug logs by default
-  window.DEBUG_ENEMIES = true;
+  // Enemy debug logs are opt-in; set in console if needed
+  // window.DEBUG_ENEMIES = true;
   window.gotoLevel2 = () => { runtime.pendingLevel = 2; };
   window.gotoLevel3 = () => { runtime.pendingLevel = 3; };
   window.gotoLevel4 = () => { runtime.pendingLevel = 4; };
