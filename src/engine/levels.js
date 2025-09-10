@@ -43,11 +43,12 @@ export function loadLevel2() {
     const r = 280 + Math.random() * 180; // 280–460 px
     const bx = Math.round(player.x + Math.cos(ang) * r);
     const by = Math.round(player.y + Math.sin(ang) * r);
-    spawnEnemy(bx, by, 'mook');
+    // Level 2 mooks: modest HP bump + small dmg bump
+    spawnEnemy(bx, by, 'mook', { hp: 5, dmg: 4 });
   }
   // Two featured foes, also well outside the initial camera view
-  spawnEnemy(player.x + 320, player.y - 220, 'featured');
-  spawnEnemy(player.x - 340, player.y + 240, 'featured');
+  spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 10, dmg: 5 });
+  spawnEnemy(player.x - 340, player.y + 240, 'featured', { hp: 10, dmg: 5 });
 
   // Chests and breakables (desert) — spaced around player
   obstacles.push({ x: Math.round(player.x + TILE * 14), y: Math.round(player.y - TILE * 10), w: 12, h: 10, type: 'chest', id: 'chest_l2_armor', fixedItemId: 'armor_chain', opened: false, locked: false });
@@ -81,13 +82,16 @@ export function loadLevel2() {
     portraitPowered: 'assets/portraits/Nethra/Nethra powered.mp4',
     portraitDefeated: 'assets/portraits/Nethra/Nethra defeated.mp4',
     onDefeatNextLevel: 3,
+    // Level 2 boss: HP and contact damage bump
+    hp: 40,
+    dmg: 9,
     vnOnSight: { text: introTexts.nethra },
   });
   // Four mooks inside the arena with Nethra
-  spawnEnemy(cx - 24, cy, 'mook');
-  spawnEnemy(cx + 24, cy, 'mook');
-  spawnEnemy(cx, cy - 24, 'mook');
-  spawnEnemy(cx, cy + 24, 'mook');
+  spawnEnemy(cx - 24, cy, 'mook', { hp: 5, dmg: 4 });
+  spawnEnemy(cx + 24, cy, 'mook', { hp: 5, dmg: 4 });
+  spawnEnemy(cx, cy - 24, 'mook', { hp: 5, dmg: 4 });
+  spawnEnemy(cx, cy + 24, 'mook', { hp: 5, dmg: 4 });
   // Aarg — blue serpent featured foe outside, holding the ruin gate key (fully blue-tinted like Gorg was fully red)
   const aargSheet = makeSpriteSheet({
     skin: '#6fb3ff',
@@ -109,8 +113,9 @@ export function loadLevel2() {
       portrait: 'assets/portraits/Aarg/Aarg.mp4',
       vnOnSight: { text: introTexts.aarg },
       guaranteedDropId: 'key_nethra',
-      hp: 14,
-      dmg: 4,
+      // Level 2 featured foe: higher HP and dmg
+      hp: 18,
+      dmg: 5,
     }
   );
   // Player remains at initial center spawn; companions already placed near player above
@@ -157,7 +162,7 @@ export function loadLevel3() {
   for (const p of pools) obstacles.push({ x: Math.max(0, Math.min(world.w - TILE, p.x)), y: Math.max(0, Math.min(world.h - TILE, p.y)), w: p.w, h: p.h, type: 'water', blocksAttacks: true });
 
   // Spawns
-  for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook'); }
+  for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook', { hp: 7, dmg: 5 }); }
 
   // Chests and breakables (marsh) — spaced around player
   obstacles.push({ x: Math.round(player.x - TILE * 16), y: Math.round(player.y - TILE * 12), w: 12, h: 10, type: 'chest', id: 'chest_l3_helm', fixedItemId: 'helm_iron', opened: false, locked: false });
@@ -175,7 +180,7 @@ export function loadLevel3() {
     longHair: false,
     dress: false,
   });
-  spawnEnemy(wx, wy, 'featured', { name: 'Wight', portrait: 'assets/portraits/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, hp: 12, dmg: 4 });
+  spawnEnemy(wx, wy, 'featured', { name: 'Wight', portrait: 'assets/portraits/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, hp: 16, dmg: 6 });
 
   // Boss arena (island with gate requiring Reed Key)
   const rw = TILE * 12, rh = TILE * 8, t = 8; const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260)); const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 160));
@@ -206,10 +211,12 @@ export function loadLevel3() {
     portraitPowered: 'assets/portraits/Luula/Luula powered.mp4',
     portraitDefeated: 'assets/portraits/Luula/Luula defeated.mp4',
     onDefeatNextLevel: 4,
+    hp: 50,
+    dmg: 10,
   });
   // A couple of mooks near Luula
-  spawnEnemy(cx - 24, cy, 'mook');
-  spawnEnemy(cx + 24, cy, 'mook');
+  spawnEnemy(cx - 24, cy, 'mook', { hp: 7, dmg: 5 });
+  spawnEnemy(cx + 24, cy, 'mook', { hp: 7, dmg: 5 });
 
   // Recruitable NPCs: Tin & Nellis
   const tinSheet = makeSpriteSheet({ hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' });
@@ -244,7 +251,8 @@ export function loadLevel4() {
   for (let k = 0; k < 6; k++) {
     const bx = Math.round(player.x + (Math.random() * 400 - 200));
     const by = Math.round(player.y + (Math.random() * 300 - 150));
-    spawnEnemy(bx, by, 'mook');
+    // Level 4 mooks: larger HP bump
+    spawnEnemy(bx, by, 'mook', { hp: 9, dmg: 6 });
   }
 
   // Featured foe: Blurb — drops City Sigil Key
@@ -263,7 +271,7 @@ export function loadLevel4() {
     name: 'Blurb', sheet: blurbSheet,
     portrait: 'assets/portraits/Blurb/Blurb.mp4',
     vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
-    guaranteedDropId: 'key_sigil', hp: 14, dmg: 4
+    guaranteedDropId: 'key_sigil', hp: 18, dmg: 6
   });
 
   // Boss arena (city plaza) with a top gate requiring Iron Sigil
@@ -292,10 +300,12 @@ export function loadLevel4() {
     portrait: 'assets/portraits/Vanificia/Vanificia.mp4',
     portraitPowered: 'assets/portraits/Vanificia/Vanificia powered.mp4',
     portraitDefeated: 'assets/portraits/Vanificia/Vanificia defeated.mp4',
+    hp: 60,
+    dmg: 11,
   });
   // Guards near the boss
-  spawnEnemy(cx - 24, cy, 'mook');
-  spawnEnemy(cx + 24, cy, 'mook');
+  spawnEnemy(cx - 24, cy, 'mook', { hp: 9, dmg: 6 });
+  spawnEnemy(cx + 24, cy, 'mook', { hp: 9, dmg: 6 });
 
   // Recruitable NPCs: Urn & Varabella
   const urnSheet = makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' });
