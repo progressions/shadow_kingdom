@@ -610,7 +610,8 @@ export function step(dt) {
           ]).then(([sm, st, dm, dd]) => {
             const sheet = (sm.sheetForName ? sm.sheetForName('Fana') : null);
             const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/Fana/Fana.mp4', affinity: 6 });
-            if (dd.fanaDialog) dm.setNpcDialog(npc, dd.fanaDialog);
+            if (dd.fanaFreedDialog) dm.setNpcDialog(npc, dd.fanaFreedDialog);
+            else if (dd.fanaDialog) dm.setNpcDialog(npc, dd.fanaDialog);
           }).catch(()=>{});
         }
       } catch {}
