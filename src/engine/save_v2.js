@@ -67,6 +67,9 @@ export function serializeV2() {
   const DYNAMIC_CAP = 200;
   if (dynamicEnemies.length > DYNAMIC_CAP) dynamicEnemies.length = DYNAMIC_CAP;
 
+  // Persist VN seen only for NPCs; enemy intro seen state is derived by encounter
+  const vnSeenNpcOnly = Object.keys(runtime?.vnSeen || {}).filter(k => !/^enemy:/.test(k));
+
   return {
     schema: 'v2',
     version: 2,
@@ -80,7 +83,7 @@ export function serializeV2() {
     openedChests: obstacles.filter(o => o && o.type === 'chest' && o.opened && o.id).map(o => o.id),
     brokenBreakables: Object.keys(runtime?.brokenBreakables || {}),
     groundItems: (Array.isArray(itemsOnGround) ? itemsOnGround.map(g => ({ id: g.id, x: g.x, y: g.y, item: g.item })) : []),
-    vnSeen: Object.keys(runtime?.vnSeen || {}),
+    vnSeen: vnSeenNpcOnly,
     affinityFlags: Object.keys(runtime?.affinityFlags || {}),
     questFlags: Object.keys(runtime?.questFlags || {}),
     questCounters: Object.assign({}, runtime?.questCounters || {}),
