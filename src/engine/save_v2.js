@@ -3,7 +3,7 @@ import { player, companions, obstacles, itemsOnGround, world, enemies, runtime, 
 import { updatePartyUI, showBanner } from './ui.js';
 import { makeSpriteSheet, sheetForName } from './sprites.js';
 import { descriptorForLevel } from './level_descriptors.js';
-import { introTexts } from '../data/intro_texts.js';
+import { ensureEnemyIdentity } from './identity.js';
 
 function uniqueSetForLevel(level) {
   const d = descriptorForLevel(level);
@@ -28,11 +28,12 @@ export function serializeV2() {
     if (!e) continue;
     const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
     if (!key || !uniques.has(key)) continue;
-    if (e.hp > 0) {
-      uniqueActors[key] = { state: 'alive', hp: e.hp };
-    } else {
-      uniqueActors[key] = { state: 'defeated' };
-    }
+    const base = (e.hp > 0)
+      ? { state: 'alive', hp: e.hp }
+      : { state: 'defeated' };
+    // Persist visual identity for unique actors (e.g., featured foe tints)
+    if (e.sheetPalette) base.sheetPalette = e.sheetPalette;
+    uniqueActors[key] = base;
   }
   // Ensure keys exist for current level's known uniques if absent
   for (const k of uniques) { if (!uniqueActors[k]) uniqueActors[k] = { state: 'unspawned' }; }
@@ -147,6 +148,13 @@ export function applyPendingRestoreV2() {
         const idx = enemies.indexOf(ent); if (idx !== -1) enemies.splice(idx,1);
       } else if (st.state === 'alive' && typeof st.hp === 'number') {
         ent.hp = Math.max(1, Math.min(ent.maxHp||st.hp, st.hp));
+        // Apply persisted palette for unique actor, if present
+        if (st.sheetPalette) {
+          try {
+            ent.sheetPalette = st.sheetPalette;
+            ent.sheet = makeSpriteSheet(st.sheetPalette);
+          } catch {}
+        }
       }
     }
     // Dynamic enemies: append serialized spawns (non-unique)
@@ -192,48 +200,8 @@ export function applyPendingRestoreV2() {
         });
       } catch {}
     }
-    // Reattach VN-on-sight for enemies (unique and dynamic) if not yet seen
-    try {
-      for (const e of enemies) {
-        if (!e || e._vnShown || e.vnOnSight) continue;
-        const key = e.vnId || null;
-        if (!key) continue;
-        if (runtime.vnSeen && runtime.vnSeen[key]) { e._vnShown = true; continue; }
-        const id = String(key).replace(/^enemy:/,'');
-        const text = (
-          id === 'gorg' ? introTexts.gorg
-          : id === 'aarg' ? introTexts.aarg
-          : id === 'wight' ? introTexts.wight
-          : id === 'blurb' ? introTexts.blurb
-          : id === 'fana' ? (introTexts.fana_enslaved || introTexts.fana)
-          : id === 'nethra' ? introTexts.nethra
-          : id === 'luula' ? introTexts.luula
-          : id === 'vanificia' ? introTexts.vanificia
-          : id === 'vorthak' ? introTexts.vorthak
-          : id === 'vast' ? introTexts.vast
-          : null
-        );
-        if (text) e.vnOnSight = { text };
-      }
-    } catch {}
-
-    // Ensure visual identity for known featured foes if their sheet is missing
-    try {
-      for (const e of enemies) {
-        if (!e || e.sheet) continue;
-        if ((e.kind || '').toLowerCase() !== 'featured') continue;
-        const id = (e.vnId || '').toLowerCase();
-        if (id === 'enemy:gorg') {
-          e.sheet = makeSpriteSheet({ skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' });
-        } else if (id === 'enemy:aarg') {
-          e.sheet = makeSpriteSheet({ skin: '#6fb3ff', hair: '#0a1b4a', longHair: false, dress: true, dressColor: '#274b9a', shirt: '#7aa6ff', pants: '#1b2e5a', outline: '#000000' });
-        } else if (id === 'enemy:wight') {
-          e.sheet = makeSpriteSheet({ skin: '#f5f5f5', hair: '#e6e6e6', shirt: '#cfcfcf', pants: '#9e9e9e', outline: '#000000' });
-        } else if (id === 'enemy:blurb') {
-          e.sheet = makeSpriteSheet({ skin: '#6fdd6f', hair: '#0a2a0a', longHair: false, dress: false, shirt: '#4caf50', pants: '#2e7d32', outline: '#000000' });
-        }
-      }
-    } catch {}
+    // Ensure enemy identity (intro + default palette) for all enemies based on vnId and registry
+    try { for (const e of enemies) ensureEnemyIdentity(e, runtime); } catch {}
 
     showBanner('Game loaded (v2)');
   } catch (e) {
