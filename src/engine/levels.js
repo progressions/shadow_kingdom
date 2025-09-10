@@ -366,7 +366,7 @@ export function loadLevel4() {
   return terrain;
 }
 
-// Level 5: Temple District — upper-right marble arena overtaken by Yorthak (2x sprite)
+// Level 5: Temple District — upper-right marble arena overtaken by Vorthak (2x sprite)
 export function loadLevel5() {
   world.tileW = LEVEL5_SIZE?.tileW || 190;
   world.tileH = LEVEL5_SIZE?.tileH || 110;
@@ -414,12 +414,12 @@ export function loadLevel5() {
     hp: 22, dmg: 8,
   });
 
-  // Boss Yorthak (2x visual scale)
+  // Boss Vorthak (2x visual scale)
   const cx = rx + rw/2 - 8; const cy = ry + rh/2 - 12;
   spawnEnemy(cx, cy, 'boss', {
-    name: 'Yorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
+    name: 'Vorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
     onDefeatNextLevel: 6,
-    vnOnSight: { text: (introTexts && introTexts.yorthak) || 'Yorthak: The heart is mine. Turn back or burn.' },
+    vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' },
   });
   spawnEnemy(cx - 28, cy, 'mook', { hp: 10, dmg: 7 });
   spawnEnemy(cx + 28, cy, 'mook', { hp: 10, dmg: 7 });
