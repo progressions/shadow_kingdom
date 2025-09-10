@@ -42,13 +42,14 @@ spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,  'mook');
 spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,  'mook');
 spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36, 'mook');
 // Gorg — featured key-bearer with VN intro and custom red-tinted sheet
-const gorgSheet = makeSpriteSheet({
+const gorgPalette = {
   skin: '#ff4a4a',
   shirt: '#8a1a1a',
   pants: '#6a0f0f',
   hair: '#2a0000',
   outline: '#000000',
-});
+};
+const gorgSheet = makeSpriteSheet(gorgPalette);
 spawnEnemy(
   yornaPos.x + 44,
   yornaPos.y + 34,
@@ -59,6 +60,7 @@ spawnEnemy(
     vnOnSight: { text: introTexts.gorg },
     portrait: 'assets/portraits/Gorg/Gorg.mp4',
     sheet: gorgSheet,
+    sheetPalette: gorgPalette,
     hp: 16,
     dmg: 5,
   }

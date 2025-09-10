@@ -93,7 +93,7 @@ export function loadLevel2() {
   spawnEnemy(cx, cy - 24, 'mook', { hp: 5, dmg: 4 });
   spawnEnemy(cx, cy + 24, 'mook', { hp: 5, dmg: 4 });
   // Aarg — blue serpent featured foe outside, holding the ruin gate key (fully blue-tinted like Gorg was fully red)
-  const aargSheet = makeSpriteSheet({
+  const aargPalette = {
     skin: '#6fb3ff',
     hair: '#0a1b4a',
     longHair: false,
@@ -102,7 +102,8 @@ export function loadLevel2() {
     shirt: '#7aa6ff',
     pants: '#1b2e5a',
     outline: '#000000',
-  });
+  };
+  const aargSheet = makeSpriteSheet(aargPalette);
   spawnEnemy(
     rx + rw/2 - 20,
     ry - TILE * 4,
@@ -110,6 +111,7 @@ export function loadLevel2() {
     {
       name: 'Aarg',
       sheet: aargSheet,
+      sheetPalette: aargPalette,
       portrait: 'assets/portraits/Aarg/Aarg.mp4',
       vnOnSight: { text: introTexts.aarg },
       guaranteedDropId: 'key_nethra',
@@ -171,7 +173,7 @@ export function loadLevel3() {
 
   // Featured foe: Wight — drops Reed Key (bone-white override like Gorg/Aarg)
   const wx = player.x + 180, wy = player.y - 120;
-  const wightSheet = makeSpriteSheet({
+  const wightPalette = {
     skin: '#f5f5f5',
     hair: '#e6e6e6',
     shirt: '#cfcfcf',
@@ -179,8 +181,9 @@ export function loadLevel3() {
     outline: '#000000',
     longHair: false,
     dress: false,
-  });
-  spawnEnemy(wx, wy, 'featured', { name: 'Wight', portrait: 'assets/portraits/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, hp: 16, dmg: 6 });
+  };
+  const wightSheet = makeSpriteSheet(wightPalette);
+  spawnEnemy(wx, wy, 'featured', { name: 'Wight', portrait: 'assets/portraits/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, sheetPalette: wightPalette, hp: 16, dmg: 6 });
 
   // Boss arena (island with gate requiring Reed Key)
   const rw = TILE * 12, rh = TILE * 8, t = 8; const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260)); const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 160));
@@ -257,7 +260,7 @@ export function loadLevel4() {
 
   // Featured foe: Blurb — drops City Sigil Key
   const blurbX = player.x - 200, blurbY = player.y - 120;
-  const blurbSheet = makeSpriteSheet({
+  const blurbPalette = {
     // Green grotesque tinting, similar to Gorg/Aarg/Wight style overrides
     skin: '#6fdd6f',
     hair: '#0a2a0a',
@@ -266,12 +269,14 @@ export function loadLevel4() {
     shirt: '#4caf50',
     pants: '#2e7d32',
     outline: '#000000'
-  });
+  };
+  const blurbSheet = makeSpriteSheet(blurbPalette);
   spawnEnemy(blurbX, blurbY, 'featured', {
     name: 'Blurb', sheet: blurbSheet,
     portrait: 'assets/portraits/Blurb/Blurb.mp4',
     vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
-    guaranteedDropId: 'key_sigil', hp: 18, dmg: 6
+    guaranteedDropId: 'key_sigil', hp: 18, dmg: 6,
+    sheetPalette: blurbPalette,
   });
 
   // Boss arena (city plaza) with a top gate requiring Iron Sigil

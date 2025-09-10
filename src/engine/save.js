@@ -2,7 +2,7 @@ import { player, enemies, companions, npcs, world, runtime, obstacles } from './
 import { itemsOnGround } from './state.js';
 import { spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
-import { sheetForName } from './sprites.js';
+import { sheetForName, makeSpriteSheet } from './sprites.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 
 function getLocalKey(slot = 1) { return `shadow_kingdom_save_${slot}`; }
@@ -104,10 +104,22 @@ function serializePayload() {
     currentLevel: runtime.currentLevel || 1,
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
     enemies: enemies.filter(e => e.hp > 0).map(e => ({
-      x: e.x, y: e.y, hp: e.hp, dir: e.dir, kind: e.kind || 'mook',
+      x: e.x, y: e.y, dir: e.dir, kind: e.kind || 'mook',
       name: e.name || null,
+      // Combat state
+      hp: e.hp,
+      maxHp: e.maxHp,
+      touchDamage: e.touchDamage,
+      speed: e.speed,
+      _secondPhase: !!e._secondPhase,
+      // Visuals
+      portrait: e.portraitSrc || null,
       portraitPowered: e.portraitPowered || null,
       portraitDefeated: e.portraitDefeated || null,
+      sheetPalette: e.sheetPalette || null,
+      // Logic/quest
+      questId: e.questId || null,
+      guaranteedDropId: e.guaranteedDropId || null,
       onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
     })),
     companions: companions.map(c => ({ name: c.name, x: c.x, y: c.y, dir: c.dir, portrait: c.portraitSrc || null, inventory: c.inventory || null, affinity: (typeof c.affinity === 'number') ? c.affinity : 2, level: c.level||1, xp: c.xp||0 })),
@@ -121,6 +133,7 @@ function serializePayload() {
     vnSeen: Object.keys(runtime?.vnSeen || {}),
     affinityFlags: Object.keys(runtime?.affinityFlags || {}),
     questFlags: Object.keys(runtime?.questFlags || {}),
+    questCounters: Object.assign({}, runtime?.questCounters || {}),
   };
 }
 
@@ -154,6 +167,13 @@ function deserializePayload(data) {
   if (Array.isArray(data.questFlags)) {
     for (const k of data.questFlags) runtime.questFlags[k] = true;
   }
+  // Restore quest counters (numeric progress)
+  runtime.questCounters = {};
+  if (data.questCounters && typeof data.questCounters === 'object') {
+    for (const [k, v] of Object.entries(data.questCounters)) {
+      if (typeof v === 'number') runtime.questCounters[k] = v;
+    }
+  }
   // Restore enemies
   if (Array.isArray(data.enemies)) {
     for (const e of data.enemies) {
@@ -161,23 +181,36 @@ function deserializePayload(data) {
       const base = (kind === 'boss') ? { name: 'Boss', speed: 12, hp: 30, dmg: 8 }
         : (kind === 'featured') ? { name: 'Featured Foe', speed: 11, hp: 5, dmg: 3 }
         : { name: 'Mook', speed: 10, hp: 3, dmg: 3 };
+      const hp = (typeof e.hp === 'number') ? e.hp : base.hp;
+      const maxHp = (typeof e.maxHp === 'number') ? e.maxHp : (typeof e.hp === 'number' ? e.hp : base.hp);
+      const dmg = (typeof e.touchDamage === 'number') ? e.touchDamage : base.dmg;
+      const speed = (typeof e.speed === 'number') ? e.speed : base.speed;
       enemies.push({
-        x: e.x, y: e.y, w: 12, h: 16, speed: base.speed, dir: e.dir || 'down', moving: true,
-        animTime: 0, animFrame: 0, hp: e.hp ?? base.hp, maxHp: base.hp, touchDamage: base.dmg, hitTimer: 0, hitCooldown: 0.8,
+        x: e.x, y: e.y, w: 12, h: 16, speed, dir: e.dir || 'down', moving: true,
+        animTime: 0, animFrame: 0, hp, maxHp, touchDamage: dmg, hitTimer: 0, hitCooldown: 0.8,
         knockbackX: 0, knockbackY: 0,
         name: e.name || base.name, kind,
+        portraitSrc: e.portrait || null,
         portraitPowered: e.portraitPowered || null,
         portraitDefeated: e.portraitDefeated || null,
         onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
+        questId: e.questId || null,
+        guaranteedDropId: e.guaranteedDropId || null,
+        _secondPhase: !!e._secondPhase,
+        sheetPalette: e.sheetPalette || null,
       });
     }
     // Attach class sheets lazily after module loads
     import('./sprites.js').then(mod => {
       for (const e of enemies) {
-        if (!e.kind) continue;
-        if (e.kind === 'boss') e.sheet = mod.enemyBossSheet;
-        else if (e.kind === 'featured') e.sheet = mod.enemyFeaturedSheet;
-        else e.sheet = mod.enemyMookSheet;
+        if (e.sheetPalette) {
+          try { e.sheet = makeSpriteSheet(e.sheetPalette); } catch { /* fallback below */ }
+        }
+        if (!e.sheet) {
+          if (e.kind === 'boss') e.sheet = mod.enemyBossSheet;
+          else if (e.kind === 'featured') e.sheet = mod.enemyFeaturedSheet;
+          else e.sheet = mod.enemyMookSheet;
+        }
       }
     }).catch(()=>{});
     // Backfill boss metadata for older saves so level transitions work
