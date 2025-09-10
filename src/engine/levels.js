@@ -10,6 +10,75 @@ import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
 
+// Level 1: Greenwood — initial world (moved from main.js to support load route)
+export function loadLevel1() {
+  // Base world size
+  world.tileW = 100; world.tileH = 60;
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+  // Place player near center
+  player.x = Math.floor(world.w / 2);
+  player.y = Math.floor(world.h / 2);
+  for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
+  // Terrain and procedural obstacles
+  const terrain = buildTerrainBitmap(world);
+  obstacles.push(...buildObstacles(world, player, enemies, npcs));
+
+  // Place some chests and breakables similar to start
+  obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_sword', fixedItemId: 'sword_fine', opened: false, locked: false });
+  obstacles.push({ x: Math.round(player.x - TILE * 8), y: Math.round(player.y + TILE * 6), w: 12, h: 10, type: 'chest', id: 'chest_l1_extra', lootTier: 'rare', opened: false, locked: false });
+  const brk = [
+    { x: Math.round(player.x + TILE * 10), y: Math.round(player.y + TILE * 6) },
+    { x: Math.round(player.x - TILE * 12), y: Math.round(player.y - TILE * 8) },
+  ];
+  for (let i = 0; i < brk.length; i++) obstacles.push({ ...brk[i], w: 12, h: 12, type: (i%2? 'crate': 'barrel'), id: `brk_l1_${i}`, hp: 2 });
+
+  // Nearby NPC positions
+  const canopyPos = { x: Math.round(player.x + 172), y: Math.round(player.y - 10) };
+  const holaPos   = { x: Math.round(player.x + 260), y: Math.round(player.y + 180) };
+  const yornaPos  = { x: Math.round(player.x - 340), y: Math.round(player.y - 240) };
+
+  // Initial enemies around NPCs
+  spawnEnemy(canopyPos.x + 28, canopyPos.y + 8, 'mook');
+  spawnEnemy(holaPos.x - 42, holaPos.y - 20, 'mook');
+  spawnEnemy(holaPos.x + 42, holaPos.y - 20, 'mook');
+  spawnEnemy(holaPos.x + 0,  holaPos.y + 38, 'mook');
+  spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,  'mook');
+  spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,  'mook');
+  spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36, 'mook');
+  // Gorg — featured key-bearer
+  const gorgSheet = makeSpriteSheet({ skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' });
+  spawnEnemy(yornaPos.x + 44, yornaPos.y + 34, 'featured', {
+    name: 'Gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/Gorg/Gorg.mp4', sheet: gorgSheet,
+  });
+
+  // Castle with boss Vast
+  const cw = TILE * 14, ch = TILE * 10, t = 8, gap = 16;
+  const cxw = Math.min(world.w - cw - TILE * 2, Math.max(TILE * 2, world.w * 0.82));
+  const cyw = Math.min(world.h - ch - TILE * 2, Math.max(TILE * 2, world.h * 0.78));
+  const gapX = cxw + (cw - gap) / 2;
+  const add = (x, y, w, h, type='wall', extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
+  add(cxw, cyw, gapX - cxw, t);
+  add(gapX + gap, cyw, (cxw + cw) - (gapX + gap), t);
+  add(cxw, cyw + ch - t, cw, t);
+  add(cxw, cyw, t, ch);
+  add(cxw + cw - t, cyw, t, ch);
+  add(gapX, cyw, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
+  // Boss Vast inside
+  spawnEnemy(cxw + cw/2 - 6, cyw + ch/2 - 8, 'boss', {
+    name: 'Vast', portrait: 'assets/portraits/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
+  });
+
+  // NPCs
+  const canopySheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' });
+  const yornaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
+  const holaSheet = makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' });
+  const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/Canopy/Canopy video.mp4', sheet: canopySheet, vnOnSight: { text: introTexts.canopy } });
+  const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/Yorna/Yorna video.mp4', sheet: yornaSheet, vnOnSight: { text: introTexts.yorna } });
+  const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/Hola/Hola video.mp4', sheet: holaSheet, vnOnSight: { text: introTexts.hola } });
+  setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
+
+  return terrain;
+}
 // Returns a new terrain bitmap after building the level.
 export function loadLevel2() {
   // Resize world for level 2
