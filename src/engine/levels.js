@@ -48,7 +48,7 @@ export function loadLevel1() {
   // Gorg — featured key-bearer
   const gorgSheet = makeSpriteSheet({ skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' });
   spawnEnemy(yornaPos.x + 44, yornaPos.y + 34, 'featured', {
-    name: 'Gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/Gorg/Gorg.mp4', sheet: gorgSheet,
+    name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/Gorg/Gorg.mp4', sheet: gorgSheet,
   });
 
   // Castle with boss Vast
@@ -65,7 +65,7 @@ export function loadLevel1() {
   add(gapX, cyw, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
   // Boss Vast inside
   spawnEnemy(cxw + cw/2 - 6, cyw + ch/2 - 8, 'boss', {
-    name: 'Vast', portrait: 'assets/portraits/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
+    name: 'Vast', vnId: 'enemy:vast', portrait: 'assets/portraits/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
   });
 
   // NPCs
@@ -161,7 +161,7 @@ export function loadLevel2() {
   const cx = rx + rw/2 - 6;
   const cy = ry + rh/2 - 8;
   spawnEnemy(cx, cy, 'boss', {
-    name: 'Nethra',
+    name: 'Nethra', vnId: 'enemy:nethra',
     portrait: 'assets/portraits/Nethra/Nethra.mp4',
     portraitPowered: 'assets/portraits/Nethra/Nethra powered.mp4',
     portraitDefeated: 'assets/portraits/Nethra/Nethra defeated.mp4',
@@ -193,7 +193,7 @@ export function loadLevel2() {
     ry - TILE * 4,
     'featured',
     {
-      name: 'Aarg',
+      name: 'Aarg', vnId: 'enemy:aarg',
       sheet: aargSheet,
       sheetPalette: aargPalette,
       portrait: 'assets/portraits/Aarg/Aarg.mp4',
@@ -269,7 +269,7 @@ export function loadLevel3() {
     dress: false,
   };
   const wightSheet = makeSpriteSheet(wightPalette);
-  spawnEnemy(wx, wy, 'featured', { name: 'Wight', portrait: 'assets/portraits/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, sheetPalette: wightPalette, hp: 16, dmg: 6 });
+  spawnEnemy(wx, wy, 'featured', { name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', sheet: wightSheet, sheetPalette: wightPalette, hp: 16, dmg: 6 });
 
   // Boss arena (island with gate requiring Reed Key)
   const rw = TILE * 12, rh = TILE * 8, t = 8; const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260)); const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 160));
@@ -293,7 +293,7 @@ export function loadLevel3() {
     outline: '#000000',
   });
   spawnEnemy(cx, cy, 'boss', {
-    name: 'Luula',
+    name: 'Luula', vnId: 'enemy:luula',
     vnOnSight: { text: introTexts.luula },
     sheet: luulaSheet,
     portrait: 'assets/portraits/Luula/Luula.mp4',
@@ -359,7 +359,7 @@ export function loadLevel4() {
   };
   const blurbSheet = makeSpriteSheet(blurbPalette);
   spawnEnemy(blurbX, blurbY, 'featured', {
-    name: 'Blurb', sheet: blurbSheet,
+    name: 'Blurb', vnId: 'enemy:blurb', sheet: blurbSheet,
     portrait: 'assets/portraits/Blurb/Blurb.mp4',
     vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
     guaranteedDropId: 'key_sigil', hp: 18, dmg: 6,
@@ -387,7 +387,7 @@ export function loadLevel4() {
   const cx = rx + rw/2 - 6; const cy = ry + rh/2 - 8;
   const vaniSheet = makeSpriteSheet({ hair: '#8a3dff', longHair: true, dress: true, dressColor: '#2a123a', shirt: '#4a2a6b', outline: '#000000' });
   spawnEnemy(cx, cy, 'boss', {
-    name: 'Vanificia', sheet: vaniSheet,
+    name: 'Vanificia', vnId: 'enemy:vanificia', sheet: vaniSheet,
     vnOnSight: { text: (introTexts && introTexts.vanificia) || 'Vanificia: You trespass in Urathar\'s city. Kneel, or be unmade.' },
     portrait: 'assets/portraits/Vanificia/Vanificia.mp4',
     portraitPowered: 'assets/portraits/Vanificia/Vanificia powered.mp4',
@@ -525,7 +525,7 @@ export function loadLevel5() {
   // Place Fana outside the arena near the approach (keep off hazards)
   const kgx = (gateTile.x - 10) * TILE, kgy = (gateTile.y + 8) * TILE;
   spawnEnemy(kgx, kgy, 'featured', {
-    name: 'Fana',
+    name: 'Fana', vnId: 'enemy:fana',
     portrait: 'assets/portraits/Fana/Fana villain.mp4',
     vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: Aurelion… I remember light, not chains.', lock: true, preDelaySec: 0.8 },
     guaranteedDropId: 'key_temple',
@@ -540,7 +540,7 @@ export function loadLevel5() {
   // Boss Vorthak inside the arena based on map tile coordinates
   const cx = 137 * TILE - 8; const cy = 72 * TILE - 12;
   spawnEnemy(cx, cy, 'boss', {
-    name: 'Vorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
+    name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32, hp: 80, dmg: 12,
     // Boss portraits for VN overlays
     portrait: 'assets/portraits/Vorthak/Vorthak.mp4',
     portraitPowered: 'assets/portraits/Vorthak/Vorthak powered.mp4',

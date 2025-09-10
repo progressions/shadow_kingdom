@@ -109,6 +109,8 @@ export function step(dt) {
   if (runtime.gameState === 'chat') return;
   // Advance chemistry timers
   runtime._timeSec = (runtime._timeSec || 0) + dt;
+  // Decay VN intro cooldown so flagged actors don't retrigger back-to-back
+  if ((runtime.introCooldown || 0) > 0) runtime.introCooldown = Math.max(0, (runtime.introCooldown || 0) - dt);
   // Track recent low-HP window (3s) for certain pair ticks
   try {
     const below = player.hp < (player.maxHp || 10) * 0.5;
@@ -848,13 +850,13 @@ export function step(dt) {
 
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
   // then show a simple VN once when first seen
-  if (runtime.gameState === 'play') {
+  if (runtime.gameState === 'play' && (runtime.introCooldown || 0) <= 0) {
     const actors = [...npcs, ...enemies];
     for (const a of actors) {
       if (!a || !a.vnOnSight || a._vnShown) continue;
       // Skip if we've seen this intro before in this session/save
       const type = (typeof a.touchDamage === 'number') ? 'enemy' : 'npc';
-      const key = `${type}:${(a.name || '').toLowerCase()}`;
+      const key = a.vnId || `${type}:${(a.name || '').toLowerCase()}`;
       if (runtime.vnSeen && runtime.vnSeen[key]) { a._vnShown = true; continue; }
       const inView = (
         a.x + a.w > camera.x && a.x < camera.x + camera.w &&
@@ -863,6 +865,8 @@ export function step(dt) {
       if (!inView) continue;
       a._vnShown = true;
       if (runtime.vnSeen) runtime.vnSeen[key] = true;
+      // Start a short cooldown to prevent immediate follow-ups
+      runtime.introCooldown = Math.max(runtime.introCooldown || 0, 0.8);
       // Schedule a short camera pan to the actor
       const toX = Math.round(a.x + a.w/2 - camera.w/2);
       const toY = Math.round(a.y + a.h/2 - camera.h/2);

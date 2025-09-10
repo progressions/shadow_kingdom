@@ -68,3 +68,6 @@ try {
   window.gotoLevel1 = () => { runtime.pendingLevel = 1; };
   window.gotoLevel6 = () => { runtime.pendingLevel = 6; };
 } catch {}
+
+// Load lightweight debug tests (exposes window.testOpenedChestPersistence, window.testVnIntroCooldown)
+try { import('./dev/light_tests.js').catch(()=>{}); } catch {}

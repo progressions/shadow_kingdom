@@ -124,6 +124,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     portraitDefeated: opts.portraitDefeated || null,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
+    // Stable VN identity key (e.g., 'enemy:gorg') for persistence
+    vnId: opts.vnId || null,
     // Optional guaranteed drop item id (e.g., 'key_bronze')
     guaranteedDropId: opts.guaranteedDropId || null,
     // Optional next level to transition after boss defeat
@@ -271,6 +273,8 @@ export const runtime = {
   cameraPan: null, // { fromX, fromY, toX, toY, t, dur }
   pendingIntro: null, // { actor, text }
   vnSeen: {}, // map of intro keys that have been shown
+  // Cooldown preventing back-to-back VN intros (seconds)
+  introCooldown: 0,
   
   // Aggregated companion buffs (recomputed each frame)
   combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, aspd: 0 },
@@ -285,6 +289,8 @@ export const runtime = {
   musicModeSwitchTimer: 0,
   // Persistence for removed breakables (ids)
   brokenBreakables: {},
+  // Persistence for opened chests (ids)
+  openedChests: {},
   // Level/scene management
   currentLevel: 1,
   pendingLevel: null,

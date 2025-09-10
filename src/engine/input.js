@@ -30,7 +30,12 @@ export function initInput() {
       // Pause game and music
       runtime.paused = true;
       stopMusic();
-      startPrompt(null, 'Paused', [ { label: 'Resume', action: 'end' } ]);
+      startPrompt(null, 'Paused', [
+        { label: 'Resume', action: 'end' },
+        { label: 'Save/Load', action: 'open_save_menu' },
+        { label: 'Inventory', action: 'open_inventory' },
+        { label: 'Debug', action: 'open_debug' },
+      ]);
       e.preventDefault();
       return;
     }

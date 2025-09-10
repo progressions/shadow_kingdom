@@ -106,6 +106,7 @@ function serializePayload() {
     enemies: enemies.filter(e => e.hp > 0).map(e => ({
       x: e.x, y: e.y, dir: e.dir, kind: e.kind || 'mook',
       name: e.name || null,
+      vnId: e.vnId || vnIdForEnemy(e) || null,
       // Combat state
       hp: e.hp,
       maxHp: e.maxHp,
@@ -130,13 +131,54 @@ function serializePayload() {
     world: { w: world.w, h: world.h },
     unlockedGates: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'gate' && o.locked === false && o.id).map(o => o.id) : []),
     groundItems: (Array.isArray(itemsOnGround) ? itemsOnGround.map(g => ({ id: g.id, x: g.x, y: g.y, item: g.item })) : []),
-    openedChests: (Array.isArray(obstacles) ? obstacles.filter(o => o.type === 'chest' && o.opened && o.id).map(o => o.id) : []),
+    // Persist opened chests via union of currently-opened obstacle chests and runtime map
+    openedChests: (() => {
+      const fromObs = Array.isArray(obstacles)
+        ? obstacles.filter(o => o.type === 'chest' && o.opened && o.id).map(o => o.id)
+        : [];
+      const fromRt = Object.keys(runtime?.openedChests || {});
+      // Deduplicate while preserving stable order (runtime first to prefer persisted state)
+      const set = new Set([...fromRt, ...fromObs]);
+      return Array.from(set);
+    })(),
     brokenBreakables: Object.keys(runtime?.brokenBreakables || {}),
     vnSeen: Object.keys(runtime?.vnSeen || {}),
     affinityFlags: Object.keys(runtime?.affinityFlags || {}),
     questFlags: Object.keys(runtime?.questFlags || {}),
     questCounters: Object.assign({}, runtime?.questCounters || {}),
   };
+}
+
+function vnIdForEnemy(e) {
+  // Prefer explicit id if present
+  if (e && typeof e.vnId === 'string' && e.vnId) return e.vnId;
+  // Map by guaranteed drop (featured key guardians)
+  const mapByDrop = {
+    'key_bronze': 'enemy:gorg',
+    'key_nethra': 'enemy:aarg',
+    'key_reed': 'enemy:wight',
+    'key_sigil': 'enemy:blurb',
+    'key_temple': 'enemy:fana',
+  };
+  const byDrop = mapByDrop[(e?.guaranteedDropId || '').toLowerCase()];
+  if (byDrop) return byDrop;
+  // Backward-compat fallback by name (kept only for old saves)
+  const nm = (e?.name || '').toLowerCase();
+  if (!nm) return null;
+  const byName = (
+    nm.includes('gorg') ? 'enemy:gorg'
+    : nm.includes('aarg') ? 'enemy:aarg'
+    : nm.includes('wight') ? 'enemy:wight'
+    : nm.includes('blurb') ? 'enemy:blurb'
+    : nm.includes('fana') ? 'enemy:fana'
+    : nm.includes('vast') ? 'enemy:vast'
+    : nm.includes('nethra') ? 'enemy:nethra'
+    : nm.includes('luula') ? 'enemy:luula'
+    : nm.includes('vanificia') ? 'enemy:vanificia'
+    : nm.includes('vorthak') ? 'enemy:vorthak'
+    : null
+  );
+  return byName;
 }
 
 function deserializePayload(data) {
@@ -158,6 +200,11 @@ function deserializePayload(data) {
   runtime.vnSeen = {};
   if (Array.isArray(data.vnSeen)) {
     for (const k of data.vnSeen) runtime.vnSeen[k] = true;
+  }
+  // Restore opened chest ids map (for persistence even if chests are removed at runtime)
+  runtime.openedChests = {};
+  if (Array.isArray(data.openedChests)) {
+    for (const id of data.openedChests) if (id) runtime.openedChests[id] = true;
   }
   // Restore affinity flags
   runtime.affinityFlags = {};
@@ -218,8 +265,39 @@ function deserializePayload(data) {
         _secondPhase: !!e._secondPhase,
         sheetPalette: e.sheetPalette || null,
         spriteScale: (typeof e.spriteScale === 'number') ? e.spriteScale : 1,
+        // Stable VN identity id for persistence
+        vnId: (typeof e.vnId === 'string' && e.vnId) ? e.vnId : vnIdForEnemy(e),
+        // vnOnSight is not persisted in saves; reattach by id below if not seen
+        vnOnSight: null,
       });
     }
+    // Reattach VN-on-sight text for known enemies (featured/boss) using vnId when loading, if not already seen
+    import('../data/intro_texts.js').then(mod => {
+      try {
+        const t = mod.introTexts || {};
+        for (const e of enemies) {
+          if (!e || e._vnShown || e.vnOnSight) continue;
+          const key = e.vnId || vnIdForEnemy(e);
+          if (!key) continue;
+          if (runtime.vnSeen && runtime.vnSeen[key]) { e._vnShown = true; continue; }
+          const id = String(key).replace(/^enemy:/,'');
+          const text = (
+            id === 'gorg' ? t.gorg
+            : id === 'aarg' ? t.aarg
+            : id === 'wight' ? t.wight
+            : id === 'blurb' ? t.blurb
+            : id === 'fana' ? (t.fana_enslaved || t.fana)
+            : id === 'nethra' ? t.nethra
+            : id === 'luula' ? t.luula
+            : id === 'vanificia' ? t.vanificia
+            : id === 'vorthak' ? t.vorthak
+            : id === 'vast' ? t.vast
+            : null
+          );
+          if (text) e.vnOnSight = { text };
+        }
+      } catch {}
+    }).catch(()=>{});
     // Attach class sheets lazily after module loads
     import('./sprites.js').then(mod => {
       for (const e of enemies) {
@@ -309,12 +387,13 @@ function deserializePayload(data) {
       if (o.type === 'gate' && o.id && data.unlockedGates.includes(o.id)) o.locked = false;
     }
   }
-  // Restore opened chests
-  if (Array.isArray(data.openedChests)) {
+  // Restore opened chests onto any placed chest obstacles by id
+  try {
     for (const o of obstacles) {
-      if (o.type === 'chest' && o.id && data.openedChests.includes(o.id)) o.opened = true;
+      if (!o || o.type !== 'chest' || !o.id) continue;
+      if (runtime.openedChests && runtime.openedChests[o.id]) o.opened = true;
     }
-  }
+  } catch {}
   // Remove broken breakables by id
   if (Array.isArray(data.brokenBreakables)) {
     for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -336,7 +415,7 @@ function deserializePayload(data) {
   // Apply VN seen flags to current actors
   const markSeen = (ent) => {
     const type = (typeof ent.touchDamage === 'number') ? 'enemy' : 'npc';
-    const key = `${type}:${(ent.name || '').toLowerCase()}`;
+    const key = ent.vnId || `${type}:${(ent.name || '').toLowerCase()}`;
     if (runtime.vnSeen && runtime.vnSeen[key]) ent._vnShown = true;
   };
   for (const e of enemies) markSeen(e);
