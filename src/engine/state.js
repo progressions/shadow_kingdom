@@ -307,6 +307,7 @@ export const runtime = {
   _timeSec: 0,
   _lowHpTimer: 0,
   _recentKillTimes: [],
+  _loadedAt: 0,
   // Rendering guard during level swap+restore to avoid showing default spawns
   _suspendRenderUntilRestore: false,
 

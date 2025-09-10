@@ -441,6 +441,7 @@ export function loadDataPayload(data) {
       return;
     }
     deserializePayload(data);
+    try { runtime._loadedAt = performance.now ? performance.now() : Date.now(); } catch { runtime._loadedAt = Date.now(); }
     showBanner(API_URL ? 'Game loaded (remote)' : 'Game loaded');
   } catch (e) {
     console.error('Load route failed', e);
@@ -455,6 +456,7 @@ export function applyPendingRestore() {
   try {
     runtime._pendingRestore = null;
     deserializePayload(data);
+    try { runtime._loadedAt = performance.now ? performance.now() : Date.now(); } catch { runtime._loadedAt = Date.now(); }
     showBanner(API_URL ? 'Game loaded (remote)' : 'Game loaded');
     runtime._suspendRenderUntilRestore = false;
   } catch (e) {

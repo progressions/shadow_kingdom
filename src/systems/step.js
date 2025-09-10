@@ -679,6 +679,14 @@ export function step(dt) {
           spawnStain(e.x, e.y, { life: 2.8 });
         }
       } catch { /* fall back to spawning if needed */ }
+      // Debug: log removals shortly after load to diagnose unexpected despawns
+      try {
+        const now = (performance && performance.now) ? performance.now() : Date.now();
+        const since = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
+        if (since <= 2.0 && (window && window.DEBUG_LOG_ENEMY_REMOVALS)) {
+          console.log('[ENEMY REMOVED]', { name: e.name, kind: e.kind, x: e.x, y: e.y, hp: e.hp, burnDps: e._burnDps, sinceLoadSec: since.toFixed(2) });
+        }
+      } catch {}
       enemies.splice(i, 1);
       // Record kill time for chemistry rare ticks
       try {
