@@ -30,6 +30,7 @@ export function buildTerrainBitmap(world, theme = 'default') {
       let waterColor = '#1b3566';
       if (theme === 'desert') { baseColor = '#c2b280'; dirtColor = '#a6906a'; waterColor = '#6fa3c9'; }
       if (theme === 'marsh') { baseColor = '#3b4a3a'; dirtColor = '#5a5b45'; waterColor = '#2a4f6d'; }
+      if (theme === 'city')   { baseColor = '#3b3b3f'; dirtColor = '#57575e'; waterColor = '#2a4f6d'; }
       let color = baseColor;
       if (tt === 'water') color = waterColor; else if (tt === 'dirt') color = dirtColor;
       const n3 = noise2D(tx * 1.7, ty * 1.3, 99);
@@ -46,6 +47,14 @@ export function buildTerrainBitmap(world, theme = 'default') {
         if (n3 > 0.6 && tt !== 'water') {
           // reed/pebble specks
           g.fillStyle = '#6da86d';
+          const px = (tx * TILE) + (n1 * TILE) | 0;
+          const py = (ty * TILE) + (n2 * TILE) | 0;
+          g.fillRect(px, py, 1, 1);
+        }
+      } else if (theme === 'city') {
+        // cracked stone speckles
+        if (n3 > 0.55 && tt !== 'water') {
+          g.fillStyle = '#2a2a2e';
           const px = (tx * TILE) + (n1 * TILE) | 0;
           const py = (ty * TILE) + (n2 * TILE) | 0;
           g.fillRect(px, py, 1, 1);
@@ -112,6 +121,11 @@ export function buildObstacles(world, player, enemies, npcs, theme = 'default') 
       } else if (theme === 'marsh') {
         if (r > 0.97) type = 'reed';
         else if (r > 0.94) type = 'log';
+      } else if (theme === 'city') {
+        // Increase ruin density; occasional debris
+        if (r > 0.90) type = 'ruin';
+        else if (r > 0.87) type = 'crate';
+        else if (r > 0.84) type = 'barrel';
       } else {
         if (r > 0.97) type = 'tree'; else if (r > 0.94) type = 'rock';
       }

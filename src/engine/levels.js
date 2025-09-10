@@ -252,8 +252,8 @@ export function loadLevel4() {
 
   // Build ruined city terrain and obstacles
   // Use default theme (greens/stone) and procedural obstacles; arena walls form the city plaza
-  const terrain = buildTerrainBitmap(world, 'default');
-  obstacles.push(...buildObstacles(world, player, enemies, npcs, 'default'));
+  const terrain = buildTerrainBitmap(world, 'city');
+  obstacles.push(...buildObstacles(world, player, enemies, npcs, 'city'));
   // City hazards: scattered fire tiles
   obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 8), w: TILE * 3, h: TILE * 2, type: 'fire' });
 
