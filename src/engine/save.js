@@ -4,6 +4,7 @@ import { spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { sheetForName, makeSpriteSheet } from './sprites.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
+import { serializeV2, loadDataPayloadV2 } from './save_v2.js';
 
 function getLocalKey(slot = 1) {
   if (slot === 'auto' || slot === 0) return 'shadow_kingdom_autosave';
@@ -102,17 +103,9 @@ export async function getSaveMeta(slot = 1) {
 }
 
 export function saveGame(slot = 1) {
-  if (API_URL) {
-    // remote save
-    const payload = serializePayload();
-    remote('POST', `/api/save?slot=${encodeURIComponent(slot)}` , { payload })
-      .then(()=>showBanner('Game saved (remote)'))
-      .catch((e)=>{ console.error('Remote save failed', e); showBanner('Remote save failed'); });
-    return;
-  }
   try {
-    const data = serializePayload();
-    localStorage.setItem(getLocalKey(slot), JSON.stringify(data));
+    const payload = serializeV2();
+    localStorage.setItem(getLocalKey(slot), JSON.stringify(payload));
     showBanner('Game saved');
   } catch (e) {
     console.error('Save failed', e);
@@ -121,17 +114,11 @@ export function saveGame(slot = 1) {
 }
 
 export function loadGame(slot = 1) {
-  if (API_URL) {
-    remote('GET', `/api/save?slot=${encodeURIComponent(slot)}`)
-      .then(json=>loadDataPayload(json.payload))
-      .catch((e)=>{ console.error('Remote load failed', e); showBanner('Remote load failed'); });
-    return;
-  }
   try {
     const raw = localStorage.getItem(getLocalKey(slot));
     if (!raw) { showBanner('No save found'); return; }
     const data = JSON.parse(raw);
-    loadDataPayload(data);
+    loadDataPayloadV2(data);
   } catch (e) {
     console.error('Load failed', e);
     showBanner('Load failed');

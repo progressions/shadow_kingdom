@@ -11,7 +11,7 @@ import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor } from './engine/ui.js';
-import { applyPendingRestore } from './engine/save.js';
+import { applyPendingRestoreV2 } from './engine/save_v2.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
 
 // Initial level: use loader registry (Level 1 by default)
@@ -49,8 +49,8 @@ function loop(now) {
       camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(player.y + player.h/2 - camera.h/2)));
       runtime.currentLevel = lvl;
       runtime.pendingLevel = null;
-      // If a load is waiting to be applied, do it now that the level is loaded
-      try { applyPendingRestore(); } catch {}
+      // If a v2 load is waiting, apply it now that the level is loaded
+      try { applyPendingRestoreV2(); } catch {}
     };
     // Ensure any VN overlay is closed before transitioning
     if (runtime.gameState === 'chat') { try { exitChat(runtime); } catch {} }
