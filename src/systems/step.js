@@ -651,7 +651,7 @@ export function step(dt) {
             import('../data/dialogs.js'),
           ]).then(([sm, st, dm, dd]) => {
             const sheet = (sm.sheetForName ? sm.sheetForName('Fana') : null);
-            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/level05/Fana/Fana.mp4', affinity: 6 });
+            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', dialogId: 'fana_freed', sheet, portrait: 'assets/portraits/level05/Fana/Fana.mp4', affinity: 6 });
             if (dd.fanaFreedDialog) dm.setNpcDialog(npc, dd.fanaFreedDialog);
             else if (dd.fanaDialog) dm.setNpcDialog(npc, dd.fanaDialog);
           }).catch(()=>{});

@@ -242,6 +242,7 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     portraitSrc: opts.portrait || null,
     portrait: null,
     dialog: null,
+    dialogId: opts.dialogId || null,
     sheet: opts.sheet || null,
     sheetPalette: opts.sheetPalette || null,
     // Minimal VN intro flag: if present, a simple VN appears once when first seen

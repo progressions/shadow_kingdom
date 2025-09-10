@@ -75,9 +75,9 @@ export function loadLevel1() {
   const canopySheet = makeSpriteSheet(canopyPalette);
   const yornaSheet = makeSpriteSheet(yornaPalette);
   const holaSheet = makeSpriteSheet(holaPalette);
-  const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4', sheet: canopySheet, sheetPalette: canopyPalette, vnOnSight: { text: introTexts.canopy } });
-  const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
-  const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
+  const canopy = spawnNpc(canopyPos.x, canopyPos.y, 'left', { name: 'Canopy', dialogId: 'canopy', portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4', sheet: canopySheet, sheetPalette: canopyPalette, vnOnSight: { text: introTexts.canopy } });
+  const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', dialogId: 'yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
+  const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', dialogId: 'hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
   setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
 
   return terrain;
@@ -221,8 +221,8 @@ export function loadLevel2() {
   const oyinY = Math.max(0, Math.min(world.h - 16, player.y - off)); // upper-left quadrant
   const twilX = Math.max(0, Math.min(world.w - 12, player.x - off));
   const twilY = Math.max(0, Math.min(world.h - 16, player.y + off)); // lower-left quadrant
-  const oyin = spawnNpc(oyinX, oyinY, 'right', { name: 'Oyin', sheet: oyinSheet, sheetPalette: oyinPalette, portrait: 'assets/portraits/level02/Oyin/Oyin.mp4', vnOnSight: { text: introTexts.oyin } });
-  const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/level02/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
+  const oyin = spawnNpc(oyinX, oyinY, 'right', { name: 'Oyin', dialogId: 'oyin', sheet: oyinSheet, sheetPalette: oyinPalette, portrait: 'assets/portraits/level02/Oyin/Oyin.mp4', vnOnSight: { text: introTexts.oyin } });
+  const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', dialogId: 'twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/level02/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
   // Attach basic recruit dialogs
   import('../data/dialogs.js').then(mod => { setNpcDialog(oyin, mod.oyinDialog); setNpcDialog(twil, mod.twilDialog); }).catch(()=>{});
 
@@ -317,8 +317,8 @@ export function loadLevel3() {
   const nellisPalette = { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
   const tinSheet = makeSpriteSheet(tinPalette);
   const nellisSheet = makeSpriteSheet(nellisPalette);
-  const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/level03/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
-  const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
+  const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', dialogId: 'tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/level03/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
+  const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', dialogId: 'nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
   import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
 
   return terrain;

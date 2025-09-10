@@ -1,5 +1,5 @@
 // Save System v2 — deterministic deltas + unique actor status
-import { player, companions, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion } from './state.js';
+import { player, companions, npcs, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion, spawnNpc } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { makeSpriteSheet, sheetForName } from './sprites.js';
 import { descriptorForLevel } from './level_descriptors.js';
@@ -61,6 +61,7 @@ export function serializeV2() {
     currentLevel: runtime.currentLevel || 1,
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
     companions: companions.map(c => serializeCompanionEntity(c)),
+    npcs: npcs.map(n => serializeNpcEntity(n)),
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
     gateStates: gatherGateStates(),
@@ -190,6 +191,73 @@ function spawnCompanionFromRecord(d) {
   if (typeof d.animFrame === 'number') comp.animFrame = d.animFrame;
   if (d.inventory) comp.inventory = d.inventory;
 }
+function serializeNpcEntity(n) {
+  return {
+    name: n.name || 'NPC',
+    dialogId: n.dialogId || null,
+    x: n.x, y: n.y,
+    w: n.w || 12, h: n.h || 16,
+    speed: (typeof n.speed === 'number') ? n.speed : 100,
+    dir: n.dir || 'down',
+    moving: !!n.moving,
+    animTime: n.animTime || 0,
+    animFrame: n.animFrame || 0,
+    portrait: n.portraitSrc || null,
+    sheetPalette: n.sheetPalette || null,
+    affinity: (typeof n.affinity === 'number') ? n.affinity : 5,
+  };
+}
+
+function attachDialogById(npc, id) {
+  const key = String(id || '').toLowerCase();
+  if (!key) return;
+  if (key === 'canopy') npc.dialog = canopyDialog;
+  else if (key === 'yorna') npc.dialog = yornaDialog;
+  else if (key === 'hola') npc.dialog = holaDialog;
+  else {
+    import('../data/dialogs.js').then(mod => {
+      if (key === 'oyin' && mod.oyinDialog) npc.dialog = mod.oyinDialog;
+      else if (key === 'twil' && mod.twilDialog) npc.dialog = mod.twilDialog;
+      else if (key === 'tin' && mod.tinDialog) npc.dialog = mod.tinDialog;
+      else if (key === 'nellis' && mod.nellisDialog) npc.dialog = mod.nellisDialog;
+      else if (key === 'urn' && mod.urnDialog) npc.dialog = mod.urnDialog;
+      else if (key === 'varabella' && mod.varabellaDialog) npc.dialog = mod.varabellaDialog;
+      else if (key === 'villager' && mod.villagerDialog) npc.dialog = mod.villagerDialog;
+      else if (key === 'fana_freed' && mod.fanaFreedDialog) npc.dialog = mod.fanaFreedDialog;
+    }).catch(()=>{});
+  }
+}
+
+function attachOnSightById(npc, id) {
+  const key = String(id || '').toLowerCase();
+  const seenKey = `npc:${key}`;
+  if (runtime.vnSeen && runtime.vnSeen[seenKey]) return;
+  const t = introTexts || {};
+  const text = t[key];
+  if (text && !npc.vnOnSight) npc.vnOnSight = { text };
+}
+
+function spawnNpcFromRecord(d) {
+  const sheet = d.sheetPalette ? makeSpriteSheet(d.sheetPalette) : sheetForName(d.name);
+  const npc = spawnNpc(d.x, d.y, d.dir || 'down', {
+    name: d.name,
+    sheet,
+    portrait: d.portrait || null,
+    sheetPalette: d.sheetPalette || null,
+    affinity: (typeof d.affinity === 'number') ? d.affinity : 5,
+    dialogId: d.dialogId || null,
+  });
+  npc.dialogId = d.dialogId || npc.dialogId || null;
+  if (typeof d.w === 'number') npc.w = d.w;
+  if (typeof d.h === 'number') npc.h = d.h;
+  if (typeof d.speed === 'number') npc.speed = d.speed;
+  if (typeof d.moving === 'boolean') npc.moving = d.moving;
+  if (typeof d.animTime === 'number') npc.animTime = d.animTime;
+  if (typeof d.animFrame === 'number') npc.animFrame = d.animFrame;
+  // Attach by id if available; then intro by id
+  if (npc.dialogId) attachDialogById(npc, npc.dialogId);
+  if (npc.dialogId) attachOnSightById(npc, npc.dialogId);
+}
 
 export function applyPendingRestoreV2() {
   const data = runtime._pendingRestoreV2;
@@ -213,6 +281,11 @@ export function applyPendingRestoreV2() {
     if (Array.isArray(data.companions)) {
       for (const c of data.companions) { try { spawnCompanionFromRecord(c); } catch {} }
       updatePartyUI(companions);
+    }
+    // NPCs
+    npcs.length = 0;
+    if (Array.isArray(data.npcs)) {
+      for (const n of data.npcs) { try { spawnNpcFromRecord(n); } catch {} }
     }
     // World deltas
     applyGateStates(data);
