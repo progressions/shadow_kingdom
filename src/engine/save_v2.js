@@ -1,15 +1,13 @@
 // Save System v2 — deterministic deltas + unique actor status
-import { player, companions, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion, spawnNpc } from './state.js';
+import { player, companions, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { makeSpriteSheet, sheetForName } from './sprites.js';
+import { descriptorForLevel } from './level_descriptors.js';
 
-const UNIQUE_VNIDS = new Set([
-  'enemy:vast', 'enemy:gorg',
-  'enemy:aarg', 'enemy:nethra',
-  'enemy:wight', 'enemy:luula',
-  'enemy:blurb', 'enemy:vanificia',
-  'enemy:fana', 'enemy:vorthak',
-]);
+function uniqueSetForLevel(level) {
+  const d = descriptorForLevel(level);
+  return new Set(d.uniqueActors || []);
+}
 
 function gatherGateStates() {
   const states = {};
@@ -23,10 +21,12 @@ function gatherGateStates() {
 export function serializeV2() {
   // Unique actors: record by vnId (or name fallback)
   const uniqueActors = {};
+  const level = runtime.currentLevel || 1;
+  const uniques = uniqueSetForLevel(level);
   for (const e of enemies) {
     if (!e) continue;
     const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
-    if (!key || !UNIQUE_VNIDS.has(key)) continue;
+    if (!key || !uniques.has(key)) continue;
     if (e.hp > 0) {
       uniqueActors[key] = { state: 'alive', hp: e.hp };
     } else {
@@ -34,7 +34,7 @@ export function serializeV2() {
     }
   }
   // Ensure keys exist for current level's known uniques if absent
-  for (const k of UNIQUE_VNIDS) { if (!uniqueActors[k]) uniqueActors[k] = { state: 'unspawned' }; }
+  for (const k of uniques) { if (!uniqueActors[k]) uniqueActors[k] = { state: 'unspawned' }; }
 
   return {
     schema: 'v2',
@@ -106,15 +106,11 @@ export function applyPendingRestoreV2() {
     try { itemsOnGround.length=0; (data.groundItems||[]).forEach(g=>itemsOnGround.push({ id:g.id, x:g.x, y:g.y, w:10, h:10, item:g.item })); } catch {}
     // Unique actors: remove or keep defaults based on state; adjust hp if provided
     const ua = data.uniqueActors || {};
-    const byKey = (vnId, name) => enemies.find(e => e && ((e.vnId && e.vnId===vnId) || ((name && e.name) && e.name.toLowerCase()===name.toLowerCase())));
-    const pairs = [
-      ['enemy:vast','vast'], ['enemy:gorg','gorg'], ['enemy:aarg','aarg'], ['enemy:nethra','nethra'],
-      ['enemy:wight','wight'], ['enemy:luula','luula'], ['enemy:blurb','blurb'], ['enemy:vanificia','vanificia'],
-      ['enemy:fana','fana'], ['enemy:vorthak','vorthak'],
-    ];
-    for (const [vn, nm] of pairs) {
+    const byKey = (vnId) => enemies.find(e => e && e.vnId && e.vnId === vnId);
+    const uniques = descriptorForLevel(runtime.currentLevel || 1).uniqueActors || [];
+    for (const vn of uniques) {
       const st = ua[vn]; if (!st) continue;
-      const ent = byKey(vn, nm);
+      const ent = byKey(vn);
       if (!ent) continue;
       if (st.state === 'defeated' || st.state === 'unspawned') {
         const idx = enemies.indexOf(ent); if (idx !== -1) enemies.splice(idx,1);
