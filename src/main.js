@@ -36,6 +36,8 @@ function loop(now) {
   last = now;
   step(dt);
   try { updateQuestHint(); } catch {}
+  // Avoid rendering default level spawns between a level swap and save restore
+  if (runtime._suspendRenderUntilRestore) { requestAnimationFrame(loop); return; }
   // Handle pending level transitions after VN closes (runtime set in step.js)
   if (typeof runtime.pendingLevel === 'number' && runtime.pendingLevel > 0) {
     const lvl = runtime.pendingLevel;

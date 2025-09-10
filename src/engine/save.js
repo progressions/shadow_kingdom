@@ -429,6 +429,7 @@ export function loadDataPayload(data) {
     if (target !== (runtime.currentLevel || 1)) {
       runtime._pendingRestore = data;
       runtime.pendingLevel = target;
+      runtime._suspendRenderUntilRestore = true;
       showBanner(`Loading… switching to Level ${target}`);
       return;
     }
@@ -448,8 +449,10 @@ export function applyPendingRestore() {
     runtime._pendingRestore = null;
     deserializePayload(data);
     showBanner(API_URL ? 'Game loaded (remote)' : 'Game loaded');
+    runtime._suspendRenderUntilRestore = false;
   } catch (e) {
     console.error('Apply pending restore failed', e);
     showBanner('Load failed');
+    runtime._suspendRenderUntilRestore = false;
   }
 }

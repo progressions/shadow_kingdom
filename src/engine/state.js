@@ -307,7 +307,9 @@ export const runtime = {
   _timeSec: 0,
   _lowHpTimer: 0,
   _recentKillTimes: [],
-  
+  // Rendering guard during level swap+restore to avoid showing default spawns
+  _suspendRenderUntilRestore: false,
+
 };
 
 // ---- Leveling helpers ----
