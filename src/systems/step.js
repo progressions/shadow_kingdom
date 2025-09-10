@@ -411,8 +411,10 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
-      // Boss multi-phase behavior: power up twice (3 total phases)
-      if ((e.kind || '').toLowerCase() === 'boss' && !e._secondPhase) {
+      // Boss behavior: default bosses have 2 phases; Vorthak (L5) has 3
+      const isBoss = ((e.kind || '').toLowerCase() === 'boss');
+      const isVorthak = isBoss && ((e.name || '').toLowerCase().includes('vorthak'));
+      if (isBoss && !e._secondPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null };
           const line = `${e.name || 'Boss'}: I call on my master for power!`;
@@ -430,8 +432,8 @@ export function step(dt) {
         e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
         continue; // do not remove this frame
       }
-      // Second power-up -> final form (third phase)
-      if ((e.kind || '').toLowerCase() === 'boss' && e._secondPhase && !e._thirdPhase) {
+      // Vorthak only: second death -> final form (third phase)
+      if (isVorthak && e._secondPhase && !e._thirdPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null) };
           const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
@@ -446,29 +448,33 @@ export function step(dt) {
         e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
         continue;
       }
-      // If boss defeated after final form, show a VN overlay with defeat line and schedule next level when appropriate
-      if ((e.kind || '').toLowerCase() === 'boss' && e._thirdPhase) {
+      // Final defeat: non-Vorthak after second phase, or Vorthak after third
+      if (isBoss && (e._thirdPhase || (!isVorthak && e._secondPhase))) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitDefeated || null };
           const line = `${e.name || 'Boss'}: ...`; // simple defeated line; customize per boss via portraits
           startPrompt(actor, line, []);
         } catch {}
-        // Temple victory flags for post-L5 hub unlock/rescue
+        // Temple victory flags and Ell VN only for Vorthak in Level 5
+        if (isVorthak && (runtime.currentLevel || 1) === 5) {
+          try {
+            if (!runtime.questFlags) runtime.questFlags = {};
+            runtime.questFlags['canopy_sister_rescued'] = true;
+            runtime.questFlags['temple_cleansed'] = true;
+            runtime.questFlags['hub_unlocked'] = true;
+            const ellActor = { name: 'Ell', portraitSrc: 'assets/portraits/Ell/Ell.mp4' };
+            const ellLine = "Ell: Thank you… The light in Aurelion still answers. I can stand.";
+            if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
+            runtime._queuedVNs.push({ actor: ellActor, text: ellLine });
+          } catch {}
+        }
         try {
-          if (!runtime.questFlags) runtime.questFlags = {};
-          runtime.questFlags['canopy_sister_rescued'] = true;
-          runtime.questFlags['temple_cleansed'] = true;
-          runtime.questFlags['hub_unlocked'] = true;
-        } catch {}
-        try {
-          // Queue Ell's brief VN after the boss defeat line, then transition to the hub (or next level)
-          const ellActor = { name: 'Ell', portraitSrc: 'assets/portraits/Ell/Ell.mp4' };
-          const ellLine = "Ell: Thank you… The light in Aurelion still answers. I can stand.";
-          if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
-          runtime._queuedVNs.push({ actor: ellActor, text: ellLine });
-          if (typeof e.onDefeatNextLevel === 'number') runtime._afterQueuePendingLevel = e.onDefeatNextLevel;
           const bonus = completionXpForLevel(runtime.currentLevel || 1);
           grantPartyXp(bonus);
+          if (typeof e.onDefeatNextLevel === 'number') {
+            if (Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0) runtime._afterQueuePendingLevel = e.onDefeatNextLevel;
+            else { runtime.pendingLevel = e.onDefeatNextLevel; runtime._levelSwapTimer = 1.2; }
+          }
         } catch {}
       }
       // Quest tracking: Yorna 'Cut the Knot'; Canopy 'Breath and Bandages'; Twil 'Trace the Footprints'
