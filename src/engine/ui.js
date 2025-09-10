@@ -67,6 +67,19 @@ export function exitChat(runtime) {
     runtime.paused = false;
     try { tryStartMusic('ambient'); } catch {}
   }
+  // If there are queued VN prompts, show the next one immediately instead of panning/transitioning
+  try {
+    if (Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0) {
+      const next = runtime._queuedVNs.shift();
+      if (next && next.text) {
+        import('../engine/dialog.js').then(mod => {
+          const actor = next.actor || null;
+          mod.startPrompt(actor, next.text, []);
+        }).catch(()=>{});
+        return;
+      }
+    }
+  } catch {}
   // Smooth pan back to player after VN exits
   const toX = Math.round(player.x + player.w/2 - camera.w/2);
   const toY = Math.round(player.y + player.h/2 - camera.h/2);
@@ -82,6 +95,13 @@ export function exitChat(runtime) {
   }
   // Stop any portrait video playback after exit
   if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
+  // If there is a pending level change queued until after VN sequence, set it now
+  try {
+    if (typeof runtime._afterQueuePendingLevel === 'number' && runtime._afterQueuePendingLevel > 0) {
+      runtime.pendingLevel = runtime._afterQueuePendingLevel;
+      runtime._afterQueuePendingLevel = null;
+    }
+  } catch {}
 }
 
 export function setupChatInputHandlers(runtime) {

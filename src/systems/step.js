@@ -460,14 +460,16 @@ export function step(dt) {
           runtime.questFlags['temple_cleansed'] = true;
           runtime.questFlags['hub_unlocked'] = true;
         } catch {}
-        if (typeof e.onDefeatNextLevel === 'number') {
-          try {
-            const bonus = completionXpForLevel(runtime.currentLevel || 1);
-            grantPartyXp(bonus);
-            runtime.pendingLevel = e.onDefeatNextLevel;
-            runtime._levelSwapTimer = 1.2;
-          } catch {}
-        }
+        try {
+          // Queue Ell's brief VN after the boss defeat line, then transition to the hub (or next level)
+          const ellActor = { name: 'Ell', portraitSrc: 'assets/portraits/Ell/Ell.mp4' };
+          const ellLine = "Ell: Thank you… The light in Aurelion still answers. I can stand.";
+          if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
+          runtime._queuedVNs.push({ actor: ellActor, text: ellLine });
+          if (typeof e.onDefeatNextLevel === 'number') runtime._afterQueuePendingLevel = e.onDefeatNextLevel;
+          const bonus = completionXpForLevel(runtime.currentLevel || 1);
+          grantPartyXp(bonus);
+        } catch {}
       }
       // Quest tracking: Yorna 'Cut the Knot'; Canopy 'Breath and Bandages'; Twil 'Trace the Footprints'
       try {
