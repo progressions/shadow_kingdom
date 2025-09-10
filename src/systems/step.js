@@ -254,6 +254,8 @@ export function step(dt) {
     // Environmental effects for enemies (mud slow; fire/lava burn)
     let envSlow = 1.0;
     let envBurnDps = 0;
+    const now = (performance && performance.now) ? performance.now() : Date.now();
+    const sinceLoadSec = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
     try {
       const er = { x: e.x, y: e.y, w: e.w, h: e.h };
       for (const o of obstacles) {
@@ -270,7 +272,10 @@ export function step(dt) {
         }
       }
     } catch {}
-    if (envBurnDps > 0) { e._burnDps = envBurnDps; e._burnTimer = Math.max(e._burnTimer || 0, 1.0); }
+    // Post-load hazard grace: avoid instantly killing enemies in hazards on the first second after load
+    if (sinceLoadSec >= 1.0 && envBurnDps > 0) {
+      e._burnDps = envBurnDps; e._burnTimer = Math.max(e._burnTimer || 0, 1.0);
+    }
     if (Math.abs(e.knockbackX) > 0.01 || Math.abs(e.knockbackY) > 0.01) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
@@ -364,7 +369,7 @@ export function step(dt) {
     if (e._burnTimer && e._burnTimer > 0) {
       e._burnTimer = Math.max(0, e._burnTimer - dt);
       const dps = e._burnDps || 0;
-      if (dps > 0) {
+      if (dps > 0 && sinceLoadSec >= 1.0) {
         e.hp -= dps * dt;
         if (Math.random() < 4 * dt) spawnFloatText(e.x + e.w/2, e.y - 10, 'Burn', { color: '#ff9a3d', life: 0.5 });
       }
