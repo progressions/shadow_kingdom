@@ -453,6 +453,13 @@ export function step(dt) {
           const line = `${e.name || 'Boss'}: ...`; // simple defeated line; customize per boss via portraits
           startPrompt(actor, line, []);
         } catch {}
+        // Temple victory flags for post-L5 hub unlock/rescue
+        try {
+          if (!runtime.questFlags) runtime.questFlags = {};
+          runtime.questFlags['canopy_sister_rescued'] = true;
+          runtime.questFlags['temple_cleansed'] = true;
+          runtime.questFlags['hub_unlocked'] = true;
+        } catch {}
         if (typeof e.onDefeatNextLevel === 'number') {
           try {
             const bonus = completionXpForLevel(runtime.currentLevel || 1);

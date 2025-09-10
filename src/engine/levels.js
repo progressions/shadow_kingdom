@@ -432,3 +432,49 @@ export function loadLevel5() {
 
   return terrain;
 }
+
+// Level 6: Temple of Aurelion (Hub — cleaned, no combat)
+export function loadLevel6() {
+  // Keep a compact interior map for the hub for now
+  world.tileW = 60; // ~960 px wide
+  world.tileH = 40; // ~640 px tall
+  try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level6_reached'] = true; } catch {}
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+
+  // Place player near center
+  player.x = Math.floor(world.w * 0.5);
+  player.y = Math.floor(world.h * 0.65);
+  for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
+
+  // Clean marble interior (placeholder until clean map JSON is provided)
+  const terrain = buildTerrainBitmap(world, 'city'); // neutral stone base
+  const t = 8;
+  const rw = TILE * 40, rh = TILE * 24; // main hall
+  const rx = Math.round((world.w - rw) / 2);
+  const ry = Math.round((world.h - rh) / 2);
+  const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' || type==='marble' }, extra));
+  // Perimeter marble walls
+  add(rx, ry, rw, t, 'marble'); // top
+  add(rx, ry + rh - t, rw, t, 'marble'); // bottom
+  add(rx, ry, t, rh, 'marble'); // left
+  add(rx + rw - t, ry, t, rh, 'marble'); // right
+  // Decorative columns
+  const cols = [
+    { x: rx + TILE * 6, y: ry + TILE * 6 }, { x: rx + TILE * 12, y: ry + TILE * 6 },
+    { x: rx + TILE * 28, y: ry + TILE * 6 }, { x: rx + TILE * 34, y: ry + TILE * 6 },
+    { x: rx + TILE * 6, y: ry + TILE * 16 }, { x: rx + TILE * 12, y: ry + TILE * 16 },
+    { x: rx + TILE * 28, y: ry + TILE * 16 }, { x: rx + TILE * 34, y: ry + TILE * 16 },
+  ];
+  for (const c of cols) obstacles.push({ x: c.x, y: c.y, w: 12, h: 12, type: 'column', blocksAttacks: false });
+
+  // Canopy's Sister (placeholder NPC)
+  const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
+  const sisterSheet = makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#fff0c1', shirt: '#ffe39a' });
+  const sister = spawnNpc(sisterX, sisterY, 'down', { name: "Canopy's Sister", sheet: sisterSheet, portrait: 'assets/portraits/CanopySister/CanopySister.mp4', affinity: 6 });
+  import('../data/dialogs.js').then(mod => {
+    // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
+    if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);
+  }).catch(()=>{});
+
+  return terrain;
+}
