@@ -319,6 +319,60 @@ export function loadLevel4() {
   spawnEnemy(cx - 24, cy, 'mook', { hp: 9, dmg: 6 });
   spawnEnemy(cx + 24, cy, 'mook', { hp: 9, dmg: 6 });
 
+  // Authored streets — add long stone walls to form alleys/crossroads
+  // Utilities
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const clearRect = (rect) => {
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i]; if (!o) continue;
+      if (o.type === 'wall' || o.type === 'gate') continue; // keep streets/arena
+      const inter = !(o.x + o.w <= rect.x || o.x >= rect.x + rect.w || o.y + o.h <= rect.y || o.y >= rect.y + rect.h);
+      if (inter) obstacles.splice(i, 1);
+    }
+  };
+  // Street parameters
+  const margin = TILE * 6;
+  const spanY1 = clamp(player.y - TILE * 52, margin, world.h - margin);
+  const spanY2 = clamp(player.y + TILE * 52, margin, world.h - margin);
+  const spanX1 = clamp(player.x - TILE * 60, margin, world.w - margin);
+  const spanX2 = clamp(player.x + TILE * 60, margin, world.w - margin);
+  const gapH = TILE * 3;
+  const gapW2 = TILE * 4;
+  // Vertical walls with gaps (alleys north-south)
+  const v1x = clamp(player.x - TILE * 36, margin, world.w - margin);
+  const v2x = clamp(player.x + TILE * 36, margin, world.w - margin);
+  const v1gapY = clamp(player.y - TILE * 6, spanY1 + gapH, spanY2 - gapH);
+  const v2gapY = clamp(ry + rh / 2, spanY1 + gapH, spanY2 - gapH);
+  // v1 segments
+  add(v1x, spanY1, t, v1gapY - spanY1);
+  add(v1x, v1gapY + gapH, t, spanY2 - (v1gapY + gapH));
+  clearRect({ x: v1x - TILE * 2, y: v1gapY - TILE * 1, w: TILE * 5, h: gapH + TILE * 2 });
+  // v2 segments
+  add(v2x, spanY1, t, v2gapY - spanY1);
+  add(v2x, v2gapY + gapH, t, spanY2 - (v2gapY + gapH));
+  clearRect({ x: v2x - TILE * 2, y: v2gapY - TILE * 1, w: TILE * 5, h: gapH + TILE * 2 });
+  // Horizontal walls with gaps (alleys east-west)
+  const h1y = clamp(player.y - TILE * 28, margin, world.h - margin);
+  const h2y = clamp(player.y + TILE * 28, margin, world.h - margin);
+  const h1gapX = clamp(player.x - TILE * 4, spanX1 + gapW2, spanX2 - gapW2);
+  const h2gapX = clamp(gapX, spanX1 + gapW2, spanX2 - gapW2);
+  // h1 segments
+  add(spanX1, h1y, h1gapX - spanX1, t);
+  add(h1gapX + gapW2, h1y, spanX2 - (h1gapX + gapW2), t);
+  clearRect({ x: h1gapX - TILE * 1, y: h1y - TILE * 2, w: gapW2 + TILE * 2, h: TILE * 5 });
+  // h2 segments (align a corridor towards the arena gate)
+  add(spanX1, h2y, h2gapX - spanX1, t);
+  add(h2gapX + gapW2, h2y, spanX2 - (h2gapX + gapW2), t);
+  clearRect({ x: h2gapX - TILE * 1, y: h2y - TILE * 2, w: gapW2 + TILE * 2, h: TILE * 5 });
+  // Keep a small safe radius around spawn — clear any stray walls too close
+  const spawnSafe = { x: player.x - TILE * 5, y: player.y - TILE * 5, w: TILE * 10, h: TILE * 10 };
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i]; if (!o) continue;
+    if (o.type !== 'wall') continue;
+    const inter = !(o.x + o.w <= spawnSafe.x || o.x >= spawnSafe.x + spawnSafe.w || o.y + o.h <= spawnSafe.y || o.y >= spawnSafe.y + spawnSafe.h);
+    if (inter) obstacles.splice(i, 1);
+  }
+
   // Recruitable NPCs: Urn & Varabella
   const urnSheet = makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' });
   const varaSheet = makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' });
