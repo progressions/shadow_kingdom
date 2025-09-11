@@ -40,15 +40,15 @@ export function loadLevel1() {
 
   // Initial enemies around NPCs
   // Canopy: three nearby mooks to hint at immediate pressure
-  spawnEnemy(canopyPos.x + 28, canopyPos.y + 8, 'mook');
-  spawnEnemy(canopyPos.x - 22, canopyPos.y - 14, 'mook');
-  spawnEnemy(canopyPos.x + 6,  canopyPos.y - 24, 'mook');
-  spawnEnemy(holaPos.x - 42, holaPos.y - 20, 'mook');
-  spawnEnemy(holaPos.x + 42, holaPos.y - 20, 'mook');
-  spawnEnemy(holaPos.x + 0,  holaPos.y + 38, 'mook');
-  spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,  'mook');
-  spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,  'mook');
-  spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36, 'mook');
+  spawnEnemy(canopyPos.x + 28, canopyPos.y + 8,  'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(canopyPos.x - 22, canopyPos.y - 14, 'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(canopyPos.x + 6,  canopyPos.y - 24, 'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(holaPos.x - 42, holaPos.y - 20,     'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(holaPos.x + 42, holaPos.y - 20,     'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(holaPos.x + 0,  holaPos.y + 38,     'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(yornaPos.x - 36,  yornaPos.y + 0,   'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(yornaPos.x + 36,  yornaPos.y + 0,   'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(yornaPos.x + 0,   yornaPos.y + 36,  'mook', { name: 'Greenwood Bandit' });
   // Gorg — featured key-bearer
   const gorgPalette = { skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' };
   const gorgSheet = makeSpriteSheet(gorgPalette);
@@ -143,7 +143,7 @@ export function loadLevel2() {
     const bx = Math.round(player.x + Math.cos(ang) * r);
     const by = Math.round(player.y + Math.sin(ang) * r);
     // Level 2 mooks: modest HP bump + small dmg bump
-    spawnEnemy(bx, by, 'mook', { hp: 5, dmg: 4 });
+    spawnEnemy(bx, by, 'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
   }
   // Two featured foes, also well outside the initial camera view
   spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 12, dmg: 6 });
@@ -191,10 +191,10 @@ export function loadLevel2() {
     vnOnSight: { text: introTexts.nethra },
   });
   // Four mooks inside the arena with Nethra
-  spawnEnemy(cx - 24, cy, 'mook', { hp: 5, dmg: 4 });
-  spawnEnemy(cx + 24, cy, 'mook', { hp: 5, dmg: 4 });
-  spawnEnemy(cx, cy - 24, 'mook', { hp: 5, dmg: 4 });
-  spawnEnemy(cx, cy + 24, 'mook', { hp: 5, dmg: 4 });
+  spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
+  spawnEnemy(cx + 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
+  spawnEnemy(cx, cy - 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
+  spawnEnemy(cx, cy + 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
   // Aarg — blue serpent featured foe outside, holding the ruin gate key (fully blue-tinted like Gorg was fully red)
   const aargPalette = {
     skin: '#6fb3ff',
@@ -275,7 +275,7 @@ export function loadLevel3() {
   for (const p of pools) obstacles.push({ x: Math.max(0, Math.min(world.w - TILE, p.x)), y: Math.max(0, Math.min(world.h - TILE, p.y)), w: p.w, h: p.h, type: 'water', blocksAttacks: true });
 
   // Spawns
-  for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook', { hp: 7, dmg: 5 }); }
+  for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 }); }
 
   // Chests and breakables (marsh) — spaced around player
   obstacles.push({ x: Math.round(player.x - TILE * 16), y: Math.round(player.y - TILE * 12), w: 12, h: 10, type: 'chest', id: 'chest_l3_helm', fixedItemId: 'helm_iron', opened: false, locked: false });
@@ -339,8 +339,8 @@ export function loadLevel3() {
     hitCooldown: 0.65,  // Level 3 boss buff
   });
   // A couple of mooks near Luula
-  spawnEnemy(cx - 24, cy, 'mook', { hp: 7, dmg: 5 });
-  spawnEnemy(cx + 24, cy, 'mook', { hp: 7, dmg: 5 });
+  spawnEnemy(cx - 24, cy,      'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
+  spawnEnemy(cx + 24, cy,      'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
 
   // Recruitable NPCs: Tin & Nellis
   const tinPalette = { hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true };
@@ -379,7 +379,7 @@ export function loadLevel4() {
     const bx = Math.round(player.x + (Math.random() * 400 - 200));
     const by = Math.round(player.y + (Math.random() * 300 - 150));
     // Level 4 mooks: larger HP bump
-    spawnEnemy(bx, by, 'mook', { hp: 9, dmg: 6 });
+    spawnEnemy(bx, by, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
   }
 
   // Featured foe: Blurb — drops City Sigil Key
@@ -441,8 +441,8 @@ export function loadLevel4() {
     onDefeatNextLevel: 5,
   });
   // Guards near the boss
-  spawnEnemy(cx - 24, cy, 'mook', { hp: 9, dmg: 6 });
-  spawnEnemy(cx + 24, cy, 'mook', { hp: 9, dmg: 6 });
+  spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  spawnEnemy(cx + 24, cy,      'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
 
   
 
@@ -583,8 +583,8 @@ export function loadLevel5() {
     onDefeatNextLevel: 6,
     vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' },
   });
-  spawnEnemy(cx - 28, cy, 'mook', { hp: 10, dmg: 7 });
-  spawnEnemy(cx + 28, cy, 'mook', { hp: 10, dmg: 7 });
+  spawnEnemy(cx - 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
+  spawnEnemy(cx + 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
 
   // Spawn enemies in designated zones
   (function addMooks() {
@@ -595,7 +595,7 @@ export function loadLevel5() {
         const x = zone.x + Math.floor(Math.random() * zone.w);
         const y = zone.y + Math.floor(Math.random() * zone.h);
         const safePos = findSafeSpawn(x, y);
-        spawnEnemy(safePos.x * TILE, safePos.y * TILE, 'mook', { hp: 12, dmg: 7 });
+        spawnEnemy(safePos.x * TILE, safePos.y * TILE, 'mook', { name: 'Temple Guard', hp: 12, dmg: 7 });
       }
     }
     
@@ -607,7 +607,7 @@ export function loadLevel5() {
     ];
     for (const pos of extraGuards) {
       const safePos = findSafeSpawn(pos.x, pos.y);
-      spawnEnemy(safePos.x * TILE, safePos.y * TILE, 'mook', { hp: 14, dmg: 7 });
+      spawnEnemy(safePos.x * TILE, safePos.y * TILE, 'mook', { name: 'Temple Guard', hp: 14, dmg: 7 });
     }
   })();
 
