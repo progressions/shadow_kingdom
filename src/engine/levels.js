@@ -1,4 +1,4 @@
-import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime } from './state.js';
+import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime, spawners } from './state.js';
 import { buildObstacles, buildTerrainBitmap } from './terrain.js';
 import { LEVEL4_CITY_WALL_RECTS, LEVEL4_SIZE } from '../data/level4_city_walls.js';
 import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.js';
@@ -15,7 +15,7 @@ import { introTexts } from '../data/intro_texts.js';
 export function loadLevel1() {
   // Base world size
   world.tileW = 100; world.tileH = 60;
-  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
   // Place player near center
   player.x = Math.floor(world.w / 2);
   player.y = Math.floor(world.h / 2);
@@ -112,13 +112,7 @@ export function loadLevel2() {
   // Mark progression flag for gating dialog/quests
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level2_reached'] = true; } catch {}
   // Clear dynamic arrays
-  enemies.length = 0;
-  npcs.length = 0;
-  obstacles.length = 0;
-  corpses.length = 0;
-  stains.length = 0;
-  floaters.length = 0;
-  sparkles.length = 0;
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
   // Place player near center
   player.x = Math.floor(world.w / 2);
   player.y = Math.floor(world.h / 2);
@@ -268,7 +262,7 @@ export function loadLevel3() {
   world.tileH = 80;
   // Mark progression flag for gating dialog/quests
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level3_reached'] = true; } catch {}
-  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
   // Place player near center
   player.x = Math.floor(world.w / 2);
   player.y = Math.floor(world.h / 2);
@@ -374,7 +368,7 @@ export function loadLevel4() {
   // Mark progression flag for gating dialog/quests
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level4_reached'] = true; } catch {}
   // Clear dynamic arrays
-  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
   // Place player near center and gather companions near
   player.x = Math.floor(world.w / 2);
   player.y = Math.floor(world.h / 2);
@@ -532,7 +526,7 @@ export function loadLevel5() {
   world.tileW = LEVEL5_TEMPLE_SIZE.tileW;
   world.tileH = LEVEL5_TEMPLE_SIZE.tileH;
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level5_reached'] = true; } catch {}
-  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
 
   // Spawn player in top-left entrance room
   const spawnPoint = LEVEL5_TEMPLE_FEATURES.playerSpawn;
@@ -718,7 +712,7 @@ export function loadLevel6() {
   world.tileW = 60; // ~960 px wide
   world.tileH = 40; // ~640 px tall
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level6_reached'] = true; } catch {}
-  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
+  enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
 
   // Place player near center
   player.x = Math.floor(world.w * 0.5);
