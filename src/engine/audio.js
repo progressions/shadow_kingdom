@@ -730,3 +730,42 @@ export function playTitleFanfare() {
     console.log('Title fanfare playback failed:', e);
   }
 }
+
+// After the fanfare, start ambient music with a gentle fade-in
+export function startAmbientAfterFanfare(delaySec = 2.8, fadeSec = 1.5) {
+  if (!musicEnabled) return;
+  try {
+    if (useChip) {
+      ensureAC(); if (!ac) return;
+      // Start chip music immediately but mute and ramp up later
+      startChipMusic();
+      if (musicGain) {
+        const now = ac.currentTime;
+        const base = 0.6; // target level used by startChipMusic
+        try {
+          musicGain.gain.cancelScheduledValues(now);
+          musicGain.gain.setValueAtTime(0.0001, now);
+          musicGain.gain.linearRampToValueAtTime(base, now + Math.max(0, delaySec) + Math.max(0.05, fadeSec));
+        } catch {}
+      }
+    } else {
+      // File-based music
+      tryStartMusic('ambient');
+      if (currentMusic && typeof currentMusic.volume === 'number') {
+        const target = 0.6 * (muted ? 0 : masterVolume);
+        currentMusic.volume = 0.0;
+        const steps = Math.max(6, Math.ceil(fadeSec * 20));
+        let i = 0;
+        setTimeout(() => {
+          const id = setInterval(() => {
+            i++;
+            if (!currentMusic) { clearInterval(id); return; }
+            const v = Math.min(target, (i/steps) * target);
+            currentMusic.volume = v;
+            if (i >= steps) clearInterval(id);
+          }, 50);
+        }, Math.max(0, delaySec) * 1000);
+      }
+    }
+  } catch {}
+}

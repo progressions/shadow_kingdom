@@ -277,7 +277,15 @@ export function showTitleScreen() {
   // Do not auto‑play here (can be blocked by autoplay policy). We'll play on first gesture.
   // Gesture on overlay also unlocks audio and retries fanfare (for browsers requiring interaction)
   try {
-    titleEl.addEventListener('pointerdown', () => { initAudioUnlock(); try { stopMusic(); playTitleFanfare(); } catch {} }, { once: true });
+    titleEl.addEventListener('pointerdown', () => { 
+      initAudioUnlock(); 
+      try { 
+        stopMusic(); 
+        playTitleFanfare(); 
+        // Fade in ambient after the fanfare finishes
+        import('./audio.js').then(m => m.startAmbientAfterFanfare && m.startAmbientAfterFanfare(2.8, 1.6)).catch(()=>{});
+      } catch {}
+    }, { once: true });
   } catch {}
 }
 
