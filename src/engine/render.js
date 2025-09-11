@@ -15,17 +15,18 @@ function drawBar(x, y, w, h, pct, color) {
 
 export function render(terrainBitmap, obstacles) {
   ctx.clearRect(0, 0, camera.w, camera.h);
-  // Screen shake (world only): translate canvas during world render, not UI
+  // Screen shake for world only; disable shake under VN overlay to avoid black edges behind UI
   let shakeX = 0, shakeY = 0;
+  const allowShake = (runtime.gameState !== 'chat');
   try {
-    if ((runtime.shakeTimer || 0) > 0) {
+    if (allowShake && (runtime.shakeTimer || 0) > 0) {
       const mag = Math.max(0, runtime.shakeMag || 2);
       shakeX = Math.round((Math.random() * 2 - 1) * mag);
       shakeY = Math.round((Math.random() * 2 - 1) * mag);
     }
   } catch {}
   ctx.save();
-  ctx.translate(shakeX, shakeY);
+  if (allowShake) ctx.translate(shakeX, shakeY);
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
