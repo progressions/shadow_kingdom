@@ -1,4 +1,4 @@
-import { player, enemies } from './state.js';
+import { player, enemies, runtime } from './state.js';
 
 let masterVolume = 0.7;
 let muted = false;
@@ -121,6 +121,15 @@ export function toggleChipMode() {
   useChip = !useChip;
   stopMusic();
   if (musicEnabled) tryStartMusic(trackForMode(menaceMode));
+}
+
+// Optional location override (e.g., Level 6 hub special theme)
+export function setMusicLocation(locationKey) {
+  try { runtime.musicLocation = locationKey ? String(locationKey) : null; } catch {}
+  if (musicEnabled) {
+    if (useChip) { stopMusic(); startChipMusic(); }
+    else tryStartMusic(trackForMode(menaceMode));
+  }
 }
 
 export function setMusicMode(mode) {
@@ -460,7 +469,95 @@ function startChipMusic() {
   musicTimer = setInterval(() => schedule(ac.currentTime), stepSec * 1000);
 }
 
+function heartOfTempleTheme(mode) {
+  // Ethereal, meditative; minimal drums; whole‑tone/pentatonic colors
+  if (mode === 'high') {
+    return {
+      intensity: 2,
+      bpm: 128,
+      chordProgA: [0, 4, 8, 6, 0, 8, 4, 10],
+      chordProgB: [2, 6, 10, 8, 2, 10, 6, 0],
+      scaleA: [0, 2, 4, 6, 8, 10],        // whole tone
+      scaleB: [0, 3, 5, 7, 10],           // pentatonic for lift
+      melodyA1: [0, 2, 4, 6, 4, 2, 0, 2],
+      melodyA2: [4, 6, 8, 10, 8, 6, 4, 2],
+      melodyA3: [2, 4, 6, 8, 6, 4, 2, 0],
+      melodyB1: [0, 3, 5, 7, 5, 3, 0, 3],
+      melodyB2: [7, 10, 7, 5, 3, 5, 7, 10],
+      melodyB3: [5, 7, 10, 7, 5, 3, 2, 0],
+      melodyA_intense: [0, 4, 8, 10, 8, 6, 4, 2],
+      melodyB_intense: [10, 7, 5, 3, 5, 7, 10, 12],
+      bassPattern: [0, 0, 7, 0, 0, 0, 7, 0],
+      barsPerSection: 16,
+      filterBaseA: 2000,
+      filterBaseB: 2300,
+      filterRange: 1200,
+      hatEvery: 2,
+      hatGain: [0.03, 0.05, 0.07], hatDecay: 0.02,
+      kickSteps: [0, 4], kickGain: [0.06, 0.08, 0.10], kickDecay: 0.08,
+      snareSteps: [], snareGain: [0,0,0], snareDecay: 0.0,
+      bassType: 'triangle', bassGain: [0.06, 0.08, 0.10], bassDecay: 0.12,
+      leadType: ['sine','triangle'], leadGain: [0.07, 0.09, 0.11],
+      leadAttack: 0.004, leadDecay: 0.16, useIntense: true, restSteps: [3],
+    };
+  }
+  if (mode === 'low') {
+    return {
+      intensity: 1,
+      bpm: 108,
+      chordProgA: [0, 6, 4, 8, 0, 6, 10, 4],
+      chordProgB: [2, 8, 6, 10, 2, 8, 4, 6],
+      scaleA: [0, 2, 4, 6, 8, 10],
+      scaleB: [0, 3, 5, 7, 10],
+      melodyA1: [0, 2, 4, 6, 8, 6, 4, 2],
+      melodyA2: [4, 6, 8, 10, 8, 6, 4, 2],
+      melodyA3: [2, 4, 6, 8, 6, 4, 2, 0],
+      melodyB1: [0, 3, 5, 7, 5, 3, 0, 3],
+      melodyB2: [7, 10, 7, 5, 3, 5, 7, 10],
+      melodyB3: [5, 7, 10, 7, 5, 3, 2, 0],
+      bassPattern: [0, 0, 0, 7, 0, 0, 0, 7],
+      barsPerSection: 24,
+      filterBaseA: 1800, filterBaseB: 2000, filterRange: 900,
+      hatEvery: 2, hatGain: [0.025, 0.035, 0.045], hatDecay: 0.02,
+      kickSteps: [0], kickGain: [0.05, 0.06, 0.07], kickDecay: 0.07,
+      snareSteps: [], snareGain: [0,0,0], snareDecay: 0.0,
+      bassType: 'sine', bassGain: [0.05, 0.06, 0.07], bassDecay: 0.14,
+      leadType: ['sine','triangle'], leadGain: [0.06, 0.08, 0.09],
+      leadAttack: 0.006, leadDecay: 0.16, useIntense: false, restSteps: [2,6],
+    };
+  }
+  // normal (peaceful)
+  return {
+    intensity: 0,
+    bpm: 96,
+    chordProgA: [0, 4, 6, 8, 10, 8, 6, 4],
+    chordProgB: [2, 6, 8, 10, 8, 6, 4, 2],
+    scaleA: [0, 2, 4, 6, 8, 10],
+    scaleB: [0, 3, 5, 7, 10],
+    melodyA1: [0, 2, 4, 6, 4, 2, 0, 2],
+    melodyA2: [4, 6, 8, 10, 8, 6, 4, 2],
+    melodyA3: [2, 4, 6, 8, 6, 4, 2, 0],
+    melodyB1: [0, 3, 5, 7, 5, 3, 0, 3],
+    melodyB2: [7, 10, 7, 5, 3, 5, 7, 10],
+    melodyB3: [5, 7, 10, 7, 5, 3, 2, 0],
+    bassPattern: [0, 0, 7, 0, 0, 0, 7, 0],
+    barsPerSection: 32,
+    filterBaseA: 1600, filterBaseB: 1800, filterRange: 700,
+    hatEvery: 4, hatGain: [0.02, 0.03, 0.04], hatDecay: 0.02,
+    kickSteps: [], kickGain: [0,0,0], kickDecay: 0,
+    snareSteps: [], snareGain: [0,0,0], snareDecay: 0,
+    bassType: 'sine', bassGain: [0.04, 0.05, 0.06], bassDecay: 0.14,
+    leadType: ['sine','triangle'], leadGain: [0.05, 0.065, 0.08],
+    leadAttack: 0.008, leadDecay: 0.18, useIntense: false, restSteps: [4],
+  };
+}
+
 function getThemeForMode(mode) {
+  try {
+    if (runtime && (runtime.musicLocation === 'temple_heart' || (runtime.currentLevel || 0) === 6)) {
+      return heartOfTempleTheme(mode);
+    }
+  } catch {}
   // Gains arrays map intensity index 0/1/2 to volumes
   if (mode === 'high') {
     return {

@@ -4,6 +4,7 @@ import { LEVEL4_CITY_WALL_RECTS, LEVEL4_SIZE } from '../data/level4_city_walls.j
 import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.js';
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_WALLS, LEVEL5_TEMPLE_FEATURES, findSafeSpawn } from '../data/level5_temple_layout.js';
 import { makeSpriteSheet, sheetForName } from './sprites.js';
+import { setMusicLocation } from './audio.js';
 import { spawnEnemy, spawnNpc } from './state.js';
 import { TILE } from './constants.js';
 import { setNpcDialog } from './dialog.js';
@@ -784,6 +785,7 @@ export function loadLevel6() {
     { x: rx + TILE * 28, y: ry + TILE * 16 }, { x: rx + TILE * 34, y: ry + TILE * 16 },
   ];
   for (const c of cols) obstacles.push({ x: c.x, y: c.y, w: 12, h: 12, type: 'column', blocksAttacks: false });
+  try { setMusicLocation('temple_heart'); } catch {}
 
   // Ell (Canopy's sister) — placeholder NPC in the hub
   const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
