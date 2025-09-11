@@ -9,7 +9,7 @@ import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { completionXpForLevel, grantPartyXp } from '../engine/state.js';
 import { exitChat } from '../engine/ui.js';
 import { saveGame } from '../engine/save.js';
-import { showBanner, updateBuffBadges } from '../engine/ui.js';
+import { showBanner, updateBuffBadges, showMusicTheme } from '../engine/ui.js';
 import { ENEMY_LOOT, ENEMY_LOOT_L2, rollFromTable, itemById } from '../data/loot.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
@@ -913,12 +913,13 @@ export function step(dt) {
     } else {
       if (runtime.musicModePending !== desired) {
         runtime.musicModePending = desired;
-        runtime.musicModeSwitchTimer = 0.6; // debounce window
+        runtime.musicModeSwitchTimer = (desired === 'normal') ? 1.8 : 0.6; // longer settle when returning to calm
       } else if (runtime.musicModeSwitchTimer > 0) {
         runtime.musicModeSwitchTimer = Math.max(0, runtime.musicModeSwitchTimer - dt);
         if (runtime.musicModeSwitchTimer === 0) {
           runtime.musicMode = desired;
           try { setMusicMode(desired); } catch {}
+          try { showMusicTheme(bossOn ? 'Boss' : (anyOn ? 'Danger' : 'Overworld')); } catch {}
           runtime.musicModePending = null;
         }
       }

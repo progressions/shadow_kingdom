@@ -18,6 +18,14 @@ const bannerEl = document.getElementById('banner');
 const fadeEl = document.getElementById('fade');
 const questHintEl = document.getElementById('quest-hint');
 const levelTitleEl = document.getElementById('level-title');
+const musicThemeEl = document.getElementById('music-theme');
+
+// Persistent music theme label (top-left)
+export function showMusicTheme(label) {
+  if (!musicThemeEl) return;
+  try { musicThemeEl.textContent = label || ''; } catch {}
+  musicThemeEl.classList.add('show');
+}
 
 // Sidebar removed: VN overlay handles all dialog UI
 

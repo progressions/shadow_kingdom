@@ -1,5 +1,5 @@
 import { runtime, npcs, companions, spawnCompanion, removeCompanion, spawnNpc, obstacles, world, player } from './state.js';
-import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner } from './ui.js';
+import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner, showMusicTheme } from './ui.js';
 import { companionDialogs } from '../data/companion_dialogs.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 import { saveGame, loadGame, clearSave, getSaveMeta } from './save.js';
@@ -227,6 +227,8 @@ export function selectChoice(index) {
         { label: 'Close', action: 'end' },
       ]);
     }
+    // If peaceful, show the companion theme label (actual spotlighting depends on audio system)
+    try { if ((runtime.musicMode || 'normal') === 'normal') showMusicTheme(`Companion: ${comp?.name || 'Companion'}`); } catch {}
     return;
   }
   if (choice.action === 'companion_back') {
