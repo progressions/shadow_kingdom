@@ -1,6 +1,6 @@
 import { runtime, player, camera, world, xpToNext, obstacles as OBSTACLES } from './state.js';
 import { getEquipStats } from './utils.js';
-import { tryStartMusic, stopMusic, initAudioUnlock } from './audio.js';
+import { tryStartMusic, stopMusic, initAudioUnlock, playTitleFanfare } from './audio.js';
 import { playSfx } from './audio.js';
 import { TILE } from './constants.js';
 export const canvas = document.getElementById('game');
@@ -48,7 +48,7 @@ let _miniPeek = false;  // temporary show while holding key
 // Persistent music theme label (top-left)
 export function showMusicTheme(label) {
   if (!musicThemeEl) return;
-  try { musicThemeEl.textContent = label || ''; } catch {}
+  try { musicThemeEl.textContent = label ? `♪ ${label}` : ''; } catch {}
   musicThemeEl.classList.add('show');
 }
 
@@ -274,11 +274,11 @@ export function showTitleScreen() {
     refreshTitleFocus();
   } catch {}
   enableTitleKeyHandlers();
-  // Try to start ambient music for title; if blocked, first interaction unlock will resume
-  try { tryStartMusic('ambient'); } catch {}
-  // Gesture on overlay also unlocks audio context
+  // Play title fanfare instead of ambient music
+  try { playTitleFanfare(); } catch {}
+  // Gesture on overlay also unlocks audio and retries fanfare (for browsers requiring interaction)
   try {
-    titleEl.addEventListener('pointerdown', initAudioUnlock, { once: true });
+    titleEl.addEventListener('pointerdown', () => { initAudioUnlock(); try { playTitleFanfare(); } catch {} }, { once: true });
   } catch {}
 }
 

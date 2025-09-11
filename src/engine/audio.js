@@ -1,4 +1,5 @@
 import { player, enemies, runtime } from './state.js';
+import ChiptuneFanfare from './fanfare.js';
 
 let masterVolume = 0.7;
 let muted = false;
@@ -43,6 +44,9 @@ const cache = new Map();
 // Music ducking state (for VN intro sting)
 let duckTimers = { restore: null };
 let duckPrevVol = null; // for file-based music
+
+// Title screen fanfare
+let titleFanfare = null;
 
 function getAudio(path) {
   if (!path) return null;
@@ -698,4 +702,21 @@ function getThemeForMode(mode) {
     useIntense: false,
     restSteps: [2, 6],
   };
+}
+
+// Play title screen fanfare
+export function playTitleFanfare() {
+  if (!musicEnabled || muted) return;
+  try {
+    if (!titleFanfare) {
+      titleFanfare = new ChiptuneFanfare();
+    }
+    // Initialize audio context on first gesture if needed
+    if (!titleFanfare.audioContext) {
+      titleFanfare.init();
+    }
+    titleFanfare.play();
+  } catch (e) {
+    console.log('Title fanfare playback failed:', e);
+  }
 }
