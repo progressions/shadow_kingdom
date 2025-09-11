@@ -75,7 +75,18 @@
         display: grid; align-content: end; justify-items: start;
       }
       .vn-portrait .portrait-name { font-weight: 700; font-size: 16px; color: #eaeaea; margin: 0 0 8px 4px; }
-      #portrait-img, #portrait-video { width: 100%; max-height: 90%; object-fit: contain; image-rendering: auto; border-radius: 8px; background: #151515; border: 2px solid #555; }
+      /* Standardize portrait media box so images/videos render same size */
+      :root { --portrait-w: clamp(220px, 28vw, 320px); --portrait-ar: 3/4; }
+      #portrait-img, #portrait-video {
+        width: var(--portrait-w);
+        height: calc(var(--portrait-w) * (4/3)); /* fallback for older browsers */
+        aspect-ratio: var(--portrait-ar);
+        object-fit: contain;
+        image-rendering: auto;
+        border-radius: 8px;
+        background: #151515;
+        border: 2px solid #555;
+      }
       .vn-panel {
         background: rgba(10,10,10,0.85);
         border: 2px solid #555; border-radius: 10px;
