@@ -624,7 +624,7 @@ export function step(dt) {
             runtime.questFlags['temple_cleansed'] = true;
             runtime.questFlags['hub_unlocked'] = true;
             const ellActor = { name: 'Ell', portraitSrc: 'assets/portraits/level06/Ell/Ell.mp4' };
-            const ellLine = "Ell: Thank you… The light in Aurelion still answers. I can stand.";
+            const ellLine = "The warded circle gutters out; chains fall away to dust.\n\nEll: Thank you… it's over. I can stand.";
             if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
             runtime._queuedVNs.push({ actor: ellActor, text: ellLine });
           } catch {}
