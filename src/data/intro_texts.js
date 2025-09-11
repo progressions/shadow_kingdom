@@ -69,8 +69,8 @@ export const introTexts = {
 
   // Level 5 — Temple District
   vorthak:
-    "The air tightens as something vast leans forward out of the temple's heart. White stone blushes with heat, and a molten voice spills into the hall.\n" +
-    "\nVorthak: \"Aurelion's heart is mine. Urathar wills it. Turn back, or burn.\"",
+    "The air tightens as something vast leans forward out of the temple's heart. White stone blushes with heat, and a molten voice spills into the hall. Behind him, Ell kneels in chains—pale and still, a warded circle holding her fast.\n" +
+    "\nVorthak: \"Aurelion's heart is mine, and the girl is my guarantee. Urathar wills it. Turn back, or burn.\"",
 
   fana_enslaved:
     "A young sorceress stands amid broken sigils, eyes unfocused, lips moving to someone else's words. Gold dust clings to tears she doesn't seem to notice.\n" +
