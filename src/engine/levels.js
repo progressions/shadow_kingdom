@@ -798,6 +798,9 @@ export function loadLevel6() {
     // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
     if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);
   }).catch(()=>{});
+  // Floor halos under Rose and Ell (non-blocking decorative)
+  obstacles.push({ x: centerX - TILE - 2, y: centerY + 6, w: 16, h: 6, type: 'sun', blocksAttacks: false });
+  obstacles.push({ x: centerX + TILE - 2, y: centerY + 6, w: 16, h: 6, type: 'sun', blocksAttacks: false });
 
   // Rose — Queen of Aurelion (non-companion), elegant and stately
   try {

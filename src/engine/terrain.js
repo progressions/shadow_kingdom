@@ -276,6 +276,17 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#a7882f'; ctx.lineWidth = 1; ctx.stroke();
       ctx.restore();
+    } else if (o.type === 'sun') {
+      // Subtle floor halo marker (non-blocking)
+      const r = Math.max(8, Math.min(14, Math.floor(Math.max(o.w, o.h))));
+      ctx.save();
+      ctx.translate(sx + o.w / 2, sy + o.h / 2 + 6);
+      const grd = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
+      grd.addColorStop(0, 'rgba(212,185,103,0.35)');
+      grd.addColorStop(1, 'rgba(212,185,103,0.02)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
   }
 }
