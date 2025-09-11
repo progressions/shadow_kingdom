@@ -195,7 +195,9 @@ function serializeCompanionEntity(c) {
 }
 
 function spawnCompanionFromRecord(d) {
-  const sheet = d.sheetPalette ? makeSpriteSheet(d.sheetPalette) : sheetForName(d.name);
+  // Add feminineShape flag to companions when loading from saves
+  const paletteWithShape = d.sheetPalette ? { ...d.sheetPalette, feminineShape: true } : null;
+  const sheet = paletteWithShape ? makeSpriteSheet(paletteWithShape) : sheetForName(d.name);
   const comp = spawnCompanion(d.x, d.y, sheet, {
     spriteId: d.spriteId || null,
     name: d.name,
@@ -262,7 +264,10 @@ function attachOnSightById(npc, id) {
 }
 
 function spawnNpcFromRecord(d) {
-  const sheet = d.sheetPalette ? makeSpriteSheet(d.sheetPalette) : sheetForName(d.name);
+  // Add feminineShape flag to female NPCs when loading from saves
+  const isFemaleNpc = d.name && ['canopy', 'yorna', 'hola', 'oyin', 'twil', 'tin', 'nellis', 'urn', 'varabella', 'ell', 'fana'].some(n => d.name.toLowerCase().includes(n));
+  const paletteWithShape = (d.sheetPalette && isFemaleNpc) ? { ...d.sheetPalette, feminineShape: true } : d.sheetPalette;
+  const sheet = paletteWithShape ? makeSpriteSheet(paletteWithShape) : sheetForName(d.name);
   const npc = spawnNpc(d.x, d.y, d.dir || 'down', {
     spriteId: d.spriteId || null,
     name: d.name,

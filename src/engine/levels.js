@@ -72,10 +72,10 @@ export function loadLevel1() {
     hp: 35, dmg: 8, speed: 10, hitCooldown: 0.75,  // Level 1 boss buff
   });
 
-  // NPCs
-  const canopyPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' };
-  const yornaPalette  = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
-  const holaPalette   = { hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
+  // NPCs - with feminine shape
+  const canopyPalette = { hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true };
+  const yornaPalette  = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true };
+  const holaPalette   = { hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0', feminineShape: true };
   const canopySheet = makeSpriteSheet(canopyPalette);
   const yornaSheet = makeSpriteSheet(yornaPalette);
   const holaSheet = makeSpriteSheet(holaPalette);
@@ -218,8 +218,8 @@ export function loadLevel2() {
 
   // New recruitable companions for level 2: Oyin and Twil
   // Appearances: Oyin (blonde hair, green dress), Twil (red hair, black dress)
-  const oyinPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9' };
-  const twilPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  const oyinPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9', feminineShape: true };
+  const twilPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true };
   const oyinSheet = makeSpriteSheet(oyinPalette);
   const twilSheet = makeSpriteSheet(twilPalette);
   // Place Oyin/Twil away from initial camera so VN intros don't trigger immediately
@@ -327,8 +327,8 @@ export function loadLevel3() {
   spawnEnemy(cx + 24, cy, 'mook', { hp: 7, dmg: 5 });
 
   // Recruitable NPCs: Tin & Nellis
-  const tinPalette = { hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff' };
-  const nellisPalette = { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0' };
+  const tinPalette = { hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true };
+  const nellisPalette = { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0', feminineShape: true };
   const tinSheet = makeSpriteSheet(tinPalette);
   const nellisSheet = makeSpriteSheet(nellisPalette);
   const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', dialogId: 'tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/level03/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
@@ -442,8 +442,8 @@ export function loadLevel4() {
   }
 
   // Recruitable NPCs: Urn & Varabella
-  const urnPalette = { hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0' };
-  const varaPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a' };
+  const urnPalette = { hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0', feminineShape: true };
+  const varaPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true };
   const urnSheet = makeSpriteSheet(urnPalette);
   const varaSheet = makeSpriteSheet(varaPalette);
   const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', dialogId: 'urn', sheet: urnSheet, sheetPalette: urnPalette, portrait: 'assets/portraits/level04/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
@@ -690,7 +690,7 @@ export function loadLevel6() {
 
   // Ell (Canopy's sister) — placeholder NPC in the hub
   const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
-  const sisterPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0' };
+  const sisterPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0', feminineShape: true };
   const sisterSheet = makeSpriteSheet(sisterPalette);
   const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', dialogId: 'villager', sheet: sisterSheet, sheetPalette: sisterPalette, portrait: 'assets/portraits/Ell/Ell.mp4', affinity: 6 });
   import('../data/dialogs.js').then(mod => {
