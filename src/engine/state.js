@@ -494,6 +494,7 @@ export const runtime = {
   _loadedAt: 0,
   // L5 Vorthak arena: track whether the gate has been re-locked after entry
   _vorthakGateRelocked: false,
+  _vorthakGateRelockTimer: 0,
   // Rendering guard during level swap+restore to avoid showing default spawns
   _suspendRenderUntilRestore: false,
 

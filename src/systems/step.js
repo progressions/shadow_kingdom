@@ -1022,19 +1022,26 @@ export function step(dt) {
   camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
   camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
 
-  // Level 5 (Vorthak): re-lock the boss gate after the player passes through it
+  // Level 5 (Vorthak): re-lock the boss gate after the player passes through it (with slight delay)
   try {
     if ((runtime.currentLevel || 1) === 5 && !runtime._vorthakGateRelocked) {
       const gate = obstacles.find(o => o && o.type === 'gate' && (o.id === 'key_temple' || o.keyId === 'key_temple'));
       if (gate && gate.locked === false) {
         const px = player.x + player.w/2;
-        // Boss arena is to the right of the gate; once center passes gate's right edge, lock it
-        if (px > gate.x + gate.w) {
-          gate.locked = true;
-          gate.blocksAttacks = true;
-          runtime._vorthakGateRelocked = true;
-          try { showBanner('The gate slams shut!'); } catch {}
-          try { playSfx('block'); } catch {}
+        // Boss arena is to the right of the gate; once center passes gate's right edge, start a short timer
+        if (px > gate.x + gate.w && (runtime._vorthakGateRelockTimer || 0) <= 0) {
+          runtime._vorthakGateRelockTimer = 0.9; // seconds
+        }
+        // Count down and then close the gate
+        if ((runtime._vorthakGateRelockTimer || 0) > 0) {
+          runtime._vorthakGateRelockTimer = Math.max(0, (runtime._vorthakGateRelockTimer || 0) - dt);
+          if (runtime._vorthakGateRelockTimer === 0) {
+            gate.locked = true;
+            gate.blocksAttacks = true;
+            runtime._vorthakGateRelocked = true;
+            try { showBanner('The gate slams shut!'); } catch {}
+            try { playSfx('block'); } catch {}
+          }
         }
       }
     }
