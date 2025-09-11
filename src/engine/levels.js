@@ -774,7 +774,13 @@ export function loadLevel6() {
   const ry = Math.round((world.h - rh) / 2);
   const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' || type==='marble' }, extra));
   // Perimeter marble walls
-  add(rx, ry, rw, t, 'marble'); // top
+  // Top wall with a large central opening so you can exit the hall
+  const openingW = TILE * 10; // wide doorway
+  const openingX = rx + Math.floor((rw - openingW) / 2);
+  // Left/top segment
+  add(rx, ry, Math.max(0, openingX - rx), t, 'marble');
+  // Right/top segment
+  add(openingX + openingW, ry, Math.max(0, (rx + rw) - (openingX + openingW)), t, 'marble');
   add(rx, ry + rh - t, rw, t, 'marble'); // bottom
   add(rx, ry, t, rh, 'marble'); // left
   add(rx + rw - t, ry, t, rh, 'marble'); // right
