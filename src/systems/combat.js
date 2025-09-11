@@ -124,8 +124,8 @@ export function handleAttacks(dt) {
             });
           }
         } catch {}
-        // UI: show last enemy struck in lower-right
-        try { showTargetInfo(`Hit: ${e.name || 'Enemy'}`); } catch {}
+        // UI: show last enemy struck in lower-right (just the name)
+        try { showTargetInfo(`${e.name || 'Enemy'}`); } catch {}
         // Oyin: Kindle DoT
         if (hasOyin) {
           e._burnTimer = Math.max(e._burnTimer || 0, 1.5);

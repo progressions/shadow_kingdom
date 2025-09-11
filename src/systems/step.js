@@ -445,8 +445,8 @@ export function step(dt) {
               // Damage feedback
               spawnFloatText(player.x + player.w/2, player.y - 6, `-${taken}`, { color: '#ff7a7a', life: 0.7 });
               playSfx('hit');
-              // UI: show last attacker name in lower-right
-              try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`Struck by: ${e.name || 'Enemy'}`)); } catch {}
+              // UI: show last attacker name in lower-right (just the name)
+              try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`${e.name || 'Enemy'}`)); } catch {}
             } else {
             // Blocked hit feedback
             spawnFloatText(player.x + player.w/2, player.y - 6, 'Blocked', { color: '#a8c6ff', life: 0.7 });
