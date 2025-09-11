@@ -215,6 +215,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
       });
     }
   } catch {}
+  return ent;
 }
 
 // Lightweight corpse entity (pass-through, fades out)
