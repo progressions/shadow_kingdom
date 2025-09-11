@@ -65,6 +65,7 @@
         display: none;
         background: rgba(0,0,0,0.65);
         pointer-events: none; /* clicks pass through unless we add buttons later */
+        z-index: 20; /* above minimap and HUD */
       }
       .vn {
         position: absolute; inset: 16px;
@@ -132,6 +133,78 @@
       #fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 400ms ease; }
       #fade.show { opacity: 1; }
 
+      /* Title screen overlay (inside main panel) */
+      #title-screen {
+        position: absolute; /* cover the frame, not the whole viewport */
+        inset: 0;
+        display: none; /* toggled by JS */
+        place-items: center;
+        background: rgba(0,0,0,0.85); /* block underlying HUD fully */
+        z-index: 10;
+      }
+      #title-window {
+        position: absolute; inset: 16px; /* VN-style window inside the frame */
+        display: block;
+        background-color: #000; /* fallback while image loads */
+        background-position: center center;
+        background-size: cover; /* fill rounded box without letterboxing */
+        background-repeat: no-repeat;
+        border: 2px solid #555; border-radius: 10px;
+        overflow: hidden;
+      }
+      /* Title background video fills the window, behind gradient+menu */
+      #title-window .title-bg {
+        position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+        opacity: 1;
+        transition: opacity 280ms ease;
+      }
+      /* bottom gradient for readability */
+      #title-window::after {
+        content: "";
+        position: absolute; left: 0; right: 0; bottom: 0; height: 40%;
+        background: linear-gradient(0deg, rgba(0,0,0,0.65), rgba(0,0,0,0.0));
+        pointer-events: none;
+      }
+      #title-menu {
+        position: absolute;      /* overlay lower center */
+        bottom: 20px; left: 50%; transform: translateX(-50%);
+        display: inline-flex;    /* horizontal buttons */
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: rgba(10,10,10,0.6);
+        border: 2px solid #555;
+        border-radius: 10px;
+        padding: 12px 16px;
+        backdrop-filter: blur(2px);
+        opacity: 0;
+        transition: opacity 500ms ease;
+        justify-self: center;
+        max-width: min(520px, 70%);
+      }
+      #title-menu.show { opacity: 1; }
+      #title-menu button {
+        padding: 10px 16px;
+        background: #1a1a1a;
+        color: #eaeaea;
+        border: 1px solid #444;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      #title-menu button:hover { background: #232323; border-color: #666; }
+      #title-menu button.focused { outline: 2px solid #8ab4ff; background: #202a39; border-color: #8ab4ff; }
+
+      @media (max-width: 900px) {
+        #title-menu { max-width: 90%; bottom: 14px; flex-wrap: wrap; }
+      }
+
       /* Quest hint */
       #quest-hint { position: absolute; left: 10px; bottom: 10px; background: rgba(15,15,15,0.85); color: #eaeaea; border: 1px solid #444; border-radius: 6px; padding: 6px 10px; font-size: 12px; opacity: 0.95; }
 
@@ -152,6 +225,22 @@
         pointer-events: none;
       }
       #target-info.show { opacity: 0.95; transform: translateY(0); }
+
+      /* Minimap (lower-left) */
+      #minimap {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        width: 168px;   /* scaled display size */
+        height: auto;
+        border: 1px solid #444;
+        background: rgba(10,10,10,0.8);
+        border-radius: 6px;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        pointer-events: none; /* overlay only */
+        z-index: 5; /* below VN and title overlays */
+      }
 
       /* Level title overlay */
       #level-title {
@@ -209,6 +298,18 @@
         <div id="music-theme" aria-live="polite" aria-atomic="true"></div>
         <div id="quest-hint" aria-live="polite" style="display:none"></div>
         <div id="target-info" aria-live="polite" aria-atomic="true"></div>
+        <div id="title-screen" aria-hidden="false">
+          <div id="title-window">
+            <video id="title-bg" class="title-bg" muted playsinline preload="auto"></video>
+            <video id="title-bg-loop" class="title-bg" muted playsinline preload="auto" style="opacity:0"></video>
+            <div id="title-menu" role="menu" aria-label="Main Menu">
+              <button type="button" id="btn-continue" disabled>Continue</button>
+              <button type="button" id="btn-new">New Game</button>
+              <button type="button" id="btn-load">Load Game</button>
+            </div>
+          </div>
+        </div>
+        <canvas id="minimap" width="190" height="110" aria-label="Minimap"></canvas>
         <div id="portrait-overlay" aria-hidden="true">
           <div class="vn">
             <div class="vn-portrait">

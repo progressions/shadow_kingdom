@@ -1,7 +1,8 @@
-import { runtime, player, camera, world, xpToNext } from './state.js';
+import { runtime, player, camera, world, xpToNext, obstacles as OBSTACLES } from './state.js';
 import { getEquipStats } from './utils.js';
-import { tryStartMusic, stopMusic } from './audio.js';
+import { tryStartMusic, stopMusic, initAudioUnlock } from './audio.js';
 import { playSfx } from './audio.js';
+import { TILE } from './constants.js';
 export const canvas = document.getElementById('game');
 export const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -20,6 +21,29 @@ const questHintEl = document.getElementById('quest-hint');
 const targetInfoEl = document.getElementById('target-info');
 const levelTitleEl = document.getElementById('level-title');
 const musicThemeEl = document.getElementById('music-theme');
+// Title screen refs
+const titleEl = document.getElementById('title-screen');
+const titleWindowEl = document.getElementById('title-window');
+const titleMenuEl = document.getElementById('title-menu');
+const titleBgVideo = document.getElementById('title-bg');
+const titleBgLoopVideo = document.getElementById('title-bg-loop');
+const btnContinue = document.getElementById('btn-continue');
+const btnNew = document.getElementById('btn-new');
+const btnLoad = document.getElementById('btn-load');
+// Minimap
+const minimapEl = document.getElementById('minimap');
+let _miniBase = null;      // offscreen base (walls/water/objectives)
+let _miniFog = null;       // offscreen fog layer
+let _miniFogImage = null;  // ImageData for fog compositing
+let _visited = null;       // Uint8Array flags per tile
+let _miniW = 0, _miniH = 0;
+let _titleKeyHandler = null;
+let _titleFocusIndex = 0;
+let _titleButtons = [];
+let _titleHandlers = { onContinue: null, onNew: null, onLoad: null };
+// Minimap UI state
+let _miniMode = 1;      // 0=off,1=compact,2=large
+let _miniPeek = false;  // temporary show while holding key
 
 // Persistent music theme label (top-left)
 export function showMusicTheme(label) {
@@ -149,6 +173,188 @@ export function setupChatInputHandlers(runtime) {
   canvas.addEventListener('mousedown', () => {
     if (runtime.gameState === 'chat' && !runtime.lockOverlay) exitChat(runtime);
   });
+}
+
+// --- Title screen ---
+export function setupTitleScreen(opts = {}) {
+  // Ensure image uses asset versioning if available
+  try {
+    if (titleWindowEl) {
+      // Prefer ultrawide background; fall back handled by browser cache if missing
+      const url = addAssetVersion('assets/Trio w Logo Ultrawide.jpg');
+      titleWindowEl.style.backgroundImage = `url('${url}')`;
+    }
+  } catch {}
+  // Configure title background video if present
+  try {
+    if (titleBgVideo) {
+      // Load MP4 once; do not loop. Keep final frame visible.
+      titleBgVideo.loop = false;
+      titleBgVideo.autoplay = true; // will work due to muted
+      titleBgVideo.muted = true;
+      titleBgVideo.playsInline = true;
+      titleBgVideo.src = addAssetVersion('assets/Trio w Logo Ultrawide.mp4');
+      // On end, pause to freeze on the last frame
+      titleBgVideo.addEventListener('ended', () => {
+        try { titleBgVideo.pause(); } catch {}
+      });
+      // Best effort start (some browsers require user interaction, but muted should allow)
+      try { titleBgVideo.play().catch(()=>{}); } catch {}
+    }
+  } catch {}
+  // Prepare optional loop video to follow seamlessly (no crossfade)
+  try {
+    if (titleBgLoopVideo) {
+      titleBgLoopVideo.loop = true;
+      titleBgLoopVideo.muted = true;
+      titleBgLoopVideo.playsInline = true;
+      // Optional: set to your loop asset (safe if missing; browser will just not play)
+      titleBgLoopVideo.src = addAssetVersion('assets/Trio Loop Palindrome HQ.mp4');
+      // Preload for seamless switch
+      try { titleBgLoopVideo.load(); } catch {}
+      // Start the loop just before the intro ends so the first
+      // visible frame matches (loop is authored to start on the last intro frame)
+      if (titleBgVideo) {
+        let armed = false;
+        const lead = 0.08; // seconds before end to pre-start loop
+        const armLoop = () => {
+          if (armed) return;
+          const dur = Number(titleBgVideo.duration || 0);
+          if (dur > 0 && titleBgVideo.currentTime >= (dur - lead)) {
+            armed = true;
+            try { titleBgLoopVideo.currentTime = 0; } catch {}
+            try { titleBgLoopVideo.play().catch(()=>{}); } catch {}
+            titleBgVideo.removeEventListener('timeupdate', armLoop);
+          }
+        };
+        titleBgVideo.addEventListener('timeupdate', armLoop);
+        // On end, instantly swap visibility with no transition
+        titleBgVideo.addEventListener('ended', () => {
+          try {
+            titleBgLoopVideo.style.transition = 'none';
+            titleBgVideo.style.transition = 'none';
+            titleBgLoopVideo.style.opacity = '1';
+            titleBgVideo.style.opacity = '0';
+            // Remove from flow to ensure clicks reach menu
+            titleBgVideo.style.display = 'none';
+          } catch {}
+        }, { once: true });
+      }
+    }
+  } catch {}
+  _titleHandlers.onContinue = (typeof opts.onContinue === 'function') ? opts.onContinue : null;
+  _titleHandlers.onNew = (typeof opts.onNew === 'function') ? opts.onNew : null;
+  _titleHandlers.onLoad = (typeof opts.onLoad === 'function') ? opts.onLoad : null;
+  if (btnContinue) {
+    btnContinue.setAttribute('data-action', 'continue');
+    btnContinue.onclick = (ev) => { ev.preventDefault(); initAudioUnlock(); playSfx('uiSelect'); if (_titleHandlers.onContinue) _titleHandlers.onContinue(); };
+    btnContinue.addEventListener('mouseenter', () => { playSfx('uiMove'); });
+  }
+  if (btnNew) {
+    btnNew.setAttribute('data-action', 'new');
+    btnNew.onclick = (ev) => { ev.preventDefault(); initAudioUnlock(); playSfx('uiSelect'); if (_titleHandlers.onNew) _titleHandlers.onNew(); };
+    btnNew.addEventListener('mouseenter', () => { playSfx('uiMove'); });
+  }
+  if (btnLoad) {
+    btnLoad.setAttribute('data-action', 'load');
+    btnLoad.onclick = (ev) => { ev.preventDefault(); initAudioUnlock(); playSfx('uiSelect'); if (_titleHandlers.onLoad) _titleHandlers.onLoad(); };
+    btnLoad.addEventListener('mouseenter', () => { playSfx('uiMove'); });
+  }
+}
+
+export function showTitleScreen() {
+  if (!titleEl) return;
+  titleEl.style.display = 'grid';
+  // Fade-in menu after a short delay
+  window.setTimeout(() => { try { if (titleMenuEl) titleMenuEl.classList.add('show'); } catch {} }, 400);
+  // Initialize buttons and focus
+  try {
+    _titleButtons = Array.from(titleMenuEl.querySelectorAll('button:not([disabled])'));
+    _titleFocusIndex = 0;
+    refreshTitleFocus();
+  } catch {}
+  enableTitleKeyHandlers();
+  // Try to start ambient music for title; if blocked, first interaction unlock will resume
+  try { tryStartMusic('ambient'); } catch {}
+  // Gesture on overlay also unlocks audio context
+  try {
+    titleEl.addEventListener('pointerdown', initAudioUnlock, { once: true });
+  } catch {}
+}
+
+export function hideTitleScreen() {
+  if (!titleEl) return;
+  titleEl.style.display = 'none';
+  try { if (titleMenuEl) titleMenuEl.classList.remove('show'); } catch {}
+  disableTitleKeyHandlers();
+}
+
+export function moveTitleFocus(delta) {
+  if (!_titleButtons || _titleButtons.length === 0) return;
+  const n = _titleButtons.length;
+  _titleFocusIndex = ( (_titleFocusIndex + delta) % n + n ) % n;
+  refreshTitleFocus();
+  try { playSfx('uiMove'); } catch {}
+}
+
+export function activateTitleSelection() {
+  if (!_titleButtons || _titleButtons.length === 0) return;
+  const btn = _titleButtons[_titleFocusIndex];
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  if (action === 'continue' && _titleHandlers.onContinue) _titleHandlers.onContinue();
+  if (action === 'new' && _titleHandlers.onNew) _titleHandlers.onNew();
+  else if (action === 'load' && _titleHandlers.onLoad) _titleHandlers.onLoad();
+}
+
+function refreshTitleFocus() {
+  if (!_titleButtons) return;
+  for (let i = 0; i < _titleButtons.length; i++) {
+    const b = _titleButtons[i];
+    if (!b) continue;
+    if (i === _titleFocusIndex) b.classList.add('focused');
+    else b.classList.remove('focused');
+  }
+}
+
+function enableTitleKeyHandlers() {
+  if (_titleKeyHandler) return;
+  _titleKeyHandler = (e) => {
+    // Capture phase handler to block downstream game input when title is up
+    if (!titleEl || titleEl.style.display === 'none') return;
+    const key = e.key;
+    // Move focus left/up
+    if (key === 'ArrowUp' || key === 'ArrowLeft' || key.toLowerCase() === 'k' || key.toLowerCase() === 'w' || key.toLowerCase() === 'a') {
+      e.preventDefault(); e.stopPropagation(); moveTitleFocus(-1); return;
+    }
+    // Move focus right/down
+    if (key === 'ArrowDown' || key === 'ArrowRight' || key.toLowerCase() === 'j' || key.toLowerCase() === 's' || key.toLowerCase() === 'd') {
+      e.preventDefault(); e.stopPropagation(); moveTitleFocus(1); return;
+    }
+    if (key === 'Enter' || key === ' ') {
+      e.preventDefault(); e.stopPropagation(); activateTitleSelection(); return;
+    }
+    if (key === 'Escape' || key.toLowerCase() === 'x') {
+      // No-op on title; prevent pause menu
+      e.preventDefault(); e.stopPropagation(); return;
+    }
+  };
+  window.addEventListener('keydown', _titleKeyHandler, true); // capture phase
+}
+
+function disableTitleKeyHandlers() {
+  if (!_titleKeyHandler) return;
+  window.removeEventListener('keydown', _titleKeyHandler, true);
+  _titleKeyHandler = null;
+}
+
+export function rebuildTitleButtons() {
+  try {
+    _titleButtons = Array.from(titleMenuEl.querySelectorAll('button:not([disabled])'));
+    if (_titleButtons.length === 0) { _titleFocusIndex = 0; return; }
+    _titleFocusIndex = Math.max(0, Math.min(_titleButtons.length - 1, _titleFocusIndex));
+    refreshTitleFocus();
+  } catch {}
 }
 
 // VN dialog content helpers
@@ -388,6 +594,139 @@ function addAssetVersion(url) {
     const hasQuery = url.includes('?');
     return `${url}${hasQuery ? '&' : '?'}v=${encodeURIComponent(v)}`;
   } catch { return url; }
+}
+
+// ---- Minimap ----
+export function initMinimap() {
+  if (!minimapEl) return;
+  _miniW = world.tileW|0; _miniH = world.tileH|0;
+  minimapEl.width = Math.max(1, _miniW);
+  minimapEl.height = Math.max(1, _miniH);
+  // Offscreen layers
+  _miniBase = document.createElement('canvas');
+  _miniBase.width = _miniW; _miniBase.height = _miniH;
+  _miniFog = document.createElement('canvas');
+  _miniFog.width = _miniW; _miniFog.height = _miniH;
+  _miniFogImage = _miniFog.getContext('2d').createImageData(_miniW, _miniH);
+  _visited = new Uint8Array(_miniW * _miniH);
+
+  const bctx = _miniBase.getContext('2d');
+  // Base floor tint
+  bctx.fillStyle = '#151515';
+  bctx.fillRect(0, 0, _miniW, _miniH);
+  const drawRect = (x,y,w,h,color) => { bctx.fillStyle = color; bctx.fillRect(x,y,w,h); };
+  const obs = OBSTACLES || [];
+  for (let i = 0; i < obs.length; i++) {
+    const o = obs[i]; if (!o) continue;
+    const tx = Math.max(0, Math.floor(o.x / TILE));
+    const ty = Math.max(0, Math.floor(o.y / TILE));
+    const tw = Math.max(1, Math.ceil(o.w / TILE));
+    const th = Math.max(1, Math.ceil(o.h / TILE));
+    switch (o.type) {
+      case 'wall':
+      case 'marble':
+        drawRect(tx, ty, tw, th, '#555');
+        break;
+      case 'water':
+        drawRect(tx, ty, tw, th, '#2b5c93');
+        break;
+      case 'gate':
+        drawRect(tx, ty, tw, th, '#caa24a');
+        break;
+      case 'chest':
+        drawRect(tx, ty, tw, th, '#d6d67a');
+        break;
+      default:
+        break;
+    }
+  }
+  // Load preference and apply display/size
+  try {
+    const saved = Number(localStorage.getItem('minimapMode') || '1');
+    if (!Number.isNaN(saved)) _miniMode = Math.max(0, Math.min(2, saved));
+  } catch {}
+  applyMinimapMode();
+}
+
+export function updateMinimap() {
+  if (!minimapEl) return;
+  if ((_miniW !== (world.tileW|0)) || (_miniH !== (world.tileH|0)) || !_miniBase || !_visited) {
+    initMinimap();
+  }
+  // Reveal by camera view and a small radius around player
+  try {
+    const x0 = Math.max(0, Math.floor(camera.x / TILE));
+    const y0 = Math.max(0, Math.floor(camera.y / TILE));
+    const x1 = Math.min(_miniW - 1, Math.ceil((camera.x + camera.w) / TILE));
+    const y1 = Math.min(_miniH - 1, Math.ceil((camera.y + camera.h) / TILE));
+    for (let y = y0; y <= y1; y++) {
+      let idx = y * _miniW + x0;
+      for (let x = x0; x <= x1; x++, idx++) _visited[idx] = 1;
+    }
+    const px = Math.max(0, Math.min(_miniW-1, Math.floor(player.x / TILE)));
+    const py = Math.max(0, Math.min(_miniH-1, Math.floor(player.y / TILE)));
+    const r = 4;
+    for (let dy = -r; dy <= r; dy++) {
+      const yy = py + dy; if (yy < 0 || yy >= _miniH) continue;
+      const from = Math.max(0, px - r), to = Math.min(_miniW-1, px + r);
+      let idx = yy * _miniW + from;
+      for (let x = from; x <= to; x++, idx++) _visited[idx] = 1;
+    }
+  } catch {}
+
+  // Fog compositing
+  const data = _miniFogImage.data;
+  const n = _miniW * _miniH;
+  for (let i = 0, di = 0; i < n; i++, di += 4) {
+    const seen = _visited[i] === 1;
+    data[di+0] = 0; data[di+1] = 0; data[di+2] = 0; data[di+3] = seen ? 0 : 180;
+  }
+  const fctx = _miniFog.getContext('2d');
+  fctx.putImageData(_miniFogImage, 0, 0);
+
+  // Compose
+  const ctx = minimapEl.getContext('2d');
+  ctx.clearRect(0, 0, _miniW, _miniH);
+  ctx.drawImage(_miniBase, 0, 0);
+  ctx.drawImage(_miniFog, 0, 0);
+  // Player dot
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(Math.floor(player.x / TILE), Math.floor(player.y / TILE), 1, 1);
+  // Camera rectangle
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 1;
+  const rx = Math.floor(camera.x / TILE), ry = Math.floor(camera.y / TILE);
+  const rw = Math.max(1, Math.ceil(camera.w / TILE)), rh = Math.max(1, Math.ceil(camera.h / TILE));
+  ctx.strokeRect(rx, ry, rw, rh);
+}
+
+function applyMinimapMode() {
+  if (!minimapEl) return;
+  if (_miniMode <= 0 && !_miniPeek) {
+    minimapEl.style.display = 'none';
+    return;
+  }
+  minimapEl.style.display = '';
+  const w = (_miniMode === 2) ? 240 : 168; // display width in CSS pixels
+  minimapEl.style.width = `${w}px`;
+}
+
+export function cycleMinimapMode() {
+  _miniMode = (_miniMode + 1) % 3; // 0->1->2->0
+  applyMinimapMode();
+  try { localStorage.setItem('minimapMode', String(_miniMode)); } catch {}
+}
+
+export function beginMinimapPeek() {
+  if (_miniMode > 0 || _miniPeek) return;
+  _miniPeek = true;
+  minimapEl && (minimapEl.style.display = '');
+}
+
+export function endMinimapPeek() {
+  if (!_miniPeek) return;
+  _miniPeek = false;
+  applyMinimapMode();
 }
 
 // Level title overlay

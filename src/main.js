@@ -1,5 +1,5 @@
 // Modular bootstrap
-import { canvas, ctx, setupChatInputHandlers } from './engine/ui.js';
+import { canvas, ctx, setupChatInputHandlers, setupTitleScreen, showTitleScreen, hideTitleScreen, rebuildTitleButtons } from './engine/ui.js';
 import { world, camera, player, enemies, npcs, obstacles, spawnEnemy, spawnCompanion, spawnNpc, runtime } from './engine/state.js';
 import { TILE } from './engine/constants.js';
 import { makeSpriteSheet } from './engine/sprites.js';
@@ -10,12 +10,14 @@ import { step } from './systems/step.js';
 import { setNpcDialog, startPrompt } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor } from './engine/ui.js';
+import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save_core.js';
+import { loadGame, getSaveMeta } from './engine/save.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
 
 // Initial level: use loader registry (Level 1 by default)
 let terrain = loadLevel1();
+try { initMinimap(); } catch {}
 try { showLevelTitle(levelNameFor(1)); } catch {}
 
 // Input and UI
@@ -23,36 +25,77 @@ setupChatInputHandlers(runtime);
 initInput();
 updatePartyUI([]);
 
-// Introductory VN scene (once per save): waking in a strange world
-try {
-  if (!runtime.questFlags) runtime.questFlags = {};
-  if (!runtime.questFlags['intro_scene_done']) {
-    runtime.questFlags['intro_scene_done'] = true;
-    // Find Canopy (blonde) to anchor the final line camera pan and portrait
-    const canopy = npcs.find(n => (n?.name || '').toLowerCase().includes('canopy')) || null;
-    // For this intro, show a specific scared portrait for Canopy
-    const canopyIntroActor = canopy
-      ? { name: 'Canopy', x: canopy.x, y: canopy.y, w: canopy.w, h: canopy.h, portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' }
-      : { name: 'Canopy', portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' };
-    const lines = [
-      { actor: null, text: 'You jolt awake. The desk is gone. The classroom is gone. Your cheek still remembers wood grain, but the air smells like pine and iron.' },
-      { actor: null, text: 'The grove around you is torn—scuffed earth, snapped reeds, a smear of blood. You look down: your clothes aren\'t yours. Native garb. Sturdy boots. A knife scar on the belt.' },
-      // Final line will pan to Canopy before showing (with scared portrait)
-      { actor: canopyIntroActor, text: 'Off in the distance, a blonde girl struggles against a soldier.', pan: true },
-    ];
-    // Queue follow-ups and show the first line
-    if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
-    // Queue the middle narration line and the final canopy pan line
-    for (let i = 1; i < lines.length; i++) runtime._queuedVNs.push(lines[i]);
-    // If there are more lines queued, show a numbered Continue; otherwise allow Exit
-    const more = runtime._queuedVNs.length > 0;
-    const choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
-    startPrompt(lines[0].actor, lines[0].text, choices);
-  }
-} catch {}
+// Title screen setup: show image, then fade-in menu
+function startIntroScene() {
+  try {
+    if (!runtime.questFlags) runtime.questFlags = {};
+    if (!runtime.questFlags['intro_scene_done']) {
+      runtime.questFlags['intro_scene_done'] = true;
+      const canopy = npcs.find(n => (n?.name || '').toLowerCase().includes('canopy')) || null;
+      const canopyIntroActor = canopy
+        ? { name: 'Canopy', x: canopy.x, y: canopy.y, w: canopy.w, h: canopy.h, portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' }
+        : { name: 'Canopy', portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' };
+      const lines = [
+        { actor: null, text: 'You jolt awake. The desk is gone. The classroom is gone. Your cheek still remembers wood grain, but the air smells like pine and iron.' },
+        { actor: null, text: 'The grove around you is torn—scuffed earth, snapped reeds, a smear of blood. You look down: your clothes aren\'t yours. Native garb. Sturdy boots. A knife scar on the belt.' },
+        { actor: canopyIntroActor, text: 'Off in the distance, a blonde girl struggles against a soldier.', pan: true },
+      ];
+      if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
+      for (let i = 1; i < lines.length; i++) runtime._queuedVNs.push(lines[i]);
+      const more = runtime._queuedVNs.length > 0;
+      const choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
+      startPrompt(lines[0].actor, lines[0].text, choices);
+    }
+  } catch {}
+}
 
-// Safe spawn: brief invulnerability on new game so nearby enemies can't insta-hit
-player.invulnTimer = Math.max(player.invulnTimer || 0, 1.5);
+// Show title and pause world until a selection is made
+runtime.paused = true;
+let continueSlot = null; // 'auto' or 1
+setupTitleScreen({
+  onContinue: () => {
+    if (continueSlot == null) return; // disabled if none
+    hideTitleScreen();
+    runtime.paused = false;
+    loadGame(continueSlot);
+  },
+  onNew: () => {
+    hideTitleScreen();
+    runtime.paused = false;
+    // Safe spawn: brief invulnerability on new game so nearby enemies can't insta-hit
+    try { player.invulnTimer = Math.max(player.invulnTimer || 0, 1.5); } catch {}
+    startIntroScene();
+  },
+  onLoad: () => {
+    hideTitleScreen();
+    runtime.paused = false;
+    loadGame();
+  }
+});
+showTitleScreen();
+
+// Enable Continue if a recent save exists (check autosave and slot 1)
+(async function enableContinueIfAvailable(){
+  try {
+    const [ma, m1] = await Promise.allSettled([ getSaveMeta('auto'), getSaveMeta(1) ]);
+    const A = (ma.status === 'fulfilled') ? ma.value : { exists:false, at:null };
+    const B = (m1.status === 'fulfilled') ? m1.value : { exists:false, at:null };
+    let best = null;
+    if (A && A.exists) best = { slot: 'auto', at: Number(A.at || 0) };
+    if (B && B.exists) {
+      const at1 = Number(B.at || 0);
+      if (!best || at1 > best.at) best = { slot: 1, at: at1 };
+    }
+    if (best) {
+      continueSlot = best.slot;
+      const btn = document.getElementById('btn-continue');
+      if (btn) { btn.disabled = false; }
+      rebuildTitleButtons();
+    }
+  } catch {}
+})();
+
+// Safe spawn timer will be applied on New Game selection
 
 // No turn-based battle; all combat is realtime.
 
@@ -72,6 +115,7 @@ function loop(now) {
     const doSwap = () => {
       const loader = LEVEL_LOADERS[lvl] || loadLevel1;
       terrain = loader();
+      try { initMinimap(); } catch {}
       // Geometry-only: if a pending restore exists, strip default actors spawned by loader
       try { if (runtime && runtime._pendingRestore) { enemies.length = 0; npcs.length = 0; } } catch {}
       // Snap camera to player
@@ -87,6 +131,7 @@ function loop(now) {
     fadeTransition({ toBlackMs: 400, holdMs: 100, toClearMs: 400, during: () => { doSwap(); try { showLevelTitle(levelNameFor(lvl)); } catch {} } });
   }
   if (!suspendRender) render(terrain, obstacles);
+  try { updateMinimap(); } catch {}
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

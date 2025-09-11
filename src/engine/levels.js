@@ -491,7 +491,7 @@ export function loadLevel4() {
   add(rx + rw - t, ry, t, rh); // right
   add(rx, ry, gapX - rx, t);   // top-left
   add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t); // top-right
-  // Locked gate requires key_sigil
+  // Locked gate requires key_sigil — single entry point only
   obstacles.push({ x: gapX, y: ry, w: gapW, h: t, type: 'gate', id: 'city_gate', keyId: 'key_sigil', locked: true, blocksAttacks: true });
 
   // Boss: Vanificia inside arena

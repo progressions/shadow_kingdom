@@ -1,5 +1,5 @@
 import { runtime, world } from './state.js';
-import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice, showBanner } from './ui.js';
+import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice, showBanner, cycleMinimapMode, beginMinimapPeek, endMinimapPeek } from './ui.js';
 import { startAttack, tryInteract, willAttackHitEnemy } from '../systems/combat.js';
 import { selectChoice, startCompanionSelector, startSaveMenu, startInventoryMenu, startPrompt } from '../engine/dialog.js';
 import { initAudioUnlock, toggleMute, toggleMusic, stopMusic } from './audio.js';
@@ -62,6 +62,9 @@ export function initInput() {
       toggleMute();
     } else if (e.key.toLowerCase() === 'b') {
       toggleMusic();
+    } else if (e.key.toLowerCase() === 'n') {
+      // Minimap: tap to cycle Off->Compact->Large. If currently Off, holding shows a peek.
+      beginMinimapPeek();
     } else if (e.key === 'F6' || (e.ctrlKey && e.key.toLowerCase() === 's')) {
       e.preventDefault(); saveGame();
     } else if (e.key === 'F7') {
@@ -74,6 +77,15 @@ export function initInput() {
       try { showBanner(`Next Level: Pending Level ${next}`); } catch {}
     }
   });
-  window.addEventListener('keyup', (e) => runtime.keys.delete(e.key.toLowerCase()));
+  window.addEventListener('keyup', (e) => {
+    runtime.keys.delete(e.key.toLowerCase());
+    if (e.key.toLowerCase() === 'n') {
+      // End peek; if no peek happened (or even if it did), cycle the persistent mode
+      const wasPeek = true; // endMinimapPeek is idempotent
+      endMinimapPeek();
+      // Cycle mode on key release for a clean single transition
+      cycleMinimapMode();
+    }
+  });
   canvas.addEventListener('mousedown', () => { /* handled in ui for chat exit */ });
 }
