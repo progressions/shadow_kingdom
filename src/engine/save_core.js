@@ -87,6 +87,7 @@ export function serializeSave() {
     affinityFlags: Object.keys(runtime?.affinityFlags || {}),
     questFlags: Object.keys(runtime?.questFlags || {}),
     questCounters: Object.assign({}, runtime?.questCounters || {}),
+    questMeta: Object.assign({}, runtime?.questMeta || {}),
     uniqueActors,
     dynamicEnemies,
   };
@@ -314,6 +315,7 @@ export function applyPendingRestore() {
     runtime.affinityFlags = {}; (data.affinityFlags||[]).forEach(k => runtime.affinityFlags[k]=true);
     runtime.questFlags = {}; (data.questFlags||[]).forEach(k => runtime.questFlags[k]=true);
     runtime.questCounters = {}; Object.assign(runtime.questCounters, data.questCounters||{});
+    runtime.questMeta = {}; Object.assign(runtime.questMeta, data.questMeta||{});
     // Companions
     companions.length = 0;
     if (Array.isArray(data.companions)) {

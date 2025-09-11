@@ -80,10 +80,27 @@ export function exitChat(runtime) {
     if (Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0) {
       const next = runtime._queuedVNs.shift();
       if (next && next.text) {
-        import('../engine/dialog.js').then(mod => {
-          const actor = next.actor || null;
-          mod.startPrompt(actor, next.text, []);
-        }).catch(()=>{});
+        // If the next queued VN requests a pan, schedule a camera pan to the actor and show the VN after
+        if (next.pan && next.actor && typeof next.actor.x === 'number' && typeof next.actor.y === 'number') {
+          const toX = Math.round(next.actor.x + (next.actor.w || 12)/2 - camera.w/2);
+          const toY = Math.round(next.actor.y + (next.actor.h || 16)/2 - camera.h/2);
+          runtime.cameraPan = {
+            fromX: camera.x,
+            fromY: camera.y,
+            toX: Math.max(0, Math.min(world.w - camera.w, toX)),
+            toY: Math.max(0, Math.min(world.h - camera.h, toY)),
+            t: 0,
+            dur: 0.6,
+          };
+          runtime.pendingIntro = { actor: next.actor, text: next.text };
+        } else {
+          import('../engine/dialog.js').then(mod => {
+            const actor = next.actor || null;
+            const more = Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0;
+            const choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
+            mod.startPrompt(actor, next.text, choices);
+          }).catch(()=>{});
+        }
         return;
       }
     }
@@ -129,10 +146,15 @@ export function setOverlayDialog(text, choices) {
         btn.type = 'button';
         btn.textContent = `${i+1}) ${c.label}`;
         btn.dataset.index = String(i);
+        if (c && typeof c.hint === 'string' && c.hint.trim().length) {
+          btn.title = c.hint;
+        }
         vnChoices.appendChild(btn);
       });
-      // Append a universal Exit (X) button at the bottom when not locked
-      if (!runtime.lockOverlay) {
+      // Append Exit (X) unless suppressed (e.g., queued VN with Continue)
+      const isContinue = choices.some(c => c && c.action === 'vn_continue');
+      const suppressExit = isContinue && Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0;
+      if (!runtime.lockOverlay && !suppressExit) {
         const exitBtn = document.createElement('button');
         exitBtn.type = 'button';
         exitBtn.textContent = 'Exit (X)';
@@ -412,7 +434,12 @@ export function updateQuestHint() {
   try {
     const f = runtime.questFlags || {};
     const c = runtime.questCounters || {};
-    if (f['yorna_knot_started'] && !f['yorna_knot_cleared']) {
+    // Fetch/Deliver — Canopy: Return the Ribbon
+    if (f['canopy_fetch_ribbon_started'] && !f['canopy_fetch_ribbon_cleared']) {
+      const items = (player?.inventory?.items || []);
+      const hasRibbon = items.some(it => it && (it.id === 'relic_canopy' || it.keyId === 'relic_canopy'));
+      msg = hasRibbon ? 'Quest — Return the Ribbon: Take it to the pedestal' : 'Quest — Return the Ribbon: Find the Ribbon';
+    } else if (f['yorna_knot_started'] && !f['yorna_knot_cleared']) {
       const left = c['yorna_knot_remaining'] ?? 2;
       msg = `Quest — Cut the Knot: ${left} target${left===1?'':'s'} left`;
     } else if (f['canopy_triage_started'] && !f['canopy_triage_cleared']) {
@@ -482,59 +509,59 @@ function rolesForCompanion(name) {
   const key = (name || '').toLowerCase();
   if (key.includes('canopy')) {
     return [
-      { cls: 'd', label: 'DR', title: 'Defense Aura' },
-      { cls: 'rg', label: 'Rg', title: 'Regen Aura' },
-      { cls: 'sh', label: 'Sh', title: 'Safeguard Shield' },
+      { cls: 'd', label: 'DR', title: 'Defense' },
+      { cls: 'rg', label: 'Rg', title: 'Regeneration' },
+      { cls: 'sh', label: 'Sh', title: 'Safeguard' },
     ];
   }
   if (key.includes('yorna')) {
     return [
-      { cls: 'a', label: 'A', title: 'Attack Aura' },
-      { cls: 'r', label: 'R', title: 'Range Aura' },
+      { cls: 'a', label: 'A', title: 'Frontline Power' },
+      { cls: 'r', label: 'R', title: 'Extended Reach' },
       { cls: 'ec', label: 'E', title: 'Echo Strike' },
     ];
   }
   if (key.includes('hola')) {
     return [
-      { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
-      { cls: 'td', label: 'tDR', title: 'Touch Damage Reduction' },
+      { cls: 'sl', label: 'Sl', title: 'Slow' },
+      { cls: 'td', label: 'tDR', title: 'Guard (Contact DR)' },
       { cls: 'gs', label: 'G', title: 'Gust' },
     ];
   }
   if (key.includes('oyin')) {
     return [
-      { cls: 'a', label: 'A', title: 'Attack Aura' },
-      { cls: 'r', label: 'R', title: 'Range Aura' },
+      { cls: 'a', label: 'A', title: 'Rally (Attack)' },
+      { cls: 'r', label: 'R', title: 'Extended Reach' },
       { cls: 'ec', label: 'E', title: 'Echo Strike' },
     ];
   }
   if (key.includes('twil')) {
     return [
-      { cls: 'sl', label: 'Sl', title: 'Slow Aura' },
-      { cls: 'd', label: 'DR', title: 'Defense Aura' },
+      { cls: 'sl', label: 'Sl', title: 'Slow' },
+      { cls: 'd', label: 'DR', title: 'Defense' },
       { cls: 'gs', label: 'G', title: 'Gust' },
     ];
   }
   if (key.includes('tin')) {
     return [
-      { cls: 'as', label: 'AS', title: 'Hype (Attack Speed)' },
+      { cls: 'as', label: 'AS', title: 'Tempo (Attack Speed)' },
     ];
   }
   if (key.includes('nellis')) {
     return [
-      { cls: 'd', label: 'DR', title: 'Steady Pace (Defense Aura)' },
-      { cls: 'be', label: 'Be', title: 'Beacon (Range Boost)' },
+      { cls: 'd', label: 'DR', title: 'Steady Pace (Defense)' },
+      { cls: 'be', label: 'Be', title: 'Beacon (Reach)' },
     ];
   }
   if (key.includes('urn')) {
     return [
-      { cls: 'rg', label: 'Rg', title: 'Regen Aura' },
+      { cls: 'rg', label: 'Rg', title: 'Regeneration' },
       { cls: 'ch', label: 'Ch', title: 'Cheer (Burst Heal)' },
     ];
   }
   if (key.includes('varabella')) {
     return [
-      { cls: 'r', label: 'R', title: 'Range Aura' },
+      { cls: 'r', label: 'R', title: 'Angles (Range)' },
       { cls: 'an', label: 'An', title: 'Call the Angle' },
     ];
   }

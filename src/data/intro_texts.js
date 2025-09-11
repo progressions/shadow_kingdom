@@ -53,11 +53,11 @@ export const introTexts = {
 
   urn:
     "Green hair tucked under a hopeful grin, she bounces on her toes among broken streets. This was her home. When the city fell, she learned to move and hope at the same time—and she kept another survivor alive doing it.\n" +
-    "\nUrn: \"We can fix this—one street at a time. I’ll keep up!\"",
+    "\nUrn: \"Mister, we can fix this—one street at a time. I’ll keep up!\"",
 
   varabella:
     "A red-haired figure leans against a shattered plinth, black dress dusted with ash. She grew up in these blocks; now she reads the ruins like a map and keeps the people she loves standing. Sarcasm is a shield that never cracks.\n" +
-    "\nVarabella: \"Oh good. Another hero. Try not to trip over the bodies while you impress me.\"",
+    "\nVarabella: \"Boss man, oh good. Another hero. Try not to trip over the bodies while you impress me.\"",
 
   tin:
     "Blue hair, bright eyes, and bouncing steps—Tin nearly trips over her own feet and laughs anyway. She points at three paths at once and somehow means all of them.\n" +

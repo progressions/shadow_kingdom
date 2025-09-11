@@ -3,51 +3,128 @@
 <head>
   <title>Sprite Shape Test</title>
   <style>
-    body { background: #333; padding: 20px; }
-    canvas { background: white; margin: 10px; image-rendering: pixelated; }
-    h3 { color: white; }
+    body { 
+      background: #2a2a2a; 
+      padding: 20px; 
+      font-family: monospace;
+      color: white;
+    }
+    .sprite-container {
+      display: inline-block;
+      margin: 20px;
+      text-align: center;
+    }
+    canvas { 
+      background: #555; 
+      border: 2px solid #888;
+      margin: 10px;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+    }
+    h3 { 
+      color: white; 
+      margin: 10px 0;
+    }
+    .error {
+      color: #ff6666;
+      padding: 10px;
+      background: rgba(255,0,0,0.1);
+      border: 1px solid #ff6666;
+      margin: 10px;
+    }
   </style>
 </head>
 <body>
-  <h3>Player Sprite (Rectangle)</h3>
-  <canvas id="player"></canvas>
+  <h1>Sprite Shape Comparison</h1>
   
-  <h3>Companion Sprite (Feminine Shape)</h3>
-  <canvas id="companion"></canvas>
+  <div class="sprite-container">
+    <h3>Player Sprite (Rectangle)</h3>
+    <canvas id="player"></canvas>
+  </div>
+  
+  <div class="sprite-container">
+    <h3>Companion Sprite (Feminine Shape)</h3>
+    <canvas id="companion"></canvas>
+  </div>
+
+  <div class="sprite-container">
+    <h3>Canopy (Bright Yellow Hair)</h3>
+    <canvas id="canopy"></canvas>
+  </div>
+  
+  <div id="error" class="error" style="display:none;"></div>
   
   <script type="module">
     import { makeSpriteSheet } from './src/engine/sprites.js';
+    import { SPRITE_SIZE } from './src/engine/constants.js';
     
-    // Player sprite - rectangular
-    const playerSheet = makeSpriteSheet({ shirt: '#4fa3ff', hair: '#3b2a1f' });
+    const scale = 8; // Bigger scale for better visibility
+    const size = SPRITE_SIZE || 16;
     
-    // Companion sprite - with feminine shape
-    const companionSheet = makeSpriteSheet({ 
-      shirt: '#ff8fb1', 
-      hair: '#6b3f2b', 
-      longHair: true, 
-      dress: true, 
-      dressColor: '#ff6f9d',
-      feminineShape: true 
-    });
+    function displaySprite(canvasId, sheet, label) {
+      try {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+          console.error(`Canvas ${canvasId} not found`);
+          return;
+        }
+        
+        canvas.width = size * scale;
+        canvas.height = size * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        // Clear canvas first
+        ctx.fillStyle = '#555';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw the sprite (first frame, facing down)
+        ctx.drawImage(sheet, 0, 0, size, size, 0, 0, size * scale, size * scale);
+        
+        console.log(`${label} sprite displayed successfully`);
+      } catch (e) {
+        console.error(`Error displaying ${label}:`, e);
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error').textContent += `Error with ${label}: ${e.message}\n`;
+      }
+    }
     
-    // Display player sprite
-    const playerCanvas = document.getElementById('player');
-    playerCanvas.width = 64;
-    playerCanvas.height = 64;
-    const playerCtx = playerCanvas.getContext('2d');
-    playerCtx.imageSmoothingEnabled = false;
-    playerCtx.scale(4, 4);
-    playerCtx.drawImage(playerSheet, 0, 0, 16, 16, 0, 0, 16, 16);
-    
-    // Display companion sprite
-    const companionCanvas = document.getElementById('companion');
-    companionCanvas.width = 64;
-    companionCanvas.height = 64;
-    const companionCtx = companionCanvas.getContext('2d');
-    companionCtx.imageSmoothingEnabled = false;
-    companionCtx.scale(4, 4);
-    companionCtx.drawImage(companionSheet, 0, 0, 16, 16, 0, 0, 16, 16);
+    try {
+      // Player sprite - rectangular
+      const playerSheet = makeSpriteSheet({ 
+        shirt: '#4fa3ff', 
+        hair: '#3b2a1f' 
+      });
+      displaySprite('player', playerSheet, 'Player');
+      
+      // Companion sprite - with feminine shape
+      const companionSheet = makeSpriteSheet({ 
+        shirt: '#ff8fb1', 
+        hair: '#6b3f2b', 
+        longHair: true, 
+        dress: true, 
+        dressColor: '#ff6f9d',
+        feminineShape: true 
+      });
+      displaySprite('companion', companionSheet, 'Companion');
+      
+      // Canopy sprite - with bright yellow hair
+      const canopySheet = makeSpriteSheet({ 
+        hair: '#ffeb3b', 
+        longHair: true, 
+        dress: true, 
+        dressColor: '#4fa3ff', 
+        shirt: '#bfdcff',
+        feminineShape: true 
+      });
+      displaySprite('canopy', canopySheet, 'Canopy');
+      
+    } catch (e) {
+      console.error('Failed to create sprites:', e);
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = `Failed to create sprites: ${e.message}`;
+    }
   </script>
 </body>
 </html>

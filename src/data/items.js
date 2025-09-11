@@ -28,6 +28,8 @@ export const sampleItems = [
   { id: 'key_sigil',     name: 'Iron Sigil',     slot: 'misc',      keyId: 'key_sigil' },
   // Level 5 key (Temple Gate)
   { id: 'key_temple',    name: 'Temple Key',    slot: 'misc',       keyId: 'key_temple' },
+  // Quest item (fetch/deliver): Canopy — Sister's Ribbon
+  { id: 'relic_canopy',  name: "Sister's Ribbon", slot: 'misc',     keyId: 'relic_canopy' },
 ];
 
 export function cloneItem(item) {

@@ -338,6 +338,9 @@ export const runtime = {
   affinityFlags: {},
   questFlags: {},
   questCounters: {},
+  // Optional per-quest metadata (e.g., fetch item behavior)
+  // Shape per id: { keyId?: string, gateId?: string, consumeOnUse?: boolean }
+  questMeta: {},
   // Chemistry/tension helpers
   _timeSec: 0,
   _lowHpTimer: 0,

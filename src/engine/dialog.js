@@ -240,6 +240,11 @@ export function selectChoice(index) {
     openInventoryMenu(tag);
     return;
   }
+  if (choice.action === 'vn_continue') {
+    // Close this VN; ui.exitChat will immediately open the next queued VN if any
+    exitChat(runtime);
+    return;
+  }
   if (choice.action === 'save_game_slot') { requestSaveSlot(choice.data || 1); return; }
   if (choice.action === 'load_game_slot') { runtime.lockOverlay = false; loadGame(choice.data || 1); endDialog(); exitChat(runtime); runtime.gameOver = false; return; }
   if (choice.action === 'clear_save_slot') { requestClearSlot(choice.data || 1); return; }
@@ -454,6 +459,23 @@ function handleStartQuest(data) {
     if (runtime.questFlags[id + '_started']) return; // already started
     runtime.questFlags[id + '_started'] = true;
     if (!runtime.questCounters) runtime.questCounters = {};
+    // Fetch/Deliver: Canopy — Sister's Ribbon (spawn quest item near player)
+    if (id === 'canopy_fetch_ribbon') {
+      import('./state.js').then(m => {
+        const { player, spawnPickup } = m;
+        import('../data/loot.js').then(L => {
+          try {
+            const it = L.itemById('relic_canopy');
+            if (it) spawnPickup(Math.round(player.x + 30), Math.round(player.y), it);
+          } catch {}
+        }).catch(()=>{});
+        try {
+          if (!runtime.questMeta) runtime.questMeta = {};
+          runtime.questMeta['canopy_fetch_ribbon'] = { keyId: 'relic_canopy', gateId: 'ribbon_pedestal', consumeOnUse: true, clearBanner: 'Quest updated: Ribbon returned' };
+        } catch {}
+      }).catch(()=>{});
+      try { showBanner('Quest started: Return the Ribbon — Find and place it'); } catch {}
+    }
     // Yorna: Cut the Knot — spawn two featured targets
     if (id === 'yorna_knot') {
       import('./state.js').then(m => {

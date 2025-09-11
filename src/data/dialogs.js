@@ -29,21 +29,26 @@ export const canopyDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: 'Hi! I\'m Canopy. Would you like me to join you?',
+      text: "Canopy: My Lord, I'm Canopy—the one who keeps people standing. I mend wounds, steady your breath, and I can throw up a safeguard when things get ugly. If you lead, I'll keep everyone whole. Join you?",
       choices: [
-        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'You can lean on me, I\'ve got you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_intro_encourage' }, next: 'after_aff' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'Share a plan (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not right now.', action: 'end' },
       ],
     },
+    about: {
+      text: "Canopy: My Lord, I keep us on our feet—small heals, steady regen, and a burst shield when it counts. Stay near and I’ll trim the worst hits.",
+      choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' }, { label: 'Later.', action: 'end' } ],
+    },
     after_aff: {
-      text: 'Canopy: Thank you. I\'ll do my best to keep everyone whole.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Canopy: My Lord, thank you. I\'ll do my best to keep everyone whole.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' }, { label: 'Later.', action: 'end' } ],
     },
     bond: {
-      text: 'Canopy: A good plan is a steady breath. I\'m with you.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Canopy: My Lord, a good plan is a steady breath. I\'m with you.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -52,9 +57,9 @@ export const yornaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: 'Name\'s Yorna. The road ahead is rough. Need a hand?',
+      text: "Yorna: Chief, name's Yorna. I take the front, break lines, and make openings. Stand with me and we'll smash through anything. Need a hand?",
       choices: [
-        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'What can you do?', next: 'skills' },
         { label: 'You hit hard; I\'ll keep the lane open.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
         { label: 'Trade tactics (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
@@ -62,19 +67,19 @@ export const yornaDialog = {
       ],
     },
     skills: {
-      text: 'I\'m quick on my feet and good at scouting paths.',
+      text: "Yorna: Chief, I crack fronts and hold aggro. I create openings, interrupt lanes, and give you room to swing.",
       choices: [
-        { label: 'Sounds great — join me.', action: 'join_party' },
+        { label: 'Sounds great — join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
     after_aff: {
-      text: 'Yorna: That\'s the way—clear space and we\'ll bulldoze through.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Yorna: Chief, that\'s the way—clear space and we\'ll bulldoze through.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' }, { label: 'Later.', action: 'end' } ],
     },
     bond: {
-      text: 'Yorna: I like how you think. I\'ll match your pace.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Yorna: Chief, I like how you think. I\'ll match your pace.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -83,29 +88,29 @@ export const holaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: 'Hola. I can keep pace and watch your back. Shall I come?',
+      text: "Hola: My Lord, I'm Hola. I work the wind—slow their feet, shove them back, and turn tight fights into breathing room. I'll stay close and keep the gust ready. Shall I come?",
       choices: [
-        { label: 'Yes, please join.', action: 'join_party' },
-        { label: 'Tell me about yourself.', next: 'about' },
+        { label: 'Yes, please join.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'You\'re doing fine. Stay close and speak up if you need.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'hola_intro_encourage' }, next: 'after_aff' },
         { label: 'Practice a formation (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not now.', action: 'end' },
       ],
     },
     about: {
-      text: 'I\'m steady and patient. I won\'t slow you down.',
+      text: "Hola: My Lord, I slow crowds and peel trouble off you. Gusts push back, and I can set a hush that breaks enemy focus.",
       choices: [
-        { label: 'Alright, join me.', action: 'join_party' },
+        { label: 'Alright, join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
     after_aff: {
-      text: 'Hola: Okay… I\'ll try to keep pace. Thank you.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Hola: My Lord, okay… I\'ll try to keep pace. Thank you.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' }, { label: 'Later.', action: 'end' } ],
     },
     bond: {
-      text: 'Hola: That helps. If we keep it simple, I\'ll be ready.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Hola: My Lord, that helps. If we keep it simple, I\'ll be ready.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -114,15 +119,20 @@ export const oyinDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Oyin: I—I'm not great with crowds. But I can try to help. If you want me… I can come along.",
+      text: "Oyin: My Lord, Oyin here. I kindle sparks and keep embers alive. I can rally us when we need a push and set targets alight so they break easier. If you want me… I can come along.",
       choices: [
-        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Ignite · Rally · Burn Weaken' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'You’re doing fine; breathe and stay with me.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'oyin_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
     },
+    about: {
+      text: "Oyin: My Lord, I prime enemies with flame and rally your strike when we need momentum. Burned foes stagger and fall faster.",
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Ignite · Rally · Burn Weaken' }, { label: 'Later.', action: 'end' } ],
+    },
     after_aff: {
-      text: 'Oyin: Thanks… I can try a little longer if you lead.',
+      text: 'Oyin: My Lord, thanks… I can try a little longer if you lead.',
       choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
   },
@@ -132,16 +142,21 @@ export const twilDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Twil: Tracks are fresh and you look slow. Kidding. You want me along or what?",
+      text: "Twil: Master, I'm Twil. I scout ahead, read the ground, and call the gap. I'll mark weak points—take them when I say and we move faster. You want me along or what?",
       choices: [
-        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Scout · Weak Points · Shortcuts' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'Your read is sharp; call the line and I’ll follow.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'twil_intro_encourage' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
       ],
     },
+    about: {
+      text: "Twil: Master, I tag weak spots and show shortcuts. Stick with my calls and we’ll cut time and blood both.",
+      choices: [ { label: 'Good. Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+    },
     after_aff: {
-      text: 'Twil: Ha—nice. Keep up and I’ll make it easy.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Twil: Master, ha—nice. Keep up and I’ll make it easy.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Scout · Weak Points · Shortcuts' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -150,15 +165,20 @@ export const tinDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Tin: I can help scout the marsh. Want me on the path?",
+      text: "Tin: My Lord, Tin—eyes on water and wind. I flag safe paths and hype our rhythm; your hands will move quicker when I call the beat. Want me on the path?",
       choices: [
-        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Tempo · Attack Speed · Safe Footing' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'Take point and sing out. I’ll keep space clear.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'tin_intro_encourage' }, next: 'after_aff' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
+    about: {
+      text: "Tin: My Lord, I keep you nimble—attack speed up close, safe footing ahead. When I hum, your hands fly.",
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Tempo · Attack Speed · Safe Footing' }, { label: 'Later.', action: 'end' } ],
+    },
     after_aff: {
-      text: 'Tin: Got it—short steps and wide eyes. Let’s move.',
+      text: 'Tin: My Lord, got it—short steps and wide eyes. Let’s move.',
       choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
   },
@@ -168,16 +188,21 @@ export const nellisDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Nellis: You look like you could use a hand. Should I come along?",
+      text: "Nellis: Sire, I'm Nellis. I hold a steady line, set beacons so your reach goes farther, and take the strain so our pace never falters. Should I come along?",
       choices: [
-        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'Stay near and mirror me—we’ll be fine.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'nellis_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
     },
+    about: {
+      text: "Nellis: Sire, I steady your guard and lift your reach. I’ll keep a light where you need one most.",
+      choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' }, { label: 'Later.', action: 'end' } ],
+    },
     after_aff: {
-      text: 'Nellis: All right. I’ll match your pace.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: 'Nellis: Sire, all right. I’ll match your pace.',
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -186,28 +211,28 @@ export const urnDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Urn: Hi! I'm Urn. The city looks rough, but we can make it shine again. Want me with you?",
+      text: "Urn: Mister, I'm Urn. I patch scrapes, keep spirits up, and point out safe steps when the street gets mean. The city looks rough, but we can make it shine again. Want me with you?",
       choices: [
-        { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Burn · Heat Ward' },
         { label: "I like your energy—let's lift together.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'urn_intro_encourage' }, next: 'after_aff' },
-        { label: 'Tell me what you do.', next: 'about' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'Quests', next: 'quests' },
         { label: 'Not right now.', action: 'end' },
       ],
     },
     about: {
-      text: "Urn: I grew up on these streets. When the city fell, I hid in the arches and waited out the worst. That's where I met Varabella—we kept each other moving. I keep eyes up and steps light, and I can mark safe paths and keep spirits up.",
+      text: "Urn: Mister, I grew up on these streets. I cheer to lift you and give quick patch‑ups when it stings. I keep eyes up and steps light, and I can mark safe paths so people stop bleeding on the cobbles.",
       choices: [
-        { label: 'Sounds perfect—join me.', action: 'join_party' },
+        { label: 'Sounds perfect—join me.', action: 'join_party', hint: 'Support · Small Heals · Cheer' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
     after_aff: {
-      text: "Urn: Yes! Okay—short steps, long view. Let's go.",
+      text: "Urn: Mister, yes! Okay—short steps, long view. Let's go.",
       choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
     quests: {
-      text: 'Urn: We can make the paths safer. Where do we start?',
+      text: 'Urn: Mister, we can make the paths safer. Where do we start?',
       choices: [
         { label: 'Secure the Rooftops (Level 4)', requires: { hasFlag: 'level4_reached', missingFlag: 'urn_rooftops_started' }, next: 'urn_rooftops_intro' },
         { label: 'Turn in: Secure the Rooftops', requires: { flag: 'urn_rooftops_cleared' }, next: 'urn_rooftops_turnin' },
@@ -253,15 +278,20 @@ export const fanaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Fana: The chains broke when you struck me down. I won't wear them again. If you'll have me, I'll fight beside you.",
+      text: "Fana: My Prince, the chains broke when you struck me down—the fire didn't. I burn what clings and shield you with heat when it counts. If you'll have me, I'll fight beside you.",
       choices: [
         { label: 'Yes, join me.', action: 'join_party' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'You’re free now. Breathe, then walk with me.', action: 'affinity_add', data: { target: 'active', amount: 0.6, flag: 'fana_intro_reassure' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
       ],
     },
+    about: {
+      text: "Fana: My Prince, I scorch the rot and ward you with heat. I’m best where the press is thick and the air needs clearing.",
+      choices: [ { label: 'Walk with me.', action: 'join_party', hint: 'Burn · Heat Ward' }, { label: 'Later.', action: 'end' } ],
+    },
     after_aff: {
-      text: "Fana: Thank you. I'll keep pace—and keep the fire pointed forward.",
+      text: "Fana: My Prince, thank you. I'll keep pace—and keep the fire pointed forward.",
       choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
   },
@@ -271,7 +301,7 @@ export const fanaFreedDialog = {
   start: 'freed',
   nodes: {
     freed: {
-      text: "Fana: The sigils are ash. My hands are my own.\nI remember Aurelion's halls—the light, the vows. If you'll have me, I'll help set them right.",
+      text: "Fana: My Prince, the sigils are ash. My hands are my own.\nI remember Aurelion's halls—the light, the vows. If you'll have me, I'll help set them right.",
       choices: [
         { label: 'Yes, join me.', action: 'join_party' },
         { label: 'Take a breath. Walk with me when you’re ready.', action: 'affinity_add', data: { target: 'active', amount: 0.6, flag: 'fana_freed_reassure' }, next: 'after_aff' },
@@ -279,7 +309,7 @@ export const fanaFreedDialog = {
       ],
     },
     after_aff: {
-      text: "Fana: Thank you. I won't look back.",
+      text: "Fana: My Prince, thank you. I won't look back.",
       choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
   },
@@ -289,9 +319,9 @@ export const varabellaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Varabella: Another brave face in a dead city. Do you want competence or compliments?",
+      text: "Varabella: Boss man, another brave face in a dead city. I work sightlines and cut angles—I'll extend your shots and keep you standing. Do you want competence or compliments?",
       choices: [
-        { label: 'Competence. Join me.', action: 'join_party' },
+        { label: 'Competence. Join me.', action: 'join_party', hint: 'Angles · Extended Reach' },
         { label: "Spare the sarcasm; I value sharp eyes.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'varabella_intro_respect' }, next: 'after_aff' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Quests', next: 'quests' },
@@ -299,18 +329,18 @@ export const varabellaDialog = {
       ],
     },
     about: {
-      text: "Varabella: I had a window over the plaza when it cracked. I learned where to stand and when to move, because staying put gets you eaten. Urn and I found each other in the ruins and refused to die alone. Sightlines, angles, timing. I cut openings—and I don't miss the exit.",
+      text: "Varabella: Boss man, I had a window over the plaza when it cracked. I learned where to stand and when to move—staying put gets you eaten. Urn and I found each other in the ruins and refused to die alone. Sightlines, angles, timing. I extend your angles, stretch your range, and call exits you won’t miss.",
       choices: [
-        { label: 'Good. I need that—join me.', action: 'join_party' },
+        { label: 'Good. I need that—join me.', action: 'join_party', hint: 'Angles · Extended Reach' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
     after_aff: {
-      text: "Varabella: Huh. You listen. Fine—I'll keep you standing.",
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      text: "Varabella: Boss man, you listen. Fine—I'll keep you standing.",
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Angles · Extended Reach' }, { label: 'Later.', action: 'end' } ],
     },
     quests: {
-      text: 'Varabella: Clear sightlines, clean exits. Pick one.',
+      text: 'Varabella: Boss man, clear sightlines, clean exits. Pick one.',
       choices: [
         { label: 'Cut the Crossfire (Level 4)', requires: { hasFlag: 'level4_reached', missingFlag: 'varabella_crossfire_started' }, next: 'varabella_crossfire_intro' },
         { label: 'Turn in: Cut the Crossfire', requires: { flag: 'varabella_crossfire_cleared' }, next: 'varabella_crossfire_turnin' },
@@ -321,32 +351,32 @@ export const varabellaDialog = {
       ],
     },
     varabella_crossfire_intro: {
-      text: 'Varabella: Captains set crossfire in the alleys. Break three posts and the lanes breathe.',
+      text: 'Varabella: Boss man, captains set crossfire in the alleys. Break three posts and the lanes breathe.',
       choices: [
         { label: 'Start: Cut the Crossfire', action: 'start_quest', data: { id: 'varabella_crossfire' }, next: 'varabella_crossfire_started' },
         { label: 'Back', next: 'quests' },
       ],
     },
     varabella_crossfire_started: {
-      text: 'Varabella: Three posts. Quick in, clean out.',
+      text: 'Varabella: Boss man, three posts. Quick in, clean out.',
       choices: [ { label: 'Okay', action: 'end' } ],
     },
     varabella_crossfire_turnin: {
-      text: 'Varabella: Better. You left them nothing to aim at.',
+      text: 'Varabella: Boss man, better. You left them nothing to aim at.',
       choices: [
         { label: 'We cut a good lane. (Affinity +1.0)', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'varabella_crossfire_reward' }, next: 'varabella_crossfire_done' },
       ],
     },
     varabella_crossfire_done: {
-      text: 'Varabella: Next time, we do it faster.',
+      text: 'Varabella: Boss man, next time, we do it faster.',
       choices: [ { label: 'Back', action: 'end' }, { label: 'More quests', next: 'quests' } ],
     },
     varabella_angles6_locked: {
-      text: 'Varabella: When the arches open up, we can fix their angles.',
+      text: 'Varabella: Boss man, when the arches open up, we can fix their angles.',
       choices: [ { label: 'Back', next: 'quests' } ],
     },
     varabella_wires7_locked: {
-      text: 'Varabella: If they string wires again, I\'ll teach them to cut their own.',
+      text: 'Varabella: Boss man, if they string wires again, I\'ll teach them to cut their own.',
       choices: [ { label: 'Back', next: 'quests' } ],
     },
   },
@@ -356,16 +386,21 @@ export const cowsillDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Cowsill: Hey! I'm Cowsill! Want to team up? When we strike together, we hit way harder!",
+      text: "Cowsill: My Lord, I'm Cowsill—your strike partner. When you hit, I amplify and stagger them for follow‑ups. Team with me and every swing lands harder. Want to team up?",
       choices: [
-        { label: 'Yes, join me!', action: 'join_party' },
+        { label: 'Yes, join me!', action: 'join_party', hint: 'Strike Partner · Amplify · Stagger' },
         { label: "Let's strike as one! (Affinity +0.3)", action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'cowsill_intro_team' }, next: 'after_aff' },
+        { label: 'What can you do?', next: 'about' },
         { label: 'Tell me your technique (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not right now.', action: 'end' },
       ],
     },
+    about: {
+      text: "Cowsill: My Lord, I mirror your rhythm to double impact and stagger groups. Pair up and we’ll bulldoze lines together.",
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Strike Partner · Amplify · Stagger' }, { label: 'Later.', action: 'end' } ],
+    },
     after_aff: {
-      text: "Cowsill: Yes! That's the spirit! Together we're unstoppable!",
+      text: "Cowsill: My Lord, yes! That's the spirit! Together we're unstoppable!",
       choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
     bond: {

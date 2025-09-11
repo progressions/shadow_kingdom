@@ -226,9 +226,46 @@ function tryUnlockGate(hb) {
     const items = player?.inventory?.items || [];
     const itm = items.find(it => it && (it.keyId === keyId));
     if (itm) {
+      // Compute quest match and consumption before showing banner, so we can append a quest update suffix.
+      let matched = false;
+      let shouldConsume = false;
+      let clearSuffix = '';
+      try {
+        const meta = runtime?.questMeta || {};
+        const flags = runtime?.questFlags || {};
+        for (const [qid, m] of Object.entries(meta)) {
+          if (!m) continue;
+          const matchesKey = !m.keyId || m.keyId === (o.keyId || o.id || 'gate') || m.keyId === itm.keyId;
+          const matchesGate = !m.gateId || m.gateId === (o.id || '');
+          if (!matchesKey || !matchesGate) continue;
+          if (flags[`${qid}_started`] && !flags[`${qid}_cleared`]) {
+            runtime.questFlags[`${qid}_cleared`] = true;
+            matched = true;
+            if (m.consumeOnUse) shouldConsume = true;
+            if (m.clearBanner) clearSuffix = String(m.clearBanner);
+          }
+        }
+      } catch {}
+      // Unlock gate and announce with optional quest update suffix
       o.locked = false; o.blocksAttacks = false;
       const gateName = o.name || 'Gate';
-      showBanner(`Used ${itm.name || 'Key'} to open ${gateName}`);
+      const baseMsg = `Used ${itm.name || 'Key'} to open ${gateName}`;
+      const msg = matched ? (clearSuffix ? `${baseMsg} — ${clearSuffix}` : `${baseMsg} — Quest updated`) : baseMsg;
+      showBanner(msg);
+      // Consume the item if configured
+      if (shouldConsume) {
+        try {
+          const items = player?.inventory?.items || [];
+          const idx = items.indexOf(itm);
+          if (idx !== -1) {
+            if (items[idx].stackable && typeof items[idx].qty === 'number' && items[idx].qty > 1) {
+              items[idx].qty -= 1;
+            } else {
+              items.splice(idx, 1);
+            }
+          }
+        } catch {}
+      }
       try { playSfx('unlock'); } catch {}
       // Level 1 pacing: award objective XP on opening the castle gate to hit ~80% toward Lv 2 pre-boss
       try {

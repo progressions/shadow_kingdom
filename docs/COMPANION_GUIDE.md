@@ -9,7 +9,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 
 ### Canopy
 **Appearance:** Blonde hair, blue dress  
-**Personality:** Calm healer, protective, searching for her sister Larch  
+**Personality:** Calm healer, protective, searching for her sister Ell  
 **Class:** Support/Healer  
 
 **Auras:**

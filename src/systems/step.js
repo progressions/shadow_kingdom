@@ -124,7 +124,7 @@ export function step(dt) {
     if ((runtime._recentPlayerHitTimer || 0) > 0) runtime._recentPlayerHitTimer = Math.max(0, runtime._recentPlayerHitTimer - dt);
   } catch {}
   // Handle simple camera pan for VN intros (pauses simulation)
-  if (runtime.cameraPan) {
+      if (runtime.cameraPan) {
     const p = runtime.cameraPan;
     p.t = Math.min(p.dur, (p.t || 0) + dt);
     let u = p.t / p.dur; // ease in-out cubic
@@ -144,8 +144,10 @@ export function step(dt) {
           const isEnemy = (typeof actor?.touchDamage === 'number');
           playSfx(isEnemy ? 'vnIntroEnemy' : 'vnIntroNpc');
         } catch {}
-        // No numbered Exit choice; overlay will show Exit (X) automatically
-        startPrompt(actor, text, []);
+        // Use Continue choice if there are more queued VN entries
+        const more = Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0;
+        const choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
+        startPrompt(actor, text, choices);
       }
     }
     return; // halt simulation during pan

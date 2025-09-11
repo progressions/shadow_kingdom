@@ -39,7 +39,10 @@ export function loadLevel1() {
   const yornaPos  = { x: Math.round(player.x - 340), y: Math.round(player.y - 240) };
 
   // Initial enemies around NPCs
+  // Canopy: three nearby mooks to hint at immediate pressure
   spawnEnemy(canopyPos.x + 28, canopyPos.y + 8, 'mook');
+  spawnEnemy(canopyPos.x - 22, canopyPos.y - 14, 'mook');
+  spawnEnemy(canopyPos.x + 6,  canopyPos.y - 24, 'mook');
   spawnEnemy(holaPos.x - 42, holaPos.y - 20, 'mook');
   spawnEnemy(holaPos.x + 42, holaPos.y - 20, 'mook');
   spawnEnemy(holaPos.x + 0,  holaPos.y + 38, 'mook');
@@ -145,6 +148,8 @@ export function loadLevel2() {
   obstacles.push({ x: Math.round(player.x + TILE * 14), y: Math.round(player.y - TILE * 10), w: 12, h: 10, type: 'chest', id: 'chest_l2_armor', fixedItemId: 'armor_chain', opened: false, locked: false });
   obstacles.push({ x: Math.round(player.x - TILE * 18), y: Math.round(player.y + TILE * 8), w: 12, h: 12, type: 'barrel', id: 'brk_l2_a', hp: 2 });
   obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y + TILE * 12), w: 12, h: 12, type: 'crate', id: 'brk_l2_b', hp: 2 });
+  // Fetch/Delivery quest pedestal: keyed to Sister's Ribbon (relic_canopy)
+  obstacles.push({ x: Math.round(player.x + TILE * 8), y: Math.round(player.y - TILE * 14), w: 20, h: 8, type: 'gate', id: 'ribbon_pedestal', keyId: 'relic_canopy', locked: true, blocksAttacks: true, name: 'Ribbon Pedestal' });
 
   // Boss arena (ruins ring) and Nethra spawn
   const rw = TILE * 12, rh = TILE * 8, t = 8;

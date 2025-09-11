@@ -7,7 +7,7 @@ import { buildTerrainBitmap, buildObstacles } from './engine/terrain.js';
 import { initInput } from './engine/input.js';
 import { render } from './engine/render.js';
 import { step } from './systems/step.js';
-import { setNpcDialog } from './engine/dialog.js';
+import { setNpcDialog, startPrompt } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor } from './engine/ui.js';
@@ -22,6 +22,34 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
 setupChatInputHandlers(runtime);
 initInput();
 updatePartyUI([]);
+
+// Introductory VN scene (once per save): waking in a strange world
+try {
+  if (!runtime.questFlags) runtime.questFlags = {};
+  if (!runtime.questFlags['intro_scene_done']) {
+    runtime.questFlags['intro_scene_done'] = true;
+    // Find Canopy (blonde) to anchor the final line camera pan and portrait
+    const canopy = npcs.find(n => (n?.name || '').toLowerCase().includes('canopy')) || null;
+    // For this intro, show a specific scared portrait for Canopy
+    const canopyIntroActor = canopy
+      ? { name: 'Canopy', x: canopy.x, y: canopy.y, w: canopy.w, h: canopy.h, portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' }
+      : { name: 'Canopy', portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' };
+    const lines = [
+      { actor: null, text: 'You jolt awake. The desk is gone. The classroom is gone. Your cheek still remembers wood grain, but the air smells like pine and iron.' },
+      { actor: null, text: 'The grove around you is torn—scuffed earth, snapped reeds, a smear of blood. You look down: your clothes aren\'t yours. Native garb. Sturdy boots. A knife scar on the belt.' },
+      // Final line will pan to Canopy before showing (with scared portrait)
+      { actor: canopyIntroActor, text: 'Off in the distance, a blonde girl struggles against a soldier.', pan: true },
+    ];
+    // Queue follow-ups and show the first line
+    if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
+    // Queue the middle narration line and the final canopy pan line
+    for (let i = 1; i < lines.length; i++) runtime._queuedVNs.push(lines[i]);
+    // If there are more lines queued, show a numbered Continue; otherwise allow Exit
+    const more = runtime._queuedVNs.length > 0;
+    const choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
+    startPrompt(lines[0].actor, lines[0].text, choices);
+  }
+} catch {}
 
 // Safe spawn: brief invulnerability on new game so nearby enemies can't insta-hit
 player.invulnTimer = Math.max(player.invulnTimer || 0, 1.5);
