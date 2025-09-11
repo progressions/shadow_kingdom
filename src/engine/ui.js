@@ -38,6 +38,8 @@ export function enterChat(runtime) {
   const npc = runtime.activeNpc;
   if (overlay) {
     overlay.style.display = 'block';
+    // Ensure any screen fade is cleared so background is dimmed, not black
+    try { if (fadeEl) fadeEl.classList.remove('show'); } catch {}
     playSfx('uiOpen');
     if (npc && npc.portraitSrc) {
       if (vnPortraitBox) vnPortraitBox.style.display = '';
