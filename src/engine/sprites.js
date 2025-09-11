@@ -182,5 +182,6 @@ export function sheetForName(name) {
   if (key.includes('ell'))    return makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0', feminineShape: true });
   if (key.includes('fana'))   return makeSpriteSheet({ hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#e6d5ff', shirt: '#c7b0ff', feminineShape: true });
   if (key.includes('cowsill')) return makeSpriteSheet({ hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#2a2a2a', feminineShape: true });
+  if (key.includes('rose'))   return makeSpriteSheet({ hair: '#8a3dff', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#ffd166', feminineShape: true });
   return npcSheet;
 }

@@ -797,6 +797,14 @@ export function loadLevel6() {
     if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);
   }).catch(()=>{});
 
+  // Rose — Queen of Aurelion (non-companion), elegant and stately
+  try {
+    const roseX = sisterX + TILE * 3; const roseY = sisterY;
+    const roseSheet = sheetForName('rose');
+    const rose = spawnNpc(roseX, roseY, 'down', { name: 'Rose', dialogId: 'rose', sheet: roseSheet, portrait: 'assets/portraits/level06/Rose/Rose.mp4' });
+    import('../data/dialogs.js').then(mod => { if (mod.roseDialog) setNpcDialog(rose, mod.roseDialog); }).catch(()=>{});
+  } catch {}
+
   // Place all companion NPCs around the hall as non-recruit hub characters
   const placeNpc = (name, x, y, dir, opts = {}) => {
     const sheet = sheetForName(name);

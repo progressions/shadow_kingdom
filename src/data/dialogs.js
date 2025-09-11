@@ -355,6 +355,33 @@ export const fanaFreedDialog = {
   },
 };
 
+// Rose — Queen of Aurelion (non-companion)
+export const roseDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: "Rose: Champion of the city, you have my sovereign gratitude. Aurelion breathes again—its pulse restored, its halls unshackled. Yet rejoice with prudence: Urathar's redoubt remains occluded, and his detachments still desolate the outer demesnes.",
+      choices: [
+        { label: 'Your Majesty, how fares the Heart?', next: 'heart' },
+        { label: 'Any word on Urathar\'s lair?', next: 'lair' },
+        { label: 'We\'ll continue the work.', action: 'end' },
+      ],
+    },
+    heart: {
+      text: "Rose: The Heart resounds—soft, but true. Sanctifiers cleanse the soot; refugees bivouac in the nave. Your deeds made this possible. I shall not forget it.",
+      choices: [ { label: 'And the people?', next: 'people' }, { label: 'Thank you, Your Majesty.', action: 'end' } ],
+    },
+    people: {
+      text: "Rose: They are tired, but less afraid. When the bells toll for them again, it will be because life resumes—not because another edict fell.",
+      choices: [ { label: 'We\'ll keep them safe.', action: 'end' } ],
+    },
+    lair: {
+      text: "Rose: Our scouts report roving cadres: ash-cloaks at the threshing villages, tithers on the trade roads. But the locus—the very burrow from which Urathar plots—remains undisclosed. Find it, and we shall close his book.",
+      choices: [ { label: 'We\'ll find it.', action: 'end' } ],
+    },
+  },
+};
+
 export const varabellaDialog = {
   start: 'intro',
   nodes: {

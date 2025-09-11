@@ -281,6 +281,7 @@ function attachDialogById(npc, id) {
     else if (key === 'varabella' && mod.varabellaDialog) npc.dialog = mod.varabellaDialog;
     else if (key === 'villager' && mod.villagerDialog) npc.dialog = mod.villagerDialog;
     else if (key === 'fana_freed' && mod.fanaFreedDialog) npc.dialog = mod.fanaFreedDialog;
+    else if (key === 'rose' && mod.roseDialog) npc.dialog = mod.roseDialog;
   }).catch(()=>{});
 }
 
@@ -297,7 +298,7 @@ function attachOnSightById(npc, id) {
 
 function spawnNpcFromRecord(d) {
   // Add feminineShape flag to female NPCs when loading from saves
-  const isFemaleNpc = d.name && ['canopy', 'yorna', 'hola', 'oyin', 'twil', 'tin', 'nellis', 'urn', 'varabella', 'ell', 'fana'].some(n => d.name.toLowerCase().includes(n));
+  const isFemaleNpc = d.name && ['canopy', 'yorna', 'hola', 'oyin', 'twil', 'tin', 'nellis', 'urn', 'varabella', 'ell', 'fana', 'rose'].some(n => d.name.toLowerCase().includes(n));
   const paletteWithShape = (d.sheetPalette && isFemaleNpc) ? { ...d.sheetPalette, feminineShape: true } : d.sheetPalette;
   const sheet = paletteWithShape ? makeSpriteSheet(paletteWithShape) : sheetForName(d.name);
   const npc = spawnNpc(d.x, d.y, d.dir || 'down', {
