@@ -1,5 +1,5 @@
 import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime, spawners } from './state.js';
-import { buildObstacles, buildTerrainBitmap } from './terrain.js';
+import { buildObstacles, buildTerrainBitmap, tileType } from './terrain.js';
 import { LEVEL4_CITY_WALL_RECTS, LEVEL4_SIZE } from '../data/level4_city_walls.js';
 import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.js';
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_WALLS, LEVEL5_TEMPLE_FEATURES, findSafeSpawn } from '../data/level5_temple_layout.js';
@@ -368,7 +368,31 @@ export function loadLevel3() {
   const nellisPalette = { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0', feminineShape: true };
   const tinSheet = makeSpriteSheet(tinPalette);
   const nellisSheet = makeSpriteSheet(nellisPalette);
-  const tin = spawnNpc(player.x - 140, player.y - 80, 'right', { name: 'Tin', dialogId: 'tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/level03/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
+  // Move Tin further from spawn and avoid water tiles
+  (function placeTinSafe() {
+    // Desired offset away from player spawn
+    const desired = { x: player.x - 220, y: player.y - 180 };
+    const toTile = (val) => Math.max(0, Math.floor(val / TILE));
+    let best = { x: desired.x, y: desired.y };
+    // Spiral search for a non-water, in-bounds tile near desired
+    const startTx = toTile(desired.x), startTy = toTile(desired.y);
+    let found = null;
+    for (let r = 0; r <= 30 && !found; r++) {
+      for (let dy = -r; dy <= r && !found; dy++) {
+        for (let dx = -r; dx <= r && !found; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const tx = startTx + dx, ty = startTy + dy;
+          if (tx < 0 || ty < 0 || tx >= world.tileW || ty >= world.tileH) continue;
+          if (tileType(tx, ty) === 'water') continue;
+          const px = tx * TILE + (TILE - 12) / 2;
+          const py = ty * TILE + (TILE - 16) / 2;
+          found = { x: px|0, y: py|0 };
+        }
+      }
+    }
+    if (!found) found = best;
+    spawnNpc(found.x, found.y, 'right', { name: 'Tin', dialogId: 'tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/level03/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
+  })();
   const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', dialogId: 'nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
   import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
 
