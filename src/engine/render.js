@@ -205,6 +205,12 @@ export function render(terrainBitmap, obstacles) {
         ctx.fillStyle = '#ffd166';
         const label = (e.name || e.kind || 'enemy');
         ctx.fillText(label, sx + 4, sy + 2);
+        if (e.spawnerId) {
+          ctx.fillStyle = '#9ae6ff';
+          ctx.fillRect(sx - 2, sy + 8, 4, 4); // small cyan square for spawner-spawned enemies
+          ctx.fillStyle = '#9ae6ff';
+          ctx.fillText('S', sx + 10, sy + 2);
+        }
       }
       ctx.restore();
     }

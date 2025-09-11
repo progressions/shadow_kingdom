@@ -149,15 +149,15 @@ export function loadLevel2() {
   spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 12, dmg: 6 });
   spawnEnemy(player.x - 340, player.y + 240, 'featured', { hp: 12, dmg: 6 });
   // Enemy spawner (visible glyph) — trickle of Urathar Scouts near the dunes
-  // Approx coords: center ~ (player.x + 260, player.y - 180)
+  // Approx coords: center ~ (player.x + 360, player.y - 200)
   import('./state.js').then(m => {
     m.addSpawner({
       id: 'l2_dunes_trickle', visible: true,
-      x: Math.round(player.x + 260), y: Math.round(player.y - 180), w: 24, h: 16,
+      x: Math.round(player.x + 360), y: Math.round(player.y - 200), w: 24, h: 16,
       enemy: { kind: 'mook', name: 'Urathar Scout', hp: 5, dmg: 4 },
-      batchSize: 1, intervalSec: 6, initialDelaySec: 2, jitterSec: 1.5,
-      totalToSpawn: 4, concurrentCap: 2,
-      proximityMode: 'near', radiusPx: 220,
+      batchSize: 1, intervalSec: 9, initialDelaySec: 8, jitterSec: 1.0,
+      totalToSpawn: 3, concurrentCap: 1,
+      proximityMode: 'near', radiusPx: 200,
     });
   }).catch(()=>{});
 
