@@ -75,10 +75,17 @@ export function loadLevel1() {
   add(cxw + cw - t, cyw, t, ch);
   add(gapX, cyw, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
   // Boss Vast inside
-  spawnEnemy(cxw + cw/2 - 6, cyw + ch/2 - 8, 'boss', {
+  const boss1x = cxw + cw/2 - 6;
+  const boss1y = cyw + ch/2 - 8;
+  spawnEnemy(boss1x, boss1y, 'boss', {
     name: 'Vast', vnId: 'enemy:vast', portrait: 'assets/portraits/level01/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
     hp: 35, dmg: 8, speed: 10, hitCooldown: 0.75,  // Level 1 boss buff
   });
+  // Boss arena adds: 3 mooks + 1 featured foe around the boss
+  spawnEnemy(boss1x - 24, boss1y,      'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(boss1x + 24, boss1y,      'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(boss1x,      boss1y + 24, 'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(boss1x,      boss1y - 28, 'featured', { name: 'Bandit Lieutenant', hp: 12, dmg: 6 });
 
   // NPCs - with feminine shape
   const canopyPalette = { hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true };
@@ -196,11 +203,13 @@ export function loadLevel2() {
     hitCooldown: 0.7,
     vnOnSight: { text: introTexts.nethra },
   });
-  // Four mooks inside the arena with Nethra
+  // Boss arena adds: 4 mooks + 2 featured foes inside the arena
   spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
   spawnEnemy(cx + 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
   spawnEnemy(cx, cy - 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
   spawnEnemy(cx, cy + 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
+  spawnEnemy(cx - 34, cy - 18, 'featured', { name: 'Desert Enforcer', hp: 14, dmg: 6 });
+  spawnEnemy(cx + 34, cy + 18, 'featured', { name: 'Desert Enforcer', hp: 14, dmg: 6 });
   // Aarg — blue serpent featured foe outside, holding the ruin gate key (fully blue-tinted like Gorg was fully red)
   const aargPalette = {
     skin: '#6fb3ff',
@@ -344,9 +353,14 @@ export function loadLevel3() {
     speed: 14,
     hitCooldown: 0.65,  // Level 3 boss buff
   });
-  // A couple of mooks near Luula
-  spawnEnemy(cx - 24, cy,      'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
-  spawnEnemy(cx + 24, cy,      'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
+  // Boss arena adds: 5 mooks + 2 featured foes inside the arena
+  spawnEnemy(cx - 26, cy,        'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
+  spawnEnemy(cx + 26, cy,        'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
+  spawnEnemy(cx,        cy - 26, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
+  spawnEnemy(cx,        cy + 26, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
+  spawnEnemy(cx - 18,   cy - 18, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
+  spawnEnemy(cx - 34,   cy + 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
+  spawnEnemy(cx + 34,   cy - 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
 
   // Recruitable NPCs: Tin & Nellis
   const tinPalette = { hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true };
@@ -470,9 +484,15 @@ export function loadLevel4() {
     hitCooldown: 0.6,  // Level 4 boss buff
     onDefeatNextLevel: 5,
   });
-  // Guards near the boss
-  spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  spawnEnemy(cx + 24, cy,      'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  // Boss arena adds: 6 mooks + 2 featured foes inside the arena
+  spawnEnemy(cx - 26, cy,        'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  spawnEnemy(cx + 26, cy,        'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  spawnEnemy(cx,        cy - 26, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  spawnEnemy(cx,        cy + 26, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  spawnEnemy(cx - 18,   cy - 18, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  spawnEnemy(cx + 18,   cy + 18, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
+  spawnEnemy(cx - 36,   cy + 16, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
+  spawnEnemy(cx + 36,   cy - 16, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
 
   
 
