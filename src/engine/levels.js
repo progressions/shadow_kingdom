@@ -405,6 +405,18 @@ export function loadLevel4() {
       proximityMode: 'far', radiusPx: 260,
     });
   }).catch(()=>{});
+  // Enemy spawner (visible glyph) — city patrol squads when player is far
+  // Approx coords: center ~ (player.x - 220, player.y + 160)
+  import('./state.js').then(m => {
+    m.addSpawner({
+      id: 'l4_plaza_patrol', visible: true,
+      x: Math.round(player.x - 220), y: Math.round(player.y + 160), w: 28, h: 18,
+      enemy: { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 },
+      batchSize: 2, intervalSec: 8, initialDelaySec: 3, jitterSec: 2,
+      totalToSpawn: 6, concurrentCap: 3,
+      proximityMode: 'far', radiusPx: 260,
+    });
+  }).catch(()=>{});
 
   // Featured foe: Blurb — drops City Sigil Key
   const blurbX = player.x - 200, blurbY = player.y - 120;
