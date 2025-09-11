@@ -76,16 +76,19 @@
       }
       .vn-portrait .portrait-name { font-weight: 700; font-size: 16px; color: #eaeaea; margin: 0 0 8px 4px; }
       /* Standardize portrait media box so images/videos render same size */
-      :root { --portrait-w: clamp(280px, 34vw, 480px); --portrait-ar: 2/3; }
+      :root { --portrait-w: clamp(280px, 34vw, 480px); --portrait-ar: 2/3; --portrait-overlap: 56px; }
       #portrait-img, #portrait-video {
         width: var(--portrait-w);
-        height: calc(var(--portrait-w) * (3/2)); /* fallback for older browsers (2:3 aspect) */
+        /* Make the portrait extend below the game frame by adding overlap and
+           counteracting layout with a negative bottom margin */
+        height: calc(var(--portrait-w) * (3/2) + var(--portrait-overlap)); /* fallback for older browsers (2:3 aspect) */
         aspect-ratio: var(--portrait-ar);
         object-fit: contain;
         image-rendering: auto;
         border-radius: 8px;
         background: #151515;
         border: 2px solid #555;
+        margin-bottom: calc(var(--portrait-overlap) * -1);
       }
       .vn-panel {
         background: rgba(10,10,10,0.85);
