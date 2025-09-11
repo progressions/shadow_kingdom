@@ -1017,6 +1017,7 @@ export function step(dt) {
       if ((dx*dx + dy*dy) <= (12*12)) {
         // Decide salvage vs collect
         const picked = it.item;
+        const isKey = !!(picked && picked.keyId); // Keys are never salvaged
         const invItems = player?.inventory?.items || [];
         const eq = player?.inventory?.equipped || {};
         let sameCount = 0;
@@ -1037,7 +1038,7 @@ export function step(dt) {
             if (e && e.id === picked.id) sameCount += 1;
           }
         }
-        const shouldSalvage = sameCount >= 3;
+        const shouldSalvage = !isKey && (sameCount >= 3);
         itemsOnGround.splice(ii, 1);
         if (shouldSalvage) {
           showBanner(`Salvaged ${picked?.name || 'item'}`);
