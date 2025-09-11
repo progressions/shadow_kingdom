@@ -274,11 +274,11 @@ export function showTitleScreen() {
     refreshTitleFocus();
   } catch {}
   enableTitleKeyHandlers();
-  // Play title fanfare instead of ambient music
-  try { playTitleFanfare(); } catch {}
+  // Stop any background music and play title fanfare instead
+  try { stopMusic(); playTitleFanfare(); } catch {}
   // Gesture on overlay also unlocks audio and retries fanfare (for browsers requiring interaction)
   try {
-    titleEl.addEventListener('pointerdown', () => { initAudioUnlock(); try { playTitleFanfare(); } catch {} }, { once: true });
+    titleEl.addEventListener('pointerdown', () => { initAudioUnlock(); try { stopMusic(); playTitleFanfare(); } catch {} }, { once: true });
   } catch {}
 }
 
