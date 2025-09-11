@@ -131,6 +131,70 @@ export function addItemToInventory(inv, item) {
   }
 }
 
+// ---- Inventory auto-equip helpers ----
+function scoreForSlot(item, slot) {
+  if (!item) return [0, 0];
+  const atk = typeof item.atk === 'number' ? item.atk : 0;
+  const dr = typeof item.dr === 'number' ? item.dr : 0;
+  const s = String(slot || item.slot || '');
+  if (s === 'rightHand') return [atk, dr];
+  if (s === 'leftHand') return [dr, atk];
+  // Armor slots default to DR primary, ATK secondary (in case of odd items)
+  return [dr, atk];
+}
+
+function isBetterForSlot(a, b, slot) {
+  // Returns true if item a is strictly better than b for the slot
+  const [ap, as] = scoreForSlot(a, slot);
+  const [bp, bs] = scoreForSlot(b, slot);
+  if (ap !== bp) return ap > bp;
+  if (as !== bs) return as > bs;
+  return false;
+}
+
+export async function autoEquipIfBetter(actor, slotOrItem) {
+  const actorRef = actor || null;
+  if (!actorRef || !actorRef.inventory) return false;
+  const inv = actorRef.inventory;
+  const slot = typeof slotOrItem === 'string' ? slotOrItem : (slotOrItem?.slot || null);
+  if (!slot) return false;
+  const sKey = String(slot);
+  const eq = inv.equipped || {};
+  const current = eq[sKey] || null;
+  // Consider only non-stackable candidates for auto-equip
+  const candidates = (inv.items || []).filter(it => it && it.slot === sKey && !it.stackable);
+  if (!candidates.length) {
+    // Nothing to equip from backpack
+    return false;
+  }
+  // Find best candidate by score for this slot
+  let best = candidates[0];
+  let bestIdx = (inv.items || []).indexOf(best);
+  for (let i = 1; i < candidates.length; i++) {
+    const c = candidates[i];
+    if (isBetterForSlot(c, best, sKey)) {
+      best = c;
+      bestIdx = (inv.items || []).indexOf(c);
+    }
+  }
+  // If nothing equipped, or best is better than current, equip it
+  if (!current || isBetterForSlot(best, current, sKey)) {
+    // Move currently equipped back to backpack
+    if (current) (inv.items || (inv.items = [])).push(current);
+    // Equip best and remove from backpack
+    eq[sKey] = best;
+    if (bestIdx !== -1) (inv.items || []).splice(bestIdx, 1);
+    // Refresh UI and show banner
+    try { (await import('./ui.js')).updatePartyUI && (await import('./ui.js')).updatePartyUI(companions); } catch {}
+    try {
+      const nm = actorRef === player ? 'Auto-equipped' : `${actorRef.name || 'Companion'} auto-equipped`;
+      (await import('./ui.js')).showBanner && (await import('./ui.js')).showBanner(`${nm} ${best.name}`);
+    } catch {}
+    return true;
+  }
+  return false;
+}
+
 export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   // Three classes: mook, featured, boss
   const T = String(type).toLowerCase();

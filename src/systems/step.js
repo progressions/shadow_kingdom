@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy } from '../engine/state.js';
+import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy, addItemToInventory, autoEquipIfBetter } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
@@ -944,16 +944,43 @@ export function step(dt) {
       const cx = it.x + it.w/2, cy = it.y + it.h/2;
       const dx = cx - px, dy = cy - py;
       if ((dx*dx + dy*dy) <= (12*12)) {
-        // Collect
-        try {
-          const add = JSON.parse(JSON.stringify(it.item));
-          import('../engine/state.js').then(m => m.addItemToInventory(player.inventory, add));
-        } catch {
-          import('../engine/state.js').then(m => m.addItemToInventory(player.inventory, it.item));
+        // Decide salvage vs collect
+        const picked = it.item;
+        const invItems = player?.inventory?.items || [];
+        const eq = player?.inventory?.equipped || {};
+        let sameCount = 0;
+        if (picked?.stackable) {
+          // Sum quantities across stacks in backpack
+          for (const s of invItems) if (s && s.stackable && s.id === picked.id) sameCount += (s.qty || 0);
+          // Include any equipped stack of the same item
+          for (const key of ['head','torso','legs','leftHand','rightHand']) {
+            const e = eq[key];
+            if (e && e.stackable && e.id === picked.id) sameCount += (e.qty || 1);
+          }
+        } else {
+          // Count individual items in backpack
+          for (const s of invItems) if (s && s.id === picked.id) sameCount += 1;
+          // Include any equipped copies
+          for (const key of ['head','torso','legs','leftHand','rightHand']) {
+            const e = eq[key];
+            if (e && e.id === picked.id) sameCount += 1;
+          }
         }
+        const shouldSalvage = sameCount >= 3;
         itemsOnGround.splice(ii, 1);
-        showBanner(`Picked up ${it.item?.name || 'an item'}`);
-        playSfx('pickup');
+        if (shouldSalvage) {
+          showBanner(`Salvaged ${picked?.name || 'item'}`);
+          playSfx('pickup');
+        } else {
+          // Collect
+          let toAdd = picked;
+          try { toAdd = JSON.parse(JSON.stringify(picked)); } catch {}
+          addItemToInventory(player.inventory, toAdd);
+          showBanner(`Picked up ${picked?.name || 'an item'}`);
+          playSfx('pickup');
+          // Auto-equip if this improves current gear
+          try { autoEquipIfBetter(player, picked.slot || null); } catch {}
+        }
         // small sparkle burst
         for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
       }
