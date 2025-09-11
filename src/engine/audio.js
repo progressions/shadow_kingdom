@@ -715,7 +715,17 @@ export function playTitleFanfare() {
     if (!titleFanfare.audioContext) {
       titleFanfare.init();
     }
-    titleFanfare.play();
+    // Ensure the fanfare's AudioContext is running before scheduling notes
+    const ac2 = titleFanfare.audioContext;
+    const start = () => {
+      try { titleFanfare.isPlaying = false; } catch {}
+      titleFanfare.play();
+    };
+    if (ac2 && typeof ac2.state === 'string' && ac2.state !== 'running' && typeof ac2.resume === 'function') {
+      ac2.resume().then(start).catch(start);
+    } else {
+      start();
+    }
   } catch (e) {
     console.log('Title fanfare playback failed:', e);
   }
