@@ -25,23 +25,27 @@ export const ENEMY_BUFF_CAPS = {
 export const enemyEffectsByKey = {
   // Level 1 — Gorg (Ember Crown)
   gorg: {
-    auras: { playerSlow: 0.08, slowRadius: 90 },
+    // Tougher key guardian: add baseline DR and slightly stronger guard
+    auras: { playerSlow: 0.08, slowRadius: 90, dr: 1 },
     triggers: {
-      onHitGuard: { dr: 1, durationSec: 2.5, cooldownSec: 7 },
+      onHitGuard: { dr: 1.5, durationSec: 2.5, cooldownSec: 7 },
       proximityGust: { radius: 24, push: 10, slow: 0.2, durationSec: 0.3, cooldownSec: 12 },
     },
   },
   // Level 2 — Aarg (Serpent Chill)
   aarg: {
-    auras: { playerSlow: 0.12, slowRadius: 110 },
+    // Tougher key guardian
+    auras: { playerSlow: 0.12, slowRadius: 110, dr: 1 },
     triggers: {
-      onHitGuard: { dr: 1, durationSec: 3.0, cooldownSec: 9, speedMul: 1.1 },
+      onHitGuard: { dr: 1.5, durationSec: 3.0, cooldownSec: 9, speedMul: 1.1 },
       proximityGust: { radius: 30, push: 12, slow: 0.2, durationSec: 0.3, cooldownSec: 10 },
     },
   },
   // Level 3 — Wight (Grave Hunger)
   wight: {
+    // Tougher key guardian: add baseline DR
     auras: {
+      dr: 1,
       regen: 0.05,
       regenNear: { radius: 100, mult: 2.0 },
       weakenRange: 1, weakenRadius: 100,
@@ -52,7 +56,8 @@ export const enemyEffectsByKey = {
   },
   // Level 4 — Blurb (Toxic Miasma)
   blurb: {
-    auras: { weakenRange: 2, weakenRadius: 140 },
+    // Tougher key guardian: adds baseline DR
+    auras: { weakenRange: 2, weakenRadius: 140, dr: 1 },
     triggers: {
       onHitGuard: { dr: 2, durationSec: 1.5, cooldownSec: 10 },
       proximityGust: { radius: 38, push: 12, slow: 0.25, durationSec: 0.35, cooldownSec: 11 },
@@ -60,9 +65,10 @@ export const enemyEffectsByKey = {
   },
   // Level 5 — Fana (Arcane Distortion)
   fana: {
-    auras: { playerSlow: 0.10, slowRadius: 120, weakenRange: 1, weakenRadius: 120 },
+    // Tougher key guardian
+    auras: { playerSlow: 0.10, slowRadius: 120, weakenRange: 1, weakenRadius: 120, dr: 1 },
     triggers: {
-      enrageBelowHp: { hpThresh: 0.5, dr: 1, speedMul: 1.1, durationSec: 5, cooldownSec: 12 },
+      enrageBelowHp: { hpThresh: 0.5, dr: 1.5, speedMul: 1.1, durationSec: 5, cooldownSec: 12 },
       // Only at low HP, reactively push on hit
       proximityGust: { radius: 28, push: 14, slow: 0.25, durationSec: 0.35, cooldownSec: 12 },
     },
@@ -104,4 +110,20 @@ export const enemyEffectsByKey = {
       proximityGust: { radius: 34, push: 14, slow: 0.25, durationSec: 0.4, cooldownSec: 10 },
     },
   },
+  // ---- Normal featured foes — slight DR to make them tougher ----
+  'featured foe': { auras: { dr: 0.5 } },
+  'woodland brute': { auras: { dr: 0.5 } },
+  'bandit lieutenant': { auras: { dr: 0.6 } },
+  'desert enforcer': { auras: { dr: 0.6 } },
+  'desert marauder': { auras: { dr: 0.5 } },
+  'marsh stalker': { auras: { dr: 0.6 } },
+  'city brute': { auras: { dr: 0.7 } },
+  'temple sentinel': { auras: { dr: 0.8 } },
+  'ambusher': { auras: { dr: 0.5 } },
+  'stalker': { auras: { dr: 0.5 } },
+  'ring captain': { auras: { dr: 0.7 } },
+  'silencer': { auras: { dr: 0.6 } },
+  'lantern bearer': { auras: { dr: 0.6 } },
+  'signal thief': { auras: { dr: 0.6 } },
+  'crossfire captain': { auras: { dr: 0.7 } },
 };
