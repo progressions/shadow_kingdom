@@ -76,11 +76,12 @@
       }
       .vn-portrait .portrait-name { font-weight: 700; font-size: 16px; color: #eaeaea; margin: 0 0 8px 4px; }
       /* Standardize portrait media box so images/videos render same size */
-      :root { --portrait-w: 928px; --portrait-ar: 29/43; }
+      /* Match Canopy.mp4 intrinsic size */
+      :root { --portrait-w: 464px; --portrait-ar: 29/43; }
       #portrait-img, #portrait-video {
         width: var(--portrait-w);
-        /* Fixed portrait window size (928x1376) */
-        height: 1376px;
+        /* Fixed portrait window size (464x688) */
+        height: 688px;
         aspect-ratio: var(--portrait-ar);
         object-fit: contain;
         image-rendering: auto;
