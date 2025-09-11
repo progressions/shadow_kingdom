@@ -31,12 +31,17 @@ export const canopyDialog = {
     intro: {
       text: "Canopy: My Lord, I'm Canopy—the one who keeps people standing. I mend wounds, steady your breath, and I can throw up a safeguard when things get ugly. If you lead, I'll keep everyone whole. Join you?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_canopy' }, next: 'post_l5_canopy' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'You can lean on me, I\'ve got you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_intro_encourage' }, next: 'after_aff' },
         { label: 'What can you do?', next: 'about' },
         { label: 'Share a plan (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not right now.', action: 'end' },
       ],
+    },
+    post_l5_canopy: {
+      text: "Canopy: The Hall breathes again. Ell smiles in her sleep. Thank you. Urathar is still out there, but Aurelion isn't his anymore.",
+      choices: [ { label: 'We keep moving.', action: 'set_flag', data: { key: 'post_l5_canopy' }, next: 'intro' } ],
     },
     about: {
       text: "Canopy: My Lord, I keep us on our feet—small heals, steady regen, and a burst shield when it counts. Stay near and I’ll trim the worst hits.",
@@ -59,12 +64,17 @@ export const yornaDialog = {
     intro: {
       text: "Yorna: Chief, name's Yorna. I take the front, break lines, and make openings. Stand with me and we'll smash through anything. Need a hand?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_yorna' }, next: 'post_l5_yorna' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'What can you do?', next: 'skills' },
         { label: 'You hit hard; I\'ll keep the lane open.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
         { label: 'Trade tactics (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'No thanks.', action: 'end' },
       ],
+    },
+    post_l5_yorna: {
+      text: "Yorna: Good cut. Clean. Temple's ours again. But Urathar plans like a siege—he'll test every seam. We'll be ready.",
+      choices: [ { label: 'Stay sharp.', action: 'set_flag', data: { key: 'post_l5_yorna' }, next: 'intro' } ],
     },
     skills: {
       text: "Yorna: Chief, I crack fronts and hold aggro. I create openings, interrupt lanes, and give you room to swing.",
@@ -90,12 +100,17 @@ export const holaDialog = {
     intro: {
       text: "Hola: My Lord, I'm Hola. I work the wind—slow their feet, shove them back, and turn tight fights into breathing room. I'll stay close and keep the gust ready. Shall I come?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_hola' }, next: 'post_l5_hola' },
         { label: 'Yes, please join.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
         { label: 'What can you do?', next: 'about' },
         { label: 'You\'re doing fine. Stay close and speak up if you need.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'hola_intro_encourage' }, next: 'after_aff' },
         { label: 'Practice a formation (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not now.', action: 'end' },
       ],
+    },
+    post_l5_hola: {
+      text: "Hola: The air doesn't hurt here anymore. I can think. Thank you. Urathar felt… big. He'll come again, won't he? I'll be ready to try.",
+      choices: [ { label: 'We\'ll be ready.', action: 'set_flag', data: { key: 'post_l5_hola' }, next: 'intro' } ],
     },
     about: {
       text: "Hola: My Lord, I slow crowds and peel trouble off you. Gusts push back, and I can set a hush that breaks enemy focus.",
@@ -121,11 +136,16 @@ export const oyinDialog = {
     intro: {
       text: "Oyin: My Lord, Oyin here. I kindle sparks and keep embers alive. I can rally us when we need a push and set targets alight so they break easier. If you want me… I can come along.",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_oyin' }, next: 'post_l5_oyin' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Ignite · Rally · Burn Weaken' },
         { label: 'What can you do?', next: 'about' },
         { label: 'You’re doing fine; breathe and stay with me.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'oyin_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
+    },
+    post_l5_oyin: {
+      text: "Oyin: It feels lighter. Like someone opened a window. Urathar's not done—but neither are we.",
+      choices: [ { label: 'On we go.', action: 'set_flag', data: { key: 'post_l5_oyin' }, next: 'intro' } ],
     },
     about: {
       text: "Oyin: My Lord, I prime enemies with flame and rally your strike when we need momentum. Burned foes stagger and fall faster.",
@@ -144,11 +164,16 @@ export const twilDialog = {
     intro: {
       text: "Twil: Master, I'm Twil. I scout ahead, read the ground, and call the gap. I'll mark weak points—take them when I say and we move faster. You want me along or what?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_twil' }, next: 'post_l5_twil' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Scout · Weak Points · Shortcuts' },
         { label: 'What can you do?', next: 'about' },
         { label: 'Your read is sharp; call the line and I’ll follow.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'twil_intro_encourage' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
       ],
+    },
+    post_l5_twil: {
+      text: "Twil: Heard the way the hall stopped echoing? That's what relief sounds like. Urathar's still scribbling lines. We'll cut them.",
+      choices: [ { label: 'Cut them.', action: 'set_flag', data: { key: 'post_l5_twil' }, next: 'intro' } ],
     },
     about: {
       text: "Twil: Master, I tag weak spots and show shortcuts. Stick with my calls and we’ll cut time and blood both.",
@@ -167,11 +192,16 @@ export const tinDialog = {
     intro: {
       text: "Tin: My Lord, Tin—eyes on water and wind. I flag safe paths and hype our rhythm; your hands will move quicker when I call the beat. Want me on the path?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_tin' }, next: 'post_l5_tin' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Tempo · Attack Speed · Safe Footing' },
         { label: 'What can you do?', next: 'about' },
         { label: 'Take point and sing out. I’ll keep space clear.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'tin_intro_encourage' }, next: 'after_aff' },
         { label: 'Maybe later.', action: 'end' },
       ],
+    },
+    post_l5_tin: {
+      text: "Tin: The Temple's singing again! I mean, not really singing, but it feels like it. Urathar's song is still out there. We'll drown it out.",
+      choices: [ { label: 'Together.', action: 'set_flag', data: { key: 'post_l5_tin' }, next: 'intro' } ],
     },
     about: {
       text: "Tin: My Lord, I keep you nimble—attack speed up close, safe footing ahead. When I hum, your hands fly.",
@@ -190,11 +220,16 @@ export const nellisDialog = {
     intro: {
       text: "Nellis: Sire, I'm Nellis. I hold a steady line, set beacons so your reach goes farther, and take the strain so our pace never falters. Should I come along?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_nellis' }, next: 'post_l5_nellis' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' },
         { label: 'What can you do?', next: 'about' },
         { label: 'Stay near and mirror me—we’ll be fine.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'nellis_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
+    },
+    post_l5_nellis: {
+      text: "Nellis: The quiet here is gentle now. I can hold it. Urathar won't keep it. We'll relight what he dims.",
+      choices: [ { label: 'Keep the line.', action: 'set_flag', data: { key: 'post_l5_nellis' }, next: 'intro' } ],
     },
     about: {
       text: "Nellis: Sire, I steady your guard and lift your reach. I’ll keep a light where you need one most.",
@@ -213,12 +248,17 @@ export const urnDialog = {
     intro: {
       text: "Urn: Mister, I'm Urn. I patch scrapes, keep spirits up, and point out safe steps when the street gets mean. The city looks rough, but we can make it shine again. Want me with you?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_urn' }, next: 'post_l5_urn' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Burn · Heat Ward' },
         { label: "I like your energy—let's lift together.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'urn_intro_encourage' }, next: 'after_aff' },
         { label: 'What can you do?', next: 'about' },
         { label: 'Quests', next: 'quests' },
         { label: 'Not right now.', action: 'end' },
       ],
+    },
+    post_l5_urn: {
+      text: "Urn: The stone feels warm again. People can breathe here. Urathar's not done breaking, but we can be louder than he is.",
+      choices: [ { label: 'We will.', action: 'set_flag', data: { key: 'post_l5_urn' }, next: 'intro' } ],
     },
     about: {
       text: "Urn: Mister, I grew up on these streets. I cheer to lift you and give quick patch‑ups when it stings. I keep eyes up and steps light, and I can mark safe paths so people stop bleeding on the cobbles.",
@@ -321,12 +361,17 @@ export const varabellaDialog = {
     intro: {
       text: "Varabella: Boss man, another brave face in a dead city. I work sightlines and cut angles—I'll extend your shots and keep you standing. Do you want competence or compliments?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_vara' }, next: 'post_l5_vara' },
         { label: 'Competence. Join me.', action: 'join_party', hint: 'Angles · Extended Reach' },
         { label: "Spare the sarcasm; I value sharp eyes.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'varabella_intro_respect' }, next: 'after_aff' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Quests', next: 'quests' },
         { label: 'Pass.', action: 'end' },
       ],
+    },
+    post_l5_vara: {
+      text: "Varabella: Look at you—breaking chains in a temple. I’m happy for the kid. Don’t get soft; Urathar writes the next ambush while we smile.",
+      choices: [ { label: 'Eyes up.', action: 'set_flag', data: { key: 'post_l5_vara' }, next: 'intro' } ],
     },
     about: {
       text: "Varabella: Boss man, I had a window over the plaza when it cracked. I learned where to stand and when to move—staying put gets you eaten. Urn and I found each other in the ruins and refused to die alone. Sightlines, angles, timing. I extend your angles, stretch your range, and call exits you won’t miss.",
@@ -388,12 +433,17 @@ export const cowsillDialog = {
     intro: {
       text: "Cowsill: My Lord, I'm Cowsill—your strike partner. When you hit, I amplify and stagger them for follow‑ups. Team with me and every swing lands harder. Want to team up?",
       choices: [
+        { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_cowsill' }, next: 'post_l5_cowsill' },
         { label: 'Yes, join me!', action: 'join_party', hint: 'Strike Partner · Amplify · Stagger' },
         { label: "Let's strike as one! (Affinity +0.3)", action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'cowsill_intro_team' }, next: 'after_aff' },
         { label: 'What can you do?', next: 'about' },
         { label: 'Tell me your technique (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not right now.', action: 'end' },
       ],
+    },
+    post_l5_cowsill: {
+      text: "Cowsill: Temple's free and I am pumped! Next target? Urathar doesn't know what 'relent' means, but neither do we.",
+      choices: [ { label: 'Let\'s go.', action: 'set_flag', data: { key: 'post_l5_cowsill' }, next: 'intro' } ],
     },
     about: {
       text: "Cowsill: My Lord, I mirror your rhythm to double impact and stagger groups. Pair up and we’ll bulldoze lines together.",
