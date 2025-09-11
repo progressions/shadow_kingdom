@@ -215,6 +215,8 @@ export function step(dt) {
         const { actor, text } = runtime.pendingIntro;
         runtime.pendingIntro = null;
         try {
+          // Ensure any full-screen fade is cleared before opening VN
+          try { clearFadeOverlay(); } catch {}
           const isEnemy = (typeof actor?.touchDamage === 'number');
           playSfx(isEnemy ? 'vnIntroEnemy' : 'vnIntroNpc');
         } catch {}
@@ -232,18 +234,27 @@ export function step(dt) {
     if (runtime.scenePauseTimer <= 0 && runtime._phaseCinePending) {
       try {
         const { actor, text } = runtime._phaseCinePending;
-        // Pan camera to the actor, then show prompt via pendingIntro path
-        const toX = Math.round(actor.x + actor.w/2 - camera.w/2);
-        const toY = Math.round(actor.y + actor.h/2 - camera.h/2);
-        runtime.cameraPan = {
-          fromX: camera.x,
-          fromY: camera.y,
-          toX: Math.max(0, Math.min(world.w - camera.w, toX)),
-          toY: Math.max(0, Math.min(world.h - camera.h, toY)),
-          t: 0,
-          dur: 0.6,
-        };
-        runtime.pendingIntro = { actor, text };
+        // If actor has coordinates, pan; otherwise show immediately without pan
+        const hasPos = actor && typeof actor.x === 'number' && typeof actor.y === 'number' && typeof actor.w === 'number' && typeof actor.h === 'number';
+        if (hasPos) {
+          const toX = Math.round(actor.x + actor.w/2 - camera.w/2);
+          const toY = Math.round(actor.y + actor.h/2 - camera.h/2);
+          runtime.cameraPan = {
+            fromX: camera.x,
+            fromY: camera.y,
+            toX: Math.max(0, Math.min(world.w - camera.w, toX)),
+            toY: Math.max(0, Math.min(world.h - camera.h, toY)),
+            t: 0,
+            dur: 0.6,
+          };
+          runtime.pendingIntro = { actor, text };
+        } else {
+          // No coordinates → ensure fade is cleared, then show VN immediately
+          try { clearFadeOverlay(); } catch {}
+          const more = Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0;
+          const choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
+          startPrompt(actor, text, choices);
+        }
       } catch {}
       runtime._phaseCinePending = null;
     }
@@ -548,7 +559,7 @@ export function step(dt) {
       const isVorthak = isBoss && ((e.name || '').toLowerCase().includes('vorthak'));
       if (isBoss && !e._secondPhase) {
         try {
-          const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null, touchDamage: 0 };
+          const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null, touchDamage: 0, x: e.x, y: e.y, w: e.w, h: e.h };
           const line = `${e.name || 'Boss'}: I call on my master for power!`;
           // Dramatic phase transition: pause, shake, then pan and show VN
           clearFadeOverlay();
@@ -573,7 +584,7 @@ export function step(dt) {
       // Vorthak only: second death -> final form (third phase)
       if (isVorthak && e._secondPhase && !e._thirdPhase) {
         try {
-          const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null), touchDamage: 0 };
+          const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null), touchDamage: 0, x: e.x, y: e.y, w: e.w, h: e.h };
           const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
           clearFadeOverlay();
           runtime.scenePauseTimer = 0.6;
