@@ -78,6 +78,14 @@ export function exitChat(runtime) {
   playSfx('uiClose');
   // Always unlock overlay on exit
   runtime.lockOverlay = false;
+  // If a phase cutscene requested invulnerability, grant it now so it doesn't tick down during pause/pan
+  try {
+    const t = Number(runtime._grantInvulnOnChatExit || 0);
+    if (t > 0) {
+      player.invulnTimer = Math.max(player.invulnTimer || 0, t);
+      runtime._grantInvulnOnChatExit = 0;
+    }
+  } catch {}
   // Resuming from pause: restart music if applicable
   if (runtime.paused) {
     runtime.paused = false;

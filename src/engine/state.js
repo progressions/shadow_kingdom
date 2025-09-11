@@ -482,6 +482,8 @@ export const runtime = {
   affinityFlags: {},
   questFlags: {},
   questCounters: {},
+  // If >0, grant player invulnerability (seconds) when VN overlay closes
+  _grantInvulnOnChatExit: 0,
   // Optional per-quest metadata (e.g., fetch item behavior)
   // Shape per id: { keyId?: string, gateId?: string, consumeOnUse?: boolean }
   questMeta: {},

@@ -563,6 +563,8 @@ export function step(dt) {
           const line = `${e.name || 'Boss'}: I call on my master for power!`;
           // Dramatic phase transition: pause, shake, then pan and show VN
           clearFadeOverlay();
+          // Grant post-cutscene invulnerability when VN closes
+          runtime._grantInvulnOnChatExit = Math.max(1.0, Number(runtime._grantInvulnOnChatExit || 0));
           runtime.scenePauseTimer = 0.5;
           runtime.shakeTimer = 0.5;
           runtime.shakeMag = ((e.name || '').toLowerCase().includes('vorthak')) ? 6 : 4;
@@ -587,6 +589,7 @@ export function step(dt) {
           const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null), touchDamage: 0, x: e.x, y: e.y, w: e.w, h: e.h };
           const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
           clearFadeOverlay();
+          runtime._grantInvulnOnChatExit = Math.max(1.2, Number(runtime._grantInvulnOnChatExit || 0));
           runtime.scenePauseTimer = 0.6;
           runtime.shakeTimer = 0.6;
           runtime.shakeMag = 6;
