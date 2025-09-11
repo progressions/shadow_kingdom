@@ -132,6 +132,10 @@ export function addItemToInventory(inv, item) {
 }
 
 // ---- Inventory auto-equip helpers ----
+function isValidEquipSlot(slot) {
+  return slot === 'head' || slot === 'torso' || slot === 'legs' || slot === 'leftHand' || slot === 'rightHand';
+}
+
 function scoreForSlot(item, slot) {
   if (!item) return [0, 0];
   const atk = typeof item.atk === 'number' ? item.atk : 0;
@@ -158,6 +162,7 @@ export async function autoEquipIfBetter(actor, slotOrItem) {
   const inv = actorRef.inventory;
   const slot = typeof slotOrItem === 'string' ? slotOrItem : (slotOrItem?.slot || null);
   if (!slot) return false;
+  if (!isValidEquipSlot(slot)) return false;
   const sKey = String(slot);
   const eq = inv.equipped || {};
   const current = eq[sKey] || null;
@@ -193,6 +198,22 @@ export async function autoEquipIfBetter(actor, slotOrItem) {
     return true;
   }
   return false;
+}
+
+// Ensure inventory consistency: no non-equip items left in equipped map
+export function normalizeInventory(inv) {
+  if (!inv) return;
+  const eq = inv.equipped || {};
+  const items = inv.items || (inv.items = []);
+  for (const k of Object.keys(eq)) {
+    const it = eq[k];
+    if (!it) continue;
+    if (!isValidEquipSlot(k) || !isValidEquipSlot(it.slot)) {
+      // Move to backpack and clear slot
+      items.push(it);
+      eq[k] = null;
+    }
+  }
 }
 
 export function spawnEnemy(x, y, type = 'mook', opts = {}) {

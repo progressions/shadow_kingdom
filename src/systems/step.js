@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy, addItemToInventory, autoEquipIfBetter } from '../engine/state.js';
+import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy, addItemToInventory, autoEquipIfBetter, normalizeInventory } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
@@ -122,6 +122,8 @@ export function step(dt) {
     else if ((runtime._lowHpTimer || 0) > 0) runtime._lowHpTimer = Math.max(0, runtime._lowHpTimer - dt);
     // Recent-hit timer for triggers that respond to damage taken
     if ((runtime._recentPlayerHitTimer || 0) > 0) runtime._recentPlayerHitTimer = Math.max(0, runtime._recentPlayerHitTimer - dt);
+    // Keep inventory consistent (recover keys accidentally put into equipped, etc.)
+    normalizeInventory(player.inventory);
   } catch {}
 
   // --- Spawner tick ---
@@ -979,7 +981,11 @@ export function step(dt) {
           showBanner(`Picked up ${picked?.name || 'an item'}`);
           playSfx('pickup');
           // Auto-equip if this improves current gear
-          try { autoEquipIfBetter(player, picked.slot || null); } catch {}
+          try {
+            if (picked && (picked.slot === 'head' || picked.slot === 'torso' || picked.slot === 'legs' || picked.slot === 'leftHand' || picked.slot === 'rightHand')) {
+              autoEquipIfBetter(player, picked.slot);
+            }
+          } catch {}
         }
         // small sparkle burst
         for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
