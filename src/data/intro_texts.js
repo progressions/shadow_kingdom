@@ -74,5 +74,9 @@ export const introTexts = {
 
   fana_enslaved:
     "A young sorceress stands amid broken sigils, eyes unfocused, lips moving to someone else's words. Gold dust clings to tears she doesn't seem to notice.\n" +
-    "\nFana: \"Aurelion… I remember light, not chains. Vorthak speaks for Urathar. He says ‘kneel’, and my hands obey. Please… if you’re brave—break this.\"",
+    "\nFana: \"Aurelion… I remember light, not chains. Vorthak speaks for Urathar. He says 'kneel', and my hands obey. Please… if you're brave—break this.\"",
+
+  cowsill:
+    "A bright-eyed warrior bounds forward, blonde hair catching the light as she spins her blade with practiced ease. Her black dress swirls as she moves, and her infectious energy seems to make the very air around her crackle with anticipation.\n" +
+    "\nCowsill: \"Hey there! I'm Cowsill! You look like you could use a strike partner—when we fight together, every hit lands twice as hard! Ready to show them what teamwork really means?\"",
 };

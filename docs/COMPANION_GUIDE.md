@@ -1,0 +1,222 @@
+# Companion Guide
+
+## Overview
+Companions are recruitable NPCs who follow the player, provide passive auras, and trigger special abilities during combat. Each companion has unique personality traits, visual appearance, and combat specializations. Effects scale with affinity (1-10).
+
+---
+
+## Level 1: Forest
+
+### Canopy
+**Appearance:** Blonde hair, blue dress  
+**Personality:** Calm healer, protective, searching for her sister Larch  
+**Class:** Support/Healer  
+
+**Auras:**
+- Damage Reduction: +1 DR
+- Regeneration: +0.2 HP/sec
+
+**Triggers:**
+- **Shield**: Activates at 40% HP, lasts 6 seconds (12s cooldown)
+
+**Quest Line:** Finding clues about her missing sister across multiple levels
+
+---
+
+### Yorna  
+**Appearance:** Red hair, black dress  
+**Personality:** Ruthless fighter, confident, aggressive  
+**Class:** Warrior/DPS  
+
+**Auras:**
+- Attack Damage: +1 ATK
+- Attack Range: +2 pixels
+
+**Triggers:**
+- **Echo Strike**: 50% bonus damage on player hits (1.2s cooldown, scales with affinity)
+
+**Quest Line:** Combat challenges and proving strength
+
+---
+
+### Hola
+**Appearance:** Black hair, white dress  
+**Personality:** Nervous sorceress, trying to remember spells, needs encouragement  
+**Class:** Crowd Control/Support  
+
+**Auras:**
+- Enemy Slow: 20% in 48px radius around player
+- Touch Damage Reduction: +1 DR vs contact damage
+
+**Triggers:**
+- **Gust**: Pushes enemies 14px away, applies 25% slow for 0.4s (10s cooldown)
+
+**Quest Line:** Spell practice and confidence building
+
+---
+
+## Level 2: Desert/Cave
+
+### Oyin
+**Appearance:** Blonde hair, green dress  
+**Personality:** Young traveler, eager but inexperienced, wants to help  
+**Class:** Support  
+
+**Auras:**
+- Attack Range: +1 pixel
+
+**Triggers:**
+- **Rally**: When HP < 60%, heals 2 HP and grants +1 ATK for 3 seconds (8s cooldown)
+
+**Quest Line:** Learning to be brave and helpful
+
+---
+
+### Twil
+**Appearance:** Red hair, black dress  
+**Personality:** Quick scout, cocky, reads terrain well  
+**Class:** Tactical/Debuff  
+
+**Auras:**
+- Enemy Slow: 15% in 42px radius around player
+- Damage Reduction: +1 DR
+
+**Triggers:**
+- **Dust Veil**: When 2+ enemies are within 60px, applies 40% slow to all nearby enemies for 0.8 seconds (6s cooldown)
+
+**Quest Line:** Scouting missions and tracking
+
+---
+
+## Level 3: Marsh
+
+### Tin
+**Appearance:** Blue hair, blue dress  
+**Personality:** Hyperactive, enthusiastic, always moving  
+**Class:** Speed/Agility  
+
+**Auras:**
+- Attack Speed: +12% (reduces attack cooldown)
+
+**Triggers:**
+- **Slipstream**: Pushes enemies 10px away, applies 15% slow for 0.4s, grants +2 range for 2 seconds (10s cooldown)
+- **Tumble Up**: After taking damage, heals 1 HP and grants +1 ATK for 3 seconds (7s cooldown)
+
+**Quest Line:** Speed challenges and races
+
+---
+
+### Nellis
+**Appearance:** Purple hair, white dress  
+**Personality:** Steady, mourning past losses, reliable  
+**Class:** Tank/Defense  
+
+**Auras:**
+- Damage Reduction: +1 DR (constant)
+
+**Triggers:**
+- **Mourner's Veil**: When 3+ enemies are within 80px, applies 35% slow to all enemies in range for 1 second (5s cooldown)
+- **Beacon**: When enemies are within 100px, grants +2 range for 3 seconds (9s cooldown)
+- **Keep the Line**: When HP < 40%, grants +1 DR and applies 20% slow to nearby enemies for 4 seconds (12s cooldown)
+
+**Quest Line:** Honoring the fallen and protecting others
+
+---
+
+## Level 4: Ruined City
+
+### Urn
+**Appearance:** Green hair, green dress  
+**Personality:** Positive, hopeful, keeps spirits up  
+**Class:** Support/Healer  
+
+**Auras:**
+- Regeneration: +0.1 HP/sec
+
+**Triggers:**
+- **Cheer**: Burst heal 3 HP in 80px radius when player HP < 50% (12s cooldown)
+
+**Quest Line:** Securing safe paths through the ruins
+
+---
+
+### Varabella
+**Appearance:** Red hair, black dress  
+**Personality:** Tactical, sharp-eyed, precise  
+**Class:** Precision/Buff  
+
+**Auras:**
+- Attack Range: +1 pixel
+
+**Triggers:**
+- **Call the Angle**: When enemies within 140px, grants +1 ATK and +2 range for 3s (9s cooldown)
+
+**Quest Line:** Strategic positioning and angles
+
+---
+
+## Level 5: Temple District
+
+### Cowsill
+**Appearance:** Blonde hair, black dress  
+**Personality:** Energetic striker, positive, trained with temple guards  
+**Class:** Striker/DPS  
+
+**Auras:**
+- Attack Damage: +2 ATK (highest base attack boost)
+- Attack Speed: +15% faster attacks
+
+**Triggers:**
+- **Strike Synergy**: 75% bonus damage on player hits (0.8s cooldown)
+- **Double Strike**: 20% chance for 150% damage follow-up with yellow sparkles (3s cooldown)
+
+**Quest Line:** Temple Strike Team - clearing corrupted guards and purifying sacred spaces
+
+---
+
+## Affinity Scaling
+
+All companion effects scale with affinity (relationship level):
+- **Base (Affinity 1)**: 100% effectiveness
+- **Max (Affinity 10)**: 150% effectiveness
+
+The scaling formula: `multiplier = 1 + ((affinity - 1) / 9) * 0.5`
+
+This affects:
+- Aura strength (capped by global limits)
+- Trigger damage/healing amounts
+- Trigger cooldown reduction
+- Trigger proc chances
+
+---
+
+## Global Buff Caps
+
+To maintain game balance, companion buffs have maximum stack limits:
+- **Attack**: +2 max
+- **Damage Reduction**: +2 max  
+- **Regeneration**: +0.4 HP/sec max
+- **Range**: +3 pixels max
+- **Touch DR**: +1 max
+- **Slow**: 25% max
+- **Attack Speed**: +50% max
+
+---
+
+## Companion Synergies
+
+Some companions work especially well together:
+- **Canopy + Urn**: Double healing for maximum survivability
+- **Yorna + Cowsill**: Stacked damage bonuses for devastating strikes
+- **Hola + Twil**: Layered slowing effects for crowd control
+- **Nellis + Canopy**: Maximum damage reduction and shields
+
+---
+
+## Quest Progression
+
+Each companion has multi-level quest chains that:
+1. Start with simple tasks in their recruitment level
+2. Expand with new challenges as you reach new areas
+3. Reward affinity points for completion
+4. Unlock special dialog and bond conversations at high affinity (6+, 8+, 9.5+)

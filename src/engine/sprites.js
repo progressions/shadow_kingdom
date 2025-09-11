@@ -80,17 +80,13 @@ export function makeSpriteSheet(paletteOverrides = {}) {
 export const playerSheet = makeSpriteSheet();
 export const enemySheet = makeSpriteSheet({ shirt: '#e34b4b', hair: '#1b1b1b' });
 // Enemy class variants
-export const enemyMookSheet = makeSpriteSheet({ shirt: '#8a8a8a', pants: '#5a5a5a', hair: '#bdbdbd', outline: '#000000' });
-export const enemyFeaturedSheet = makeSpriteSheet({ shirt: '#d7a64a', pants: '#6a5330', hair: '#2a2a2a', outline: '#000000' });
+export const enemyMookPalette = { shirt: '#8a8a8a', pants: '#5a5a5a', hair: '#bdbdbd', outline: '#000000' };
+export const enemyFeaturedPalette = { shirt: '#d7a64a', pants: '#6a5330', hair: '#2a2a2a', outline: '#000000' };
+export const enemyBossPalette = { hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', outline: '#000000' };
+export const enemyMookSheet = makeSpriteSheet(enemyMookPalette);
+export const enemyFeaturedSheet = makeSpriteSheet(enemyFeaturedPalette);
 // Boss (Vast): black-haired sorceress in a black dress
-export const enemyBossSheet = makeSpriteSheet({
-  hair: '#1b1b1b',
-  longHair: true,
-  dress: true,
-  dressColor: '#1a1a1a',
-  shirt: '#4a4a4a',
-  outline: '#000000',
-});
+export const enemyBossSheet = makeSpriteSheet(enemyBossPalette);
 export const npcSheet   = makeSpriteSheet({ shirt: '#5ac8fa', hair: '#2a2a2a' });
 export const companionSheets = [
   // Brown, Blonde, Red hair

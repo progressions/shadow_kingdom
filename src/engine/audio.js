@@ -34,6 +34,7 @@ const files = {
     mournerVeil: 'assets/audio/sfx/mournerVeil.wav',
     beacon: 'assets/audio/sfx/beacon.wav',
     keepLine: 'assets/audio/sfx/keepLine.wav',
+    quake: 'assets/audio/sfx/quake.wav',
   },
 };
 
@@ -328,6 +329,17 @@ function playSfxChip(name) {
     case 'keepLine':
       // Grounding tone
       envTone({ type: 'triangle', freq: 392.00, attack: 0.003, decay: 0.12, release: 0.12, gain: 0.08, t });
+      break;
+    case 'quake':
+      // Deep phase-change thump + short rumble
+      // Kick-like thump
+      envTone({ type: 'triangle', freq: 120, attack: 0.002, decay: 0.08, release: 0.06, gain: 0.18, t });
+      envTone({ type: 'sine',     freq: 60,  attack: 0.002, decay: 0.10, release: 0.08, gain: 0.16, t: t + 0.005 });
+      // Sub sweep down
+      envTone({ type: 'sine',     freq: 180, attack: 0.004, decay: 0.18, release: 0.12, gain: 0.12, t });
+      envTone({ type: 'sine',     freq: 90,  attack: 0.004, decay: 0.20, release: 0.14, gain: 0.11, t: t + 0.02 });
+      // Short muted noise for rumble
+      noiseBurst({ attack: 0.002, decay: 0.12, release: 0.10, gain: 0.06, t });
       break;
   }
 }

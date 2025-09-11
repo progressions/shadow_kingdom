@@ -346,8 +346,31 @@ export const varabellaDialog = {
       choices: [ { label: 'Back', next: 'quests' } ],
     },
     varabella_wires7_locked: {
-      text: 'Varabella: If they string wires again, I’ll teach them to cut their own.',
+      text: 'Varabella: If they string wires again, I\'ll teach them to cut their own.',
       choices: [ { label: 'Back', next: 'quests' } ],
+    },
+  },
+};
+
+export const cowsillDialog = {
+  start: 'intro',
+  nodes: {
+    intro: {
+      text: "Cowsill: Hey! I'm Cowsill! Want to team up? When we strike together, we hit way harder!",
+      choices: [
+        { label: 'Yes, join me!', action: 'join_party' },
+        { label: "Let's strike as one! (Affinity +0.3)", action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'cowsill_intro_team' }, next: 'after_aff' },
+        { label: 'Tell me your technique (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
+        { label: 'Not right now.', action: 'end' },
+      ],
+    },
+    after_aff: {
+      text: "Cowsill: Yes! That's the spirit! Together we're unstoppable!",
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+    },
+    bond: {
+      text: "Cowsill: It's all about timing—when you swing, I follow through. Double the impact, half the effort!",
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };

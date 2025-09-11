@@ -10,6 +10,11 @@ This guide shows how to add a new level that follows the pattern used in Level 2
 - Build the boss arena (walls), leaving a central gap for a locked gate.
 - Spawn a featured “key guardian” outside the arena that drops the gate key.
 - Spawn the boss inside the arena (with optional mooks) and wire level transition after defeat.
+- Assign stable ids at spawn time:
+  - Gates: `id` (e.g., `castle_gate`, `nethra_gate`, …)
+  - Chests: `id` (e.g., `chest_l1_sword`)
+  - Breakables: `id` (e.g., `brk_l1_0`)
+  - Unique actors: set `vnId` (e.g., `enemy:vast`, `enemy:gorg`).
 - Add optional chests/breakables and any recruitable NPCs.
 - Set a “levelN_reached” flag to gate dialogue/quests that unlock at that level.
  - Debug: While playtesting, press Shift+D to jump to the next level (currentLevel+1). Inventory and companions persist.
@@ -23,6 +28,7 @@ This guide shows how to add a new level that follows the pattern used in Level 2
 - Keys and gates:
   - Key Guardian: set `guaranteedDropId: 'key_<id>'` on a featured enemy.
   - Gate: push an obstacle `{ type: 'gate', id: '<gate_id>', keyId: 'key_<id>', locked: true, blocksAttacks: true }`.
+- Level descriptors (v2 saves): `src/engine/level_descriptors.js` defines per-level ids for gates, chests, breakables, and unique actors. Keep these in sync with level spawns so saves can apply world deltas deterministically.
 
 3) Template Snippet (inside a new `loadLevelN()`)
 
@@ -114,6 +120,7 @@ export function loadLevelN() {
 - Gate obstacles
   - `type: 'gate'`, `id: '..._gate'`, `keyId: 'key_...'`, `locked: true`, `blocksAttacks: true`.
   - Combat code checks for `gate` collision in interact logic (opening requires having the key).
+  - Save v2 records gate states by id and restores them on load.
 - Clearing arena interior
   - Ensure to remove procedural obstacles inside the arena footprint and where the gate gap will be, or the gate may be blocked.
 
@@ -140,5 +147,13 @@ try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['leve
 8) Debugging and Transitions
 
 - Next-level jump: Press Shift+D to set `runtime.pendingLevel = (currentLevel || 1) + 1`. The main loop will load `loadLevel<N>` if implemented.
-- Boss transition: Set `onDefeatNextLevel: N+1` on the boss to advance automatically after defeat.
+- Boss transition: Set `onDefeatNextLevel: N+1` on the boss to advance automatically after defeat. The defeated VN displays before fade.
 - Level reach flags: In each `loadLevelN()`, set `runtime.questFlags['levelN_reached'] = true` to gate companion quests/dialogs.
+
+9) Save v2 Notes for Level Authors
+- Ensure ids are stable and present:
+  - Gates in obstacles carry `id`; add them to the level descriptor.
+  - Chests and breakables also have `id`; add them to the descriptor.
+  - Boss/guardian spawns include a `vnId` (e.g., `enemy:vast`); list those in the descriptor’s `uniqueActors`.
+- Generic (non-unique) enemies are saved explicitly with position/HP; you don’t need to predeclare them.
+- Portraits: use level-scoped paths (`assets/portraits/levelXX/<Name>/<File>.mp4`).

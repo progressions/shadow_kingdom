@@ -3,6 +3,7 @@ import { camera, world, player, enemies, companions, npcs, runtime, corpses, sta
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
+import { getSprite } from './sprite_loader.js';
 
 function drawBar(x, y, w, h, pct, color) {
   ctx.save();
@@ -14,6 +15,17 @@ function drawBar(x, y, w, h, pct, color) {
 
 export function render(terrainBitmap, obstacles) {
   ctx.clearRect(0, 0, camera.w, camera.h);
+  // Screen shake (world only): translate canvas during world render, not UI
+  let shakeX = 0, shakeY = 0;
+  try {
+    if ((runtime.shakeTimer || 0) > 0) {
+      const mag = Math.max(0, runtime.shakeMag || 2);
+      shakeX = Math.round((Math.random() * 2 - 1) * mag);
+      shakeY = Math.round((Math.random() * 2 - 1) * mag);
+    }
+  } catch {}
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
@@ -71,14 +83,17 @@ export function render(terrainBitmap, obstacles) {
   for (const n of npcs) drawables.push({
     x: n.x, y: n.y, w: n.w, h: n.h,
     dir: n.dir, frame: n.animFrame, sheet: n.sheet || npcSheet,
+    spriteId: n.spriteId || null, spriteRef: n, spriteScale: n.spriteScale || 1,
   });
   for (const c of companions) drawables.push({
     x: c.x, y: c.y, w: c.w, h: c.h,
     dir: c.dir, frame: c.animFrame, sheet: c.sheet,
+    spriteId: c.spriteId || null, spriteRef: c, spriteScale: c.spriteScale || 1,
   });
   for (const e of enemies) if (e.hp > 0) drawables.push({
     x: e.x, y: e.y, w: e.w, h: e.h,
     dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet, spriteScale: e.spriteScale || 1,
+    spriteId: e.spriteId || null, spriteRef: e,
   });
   drawables.push({
     x: player.x, y: player.y, w: player.w, h: player.h,
@@ -87,22 +102,63 @@ export function render(terrainBitmap, obstacles) {
   drawables.sort((a, b) => (a.y + a.h) - (b.y + b.h));
 
   for (const d of drawables) {
-    const row = DIRECTIONS.indexOf(d.dir);
-    const sx = d.frame * SPRITE_SIZE;
-    const sy = row * SPRITE_SIZE;
     const scale = d.spriteScale || 1;
-    const destW = SPRITE_SIZE * scale;
-    const destH = SPRITE_SIZE * scale;
-    const dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
-    const dy = Math.round(d.y - (destH - d.h) - camera.y);
-    // Player flicker while invulnerable
-    if (d.isPlayer && player.invulnTimer > 0) {
-      const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
-      if (!flicker) {
+    let drew = false;
+    // Custom sprite path via spriteId (supports 32x32 and meta frames)
+    if (d.spriteId && d.spriteRef) {
+      const ent = d.spriteRef;
+      if (ent._sprite && ent._sprite.image) {
+        const img = ent._sprite.image;
+        const meta = ent._sprite.meta || null;
+        // Determine frame rect
+        let fw = 32, fh = 32, sx = 0, sy = 0;
+        if (meta && Array.isArray(meta.frames?.[d.dir]) && meta.frames[d.dir].length) {
+          const frames = meta.frames[d.dir];
+          const idx = Math.max(0, d.frame % frames.length);
+          const fr = frames[idx];
+          sx = fr.x|0; sy = fr.y|0; fw = fr.w||32; fh = fr.h||32;
+        } else {
+          // Assume grid: 2 columns × 4 directions
+          fw = (meta && meta.w) ? meta.w : 32;
+          fh = (meta && meta.h) ? meta.h : 32;
+          const row = DIRECTIONS.indexOf(d.dir);
+          const col = d.frame % 2;
+          sx = col * fw; sy = row * fh;
+        }
+        const destW = fw * scale;
+        const destH = fh * scale;
+        // Anchor: default bottom-center; meta.anchor in [0..1] if provided
+        let ax = 0.5, ay = 1.0;
+        if (meta && meta.anchor) { ax = Number(meta.anchor.x) || ax; ay = Number(meta.anchor.y) || ay; }
+        const dx = Math.round(d.x + d.w/2 - ax * destW - camera.x);
+        const dy = Math.round(d.y + d.h - ay * destH - camera.y);
+        if (d.isPlayer && player.invulnTimer > 0) {
+          const flicker = Math.floor(performance.now() / 100) % 2 === 0;
+          if (!flicker) ctx.drawImage(img, sx, sy, fw, fh, dx, dy, destW, destH);
+        } else {
+          ctx.drawImage(img, sx, sy, fw, fh, dx, dy, destW, destH);
+        }
+        drew = true;
+      } else if (!ent._spriteLoading) {
+        ent._spriteLoading = true;
+        getSprite(ent.spriteId).then(s => { ent._sprite = s; ent._spriteLoading = false; }).catch(() => { ent._spriteLoading = false; });
+      }
+    }
+    if (!drew) {
+      // Legacy sheet path (16x16 grid)
+      const row = DIRECTIONS.indexOf(d.dir);
+      const sx = d.frame * SPRITE_SIZE;
+      const sy = row * SPRITE_SIZE;
+      const destW = SPRITE_SIZE * scale;
+      const destH = SPRITE_SIZE * scale;
+      const dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
+      const dy = Math.round(d.y - (destH - d.h) - camera.y);
+      if (d.isPlayer && player.invulnTimer > 0) {
+        const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
+        if (!flicker) ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+      } else {
         ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
       }
-    } else {
-      ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
     }
   }
 
@@ -149,8 +205,23 @@ export function render(terrainBitmap, obstacles) {
     }
   }
 
+  // End world shake translate before UI overlay
+  ctx.restore();
   // Player UI overlay
-  drawBar(6, 6, 60, 5, player.hp / player.maxHp, '#4fa3ff');
+  // HP bar with low-HP warning (turn red and glow)
+  const hpRatio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp)));
+  if (hpRatio <= 0.35) {
+    const t = (runtime._timeSec || 0);
+    const pulse = 0.5 + 0.5 * Math.sin(t * 8);
+    const intensity = Math.max(0.3, Math.min(1.0, (0.5 - hpRatio) * 2));
+    ctx.save();
+    ctx.shadowBlur = 6 + 10 * intensity * pulse;
+    ctx.shadowColor = 'rgba(255,74,74,0.85)'; // red glow
+    drawBar(6, 6, 60, 5, hpRatio, '#ff5555');
+    ctx.restore();
+  } else {
+    drawBar(6, 6, 60, 5, hpRatio, '#4fa3ff');
+  }
   // Player XP bar under HP
   try {
     const need = xpToNext(Math.max(1, player.level || 1));
@@ -188,6 +259,14 @@ export function render(terrainBitmap, obstacles) {
 
   // Quest target markers
   drawQuestMarkers();
+  
+  // Update coordinate display in HTML
+  const coordsEl = document.getElementById('coords');
+  if (coordsEl) {
+    const tileX = Math.floor(player.x / 16);
+    const tileY = Math.floor(player.y / 16);
+    coordsEl.textContent = `(${tileX}, ${tileY})`;
+  }
 }
 
 function drawNpcMarkers() {

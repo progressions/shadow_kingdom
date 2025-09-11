@@ -1,5 +1,7 @@
 import { TILE } from './constants.js';
-import { enemyMookSheet, enemyFeaturedSheet, enemyBossSheet } from './sprites.js';
+import { enemyMookSheet, enemyFeaturedSheet, enemyBossSheet, enemyMookPalette, enemyFeaturedPalette, enemyBossPalette } from './sprites.js';
+import { enemyPalettes } from '../data/enemy_palettes.js';
+import { makeSpriteSheet } from './sprites.js';
 
 // World and camera
 export const world = {
@@ -97,6 +99,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   const w = (typeof opts.w === 'number') ? opts.w : 12;
   const h = (typeof opts.h === 'number') ? opts.h : 16;
   const ent = {
+    spriteId: opts.spriteId || null,
+    id: opts.id || (`de_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
     x, y,
     w, h,
     speed: cfg.speed,
@@ -116,6 +120,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
     sheet: opts.sheet || cfg.sheet,
+    sheetPalette: opts.sheetPalette || (T === 'boss' ? enemyBossPalette : (T === 'featured' ? enemyFeaturedPalette : enemyMookPalette)),
     // Optional portrait for VN overlay on enemies
     portraitSrc: opts.portrait || null,
     // Optional portraits for empowered/defeated VNs (boss flow)
@@ -134,7 +139,20 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     questId: opts.questId || null,
     // Optional sprite scale for rendering (1 = 16x16, 2 = 32x32)
     spriteScale: (typeof opts.spriteScale === 'number') ? Math.max(0.5, Math.min(4, opts.spriteScale)) : 1,
+    source: opts.source || null,
+    createdAt: typeof opts.createdAt === 'number' ? opts.createdAt : (performance && performance.now ? performance.now() : Date.now()),
   };
+  // Apply vnId-specific default palette automatically if provided in registry and not explicitly set
+  try {
+    const key = (opts.vnId || '').replace(/^enemy:/,'').toLowerCase();
+    if (key && !opts.sheetPalette) {
+      const pal = enemyPalettes[key];
+      if (pal) {
+        ent.sheetPalette = pal;
+        try { ent.sheet = makeSpriteSheet(pal); } catch {}
+      }
+    }
+  } catch {}
   enemies.push(ent);
   try {
     if (window && window.DEBUG_ENEMIES) {
@@ -207,6 +225,7 @@ export function spawnSparkle(x, y, opts = {}) {
 
 export function spawnCompanion(x, y, sheet, opts = {}) {
   const comp = {
+    spriteId: opts.spriteId || null,
     x, y,
     w: 12, h: 16,
     speed: 110,
@@ -234,11 +253,13 @@ export function removeCompanion(comp) {
 
 export function spawnNpc(x, y, dir = 'down', opts = {}) {
   const npc = { 
+    spriteId: opts.spriteId || null,
     x, y, w: 12, h: 16, dir, animFrame: 0, idleTime: 0,
     name: opts.name || 'NPC',
     portraitSrc: opts.portrait || null,
     portrait: null,
     dialog: null,
+    dialogId: opts.dialogId || null,
     sheet: opts.sheet || null,
     sheetPalette: opts.sheetPalette || null,
     // Minimal VN intro flag: if present, a simple VN appears once when first seen
@@ -304,6 +325,12 @@ export const runtime = {
   // Level/scene management
   currentLevel: 1,
   pendingLevel: null,
+  // Global pause toggle for race-free load/restore
+  paused: false,
+  // Disable VN triggers during critical phases
+  disableVN: false,
+  // RNG seeds bucket (optional systems)
+  rng: { world: null, combat: null, loot: null },
   // Temporary combat buffs (timed)
   tempAtkBonus: 0,
   _tempAtkTimer: 0,

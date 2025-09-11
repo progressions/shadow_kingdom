@@ -22,7 +22,7 @@ export function startAttack() {
 
 export function willAttackHitEnemy() {
   // Predict the immediate attack hitbox and check for any enemy within it
-  const range = 12 + (runtime?.combatBuffs?.range || 0);
+  const range = Math.max(0, 12 + (runtime?.combatBuffs?.range || 0) - (runtime?.enemyDebuffs?.rangePenalty || 0));
   const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
   if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
   if (player.dir === 'right') { hb.w += range; }
@@ -51,7 +51,7 @@ export function handleAttacks(dt) {
   player.attackTimer += dt;
   if (!player._didHit && player.attackTimer >= player.attackDuration * 0.5) {
     player._didHit = true;
-    const range = 12 + (runtime?.combatBuffs?.range || 0);
+    const range = Math.max(0, 12 + (runtime?.combatBuffs?.range || 0) - (runtime?.enemyDebuffs?.rangePenalty || 0));
     const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
     if (player.dir === 'right') { hb.w += range; }
@@ -107,6 +107,16 @@ export function handleAttacks(dt) {
         const before = e.hp;
         e.hp -= dmg;
         if (finalDmg !== dmg) e.hp -= (finalDmg - dmg);
+        // Apply enemy DR (base + temporary) after all player-side adds
+        try {
+          const enemyDr = Math.max(0, (e._baseDr || 0) + (e._tempDr || 0));
+          if (enemyDr > 0) {
+            const reduce = Math.min(enemyDr, Math.max(0, e.hp - (before - finalDmg))); // just ensure non-negative
+            e.hp += reduce; // negate part of the damage
+          }
+          // Mark recent hit to drive enemy on-hit triggers
+          e._recentHitTimer = Math.max(e._recentHitTimer || 0, 0.9);
+        } catch {}
         try {
           if (window && window.DEBUG_ENEMIES) {
             console.log('[ENEMY HIT]', {
@@ -147,6 +157,47 @@ export function handleAttacks(dt) {
             // small bark + audio sting
             import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 8, `Echo +${bonus}`, { color: '#ffd166', life: 0.7 }));
             try { playSfx('echo'); } catch {}
+          }
+        }
+        // Cowsill Strike Synergy (stronger echo damage on hit with cooldown)
+        const hasCowsill = companions.some(c => (c.name || '').toLowerCase().includes('cowsill'));
+        if (hasCowsill) {
+          const cfg = companionEffectsByKey.cowsill?.onPlayerHit || { bonusPct: 0.75, cooldownSec: 0.8 };
+          if ((runtime.companionCDs.cowsillStrike || 0) <= 0) {
+            // Affinity scaling for Cowsill
+            let m = 1;
+            for (const c of companions) { 
+              const nm = (c.name || '').toLowerCase(); 
+              if (nm.includes('cowsill')) { 
+                const aff = (typeof c.affinity==='number')?c.affinity:5; 
+                const t = Math.max(0, Math.min(9, aff-1)); 
+                m = Math.max(m, 1 + (t/9)*0.5); 
+              } 
+            }
+            const bonusPct = Math.min(1.0, (cfg.bonusPct || 0.75) * m);
+            const bonus = Math.max(1, Math.round(dmg * bonusPct));
+            e.hp -= bonus;
+            const cd = (cfg.cooldownSec || 0.8) / (1 + (m - 1) * 0.5);
+            runtime.companionCDs.cowsillStrike = cd;
+            // Visual feedback with different color
+            import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 8, `Strike +${bonus}`, { color: '#ff6b6b', life: 0.7 }));
+            try { playSfx('hit'); } catch {}
+            
+            // Double Strike trigger chance
+            const triggers = companionEffectsByKey.cowsill?.triggers;
+            if (triggers?.doubleStrike && (runtime.companionCDs.cowsillDouble || 0) <= 0) {
+              const chance = (triggers.doubleStrike.chance || 0.2) * m;
+              if (Math.random() < chance) {
+                const doubleDmg = Math.max(1, Math.round(dmg * (triggers.doubleStrike.dmgMult || 1.5)));
+                e.hp -= doubleDmg;
+                runtime.companionCDs.cowsillDouble = triggers.doubleStrike.cooldownSec || 3;
+                import('../engine/state.js').then(m => {
+                  m.spawnFloatText(e.x + e.w/2, e.y - 16, `DOUBLE! +${doubleDmg}`, { color: '#ffeb3b', life: 1.0 });
+                  // Spawn strike effect
+                  m.spawnSparkle(e.x + e.w/2, e.y + e.h/2, { color: '#ffeb3b', count: 8, spread: 20 });
+                });
+              }
+            }
           }
         }
         const dx = (e.x + e.w/2) - (player.x + player.w/2);

@@ -945,4 +945,110 @@ export const companionDialogs = {
       },
     },
   },
+  cowsill: {
+    start: 'root',
+    nodes: {
+      root: {
+        text: "Cowsill: Ready to show them what real teamwork looks like? Every strike we land together hits twice as hard!",
+        choices: [
+          { label: 'How can we strike harder?', next: 'tactics' },
+          { label: 'How are you feeling?', next: 'mood' },
+          { label: 'Tell me about your training.', next: 'training_chat' },
+          // Bond entries
+          { label: 'Share techniques', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
+          { label: 'Perfect our timing (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Ultimate combination (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          // Quest entries
+          { label: 'Temple Strike Team', requires: { hasFlag: 'level5_reached', flag: 'cowsill_strike_started', not: true }, next: 'quest_intro' },
+          { label: 'Turn in: Temple Strike Team', requires: { flag: 'cowsill_strike_cleared', missingFlag: 'cowsill_strike_done' }, next: 'quest_turnin' },
+          // Level 6 storyline
+          { label: 'Cleanse the Corruption (L6)', requires: { hasFlag: 'level6_reached', flag: 'cowsill_cleanse_started', not: true }, next: 'cleanse_l6_intro' },
+          { label: 'Turn in: Cleanse the Corruption', requires: { flag: 'cowsill_cleanse_cleared', missingFlag: 'cowsill_cleanse_done' }, next: 'cleanse_l6_turnin' },
+          { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      tactics: {
+        text: "Cowsill: It's all about rhythm! When you swing, I follow through immediately. The enemies won't know what hit them—literally twice!",
+        choices: [
+          { label: 'Back', action: 'companion_back' },
+        ],
+      },
+      mood: {
+        text: "Cowsill: I'm pumped! Every battle we fight together makes us stronger. Can't wait for the next one!",
+        choices: [
+          { label: 'Back', action: 'companion_back' },
+        ],
+      },
+      training_chat: {
+        text: "Cowsill: I trained with the temple guards before... everything fell apart. They taught me that strength isn't just power—it's timing, teamwork, trust.",
+        choices: [
+          { label: 'We\'ll rebuild that trust.', action: 'affinity_add', data: { target: 'active', amount: 0.5, flag: 'cowsill_aff_trust' }, next: 'training_more' },
+          { label: 'Show me what you learned.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'cowsill_aff_show' }, next: 'training_more' },
+          { label: 'Back', next: 'root' },
+        ],
+      },
+      training_more: {
+        text: "Cowsill: Watch my blade when you attack—I'll mirror your rhythm and amplify it. Together, we're unstoppable!",
+        choices: [ { label: 'Let\'s do this.', next: 'root' } ],
+      },
+      bond6a: {
+        text: "Cowsill: Here's the secret—it's not about hitting at the same time. It's about creating a cascade. You break their guard, I exploit the opening.",
+        choices: [ { label: 'Continue', next: 'bond6b' } ],
+      },
+      bond6b: {
+        text: "Cowsill: Every enemy has a rhythm. Once we find it and break it, they can't recover. That's when we strike hardest.",
+        choices: [ { label: 'Continue', next: 'bond6c' } ],
+      },
+      bond6c: {
+        text: "Cowsill: Practice with me sometime? I promise you'll see the difference. Every hit will feel like thunder!",
+        choices: [ { label: 'I\'d like that', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'cowsill_bond6c_reward' }, next: 'root' } ],
+      },
+      bond8: {
+        text: "Cowsill: When we're perfectly synchronized, it's like dancing—except our dance defeats darkness. Ready to perfect our steps?",
+        choices: [ { label: 'Back', next: 'root' } ],
+      },
+      bond10: {
+        text: "Cowsill: You and me? We're not just fighters. We're a force of nature. Nothing can stand against our combined strength!",
+        choices: [ { label: 'Back', next: 'root' } ],
+      },
+      quest_intro: {
+        text: "Cowsill: There are corrupted temple guards blocking key passages. If we strike them down together, we can clear the way for others.",
+        choices: [
+          { label: 'Let\'s clear them out.', action: 'start_quest', data: { id: 'cowsill_strike' }, next: 'quest_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ],
+      },
+      quest_started: {
+        text: "Cowsill: Yes! Let's show them what synchronized strikes can do!",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      quest_turnin: {
+        text: "Cowsill: Did you see that? Every hit landed perfectly! We make an amazing team!",
+        choices: [ { label: 'We really do.', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'cowsill_strike_reward' }, next: 'quest_done' } ],
+      },
+      quest_done: {
+        text: "Cowsill: Ready for the next challenge whenever you are!",
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'cowsill_strike_done' } } ],
+      },
+      cleanse_l6_intro: {
+        text: "Cowsill: The temple's inner sanctum still has shadow remnants. Together we can strike them down and purify the sacred spaces.",
+        choices: [
+          { label: 'Let\'s cleanse it.', action: 'start_quest', data: { id: 'cowsill_cleanse' }, next: 'cleanse_started' },
+          { label: 'Later.', next: 'root' },
+        ],
+      },
+      cleanse_started: {
+        text: "Cowsill: Strike fast, strike together. The shadows won't know what hit them!",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      cleanse_l6_turnin: {
+        text: "Cowsill: The temple feels lighter already! Our combined strength really does make a difference!",
+        choices: [ { label: 'It does.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'cowsill_cleanse_reward' }, next: 'cleanse_done' } ],
+      },
+      cleanse_done: {
+        text: "Cowsill: The temple is cleaner. Our strikes echo with purpose!",
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'cowsill_cleanse_done' } } ],
+      },
+    },
+  },
 };

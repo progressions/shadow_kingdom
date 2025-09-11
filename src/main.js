@@ -11,7 +11,7 @@ import { setNpcDialog } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor } from './engine/ui.js';
-import { applyPendingRestore } from './engine/save.js';
+import { applyPendingRestore } from './engine/save_core.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
 
 // Initial level: use loader registry (Level 1 by default)
@@ -36,35 +36,37 @@ function loop(now) {
   last = now;
   step(dt);
   try { updateQuestHint(); } catch {}
-  // Avoid rendering default level spawns between a level swap and save restore
-  if (runtime._suspendRenderUntilRestore) { requestAnimationFrame(loop); return; }
+  // Track render suspension, but still allow level swap/restore to proceed
+  const suspendRender = !!runtime._suspendRenderUntilRestore;
   // Handle pending level transitions after VN closes (runtime set in step.js)
   if (typeof runtime.pendingLevel === 'number' && runtime.pendingLevel > 0) {
     const lvl = runtime.pendingLevel;
     const doSwap = () => {
       const loader = LEVEL_LOADERS[lvl] || loadLevel1;
       terrain = loader();
+      // Geometry-only: if a pending restore exists, strip default actors spawned by loader
+      try { if (runtime && runtime._pendingRestore) { enemies.length = 0; npcs.length = 0; } } catch {}
       // Snap camera to player
       camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(player.x + player.w/2 - camera.w/2)));
       camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(player.y + player.h/2 - camera.h/2)));
       runtime.currentLevel = lvl;
       runtime.pendingLevel = null;
-      // If a load is waiting to be applied, do it now that the level is loaded
+      // Apply pending save restore now that the level is loaded
       try { applyPendingRestore(); } catch {}
     };
     // Ensure any VN overlay is closed before transitioning
     if (runtime.gameState === 'chat') { try { exitChat(runtime); } catch {} }
     fadeTransition({ toBlackMs: 400, holdMs: 100, toClearMs: 400, during: () => { doSwap(); try { showLevelTitle(levelNameFor(lvl)); } catch {} } });
   }
-  render(terrain, obstacles);
+  if (!suspendRender) render(terrain, obstacles);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
 // Debug helpers (call from browser console):
 try {
-  // Enable enemy debug logs by default
-  window.DEBUG_ENEMIES = true;
+  // Enemy debug logs are opt-in; set in console if needed
+  // window.DEBUG_ENEMIES = true;
   window.gotoLevel2 = () => { runtime.pendingLevel = 2; };
   window.gotoLevel3 = () => { runtime.pendingLevel = 3; };
   window.gotoLevel4 = () => { runtime.pendingLevel = 4; };

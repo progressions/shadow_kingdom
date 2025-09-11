@@ -75,6 +75,20 @@ export const companionEffectsByKey = {
     ],
     // Triggers implemented in code: Mourner's Veil, Beacon, Keep the Line
   },
+  cowsill: {
+    auras: [
+      // Striker synergy: base attack boost that scales with affinity
+      { type: 'atk', value: 2 },
+      // Quick strikes: minor attack speed increase
+      { type: 'aspd', value: 0.15 },
+    ],
+    // Echo Strike: bonus damage on player hits (similar to Yorna but stronger)
+    onPlayerHit: { bonusPct: 0.75, cooldownSec: 0.8 },
+    triggers: {
+      // Double Strike: when player lands a hit, chance for instant follow-up
+      doubleStrike: { chance: 0.2, dmgMult: 1.5, cooldownSec: 3 },
+    },
+  },
 };
 
 // Global caps to keep stacks reasonable

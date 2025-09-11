@@ -1,5 +1,6 @@
 import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
+import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats } from '../engine/utils.js';
@@ -107,8 +108,11 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 export function step(dt) {
   // Pause the world while VN/inventory overlay is open
   if (runtime.gameState === 'chat') return;
+  if (runtime.paused) return;
   // Advance chemistry timers
   runtime._timeSec = (runtime._timeSec || 0) + dt;
+  // Decay global screen shake timer
+  if ((runtime.shakeTimer || 0) > 0) runtime.shakeTimer = Math.max(0, (runtime.shakeTimer || 0) - dt);
   // Decay VN intro cooldown so flagged actors don't retrigger back-to-back
   if ((runtime.introCooldown || 0) > 0) runtime.introCooldown = Math.max(0, (runtime.introCooldown || 0) - dt);
   // Track recent low-HP window (3s) for certain pair ticks
@@ -146,6 +150,29 @@ export function step(dt) {
     }
     return; // halt simulation during pan
   }
+  // Cinematic pause (e.g., boss phase transition): hold simulation; after pause, pan then show VN
+  if ((runtime.scenePauseTimer || 0) > 0) {
+    runtime.scenePauseTimer = Math.max(0, (runtime.scenePauseTimer || 0) - dt);
+    if (runtime.scenePauseTimer <= 0 && runtime._phaseCinePending) {
+      try {
+        const { actor, text } = runtime._phaseCinePending;
+        // Pan camera to the actor, then show prompt via pendingIntro path
+        const toX = Math.round(actor.x + actor.w/2 - camera.w/2);
+        const toY = Math.round(actor.y + actor.h/2 - camera.h/2);
+        runtime.cameraPan = {
+          fromX: camera.x,
+          fromY: camera.y,
+          toX: Math.max(0, Math.min(world.w - camera.w, toX)),
+          toY: Math.max(0, Math.min(world.h - camera.h, toY)),
+          t: 0,
+          dur: 0.6,
+        };
+        runtime.pendingIntro = { actor, text };
+      } catch {}
+      runtime._phaseCinePending = null;
+    }
+    return; // pause simulation during scene pause
+  }
   // Decay interaction lock (prevents chatting immediately after taking damage)
   if (runtime.interactLock > 0) {
     runtime.interactLock = Math.max(0, runtime.interactLock - dt);
@@ -174,6 +201,8 @@ export function step(dt) {
   // Aggregate companion auras and process companion triggers before combat/movement
   applyCompanionAuras(dt);
   handleCompanionTriggers(dt);
+  // Apply enemy auras and triggers (player debuffs, enemy DR/regen) before movement/combat
+  applyEnemyAurasAndTriggers(dt);
 
   const hasInput = (ax !== 0 || ay !== 0);
   const hasKnock = Math.abs(player.knockbackX) > 0.01 || Math.abs(player.knockbackY) > 0.01;
@@ -199,6 +228,12 @@ export function step(dt) {
         else if (o.type === 'lava') terrainBurnDps = Math.max(terrainBurnDps, 3.0);
       }
     }
+  } catch {}
+  // Apply additional slow from enemy auras/triggers
+  try {
+    const deb = runtime.enemyDebuffs || {};
+    const mul = (typeof deb.slowMul === 'number') ? deb.slowMul : 1.0;
+    terrainSlow *= mul;
   } catch {}
   // Then apply input movement with terrain slow
   if (hasInput) {
@@ -330,7 +365,9 @@ export function step(dt) {
         if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
       }
 
-      moveWithCollision(e, best.x * e.speed * mul * dt, best.y * e.speed * mul * dt, solidsForEnemy);
+      // Temporary enemy speed boost from triggers
+      const spdBoost = (e._speedBoostTimer && e._speedBoostTimer > 0) ? (e._speedBoostFactor || 1) : 1;
+      moveWithCollision(e, best.x * e.speed * spdBoost * mul * dt, best.y * e.speed * spdBoost * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
       if (moved < 0.05) {
@@ -420,14 +457,25 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
+      // Post-load grace: avoid immediate despawn right after load (so you can see enemies persist)
+      try {
+        const now = (performance && performance.now) ? performance.now() : Date.now();
+        const since = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
+        if (since < 1.0) { e.hp = 0.1; continue; }
+      } catch {}
       // Boss behavior: default bosses have 2 phases; Vorthak (L5) has 3
       const isBoss = ((e.kind || '').toLowerCase() === 'boss');
       const isVorthak = isBoss && ((e.name || '').toLowerCase().includes('vorthak'));
       if (isBoss && !e._secondPhase) {
         try {
-          const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null };
+          const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null, touchDamage: 0 };
           const line = `${e.name || 'Boss'}: I call on my master for power!`;
-          startPrompt(actor, line, []);
+          // Dramatic phase transition: pause, shake, then pan and show VN
+          runtime.scenePauseTimer = 0.5;
+          runtime.shakeTimer = 0.5;
+          runtime.shakeMag = ((e.name || '').toLowerCase().includes('vorthak')) ? 6 : 4;
+          try { playSfx('quake'); } catch {}
+          runtime._phaseCinePending = { actor, text: line };
         } catch {}
         // Refill to second health bar and mark phase
         e.hp = e.maxHp;
@@ -444,9 +492,13 @@ export function step(dt) {
       // Vorthak only: second death -> final form (third phase)
       if (isVorthak && e._secondPhase && !e._thirdPhase) {
         try {
-          const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null) };
+          const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null), touchDamage: 0 };
           const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
-          startPrompt(actor, line, []);
+          runtime.scenePauseTimer = 0.6;
+          runtime.shakeTimer = 0.6;
+          runtime.shakeMag = 6;
+          try { playSfx('quake'); } catch {}
+          runtime._phaseCinePending = { actor, text: line };
         } catch {}
         e.hp = e.maxHp;
         e._thirdPhase = true;
@@ -638,10 +690,20 @@ export function step(dt) {
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
       } catch {}
-      // If Fana (enslaved sorceress) is defeated, she becomes a recruitable NPC
+      // If Fana (enslaved sorceress) is defeated, show VN scene then spawn as recruitable NPC
       try {
         const nm = (e.name || '').toLowerCase();
         if (nm.includes('fana')) {
+          // Show defeated VN scene
+          try {
+            const fanaActor = { 
+              name: 'Fana', 
+              portraitSrc: e.portraitDefeated || 'assets/portraits/level05/Fana/Fana.mp4' 
+            };
+            const defeatedLine = 'Fana: The chains... they\'re breaking... Vorthak\'s hold on my mind is fading... Thank you, warrior.';
+            startPrompt(fanaActor, defeatedLine, []);
+          } catch {}
+          
           // Spawn an NPC at or near the defeat spot with a recruit dialog
           const nx = e.x, ny = e.y;
           Promise.all([
@@ -651,7 +713,7 @@ export function step(dt) {
             import('../data/dialogs.js'),
           ]).then(([sm, st, dm, dd]) => {
             const sheet = (sm.sheetForName ? sm.sheetForName('Fana') : null);
-            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', sheet, portrait: 'assets/portraits/level05/Fana/Fana.mp4', affinity: 6 });
+            const npc = st.spawnNpc(nx, ny, 'down', { name: 'Fana', dialogId: 'fana_freed', sheet, portrait: 'assets/portraits/level05/Fana/Fana.mp4', affinity: 6 });
             if (dd.fanaFreedDialog) dm.setNpcDialog(npc, dd.fanaFreedDialog);
             else if (dd.fanaDialog) dm.setNpcDialog(npc, dd.fanaDialog);
           }).catch(()=>{});
@@ -865,7 +927,7 @@ export function step(dt) {
 
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
   // then show a simple VN once when first seen
-  if (runtime.gameState === 'play' && (runtime.introCooldown || 0) <= 0) {
+  if (runtime.gameState === 'play' && (runtime.introCooldown || 0) <= 0 && !runtime.disableVN) {
     const actors = [...npcs, ...enemies];
     for (const a of actors) {
       if (!a || !a.vnOnSight || a._vnShown) continue;
@@ -998,7 +1060,7 @@ function applyCompanionAuras(dt) {
 }
 
 function handleCompanionTriggers(dt) {
-  const cds = runtime.companionCDs || (runtime.companionCDs = { yornaEcho: 0, canopyShield: 0, holaGust: 0 });
+  const cds = runtime.companionCDs || (runtime.companionCDs = { yornaEcho: 0, canopyShield: 0, holaGust: 0, cowsillStrike: 0, cowsillDouble: 0 });
   // Cooldowns tick
   cds.yornaEcho = Math.max(0, (cds.yornaEcho || 0) - dt);
   cds.canopyShield = Math.max(0, (cds.canopyShield || 0) - dt);
@@ -1012,6 +1074,8 @@ function handleCompanionTriggers(dt) {
   cds.nellisLine = Math.max(0, (cds.nellisLine || 0) - dt);
   cds.urnCheer = Math.max(0, (cds.urnCheer || 0) - dt);
   cds.varaAngle = Math.max(0, (cds.varaAngle || 0) - dt);
+  cds.cowsillStrike = Math.max(0, (cds.cowsillStrike || 0) - dt);
+  cds.cowsillDouble = Math.max(0, (cds.cowsillDouble || 0) - dt);
 
   // Shield countdown
   if (runtime.shieldActive) {
@@ -1331,6 +1395,114 @@ function handleCompanionTriggers(dt) {
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil!', { color: '#a1e3ff', life: 0.8 });
       try { playSfx('veil'); } catch {}
     }
+  }
+}
+
+// Enemy auras/triggers: compute player debuffs, enemy DR/regen, and short pulses
+function applyEnemyAurasAndTriggers(dt) {
+  // Defaults
+  const deb = runtime.enemyDebuffs || (runtime.enemyDebuffs = { slowMul: 1.0, rangePenalty: 0 });
+  deb.slowMul = 1.0;
+  deb.rangePenalty = 0;
+  // Aggregate aura effects from nearby enemies
+  for (const e of enemies) {
+    if (!e || e.hp <= 0) continue;
+    const key = (e.name || '').toLowerCase();
+    const def = enemyEffectsByKey[key];
+    if (!def) continue;
+    // Base DR aura
+    const baseDr = Math.max(0, Math.min(ENEMY_BUFF_CAPS.dr, def.auras?.dr || 0));
+    e._baseDr = baseDr;
+    // Tick active timers
+    if (e._tempDrTimer && e._tempDrTimer > 0) { e._tempDrTimer = Math.max(0, e._tempDrTimer - dt); if (e._tempDrTimer <= 0) e._tempDr = 0; }
+    if (e._speedBoostTimer && e._speedBoostTimer > 0) { e._speedBoostTimer = Math.max(0, e._speedBoostTimer - dt); if (e._speedBoostTimer <= 0) e._speedBoostFactor = 1; }
+    if (e._guardCd && e._guardCd > 0) e._guardCd = Math.max(0, e._guardCd - dt);
+    if (e._gustCd && e._gustCd > 0) e._gustCd = Math.max(0, e._gustCd - dt);
+    if (e._enrageCd && e._enrageCd > 0) e._enrageCd = Math.max(0, e._enrageCd - dt);
+    if (e._recentHitTimer && e._recentHitTimer > 0) e._recentHitTimer = Math.max(0, e._recentHitTimer - dt);
+
+    // Regen (optionally stronger when near player)
+    let regen = Math.max(0, Math.min(ENEMY_BUFF_CAPS.regen, def.auras?.regen || 0));
+    if (def.auras?.regenNear) {
+      const dx = (player.x - e.x), dy = (player.y - e.y);
+      if ((dx*dx + dy*dy) <= (def.auras.regenNear.radius * def.auras.regenNear.radius)) {
+        regen *= def.auras.regenNear.mult || 1;
+      }
+    }
+    if (regen > 0 && e.hp > 0) e.hp = Math.min(e.maxHp || e.hp, e.hp + regen * dt);
+
+    // Player aura debuffs: slow + range penalty
+    const dxp = (player.x - e.x), dyp = (player.y - e.y);
+    const dist2 = dxp*dxp + dyp*dyp;
+    const ps = Math.max(0, Math.min(ENEMY_BUFF_CAPS.playerSlow, def.auras?.playerSlow || 0));
+    const pr = def.auras?.slowRadius || 0;
+    if (ps > 0 && pr > 0 && dist2 <= pr*pr) deb.slowMul = Math.max(0.1, deb.slowMul * (1 - ps));
+    const wr = Math.max(0, Math.min(ENEMY_BUFF_CAPS.weakenRange, def.auras?.weakenRange || 0));
+    const wrr = def.auras?.weakenRadius || 0;
+    if (wr > 0 && wrr > 0 && dist2 <= wrr*wrr) deb.rangePenalty = Math.min(ENEMY_BUFF_CAPS.weakenRange, Math.max(deb.rangePenalty, wr));
+
+    // Triggers
+    // onHitGuard: react after recent hit
+    if (def.triggers?.onHitGuard && (e._guardCd || 0) <= 0 && (e._recentHitTimer || 0) > 0) {
+      const t = def.triggers.onHitGuard;
+      const addDr = Math.max(0, Math.min(ENEMY_BUFF_CAPS.dr, t.dr || 0));
+      e._tempDr = Math.max(e._tempDr || 0, addDr);
+      e._tempDrTimer = Math.max(e._tempDrTimer || 0, t.durationSec || 2);
+      if (t.speedMul && t.speedMul > 1) { e._speedBoostFactor = t.speedMul; e._speedBoostTimer = Math.max(e._speedBoostTimer || 0, t.durationSec || 2); }
+      e._guardCd = t.cooldownSec || 8;
+      try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Guard!', { color: '#a8c6ff', life: 0.7 }); } catch {}
+      try { playSfx('shield'); } catch {}
+      try { for (let i = 0; i < 8; i++) spawnSparkle(e.x + e.w/2 + (Math.random()*10-5), e.y + e.h/2 + (Math.random()*8-4), { color: '#a8c6ff', life: 0.5 }); } catch {}
+    }
+    // enrageBelowHp: threshold-based buff
+    if (def.triggers?.enrageBelowHp && (e._enrageCd || 0) <= 0) {
+      const t = def.triggers.enrageBelowHp;
+      const ratio = e.hp / Math.max(1, e.maxHp || e.hp);
+      if (ratio <= (t.hpThresh || 0.5)) {
+        const addDr = Math.max(0, Math.min(ENEMY_BUFF_CAPS.dr, t.dr || 0));
+        if (addDr > 0) { e._tempDr = Math.max(e._tempDr || 0, addDr); e._tempDrTimer = Math.max(e._tempDrTimer || 0, t.durationSec || 4); }
+        if (t.speedMul && t.speedMul > 1) { e._speedBoostFactor = t.speedMul; e._speedBoostTimer = Math.max(e._speedBoostTimer || 0, t.durationSec || 4); }
+        e._enrageCd = t.cooldownSec || 10;
+        try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Enrage!', { color: '#ffd166', life: 0.8 }); } catch {}
+        try { playSfx('rally'); } catch {}
+        try { for (let i = 0; i < 10; i++) spawnSparkle(e.x + e.w/2 + (Math.random()*12-6), e.y + e.h/2 + (Math.random()*10-5), { color: '#ff9a3d', life: 0.6 }); } catch {}
+      }
+    }
+    // proximityGust: radial push and slow on player (Fana only below 50% HP)
+    if (def.triggers?.proximityGust && (e._gustCd || 0) <= 0) {
+      const t = def.triggers.proximityGust;
+      const rr = t.radius || 0;
+      const dx = (player.x - e.x), dy = (player.y - e.y);
+      if (rr > 0 && (dx*dx + dy*dy) <= rr*rr) {
+        // Optional HP gate for Fana design
+        if (key === 'fana') { const ratio = e.hp / Math.max(1, e.maxHp || e.hp); if (ratio > 0.5) { /* skip until low */ } else {
+          doGust(e, t);
+        } } else {
+          doGust(e, t);
+        }
+      }
+    }
+  }
+  // Apply runtime player slow from timed gusts (decays here)
+  if (runtime._playerGustSlowTimer && runtime._playerGustSlowTimer > 0) {
+    runtime._playerGustSlowTimer = Math.max(0, runtime._playerGustSlowTimer - dt);
+    const f = Math.max(0, Math.min(ENEMY_BUFF_CAPS.playerSlow, runtime._playerGustSlow || 0));
+    deb.slowMul = Math.max(0.1, deb.slowMul * (1 - f));
+  }
+
+  function doGust(e, t) {
+    const dx = (player.x - e.x), dy = (player.y - e.y);
+    const mag = Math.hypot(dx, dy) || 1;
+    const px = (dx / mag) * (t.push || 0);
+    const py = (dy / mag) * (t.push || 0);
+    const solidsForPlayer = enemies.filter(x => x && x.hp > 0);
+    moveWithCollision(player, px, py, solidsForPlayer);
+    runtime._playerGustSlow = Math.max(runtime._playerGustSlow || 0, t.slow || 0);
+    runtime._playerGustSlowTimer = Math.max(runtime._playerGustSlowTimer || 0, t.durationSec || 0.3);
+    e._gustCd = t.cooldownSec || 10;
+    try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Gust!', { color: '#a1e3ff', life: 0.7 }); } catch {}
+    try { playSfx('gust'); } catch {}
+    try { for (let i = 0; i < 8; i++) spawnSparkle(e.x + e.w/2 + (Math.random()*10-5), e.y + e.h/2 + (Math.random()*8-4), { color: '#a1e3ff', life: 0.5 }); } catch {}
   }
 }
 

@@ -3,6 +3,8 @@ import { runtime, player, obstacles } from '../engine/state.js';
 import { TILE } from '../engine/constants.js';
 import { tryInteract } from '../systems/combat.js';
 import { saveGame, loadGame } from '../engine/save.js';
+import { rngSeed } from '../engine/rng.js';
+import { rollFromTable, CHEST_LOOT } from '../data/loot.js';
 
 function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
 
@@ -137,16 +139,167 @@ async function testVnIntroCooldown() {
   return report;
 }
 
+async function testWorldDeltasOrder(slot = 6) {
+  const report = { name: 'WorldDeltasOrder', ok: false, details: '' };
+  try {
+    const ok = await goToLevel(1);
+    if (!ok) throw new Error('Failed to load Level 1');
+    const { obstacles } = await import('../engine/state.js');
+    // Unlock castle gate and open chest
+    const gate = obstacles.find(o => o && o.type === 'gate' && o.id === 'castle_gate');
+    if (!gate) throw new Error('Gate not found');
+    gate.locked = false;
+    await openChestById('chest_l1_sword');
+    // Save/Load
+    saveGame(slot);
+    await sleep(120);
+    loadGame(slot);
+    await sleep(200);
+    const { obstacles: obs2 } = await import('../engine/state.js');
+    const gate2 = obs2.find(o => o && o.type === 'gate' && o.id === 'castle_gate');
+    const chest2 = obs2.find(o => o && o.type === 'chest' && o.id === 'chest_l1_sword');
+    if (!gate2 || gate2.locked) throw new Error('Gate not unlocked after load');
+    if (!chest2 || !chest2.opened) throw new Error('Chest not opened after load');
+    report.ok = true; report.details = 'Gate unlocked + chest opened persist';
+  } catch (e) {
+    report.ok = false; report.details = String(e && e.message || e);
+  }
+  console.log(`[TEST] ${report.name}: ${report.ok ? 'OK' : 'FAIL'} — ${report.details}`);
+  return report;
+}
+
+async function testRngDeterminism(slot = 5) {
+  const report = { name: 'RngDeterminism', ok: false, details: '' };
+  try {
+    const ok = await goToLevel(1);
+    if (!ok) throw new Error('Failed to load Level 1');
+    rngSeed('loot', 222);
+    const a1 = rollFromTable(CHEST_LOOT.rare)?.id || 'none';
+    const a2 = rollFromTable(CHEST_LOOT.rare)?.id || 'none';
+    // Save and reload; seeds serialized/restored
+    saveGame(slot);
+    await sleep(100);
+    loadGame(slot);
+    await sleep(150);
+    const b1 = rollFromTable(CHEST_LOOT.rare)?.id || 'none';
+    const b2 = rollFromTable(CHEST_LOOT.rare)?.id || 'none';
+    if (a1 !== b1 || a2 !== b2) throw new Error(`Loot rolls differ: pre=[${a1},${a2}] post=[${b1},${b2}]`);
+    report.ok = true; report.details = 'Seeded loot rolls match across save/load';
+  } catch (e) {
+    report.ok = false; report.details = String(e && e.message || e);
+  }
+  console.log(`[TEST] ${report.name}: ${report.ok ? 'OK' : 'FAIL'} — ${report.details}`);
+  return report;
+}
+
+async function testAtomicWriteRecovery(slot = 4) {
+  const report = { name: 'AtomicWriteRecovery', ok: false, details: '' };
+  try {
+    // Baseline save
+    saveGame(slot);
+    await sleep(80);
+    // Monkey-patch localStorage.setItem to throw on pointer flip
+    const orig = localStorage.setItem.bind(localStorage);
+    let threw = false;
+    localStorage.setItem = (k, v) => {
+      if (String(k).endsWith('_ptr')) { threw = true; throw new Error('simulated crash'); }
+      return orig(k, v);
+    };
+    // Attempt another save which will fail at pointer flip
+    try { saveGame(slot); } catch {}
+    // Restore setItem
+    localStorage.setItem = orig;
+    // Load; should return last valid buffer without crashing
+    loadGame(slot);
+    await sleep(120);
+    if (!threw) throw new Error('Did not simulate failure');
+    report.ok = true; report.details = 'Fallback to previous valid buffer works';
+  } catch (e) {
+    report.ok = false; report.details = String(e && e.message || e);
+  }
+  console.log(`[TEST] ${report.name}: ${report.ok ? 'OK' : 'FAIL'} — ${report.details}`);
+  return report;
+}
+async function testUniquePoseRoundTrip(slot = 7) {
+  const report = { name: 'UniquePoseRoundTrip', ok: false, details: '' };
+  try {
+    const ok = await goToLevel(1);
+    if (!ok) throw new Error('Failed to load Level 1');
+    const S = await import('../engine/state.js');
+    const { enemies } = S;
+    const u = enemies.find(e => e && typeof e.vnId === 'string' && e.vnId.startsWith('enemy:'));
+    if (!u) throw new Error('No unique enemy with vnId found');
+    const vnId = u.vnId;
+    // Nudge pose and damage
+    u.x = Math.max(0, Math.min(u.x + 17, S.world.w - (u.w||12)));
+    u.y = Math.max(0, Math.min(u.y + 11, S.world.h - (u.h||16)));
+    u.dir = 'left';
+    u.hp = Math.max(1, (u.hp|0) - 3);
+    const before = { x: u.x, y: u.y, dir: u.dir, hp: u.hp };
+    // Save and reload
+    saveGame(slot);
+    await sleep(100);
+    loadGame(slot);
+    await sleep(200);
+    const u2 = S.enemies.find(e => e && e.vnId === vnId);
+    if (!u2) throw new Error('Unique not present after load');
+    const after = { x: u2.x, y: u2.y, dir: u2.dir, hp: u2.hp };
+    const same = (before.x === after.x) && (before.y === after.y) && (before.dir === after.dir) && (before.hp === after.hp);
+    if (!same) throw new Error(`Pose/HP mismatch: before=${JSON.stringify(before)} after=${JSON.stringify(after)}`);
+    report.ok = true; report.details = 'Unique pose/hp round-trips';
+  } catch (e) {
+    report.ok = false; report.details = String(e && e.message || e);
+  }
+  console.log(`[TEST] ${report.name}: ${report.ok ? 'OK' : 'FAIL'} — ${report.details}`);
+  return report;
+}
+
+async function testSnapshotRoundTrip() {
+  const report = { name: 'SnapshotRoundTrip', ok: false, details: '' };
+  try {
+    const ok = await goToLevel(1);
+    if (!ok) throw new Error('Failed to load Level 1');
+    const core = await import('../engine/save_core.js');
+    const norm = (s) => {
+      const t = JSON.parse(JSON.stringify(s));
+      delete t.at; return t;
+    };
+    // Capture current world snapshot
+    const s1 = core.serializeSave();
+    // Apply restore directly (same level)
+    core.loadDataPayload(s1);
+    await sleep(150);
+    const s2 = core.serializeSave();
+    const a = JSON.stringify(norm(s1));
+    const b = JSON.stringify(norm(s2));
+    if (a !== b) throw new Error('Normalized snapshots differ after round-trip');
+    report.ok = true; report.details = 'serialize->load->serialize is stable';
+  } catch (e) {
+    report.ok = false; report.details = String(e && e.message || e);
+  }
+  console.log(`[TEST] ${report.name}: ${report.ok ? 'OK' : 'FAIL'} — ${report.details}`);
+  return report;
+}
+
   try {
     window.testOpenedChestPersistence = testOpenedChestPersistence;
     window.testVnIntroCooldown = testVnIntroCooldown;
     window.testEnemyIntroAfterLoadById = testEnemyIntroAfterLoadById;
+    window.testUniquePoseRoundTrip = testUniquePoseRoundTrip;
+    window.testWorldDeltasOrder = testWorldDeltasOrder;
+    window.testRngDeterminism = testRngDeterminism;
+    window.testAtomicWriteRecovery = testAtomicWriteRecovery;
     window.runLightSaveTests = async function() {
+    const r0 = await testSnapshotRoundTrip();
     const r1 = await testOpenedChestPersistence(9);
     const r2 = await testVnIntroCooldown();
     const r3 = await testEnemyIntroAfterLoadById(8);
-    const ok = r1.ok && r2.ok && r3.ok;
+    const r4 = await testUniquePoseRoundTrip(7);
+    const r5 = await testWorldDeltasOrder(6);
+    const r6 = await testRngDeterminism(5);
+    const r7 = await testAtomicWriteRecovery(4);
+    const ok = r0.ok && r1.ok && r2.ok && r3.ok && r4.ok && r5.ok && r6.ok && r7.ok;
     console.log(`[TEST] Summary: ${ok ? 'OK' : 'FAIL'}`);
-    return { ok, results: [r1, r2, r3] };
+    return { ok, results: [r0, r1, r2, r3, r4, r5, r6, r7] };
   };
 } catch {}

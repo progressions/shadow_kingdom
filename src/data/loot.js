@@ -1,4 +1,5 @@
 import { sampleItems, cloneItem } from './items.js';
+import { rngFloat } from '../engine/rng.js';
 
 // Simple weighted loot tables per source. w = weight.
 // Use ids from items.js; clone on grant.
@@ -51,7 +52,7 @@ export function rollFromTable(table) {
   if (!Array.isArray(table) || table.length === 0) return null;
   const total = table.reduce((s, e) => s + (e.w || 0), 0);
   if (total <= 0) return null;
-  let r = Math.random() * total;
+  let r = rngFloat('loot') * total;
   for (const e of table) { r -= (e.w || 0); if (r <= 0) return itemById(e.id); }
   return itemById(table[table.length - 1].id);
 }
