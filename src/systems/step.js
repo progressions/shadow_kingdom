@@ -2,6 +2,7 @@ import { player, enemies, companions, npcs, obstacles, world, camera, runtime, c
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
+import { clearFadeOverlay } from '../engine/ui.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats } from '../engine/utils.js';
 import { handleAttacks } from './combat.js';
@@ -550,6 +551,7 @@ export function step(dt) {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null, touchDamage: 0 };
           const line = `${e.name || 'Boss'}: I call on my master for power!`;
           // Dramatic phase transition: pause, shake, then pan and show VN
+          clearFadeOverlay();
           runtime.scenePauseTimer = 0.5;
           runtime.shakeTimer = 0.5;
           runtime.shakeMag = ((e.name || '').toLowerCase().includes('vorthak')) ? 6 : 4;
@@ -573,6 +575,7 @@ export function step(dt) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null), touchDamage: 0 };
           const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
+          clearFadeOverlay();
           runtime.scenePauseTimer = 0.6;
           runtime.shakeTimer = 0.6;
           runtime.shakeMag = 6;
@@ -593,6 +596,7 @@ export function step(dt) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitDefeated || null };
           const line = `${e.name || 'Boss'}: ...`; // simple defeated line; customize per boss via portraits
+          clearFadeOverlay();
           startPrompt(actor, line, []);
         } catch {}
         // Temple victory flags and Ell VN only for Vorthak in Level 5

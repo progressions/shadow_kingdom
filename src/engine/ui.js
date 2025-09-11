@@ -65,6 +65,11 @@ export function enterChat(runtime) {
     }
   }
 }
+
+// Clear the black fade layer immediately (used by phase VNs)
+export function clearFadeOverlay() {
+  try { if (fadeEl) fadeEl.classList.remove('show'); } catch {}
+}
 export function exitChat(runtime) {
   runtime.gameState = 'play';
   runtime.activeNpc = null;
