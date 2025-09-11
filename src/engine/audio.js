@@ -103,7 +103,7 @@ export function tryStartMusic(name = 'ambient') {
   const a = getAudio(path);
   if (!a) return;
   a.loop = true;
-  a.volume = muted ? 0 : masterVolume * 0.6;
+  a.volume = muted ? 0 : masterVolume * 0.75; // slightly louder ambient
   currentMusic = a;
   a.play().catch(()=>{});
 }
@@ -192,7 +192,7 @@ function ensureAC() {
   ac = new Ctx();
   masterGain = ac.createGain(); masterGain.gain.value = muted ? 0 : masterVolume; masterGain.connect(ac.destination);
   sfxGain = ac.createGain(); sfxGain.gain.value = 1.0; sfxGain.connect(masterGain);
-  musicGain = ac.createGain(); musicGain.gain.value = 0.6;
+  musicGain = ac.createGain(); musicGain.gain.value = 0.75; // raise chip ambient base level
   musicFilter = ac.createBiquadFilter(); musicFilter.type = 'lowpass'; musicFilter.frequency.value = 2000; musicFilter.Q.value = 0.7;
   musicGain.connect(musicFilter).connect(masterGain);
 }
@@ -741,7 +741,7 @@ export function startAmbientAfterFanfare(delaySec = 2.8, fadeSec = 1.5) {
       startChipMusic();
       if (musicGain) {
         const now = ac.currentTime;
-        const base = 0.6; // target level used by startChipMusic
+        const base = 0.75; // match raised base level
         try {
           musicGain.gain.cancelScheduledValues(now);
           musicGain.gain.setValueAtTime(0.0001, now);
@@ -752,7 +752,7 @@ export function startAmbientAfterFanfare(delaySec = 2.8, fadeSec = 1.5) {
       // File-based music
       tryStartMusic('ambient');
       if (currentMusic && typeof currentMusic.volume === 'number') {
-        const target = 0.6 * (muted ? 0 : masterVolume);
+        const target = 0.75 * (muted ? 0 : masterVolume);
         currentMusic.volume = 0.0;
         const steps = Math.max(6, Math.ceil(fadeSec * 20));
         let i = 0;
