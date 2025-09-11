@@ -70,6 +70,50 @@ function moveWithCollision(ent, dx, dy, solids = []) {
   ent.y = Math.max(0, Math.min(world.h - ent.h, ent.y));
 }
 
+// Build narration + boss dialogue for a phase shift. `phase` is 2 (second phase)
+// or 3 (final form for Vorthak). We keep one string with narration first and a
+// quoted line after, matching VN style elsewhere.
+function phaseShiftText(enemy, phase = 2) {
+  const nm = (enemy?.name || 'Boss').toLowerCase();
+  const title = enemy?.name || 'Boss';
+  // Helpers for narration fragments
+  const join = (a, b) => `${a}\n\n${b}`;
+  if (nm.includes('vast')) {
+    const nar = 'Heat ripples the air; black fire threads her veins. The stone itself seems to recoil as a furnace blooms behind her eyes.';
+    const dlg = `${title}: \"Urathar—let hope burn. Give me cinders to scatter.\"`;
+    return join(nar, dlg);
+  }
+  if (nm.includes('nethra')) {
+    const nar = 'Sigils blaze in the sand; veils snap like banners in a hot wind. Every edge grows knife-sharp.';
+    const dlg = `${title}: \"Urathar, veil my heart and sharpen the mirage into knives.\"`;
+    return join(nar, dlg);
+  }
+  if (nm.includes('luula')) {
+    const nar = 'The marsh hushes. Moonlight gathers in the reeds as the water swells toward her hands.';
+    const dlg = `${title}: \"Urathar, lend me your tide—let silver drown the stubborn.\"`;
+    return join(nar, dlg);
+  }
+  if (nm.includes('vanificia')) {
+    const nar = 'A cold waltz takes the plaza; ash glitters along her sleeves. Elegance hardens into an edge that wants blood.';
+    const dlg = `${title}: \"Urathar, crown my grace with cruelty—let manners cut deeper.\"`;
+    return join(nar, dlg);
+  }
+  if (nm.includes('vorthak')) {
+    if (phase >= 3) {
+      const nar = 'The temple dims. Fissures glow. Chains of light shatter as a crown of ruin forms above him.';
+      const dlg = `${title}: \"Urathar—break the seals. Crown me with ruin.\"`;
+      return join(nar, dlg);
+    }
+    const nar = 'Stone roars; the Heart\'s embers whirl into a vortex and race into his chest.';
+    const dlg = `${title}: \"Urathar, pour the Heart\'s fire into me. Witness your instrument.\"`;
+    return join(nar, dlg);
+  }
+  // Generic fallback
+  const nar = 'The air turns heavy as infernal energy floods their frame. Wounds seal; the ground itself seems to tilt toward them.';
+  const dlg = `${title}: \"Urathar—answer. Make me more than I was.\"`;
+  return join(nar, dlg);
+}
+
 // Resolve overlap between two AABBs by moving them apart along the shallow axis.
 function separateEntities(a, b, biasA = 0.6) {
   const ar = { x: a.x, y: a.y, w: a.w, h: a.h };
@@ -567,7 +611,7 @@ export function step(dt) {
       if (isBoss && !e._secondPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: e.portraitPowered || null, touchDamage: 0, x: e.x, y: e.y, w: e.w, h: e.h };
-          const line = `${e.name || 'Boss'}: I call on my master for power!`;
+          const line = phaseShiftText(e, 2);
           // Dramatic phase transition: pause, shake, then pan and show VN
           clearFadeOverlay();
           // Grant post-cutscene invulnerability when VN closes
@@ -594,7 +638,7 @@ export function step(dt) {
       if (isVorthak && e._secondPhase && !e._thirdPhase) {
         try {
           const actor = { name: e.name || 'Boss', portraitSrc: (e.portraitOverpowered || e.portraitPowered || null), touchDamage: 0, x: e.x, y: e.y, w: e.w, h: e.h };
-          const line = `${e.name || 'Boss'}: I have been empowered by the glory of Urathar!`;
+          const line = phaseShiftText(e, 3);
           clearFadeOverlay();
           runtime._grantInvulnOnChatExit = Math.max(1.2, Number(runtime._grantInvulnOnChatExit || 0));
           runtime.scenePauseTimer = 0.6;
