@@ -787,8 +787,10 @@ export function loadLevel6() {
   for (const c of cols) obstacles.push({ x: c.x, y: c.y, w: 12, h: 12, type: 'column', blocksAttacks: false });
   try { setMusicLocation('temple_heart'); } catch {}
 
-  // Ell (Canopy's sister) — placeholder NPC in the hub
-  const sisterX = rx + rw/2 - 6; const sisterY = ry + TILE * 8;
+  // Ell and Rose — centered pair in the main hall (Rose left of Ell)
+  const centerX = rx + rw/2 - 6;
+  const centerY = ry + Math.round(rh/2) - 8;
+  const sisterX = centerX + TILE; const sisterY = centerY;
   const sisterPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0', feminineShape: true };
   const sisterSheet = makeSpriteSheet(sisterPalette);
   const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', dialogId: 'villager', sheet: sisterSheet, sheetPalette: sisterPalette, portrait: 'assets/portraits/level06/Ell/Ell.mp4', affinity: 6 });
@@ -799,9 +801,9 @@ export function loadLevel6() {
 
   // Rose — Queen of Aurelion (non-companion), elegant and stately
   try {
-    const roseX = sisterX + TILE * 3; const roseY = sisterY;
+    const roseX = centerX - TILE; const roseY = centerY;
     const roseSheet = sheetForName('rose');
-    const rose = spawnNpc(roseX, roseY, 'down', { name: 'Rose', dialogId: 'rose', sheet: roseSheet, portrait: 'assets/portraits/level06/Rose/Rose.mp4' });
+    const rose = spawnNpc(roseX, roseY, 'down', { name: 'Rose', dialogId: 'rose', sheet: roseSheet, portrait: 'assets/portraits/level06/Rose/Rose.mp4', vnOnSight: { text: (introTexts && introTexts.rose) || 'Rose: Your sovereign thanks you for liberating Aurelion.' } });
     import('../data/dialogs.js').then(mod => { if (mod.roseDialog) setNpcDialog(rose, mod.roseDialog); }).catch(()=>{});
   } catch {}
 

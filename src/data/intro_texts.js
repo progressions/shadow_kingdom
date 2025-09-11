@@ -79,4 +79,9 @@ export const introTexts = {
   cowsill:
     "A bright-eyed warrior bounds forward, blonde hair catching the light as she spins her blade with practiced ease. Her black dress swirls as she moves, and her infectious energy seems to make the very air around her crackle with anticipation.\n" +
     "\nCowsill: \"Hey there! I'm Cowsill! You look like you could use a strike partner—when we fight together, every hit lands twice as hard! Ready to show them what teamwork really means?\"",
+
+  // Level 6 — Queen Rose
+  rose:
+    "The hall hushes as a figure in gold and white steps into the light. Her blonde hair is braided like a coronet; her gaze is steady and luminous. When she speaks, the stones seem to listen.\n" +
+    "\nRose: \"Liberator of Aurelion—accept our undying thanks. The Heart beats again by your hand. Yet prudence bids us mourn the unknown: Urathar\'s burrow lies undisclosed, and his bands still scour the outer demesnes.\"",
 };
