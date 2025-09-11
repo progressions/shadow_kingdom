@@ -650,6 +650,19 @@ export function loadLevel5() {
   spawnEnemy(cx - 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
   spawnEnemy(cx + 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
 
+  // Boss arena mook spawner (proximity-activated)
+  import('./state.js').then(m => {
+    m.addSpawner({
+      id: 'l5_boss_arena_mooks', visible: false,
+      x: Math.round(cx - 24), y: Math.round(cy - 16), w: 48, h: 32,
+      enemy: { kind: 'mook', name: 'Temple Guard', hp: 12, dmg: 7 },
+      batchSize: 2, intervalSec: 8, initialDelaySec: 2, jitterSec: 1.2,
+      // infinite waves, but cap concurrency in arena
+      concurrentCap: 4,
+      proximityMode: 'near', radiusPx: 140,
+    });
+  }).catch(()=>{});
+
   // Spawn enemies in designated zones
   (function addMooks() {
     for (const zone of LEVEL5_TEMPLE_FEATURES.enemyZones) {
