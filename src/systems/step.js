@@ -1,4 +1,4 @@
-import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup } from '../engine/state.js';
+import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy } from '../engine/state.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
@@ -122,6 +122,72 @@ export function step(dt) {
     else if ((runtime._lowHpTimer || 0) > 0) runtime._lowHpTimer = Math.max(0, runtime._lowHpTimer - dt);
     // Recent-hit timer for triggers that respond to damage taken
     if ((runtime._recentPlayerHitTimer || 0) > 0) runtime._recentPlayerHitTimer = Math.max(0, runtime._recentPlayerHitTimer - dt);
+  } catch {}
+
+  // --- Spawner tick ---
+  try {
+    if (Array.isArray(spawners) && spawners.length) {
+      const now = runtime._timeSec || 0;
+      for (const sp of spawners) {
+        if (!sp || !sp.active || sp.disabled) continue;
+        // Gate by flags
+        if (sp.gates) {
+          const f = runtime.questFlags || {};
+          if (sp.gates.requiresFlag && !f[sp.gates.requiresFlag]) continue;
+          if (sp.gates.missingFlag && f[sp.gates.missingFlag]) continue;
+        }
+        // Proximity gating
+        const cx = sp.x + sp.w/2, cy = sp.y + sp.h/2;
+        const dx = (player.x + player.w/2) - cx;
+        const dy = (player.y + player.h/2) - cy;
+        const near = (dx*dx + dy*dy) <= (sp.radiusPx * sp.radiusPx);
+        if (sp.proximityMode === 'near' && !near) continue;
+        if (sp.proximityMode === 'far' && near) continue;
+        // Exhaustion
+        const remaining = (typeof sp.totalToSpawn === 'number') ? Math.max(0, sp.totalToSpawn - sp.spawnedCount) : Infinity;
+        if (remaining <= 0) { sp.disabled = true; continue; }
+        // Concurrency headroom
+        // Prune stale ids
+        if (sp.currentlyAliveIds && sp.currentlyAliveIds.size) {
+          for (const id of Array.from(sp.currentlyAliveIds)) {
+            if (!enemies.find(e => e && e.id === id)) sp.currentlyAliveIds.delete(id);
+          }
+        }
+        const live = sp.currentlyAliveIds ? sp.currentlyAliveIds.size : 0;
+        const capRoom = (typeof sp.concurrentCap === 'number') ? Math.max(0, sp.concurrentCap - live) : sp.batchSize;
+        if (capRoom <= 0) continue;
+        // Interval
+        if (now < (sp.nextAt || 0)) continue;
+        const toSpawn = Math.max(0, Math.min(sp.batchSize, capRoom, remaining));
+        if (toSpawn <= 0) {
+          // schedule next check anyway
+          const j = (sp.jitterSec || 0);
+          const jitter = j > 0 ? (Math.random()*2*j - j) : 0;
+          sp.nextAt = now + Math.max(0.1, sp.intervalSec + jitter);
+          continue;
+        }
+        for (let i = 0; i < toSpawn; i++) {
+          const ox = (Math.random()*sp.w - sp.w/2);
+          const oy = (Math.random()*sp.h - sp.h/2);
+          const ex = Math.round(cx + ox);
+          const ey = Math.round(cy + oy);
+          const tmpl = sp.enemy || { kind: 'mook' };
+          const kind = tmpl.kind || 'mook';
+          const opts = Object.assign({}, tmpl);
+          delete opts.kind;
+          opts.spawnerId = sp.id;
+          const e = spawnEnemy(ex, ey, kind, opts);
+          if (!sp.currentlyAliveIds) sp.currentlyAliveIds = new Set();
+          sp.currentlyAliveIds.add(e.id);
+          sp.spawnedCount += 1;
+          // Stop if exhausted mid-batch
+          if (typeof sp.totalToSpawn === 'number' && sp.spawnedCount >= sp.totalToSpawn) { sp.disabled = true; break; }
+        }
+        const j = (sp.jitterSec || 0);
+        const jitter = j > 0 ? (Math.random()*2*j - j) : 0;
+        sp.nextAt = now + Math.max(0.1, sp.intervalSec + jitter);
+      }
+    }
   } catch {}
   // Handle simple camera pan for VN intros (pauses simulation)
       if (runtime.cameraPan) {
@@ -461,6 +527,8 @@ export function step(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
       const e = enemies[i];
+      // Unlink from spawner live set if applicable
+      try { if (e.spawnerId) { const sp = findSpawnerById(e.spawnerId); if (sp && sp.currentlyAliveIds) sp.currentlyAliveIds.delete(e.id); } } catch {}
       // Post-load grace: avoid immediate despawn right after load (so you can see enemies persist)
       try {
         const now = (performance && performance.now) ? performance.now() : Date.now();

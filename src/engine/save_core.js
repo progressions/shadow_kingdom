@@ -1,5 +1,5 @@
 // Save System — deterministic deltas + unique actor status
-import { player, companions, npcs, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion, spawnNpc } from './state.js';
+import { player, companions, npcs, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion, spawnNpc, spawners, addSpawner } from './state.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { makeSpriteSheet, sheetForName, enemyMookSheet, enemyFeaturedSheet, enemyBossSheet } from './sprites.js';
 import { descriptorForLevel } from './level_descriptors.js';
@@ -58,6 +58,7 @@ export function serializeSave() {
     const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
     if (key && uniques.has(key)) continue; // skip uniques; tracked separately
     const rec = serializeEnemyEntity(e);
+    if (e.spawnerId) rec.spawnerId = e.spawnerId;
     if (typeof rec.x !== 'number' || typeof rec.y !== 'number' || !Number.isFinite(rec.x) || !Number.isFinite(rec.y)) continue;
     dynamicEnemies.push(rec);
   }
@@ -67,6 +68,33 @@ export function serializeSave() {
 
   // Persist VN seen only for NPCs; enemy intro seen state is derived by encounter
   const vnSeenNpcOnly = Object.keys(runtime?.vnSeen || {}).filter(k => !/^enemy:/.test(k));
+
+  // Spawners (runtime state)
+  const spawnerRecords = [];
+  try {
+    for (const sp of spawners) {
+      if (!sp) continue;
+      const now = runtime._timeSec || 0;
+      const nextAtDelay = Math.max(0, (sp.nextAt || now) - now);
+      const alive = Array.isArray(sp.currentlyAliveIds) ? sp.currentlyAliveIds : (sp.currentlyAliveIds ? Array.from(sp.currentlyAliveIds) : []);
+      spawnerRecords.push({
+        id: sp.id,
+        x: sp.x, y: sp.y, w: sp.w, h: sp.h,
+        visible: !!sp.visible,
+        enemy: sp.enemy || { kind: 'mook' },
+        batchSize: sp.batchSize, intervalSec: sp.intervalSec, initialDelaySec: sp.initialDelaySec || 0, jitterSec: sp.jitterSec || 0,
+        totalToSpawn: (typeof sp.totalToSpawn === 'number') ? sp.totalToSpawn : null,
+        concurrentCap: (typeof sp.concurrentCap === 'number') ? sp.concurrentCap : null,
+        proximityMode: sp.proximityMode || 'ignore', radiusPx: sp.radiusPx || 160,
+        active: sp.active !== false,
+        disabled: !!sp.disabled,
+        gates: sp.gates || null,
+        spawnedCount: sp.spawnedCount|0,
+        nextAtDelay,
+        currentlyAliveIds: alive,
+      });
+    }
+  } catch {}
 
   const payload = {
     schema: 'save',
@@ -90,6 +118,7 @@ export function serializeSave() {
     questMeta: Object.assign({}, runtime?.questMeta || {}),
     uniqueActors,
     dynamicEnemies,
+    spawners: spawnerRecords,
   };
   return normalizeSave(payload);
 }
@@ -119,6 +148,7 @@ function serializeEnemyEntity(e) {
     touchDamage: e.touchDamage, speed: e.speed,
     w: e.w, h: e.h, spriteScale: e.spriteScale || 1,
     sheetPalette: e.sheetPalette || null,
+    spawnerId: e.spawnerId || null,
     questId: e.questId || null,
     guaranteedDropId: e.guaranteedDropId || null,
     onDefeatNextLevel: (typeof e.onDefeatNextLevel === 'number') ? e.onDefeatNextLevel : null,
@@ -166,6 +196,7 @@ function spawnEnemyFromRecord(d) {
     onDefeatNextLevel: (typeof d.onDefeatNextLevel === 'number') ? d.onDefeatNextLevel : null,
     questId: d.questId || null,
     guaranteedDropId: d.guaranteedDropId || null,
+    spawnerId: d.spawnerId || null,
     _secondPhase: false,
     spriteScale: (typeof d.spriteScale === 'number') ? d.spriteScale : 1,
     vnId: d.vnId || null,
@@ -402,6 +433,36 @@ export function applyPendingRestore() {
     } catch {}
     // Append saved dynamic enemies
     for (const d of dyn) { try { spawnEnemyFromRecord(d); } catch {} }
+    // Rebuild spawner links after enemies have been spawned
+    try {
+      const byId = new Map();
+      for (const e of enemies) { if (e && e.id) byId.set(e.id, e); }
+      const list = Array.isArray(data.spawners) ? data.spawners : [];
+      // Reset runtime spawners to saved ones
+      try {
+        const now = runtime._timeSec || 0;
+        spawners.length = 0;
+        for (const s of list) {
+          const sp = addSpawner({
+              id: s.id, x: s.x, y: s.y, w: s.w, h: s.h, visible: s.visible,
+              enemy: s.enemy,
+              batchSize: s.batchSize, intervalSec: s.intervalSec, initialDelaySec: s.initialDelaySec,
+              jitterSec: s.jitterSec, totalToSpawn: s.totalToSpawn, concurrentCap: s.concurrentCap,
+              proximityMode: s.proximityMode, radiusPx: s.radiusPx,
+              active: s.active, disabled: s.disabled, gates: s.gates,
+              spawnedCount: s.spawnedCount, currentlyAliveIds: [],
+          });
+          // Resume timer
+          sp.nextAt = now + Math.max(0, Number(s.nextAtDelay || 0));
+          // Rebuild live set
+          if (Array.isArray(s.currentlyAliveIds)) {
+            for (const id of s.currentlyAliveIds) {
+              if (byId.has(id)) sp.currentlyAliveIds.add(id);
+            }
+          }
+        }
+      } catch {}
+    } catch {}
     // Ensure enemy identity (intro + default palette) for all enemies based on vnId and registry
     try { for (const e of enemies) ensureEnemyIdentity(e, runtime); } catch {}
     // Ensure intros can trigger later: clear stale flags on enemies and NPCs
@@ -490,6 +551,27 @@ function normalizeSave(s) {
       if (typeof u.hp === 'number') u.hp = Math.max(0, u.hp|0);
       if (typeof u.spriteScale !== 'number') u.spriteScale = 1;
     }
+  }
+  // Normalize spawners
+  if (Array.isArray(out.spawners)) {
+    out.spawners = out.spawners.map(s => ({
+      ...s,
+      id: String(s.id || ''),
+      x: clamp(Math.round(s.x|0), 0, Math.max(0, W-1)),
+      y: clamp(Math.round(s.y|0), 0, Math.max(0, H-1)),
+      w: Math.max(1, Math.round((s.w||12)|0)),
+      h: Math.max(1, Math.round((s.h||12)|0)),
+      nextAtDelay: Math.max(0, Number(s.nextAtDelay || 0)),
+      batchSize: Math.max(1, Math.floor(s.batchSize || 1)),
+      intervalSec: Math.max(0.1, Number(s.intervalSec || 6)),
+      totalToSpawn: (typeof s.totalToSpawn === 'number') ? Math.max(0, Math.floor(s.totalToSpawn)) : null,
+      concurrentCap: (typeof s.concurrentCap === 'number') ? Math.max(1, Math.floor(s.concurrentCap)) : null,
+      currentlyAliveIds: Array.isArray(s.currentlyAliveIds) ? uniq(s.currentlyAliveIds) : [],
+      proximityMode: (s.proximityMode === 'near' || s.proximityMode === 'far') ? s.proximityMode : 'ignore',
+      radiusPx: Math.max(1, Math.floor(s.radiusPx || 160)),
+      active: s.active !== false,
+      disabled: !!s.disabled,
+    }));
   }
   return out;
 }

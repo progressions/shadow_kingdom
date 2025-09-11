@@ -49,6 +49,47 @@ export const corpses = [];
 export const stains = [];
 export const sparkles = [];
 export const itemsOnGround = [];
+// Enemy spawners (runtime)
+export const spawners = [];
+
+export function addSpawner(cfg = {}) {
+  const now = (typeof runtime?._timeSec === 'number') ? runtime._timeSec : 0;
+  const sp = {
+    id: String(cfg.id || `sp_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
+    x: Math.max(0, Math.floor(cfg.x || 0)),
+    y: Math.max(0, Math.floor(cfg.y || 0)),
+    w: Math.max(1, Math.floor(cfg.w || 12)),
+    h: Math.max(1, Math.floor(cfg.h || 12)),
+    visible: !!cfg.visible,
+    // Enemy template
+    enemy: Object.assign({ kind: 'mook' }, cfg.enemy || {}),
+    // Behavior/config
+    batchSize: Math.max(1, Math.floor(cfg.batchSize || 1)),
+    intervalSec: Math.max(0.1, Number(cfg.intervalSec || 6)),
+    initialDelaySec: Math.max(0, Number(cfg.initialDelaySec || 0)),
+    jitterSec: Math.max(0, Number(cfg.jitterSec || 0)),
+    totalToSpawn: (typeof cfg.totalToSpawn === 'number') ? Math.max(0, Math.floor(cfg.totalToSpawn)) : null, // null=infinite
+    concurrentCap: (typeof cfg.concurrentCap === 'number') ? Math.max(1, Math.floor(cfg.concurrentCap)) : null,
+    // Proximity gating
+    proximityMode: (cfg.proximityMode === 'near' || cfg.proximityMode === 'far') ? cfg.proximityMode : 'ignore',
+    radiusPx: Math.max(1, Math.floor(cfg.radiusPx || 160)),
+    // Flags
+    active: (cfg.active !== false),
+    disabled: !!cfg.disabled,
+    gates: cfg.gates ? { ...cfg.gates } : null,
+    // Runtime state
+    spawnedCount: Math.max(0, Math.floor(cfg.spawnedCount || 0)),
+    nextAt: now + Math.max(0, Number(cfg.initialDelaySec || 0)),
+    currentlyAliveIds: new Set(Array.isArray(cfg.currentlyAliveIds) ? cfg.currentlyAliveIds : []),
+  };
+  spawners.push(sp);
+  return sp;
+}
+
+export function findSpawnerById(id) {
+  const key = String(id || '');
+  return spawners.find(s => s && s.id === key) || null;
+}
 let _nextPickupId = 1;
 
 export function spawnPickup(x, y, item) {
@@ -138,6 +179,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     portraitPowered: opts.portraitPowered || null,
     portraitOverpowered: opts.portraitOverpowered || null,
     portraitDefeated: opts.portraitDefeated || null,
+    // Optional spawner link
+    spawnerId: opts.spawnerId || null,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
     // Stable VN identity key (e.g., 'enemy:gorg') for persistence
