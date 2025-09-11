@@ -3,7 +3,7 @@ import { buildObstacles, buildTerrainBitmap } from './terrain.js';
 import { LEVEL4_CITY_WALL_RECTS, LEVEL4_SIZE } from '../data/level4_city_walls.js';
 import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.js';
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_WALLS, LEVEL5_TEMPLE_FEATURES, findSafeSpawn } from '../data/level5_temple_layout.js';
-import { makeSpriteSheet } from './sprites.js';
+import { makeSpriteSheet, sheetForName } from './sprites.js';
 import { spawnEnemy, spawnNpc } from './state.js';
 import { TILE } from './constants.js';
 import { setNpcDialog } from './dialog.js';
@@ -795,6 +795,52 @@ export function loadLevel6() {
   import('../data/dialogs.js').then(mod => {
     // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
     if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);
+  }).catch(()=>{});
+
+  // Place all companion NPCs around the hall as non-recruit hub characters
+  const placeNpc = (name, x, y, dir, opts = {}) => {
+    const sheet = sheetForName(name);
+    return spawnNpc(x, y, dir || 'down', Object.assign({ name, sheet, portrait: opts.portrait || null }, opts));
+  };
+  // Convenient anchors around the main hall
+  const midY = ry + rh/2 - 8;
+  const topY = ry + TILE * 5;
+  const botY = ry + rh - TILE * 5 - 16;
+  const leftX = rx + TILE * 6;
+  const rightX = rx + rw - TILE * 6 - 12;
+  const midX = rx + rw/2 - 6;
+
+  // Row near the top: Canopy, Yorna, Hola
+  const canopy = placeNpc('Canopy', leftX, topY, 'right', { portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4', dialogId: 'canopy' });
+  const yorna  = placeNpc('Yorna',  midX - TILE * 4, topY, 'down', { portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', dialogId: 'yorna' });
+  const hola   = placeNpc('Hola',   rightX, topY, 'left', { portrait: 'assets/portraits/level01/Hola/Hola video.mp4', dialogId: 'hola' });
+  setNpcDialog(canopy, canopyDialog);
+  setNpcDialog(yorna, yornaDialog);
+  setNpcDialog(hola,  holaDialog);
+
+  // Middle row: Oyin, Twil, Tin, Nellis
+  const oyin  = placeNpc('Oyin',  leftX + TILE * 2, midY, 'right', { portrait: 'assets/portraits/level02/Oyin/Oyin.mp4', dialogId: 'oyin' });
+  const twil  = placeNpc('Twil',  midX - TILE * 8,  midY + TILE * 1, 'right', { portrait: 'assets/portraits/level02/Twil/Twil.mp4', dialogId: 'twil' });
+  const tin   = placeNpc('Tin',   midX + TILE * 4,  midY + TILE * 1, 'left',  { portrait: 'assets/portraits/level03/Tin/Tin.mp4', dialogId: 'tin' });
+  const nellis= placeNpc('Nellis', rightX - TILE * 2, midY, 'left',  { portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', dialogId: 'nellis' });
+
+  // Bottom row right: Urn and Varabella next to each other
+  const urnX = midX + TILE * 6; const varaX = urnX + 18;
+  const urn  = placeNpc('Urn', urnX, botY, 'right', { portrait: 'assets/portraits/level04/Urn/Urn.mp4', dialogId: 'urn' });
+  const vara = placeNpc('Varabella', varaX, botY, 'left', { portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', dialogId: 'varabella' });
+
+  // Bottom row left: Cowsill (from L5)
+  const cowsill = placeNpc('Cowsill', leftX, botY, 'right', { portrait: 'assets/portraits/level05/Cowsill/Cowsill.mp4', dialogId: 'cowsill' });
+
+  // Attach dialogs for companions loaded lazily
+  import('../data/dialogs.js').then(mod => {
+    if (mod.oyinDialog) setNpcDialog(oyin, mod.oyinDialog);
+    if (mod.twilDialog) setNpcDialog(twil, mod.twilDialog);
+    if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog);
+    if (mod.nellisDialog) setNpcDialog(nellis, mod.nellisDialog);
+    if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog);
+    if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog);
+    if (mod.cowsillDialog) setNpcDialog(cowsill, mod.cowsillDialog);
   }).catch(()=>{});
 
   return terrain;

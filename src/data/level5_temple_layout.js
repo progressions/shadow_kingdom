@@ -64,7 +64,10 @@ export const LEVEL5_TEMPLE_WALLS = [
   { x: 111, y: 62, w: 14, h: 2 },    // Bottom wall right segment
   
   // Bottom-left room with stairs
-  { x: 10, y: 75, w: 22, h: 2 },     // Top wall
+  // Top wall with opening near (~25,74)
+  // Original: { x: 10, y: 75, w: 22, h: 2 }
+  { x: 10, y: 75, w: 14, h: 2 },     // Top wall left segment (up to x:24)
+  { x: 26, y: 75, w: 6,  h: 2 },     // Top wall right segment (from x:26)
   { x: 10, y: 77, w: 2, h: 20 },     // Left wall
   { x: 30, y: 77, w: 2, h: 20 },     // Right wall
   { x: 10, y: 95, w: 22, h: 2 },     // Bottom wall
@@ -97,8 +100,14 @@ export const LEVEL5_TEMPLE_WALLS = [
   // Water room (right side)
   { x: 150, y: 40, w: 30, h: 2 },    // Top wall
   { x: 150, y: 42, w: 2, h: 28 },    // Left wall
-  { x: 178, y: 42, w: 2, h: 28 },    // Right wall
-  { x: 150, y: 68, w: 30, h: 2 },    // Bottom wall
+  // Right wall with opening near (~180,56)
+  // Original: { x: 178, y: 42, w: 2, h: 28 }
+  { x: 178, y: 42, w: 2, h: 14 },    // Right wall upper segment (to y:56)
+  { x: 178, y: 58, w: 2, h: 12 },    // Right wall lower segment (from y:58)
+  // Bottom wall with opening near (~154,70)
+  // Original: { x: 150, y: 68, w: 30, h: 2 }
+  { x: 150, y: 68, w: 4,  h: 2 },    // Bottom wall left segment (to x:154)
+  { x: 156, y: 68, w: 24, h: 2 },    // Bottom wall right segment (from x:156)
 ];
 
 // Special features (water, gates, etc.)
