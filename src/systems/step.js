@@ -1039,6 +1039,9 @@ export function step(dt) {
             gate.locked = true;
             gate.blocksAttacks = true;
             runtime._vorthakGateRelocked = true;
+            // Small camera shake to sell the slam
+            runtime.shakeTimer = Math.max(runtime.shakeTimer || 0, 0.35);
+            runtime.shakeMag = Math.max(runtime.shakeMag || 0, 3);
             try { showBanner('The gate slams shut!'); } catch {}
             try { playSfx('block'); } catch {}
           }
