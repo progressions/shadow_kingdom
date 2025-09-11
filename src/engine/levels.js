@@ -142,11 +142,11 @@ export function loadLevel2() {
   // Two featured foes, also well outside the initial camera view
   spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 12, dmg: 6 });
   spawnEnemy(player.x - 340, player.y + 240, 'featured', { hp: 12, dmg: 6 });
-  // Enemy spawner (visible glyph) — trickle of Urathar Scouts near the dunes
+  // Enemy spawner — trickle of Urathar Scouts near the dunes (invisible)
   // Approx coords: center ~ (player.x + 360, player.y - 200)
   import('./state.js').then(m => {
     m.addSpawner({
-      id: 'l2_dunes_trickle', visible: true,
+      id: 'l2_dunes_trickle', visible: false,
       x: Math.round(player.x + 360), y: Math.round(player.y - 200), w: 24, h: 16,
       enemy: { kind: 'mook', name: 'Urathar Scout', hp: 5, dmg: 4 },
       batchSize: 1, intervalSec: 9, initialDelaySec: 8, jitterSec: 1.0,
@@ -387,11 +387,11 @@ export function loadLevel4() {
     // Level 4 mooks: larger HP bump
     spawnEnemy(bx, by, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
   }
-  // Enemy spawner (visible glyph) — city patrol squads when player is far
+  // Enemy spawner — city patrol squads when player is far (invisible)
   // Approx coords: center ~ (player.x - 220, player.y + 160)
   import('./state.js').then(m => {
     m.addSpawner({
-      id: 'l4_plaza_patrol', visible: true,
+      id: 'l4_plaza_patrol', visible: false,
       x: Math.round(player.x - 220), y: Math.round(player.y + 160), w: 28, h: 18,
       enemy: { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 },
       batchSize: 2, intervalSec: 8, initialDelaySec: 3, jitterSec: 2,
@@ -573,6 +573,20 @@ export function loadLevel5() {
       blocksAttacks: true
     });
   }
+
+  // Enemy spawner — temple guard reinforcements (invisible), continuous when near
+  // Center approx near central corridor: (player.x + 220, player.y + 120)
+  import('./state.js').then(m => {
+    m.addSpawner({
+      id: 'l5_temple_guards', visible: false,
+      x: Math.round(player.x + 220), y: Math.round(player.y + 120), w: 28, h: 18,
+      enemy: { kind: 'mook', name: 'Temple Guard', hp: 12, dmg: 7 },
+      batchSize: 2, intervalSec: 10, initialDelaySec: 6, jitterSec: 1.5,
+      // infinite total; limit concurrent to avoid floods
+      concurrentCap: 6,
+      proximityMode: 'near', radiusPx: 220,
+    });
+  }).catch(()=>{});
 
   // Add some fire hazards in corridors
   obstacles.push({ x: 55 * TILE, y: 50 * TILE, w: TILE * 2, h: TILE * 2, type: 'fire' });
