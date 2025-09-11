@@ -130,6 +130,26 @@ export function setMusicLocation(locationKey) {
     if (useChip) { stopMusic(); startChipMusic(); }
     else tryStartMusic(trackForMode(menaceMode));
   }
+  // Arrival fanfare for Heart of the Temple (Level 6 hub)
+  try {
+    if (runtime.musicLocation === 'temple_heart' && !runtime._playedTempleHeartIntro) {
+      runtime._playedTempleHeartIntro = true;
+      // brief duck then airy chime cluster
+      duckBackgroundMusic(0.6, 0.6, 0.08);
+      const t = ac && ac.currentTime ? ac.currentTime : 0;
+      // If AC not ready yet, ensure it (will schedule relative to now)
+      ensureAC();
+      // Soft wind-like swell
+      noiseBurst({ attack: 0.01, decay: 0.25, release: 0.18, gain: 0.05, dest: musicGain, t });
+      // Ascending whole-tone shimmer
+      envTone({ type: 'sine',     freq: 523.25, attack: 0.006, decay: 0.18, release: 0.12, gain: 0.08, dest: musicGain, t: t + 0.05 }); // C5
+      envTone({ type: 'triangle', freq: 587.33, attack: 0.006, decay: 0.20, release: 0.14, gain: 0.085, dest: musicGain, t: t + 0.09 }); // D5
+      envTone({ type: 'triangle', freq: 659.25, attack: 0.006, decay: 0.22, release: 0.16, gain: 0.09, dest: musicGain, t: t + 0.13 }); // E5
+      envTone({ type: 'sine',     freq: 739.99, attack: 0.006, decay: 0.24, release: 0.18, gain: 0.09, dest: musicGain, t: t + 0.17 }); // F#5
+      envTone({ type: 'sine',     freq: 830.61, attack: 0.006, decay: 0.26, release: 0.20, gain: 0.085, dest: musicGain, t: t + 0.21 }); // G#5
+      envTone({ type: 'triangle', freq: 987.77, attack: 0.006, decay: 0.28, release: 0.22, gain: 0.08, dest: musicGain, t: t + 0.25 }); // B5
+    }
+  } catch {}
 }
 
 export function setMusicMode(mode) {
