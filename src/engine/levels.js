@@ -724,15 +724,8 @@ export function loadLevel5() {
   obstacles.push({ x: 95 * TILE, y: 45 * TILE, w: TILE, h: TILE, type: 'box' });
   obstacles.push({ x: 35 * TILE, y: 75 * TILE, w: TILE, h: TILE, type: 'box' });
 
-  // Recruitable NPC: Cowsill - blonde striker with black dress
-  const cowsillPalette = { 
-    hair: '#e8d18b', // blonde
-    longHair: true, 
-    dress: true, 
-    dressColor: '#1a1a1a', // black dress
-    shirt: '#2a2a2a' 
-  };
-  const cowsillSheet = makeSpriteSheet(cowsillPalette);
+  // Recruitable NPC: Cowsill — use canonical palette (bright blonde + black dress, feminine)
+  const cowsillSheet = sheetForName('cowsill');
   // Place Cowsill in the bottom-center safe room
   const cowsillSpawn = LEVEL5_TEMPLE_FEATURES.npcSpawns[2]; // Third NPC spawn point
   const cowsillX = cowsillSpawn.x * TILE;
@@ -741,7 +734,6 @@ export function loadLevel5() {
     name: 'Cowsill', 
     dialogId: 'cowsill', 
     sheet: cowsillSheet, 
-    sheetPalette: cowsillPalette, 
     portrait: 'assets/portraits/level05/Cowsill/Cowsill.mp4',
     affinity: 5,
     vnOnSight: { text: (introTexts && introTexts.cowsill) || 'Cowsill: "Hey there! Need a strike partner? Together we hit twice as hard!"' }
