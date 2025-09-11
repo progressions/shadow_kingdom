@@ -68,7 +68,7 @@
       }
       .vn {
         position: absolute; inset: 16px;
-        display: grid; grid-template-columns: var(--portrait-w) 1fr; gap: 16px;
+        display: grid; grid-template-columns: var(--portrait-w) 1fr; gap: 12px;
         align-items: end; pointer-events: auto; /* enable clicks */
       }
       .vn-portrait {
@@ -76,10 +76,10 @@
       }
       .vn-portrait .portrait-name { font-weight: 700; font-size: 16px; color: #eaeaea; margin: 0 0 8px 4px; }
       /* Standardize portrait media box so images/videos render same size */
-      :root { --portrait-w: clamp(220px, 28vw, 320px); --portrait-ar: 3/4; }
+      :root { --portrait-w: clamp(280px, 34vw, 480px); --portrait-ar: 2/3; }
       #portrait-img, #portrait-video {
         width: var(--portrait-w);
-        height: calc(var(--portrait-w) * (4/3)); /* fallback for older browsers */
+        height: calc(var(--portrait-w) * (3/2)); /* fallback for older browsers (2:3 aspect) */
         aspect-ratio: var(--portrait-ar);
         object-fit: contain;
         image-rendering: auto;
