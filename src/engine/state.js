@@ -98,12 +98,23 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   const dmg = (typeof opts.dmg === 'number') ? opts.dmg : ((typeof opts.touchDamage === 'number') ? opts.touchDamage : cfg.dmg);
   const w = (typeof opts.w === 'number') ? opts.w : 12;
   const h = (typeof opts.h === 'number') ? opts.h : 16;
+  // Finalize base speed with small global bumps:
+  // - mooks: +1 (tiny)
+  // - featured: +1 (little)
+  // - key guardians (featured with guaranteedDropId): +1 more
+  // - bosses: +2 (bit more)
+  let finalSpeed = cfg.speed;
+  if (T === 'mook') finalSpeed += 1;
+  if (T === 'featured') finalSpeed += 1;
+  if (T === 'boss') finalSpeed += 2;
+  if (opts.guaranteedDropId) finalSpeed += 1;
+
   const ent = {
     spriteId: opts.spriteId || null,
     id: opts.id || (`de_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
     x, y,
     w, h,
-    speed: cfg.speed,
+    speed: finalSpeed,
     dir: 'down',
     moving: true,
     animTime: 0,

@@ -11,6 +11,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Blonde hair, blue dress  
 **Personality:** Calm healer, protective, searching for her sister Ell  
 **Class:** Support/Healer  
+**Address:** “My Lord”  
 
 **Auras:**
 - Damage Reduction: +1 DR
@@ -27,6 +28,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Red hair, black dress  
 **Personality:** Ruthless fighter, confident, aggressive  
 **Class:** Warrior/DPS  
+**Address:** “Chief”  
 
 **Auras:**
 - Attack Damage: +1 ATK
@@ -43,6 +45,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Black hair, white dress  
 **Personality:** Nervous sorceress, trying to remember spells, needs encouragement  
 **Class:** Crowd Control/Support  
+**Address:** “My Lord”  
 
 **Auras:**
 - Enemy Slow: 20% in 48px radius around player
@@ -61,6 +64,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Blonde hair, green dress  
 **Personality:** Young traveler, eager but inexperienced, wants to help  
 **Class:** Support  
+**Address:** “My Lord”  
 
 **Auras:**
 - Attack Range: +1 pixel
@@ -76,6 +80,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Red hair, black dress  
 **Personality:** Quick scout, cocky, reads terrain well  
 **Class:** Tactical/Debuff  
+**Address:** “Master”  
 
 **Auras:**
 - Enemy Slow: 15% in 42px radius around player
@@ -94,6 +99,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Blue hair, blue dress  
 **Personality:** Hyperactive, enthusiastic, always moving  
 **Class:** Speed/Agility  
+**Address:** “My Lord”  
 
 **Auras:**
 - Attack Speed: +12% (reduces attack cooldown)
@@ -110,6 +116,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Purple hair, white dress  
 **Personality:** Steady, mourning past losses, reliable  
 **Class:** Tank/Defense  
+**Address:** “Sire”  
 
 **Auras:**
 - Damage Reduction: +1 DR (constant)
@@ -129,6 +136,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Green hair, green dress  
 **Personality:** Positive, hopeful, keeps spirits up  
 **Class:** Support/Healer  
+**Address:** “Mister”  
 
 **Auras:**
 - Regeneration: +0.1 HP/sec
@@ -144,6 +152,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Red hair, black dress  
 **Personality:** Tactical, sharp-eyed, precise  
 **Class:** Precision/Buff  
+**Address:** “Boss man”  
 
 **Auras:**
 - Attack Range: +1 pixel
@@ -161,6 +170,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Appearance:** Blonde hair, black dress  
 **Personality:** Energetic striker, positive, trained with temple guards  
 **Class:** Striker/DPS  
+**Address:** “My Lord”  
 
 **Auras:**
 - Attack Damage: +2 ATK (highest base attack boost)
