@@ -148,6 +148,18 @@ export function loadLevel2() {
   // Two featured foes, also well outside the initial camera view
   spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 12, dmg: 6 });
   spawnEnemy(player.x - 340, player.y + 240, 'featured', { hp: 12, dmg: 6 });
+  // Enemy spawner (visible glyph) — trickle of Urathar Scouts near the dunes
+  // Approx coords: center ~ (player.x + 260, player.y - 180)
+  import('./state.js').then(m => {
+    m.addSpawner({
+      id: 'l2_dunes_trickle', visible: true,
+      x: Math.round(player.x + 260), y: Math.round(player.y - 180), w: 24, h: 16,
+      enemy: { kind: 'mook', name: 'Urathar Scout', hp: 5, dmg: 4 },
+      batchSize: 1, intervalSec: 6, initialDelaySec: 2, jitterSec: 1.5,
+      totalToSpawn: 4, concurrentCap: 2,
+      proximityMode: 'near', radiusPx: 220,
+    });
+  }).catch(()=>{});
 
   // Chests and breakables (desert) — spaced around player
   obstacles.push({ x: Math.round(player.x + TILE * 14), y: Math.round(player.y - TILE * 10), w: 12, h: 10, type: 'chest', id: 'chest_l2_armor', fixedItemId: 'armor_chain', opened: false, locked: false });
@@ -381,6 +393,18 @@ export function loadLevel4() {
     // Level 4 mooks: larger HP bump
     spawnEnemy(bx, by, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
   }
+  // Enemy spawner (visible glyph) — city patrol squads when player is far
+  // Approx coords: center ~ (player.x - 220, player.y + 160)
+  import('./state.js').then(m => {
+    m.addSpawner({
+      id: 'l4_plaza_patrol', visible: true,
+      x: Math.round(player.x - 220), y: Math.round(player.y + 160), w: 28, h: 18,
+      enemy: { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 },
+      batchSize: 2, intervalSec: 8, initialDelaySec: 3, jitterSec: 2,
+      totalToSpawn: 6, concurrentCap: 3,
+      proximityMode: 'far', radiusPx: 260,
+    });
+  }).catch(()=>{});
 
   // Featured foe: Blurb — drops City Sigil Key
   const blurbX = player.x - 200, blurbY = player.y - 120;

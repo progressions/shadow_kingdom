@@ -141,11 +141,11 @@ export function step(dt) {
         const dx = (player.x + player.w/2) - cx;
         const dy = (player.y + player.h/2) - cy;
         const near = (dx*dx + dy*dy) <= (sp.radiusPx * sp.radiusPx);
-        if (sp.proximityMode === 'near' && !near) continue;
-        if (sp.proximityMode === 'far' && near) continue;
+        if (sp.proximityMode === 'near' && !near) { sp._eligible = false; continue; }
+        if (sp.proximityMode === 'far' && near) { sp._eligible = false; continue; }
         // Exhaustion
         const remaining = (typeof sp.totalToSpawn === 'number') ? Math.max(0, sp.totalToSpawn - sp.spawnedCount) : Infinity;
-        if (remaining <= 0) { sp.disabled = true; continue; }
+        if (remaining <= 0) { sp.disabled = true; sp._eligible = false; continue; }
         // Concurrency headroom
         // Prune stale ids
         if (sp.currentlyAliveIds && sp.currentlyAliveIds.size) {
@@ -155,7 +155,9 @@ export function step(dt) {
         }
         const live = sp.currentlyAliveIds ? sp.currentlyAliveIds.size : 0;
         const capRoom = (typeof sp.concurrentCap === 'number') ? Math.max(0, sp.concurrentCap - live) : sp.batchSize;
-        if (capRoom <= 0) continue;
+        if (capRoom <= 0) { sp._eligible = false; continue; }
+        // Mark eligible for visual pulse
+        sp._eligible = true;
         // Interval
         if (now < (sp.nextAt || 0)) continue;
         const toSpawn = Math.max(0, Math.min(sp.batchSize, capRoom, remaining));

@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext, spawners } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
@@ -30,6 +30,32 @@ export function render(terrainBitmap, obstacles) {
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
+  // Visible spawners (glyph with subtle pulse)
+  try {
+    if (Array.isArray(spawners) && spawners.length) {
+      const t = runtime._timeSec || 0;
+      for (const sp of spawners) {
+        if (!sp || !sp.visible) continue;
+        const sx = Math.round(sp.x + sp.w/2 - camera.x);
+        const sy = Math.round(sp.y + sp.h/2 - camera.y);
+        const inView = sx >= 0 && sx <= camera.w && sy >= 0 && sy <= camera.h;
+        if (!inView) continue;
+        const pulse = 0.8 + 0.2 * Math.sin(t * 6);
+        const R = 8;
+        ctx.save();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = sp._eligible ? `rgba(154,230,255,${0.9*pulse})` : `rgba(154,230,255,0.4)`;
+        ctx.fillStyle = sp._eligible ? `rgba(0,59,90,${0.25*pulse})` : `rgba(0,59,90,0.15)`;
+        ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        // rune cross
+        ctx.beginPath();
+        ctx.moveTo(sx - R/2, sy); ctx.lineTo(sx + R/2, sy);
+        ctx.moveTo(sx, sy - R/2); ctx.lineTo(sx, sy + R/2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  } catch {}
 
   // Blood stains (fade out). Draw under corpses/actors
   for (const s of stains) {
