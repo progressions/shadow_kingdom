@@ -54,8 +54,11 @@ export const spawners = [];
 
 export function addSpawner(cfg = {}) {
   const now = (typeof runtime?._timeSec === 'number') ? runtime._timeSec : 0;
+  const id = String(cfg.id || `sp_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`);
+  // If a spawner with this id already exists, replace it (prevents duplicates across loads)
+  const existingIdx = spawners.findIndex(s => s && s.id === id);
   const sp = {
-    id: String(cfg.id || `sp_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
+    id,
     x: Math.max(0, Math.floor(cfg.x || 0)),
     y: Math.max(0, Math.floor(cfg.y || 0)),
     w: Math.max(1, Math.floor(cfg.w || 12)),
@@ -82,7 +85,8 @@ export function addSpawner(cfg = {}) {
     nextAt: now + Math.max(0, Number(cfg.initialDelaySec || 0)),
     currentlyAliveIds: new Set(Array.isArray(cfg.currentlyAliveIds) ? cfg.currentlyAliveIds : []),
   };
-  spawners.push(sp);
+  if (existingIdx !== -1) spawners.splice(existingIdx, 1, sp);
+  else spawners.push(sp);
   return sp;
 }
 

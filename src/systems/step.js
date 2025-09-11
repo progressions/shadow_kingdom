@@ -182,6 +182,9 @@ export function step(dt) {
           if (!sp.currentlyAliveIds) sp.currentlyAliveIds = new Set();
           sp.currentlyAliveIds.add(e.id);
           sp.spawnedCount += 1;
+          if (window && window.DEBUG_SPAWNERS) {
+            try { console.log('[SPAWNER]', sp.id, 'spawned', e.name || e.kind, 'live=', sp.currentlyAliveIds.size, 'spawnedCount=', sp.spawnedCount); } catch {}
+          }
           // Stop if exhausted mid-batch
           if (typeof sp.totalToSpawn === 'number' && sp.spawnedCount >= sp.totalToSpawn) { sp.disabled = true; break; }
         }

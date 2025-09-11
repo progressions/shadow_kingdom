@@ -52,6 +52,19 @@ export function render(terrainBitmap, obstacles) {
         ctx.moveTo(sx - R/2, sy); ctx.lineTo(sx + R/2, sy);
         ctx.moveTo(sx, sy - R/2); ctx.lineTo(sx, sy + R/2);
         ctx.stroke();
+        // Debug counters
+        try {
+          if (window && window.DEBUG_SPAWNERS) {
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = '#9ae6ff';
+            const live = sp.currentlyAliveIds ? sp.currentlyAliveIds.size : 0;
+            const rem = (typeof sp.totalToSpawn === 'number') ? Math.max(0, sp.totalToSpawn - (sp.spawnedCount||0)) : Infinity;
+            const text = `${sp.id}  live:${live} rem:${rem===Infinity?'∞':rem}`;
+            ctx.fillText(text, sx, sy + R + 4);
+          }
+        } catch {}
         ctx.restore();
       }
     }
