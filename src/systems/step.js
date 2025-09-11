@@ -328,8 +328,8 @@ export function step(dt) {
     const dy = ay * player.speed * terrainSlow * dt;
     moveWithCollision(player, dx, dy, solidsForPlayer);
   }
-  // Apply/refresh burn from terrain
-  if (terrainBurnDps > 0) {
+  // Apply/refresh burn from terrain (disabled in God Mode)
+  if (terrainBurnDps > 0 && !runtime.godMode) {
     player._burnDps = terrainBurnDps;
     player._burnTimer = Math.max(player._burnTimer || 0, 1.0);
   }
@@ -352,7 +352,7 @@ export function step(dt) {
   handleAttacks(dt);
 
   // Player damage over time (burn)
-  if (player._burnTimer && player._burnTimer > 0) {
+  if (player._burnTimer && player._burnTimer > 0 && !runtime.godMode) {
     player._burnTimer = Math.max(0, player._burnTimer - dt);
     const dps = player._burnDps || 0;
     if (dps > 0) {
@@ -512,6 +512,7 @@ export function step(dt) {
           const dr = baseDr + (player.levelDrBonus || 0);
           const raw = e.touchDamage || 1;
           let taken = Math.max(0, raw - dr);
+          if (runtime.godMode) taken = 0;
           if (runtime.shieldActive && taken > 0) {
             taken = 0;
             runtime.shieldActive = false;
@@ -533,9 +534,11 @@ export function step(dt) {
               // UI: show last attacker name in lower-right (just the name)
               try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`${e.name || 'Enemy'}`)); } catch {}
             } else {
-            // Blocked hit feedback
-            spawnFloatText(player.x + player.w/2, player.y - 6, 'Blocked', { color: '#a8c6ff', life: 0.7 });
-            playSfx('block');
+            if (!runtime.godMode) {
+              // Blocked hit feedback
+              spawnFloatText(player.x + player.w/2, player.y - 6, 'Blocked', { color: '#a8c6ff', life: 0.7 });
+              playSfx('block');
+            }
           }
         }
       }

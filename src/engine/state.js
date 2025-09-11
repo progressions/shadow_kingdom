@@ -442,6 +442,8 @@ export const runtime = {
   autosaveIntervalSec: 60,
   // Overlay lock prevents closing VN overlay via Esc/mouse (used for Game Over)
   lockOverlay: false,
+  // Debug/testing: prevents player damage when true
+  godMode: false,
   // Set when the player has died and Game Over screen is shown
   gameOver: false,
   // Simple camera pan for VN intros

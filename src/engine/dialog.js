@@ -111,6 +111,7 @@ export function startDebugMenu() {
     { label: 'Test: Opened Chest Persistence', action: 'debug_run_chest' },
     { label: 'Test: VN Intro Cooldown', action: 'debug_run_vn' },
     { label: 'Test: Enemy Intro After Load (vnId)', action: 'debug_run_enemy_intro' },
+    { label: `God Mode: ${runtime.godMode ? 'On' : 'Off'}`, action: 'toggle_godmode' },
     { label: 'Back', action: 'end' },
   ];
   startPrompt(null, 'Debug', choices);
@@ -255,6 +256,7 @@ export function selectChoice(index) {
   if (choice.action === 'confirm_clear_slot') { clearSave(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'save_menu_back') { buildAndShowSaveMenu(); return; }
   if (choice.action === 'open_debug') { startDebugMenu(); return; }
+  if (choice.action === 'toggle_godmode') { runtime.godMode = !runtime.godMode; showBanner(`God Mode ${runtime.godMode ? 'Enabled' : 'Disabled'}`); startDebugMenu(); return; }
   if (choice.action === 'debug_run_all') {
     (async () => {
       try {
