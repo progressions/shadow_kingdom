@@ -75,35 +75,40 @@ export const enemyEffectsByKey = {
   },
   // Bosses
   vast: {
-    auras: { dr: 1, regen: 0.05 },
+    // Tougher boss: higher baseline DR
+    auras: { dr: 2, regen: 0.05 },
     triggers: {
       proximityGust: { radius: 28, push: 12, slow: 0.2, durationSec: 0.4, cooldownSec: 10 },
       enrageBelowHp: { hpThresh: 0.5, dr: 1, speedMul: 1.1, durationSec: 5, cooldownSec: 12 },
     },
   },
   nethra: {
-    auras: { weakenRange: 1, weakenRadius: 120 },
+    // Add solid baseline DR
+    auras: { dr: 2, weakenRange: 1, weakenRadius: 120 },
     triggers: {
       enrageBelowHp: { hpThresh: 0.6, dr: 1, speedMul: 1.1, durationSec: 5, cooldownSec: 12 },
       proximityGust: { radius: 30, push: 10, slow: 0.2, durationSec: 0.35, cooldownSec: 11 },
     },
   },
   luula: {
-    auras: { playerSlow: 0.10, slowRadius: 120 },
+    // Add baseline DR to make boss sturdier
+    auras: { dr: 2, playerSlow: 0.10, slowRadius: 120 },
     triggers: {
       enrageBelowHp: { hpThresh: 0.5, dr: 1, speedMul: 1.15, durationSec: 5, cooldownSec: 12 },
       proximityGust: { radius: 26, push: 10, slow: 0.2, durationSec: 0.3, cooldownSec: 10 },
     },
   },
   vanificia: {
-    auras: { dr: 2 },
+    // Slightly higher DR
+    auras: { dr: 2.4 },
     triggers: {
       proximityGust: { radius: 32, push: 12, slow: 0.22, durationSec: 0.35, cooldownSec: 9 },
       enrageBelowHp: { hpThresh: 0.5, dr: 1, speedMul: 1.1, durationSec: 4, cooldownSec: 10 },
     },
   },
   vorthak: {
-    auras: { dr: 2, regen: 0.1 },
+    // Heaviest baseline DR among bosses
+    auras: { dr: 2.6, regen: 0.1 },
     triggers: {
       // Fires below ~66% and again below ~33% as cooldown allows
       enrageBelowHp: { hpThresh: 0.66, dr: 1, speedMul: 1.15, durationSec: 6, cooldownSec: 10 },
