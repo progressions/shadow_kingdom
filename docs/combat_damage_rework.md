@@ -17,6 +17,7 @@ This document proposes changes to make defense feel strong without trivializing 
 - Introduce critical hits for enemies that partially bypass DR and add a small bonus.
 - Give select enemies (featured/boss) armor-piercing (AP) or true-damage specials to create moments of threat.
 - Keep recent DR increases on featured/bosses — spikes/chip restore danger without flattening gear fantasy.
+- Add player critical hits (with companion auras that can raise crit chance) to keep parity and reward build choices.
 
 ## Detailed Mechanics
 
@@ -35,6 +36,15 @@ This document proposes changes to make defense feel strong without trivializing 
   - Featured: 10% chance, ignore 60% of DR, +2 damage bonus
   - Boss: 12% chance, ignore 70% of DR, +3 damage bonus
 - UX: Show a distinct “CRIT” float text and a piercing SFX; optional brief sprite flash.
+
+### 2b) Player Critical Hits
+- Give the player a baseline crit chance and DR penetration for crits.
+- Suggested defaults:
+  - Base player crit chance: 8%
+  - Player crit effect: ignore 50% of enemy DR and multiply base damage by 1.5 (rounded up)
+- Companion synergy (aura): certain companions can grant +3–6% crit chance while present.
+  - Example: Varabella (sharp eye) or Twil (weak points) provide `+5%` crit aura.
+- UX: Use a distinct float text (e.g., `Crit! 9`) and a brighter hit sfx.
 
 ### 3) Armor-Piercing (AP) / Armor-Ignoring Specials
 - Tag certain attacks for partial DR ignore or a small true-damage component.
@@ -73,6 +83,13 @@ This document proposes changes to make defense feel strong without trivializing 
      - `ap` (flat DR ignore) or `trueDamage`
    - Tag a single special per featured archetype and a recurring boss special.
 
+2b) Player crit pipeline
+   - File: `src/systems/combat.js`
+   - In the segment where player attacks enemies:
+     - Roll player crit (base + companion aura bonus).
+     - On crit, reduce enemy effective DR by 50% and multiply damage by 1.5 (tunable).
+     - Emit player crit float text and sfx.
+
 3) Audio/FX
    - Add/route a piercing SFX in `src/engine/audio.js` (reuse or lightweight synth).
    - Float text in `src/engine/state.js` utilities already exists (use `spawnFloatText`).
@@ -88,6 +105,7 @@ This document proposes changes to make defense feel strong without trivializing 
 - Balance pass:
   - If attrition too high in swarms, lower chip to 5% floor or cap at 1 for featured.
   - If spikes feel rare, raise crit chance by +2% or increase DR ignore by +10%.
+  - Player feel: if player crits feel too frequent/strong, lower base to 5% or reduce multiplier to 1.4.
 - Telemetry (manual): count deaths/time-to-kill with/without plate.
 
 ## Defaults to Start With
@@ -95,6 +113,7 @@ This document proposes changes to make defense feel strong without trivializing 
 - Crits: mook 6% / 50% DR ignore / +1; featured 10% / 60% / +2; boss 12% / 70% / +3.
 - AP Specials: featured `ap: 2–3` on one move; boss `trueDamage: 2–3` on a special.
 - Soft DR cap: off (enable only if needed).
+- Player crits: base 8% chance, 1.5× damage, 50% enemy DR ignore; companion aura can add +5%.
 
 ---
 
