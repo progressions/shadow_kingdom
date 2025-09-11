@@ -52,10 +52,15 @@ export function loadLevel1() {
   // Gorg — featured key-bearer
   const gorgPalette = { skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' };
   const gorgSheet = makeSpriteSheet(gorgPalette);
-  spawnEnemy(yornaPos.x + 44, yornaPos.y + 34, 'featured', {
+  // Key Guardian (L1): Gorg + two supporting featured foes nearby
+  const gorgX = yornaPos.x + 44, gorgY = yornaPos.y + 34;
+  spawnEnemy(gorgX, gorgY, 'featured', {
     name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/level01/Gorg/Gorg.mp4', sheet: gorgSheet, sheetPalette: gorgPalette,
-    hp: 16, dmg: 5, hitCooldown: 0.7,  // Level 1 key guardian buff
+    hp: 20, dmg: 6, hitCooldown: 0.65,  // Level 1 key guardian buff (tougher featured foe)
   });
+  // Two normal featured foes flanking Gorg
+  spawnEnemy(gorgX - 28, gorgY - 12, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
+  spawnEnemy(gorgX + 30, gorgY + 10, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
 
   // Castle with boss Vast
   const cw = TILE * 14, ch = TILE * 10, t = 8, gap = 16;
@@ -141,8 +146,8 @@ export function loadLevel2() {
     spawnEnemy(bx, by, 'mook', { hp: 5, dmg: 4 });
   }
   // Two featured foes, also well outside the initial camera view
-  spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 10, dmg: 5 });
-  spawnEnemy(player.x - 340, player.y + 240, 'featured', { hp: 10, dmg: 5 });
+  spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 12, dmg: 6 });
+  spawnEnemy(player.x - 340, player.y + 240, 'featured', { hp: 12, dmg: 6 });
 
   // Chests and breakables (desert) — spaced around player
   obstacles.push({ x: Math.round(player.x + TILE * 14), y: Math.round(player.y - TILE * 10), w: 12, h: 10, type: 'chest', id: 'chest_l2_armor', fixedItemId: 'armor_chain', opened: false, locked: false });
@@ -214,11 +219,14 @@ export function loadLevel2() {
       vnOnSight: { text: introTexts.aarg },
       guaranteedDropId: 'key_nethra',
       // Level 2 key guardian: buffed stats
-      hp: 22,
-      dmg: 6,
-      hitCooldown: 0.65,
+      hp: 26,
+      dmg: 7,
+      hitCooldown: 0.6,
     }
   );
+  // Two normal featured foes near Aarg
+  spawnEnemy(rx + rw/2 - 56, ry - TILE * 3, 'featured', { name: 'Desert Marauder', hp: 12, dmg: 6 });
+  spawnEnemy(rx + rw/2 + 20, ry - TILE * 5, 'featured', { name: 'Desert Marauder', hp: 12, dmg: 6 });
   // Player remains at initial center spawn; companions already placed near player above
 
   // New recruitable companions for level 2: Oyin and Twil
@@ -290,8 +298,11 @@ export function loadLevel3() {
     name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', 
     vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', 
     sheet: wightSheet, sheetPalette: wightPalette, 
-    hp: 28, dmg: 7, hitCooldown: 0.6,  // Level 3 key guardian buff
+    hp: 32, dmg: 8, hitCooldown: 0.55,  // Level 3 key guardian buff (tougher featured foe)
   });
+  // Two normal featured foes near Wight
+  spawnEnemy(wx - 36, wy + 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
+  spawnEnemy(wx + 28, wy - 18, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
 
   // Boss arena (island with gate requiring Reed Key)
   const rw = TILE * 12, rh = TILE * 8, t = 8; const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260)); const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 160));
@@ -389,9 +400,12 @@ export function loadLevel4() {
     portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
     vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
     guaranteedDropId: 'key_sigil', 
-    hp: 34, dmg: 8, hitCooldown: 0.55,  // Level 4 key guardian buff
+    hp: 38, dmg: 9, hitCooldown: 0.5,  // Level 4 key guardian buff (tougher featured foe)
     sheetPalette: blurbPalette,
   });
+  // Two normal featured foes near Blurb
+  spawnEnemy(blurbX - 32, blurbY + 12, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
+  spawnEnemy(blurbX + 34, blurbY - 14, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
 
   // Boss arena (city plaza) with a top gate requiring Iron Sigil
   const rw = TILE * 12, rh = TILE * 8, t = 8;
@@ -544,13 +558,16 @@ export function loadLevel5() {
     portraitDefeated: 'assets/portraits/level05/Fana/Fana.mp4',  // Shows normal Fana when defeated
     vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: I must... protect the temple... Vorthak commands...', lock: true, preDelaySec: 0.8 },
     guaranteedDropId: 'key_temple',  // Boss gate key
-    hp: 40, dmg: 10, hitCooldown: 0.5,  // Level 5 key guardian buff
+    hp: 46, dmg: 11, hitCooldown: 0.45,  // Level 5 key guardian buff (tougher featured foe)
   });
+  // Two normal featured foes near Fana
+  spawnEnemy(kgx - TILE * 2, kgy + TILE * 1, 'featured', { name: 'Temple Sentinel', hp: 22, dmg: 9 });
+  spawnEnemy(kgx + TILE * 2, kgy - TILE * 1, 'featured', { name: 'Temple Sentinel', hp: 22, dmg: 9 });
 
   // Additional featured foe in the central pillar room
   const sentinelSpawn = findSafeSpawn(65, 16);
   const ff2x = sentinelSpawn.x * TILE, ff2y = sentinelSpawn.y * TILE;
-  spawnEnemy(ff2x, ff2y, 'featured', { name: 'Temple Sentinel', hp: 26, dmg: 8 });
+  spawnEnemy(ff2x, ff2y, 'featured', { name: 'Temple Sentinel', hp: 30, dmg: 9 });
 
   // Boss Vorthak (2x visual scale) in the bottom-right boss arena
   const bossLoc = LEVEL5_TEMPLE_FEATURES.bossLocation;

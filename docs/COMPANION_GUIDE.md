@@ -3,6 +3,21 @@
 ## Overview
 Companions are recruitable NPCs who follow the player, provide passive auras, and trigger special abilities during combat. Each companion has unique personality traits, visual appearance, and combat specializations. Effects scale with affinity (1-10).
 
+### Address Styles (Summary)
+| Companion  | How They Address You |
+|------------|-----------------------|
+| Canopy     | My Lord               |
+| Yorna      | Chief                 |
+| Hola       | My Lord               |
+| Oyin       | My Lord               |
+| Twil       | Master                |
+| Tin        | My Lord               |
+| Nellis     | Sire                  |
+| Urn        | Mister                |
+| Varabella  | Boss man              |
+| Cowsill    | My Lord               |
+| Fana       | My Prince             |
+
 ---
 
 ## Level 1: Forest

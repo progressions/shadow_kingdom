@@ -1,6 +1,6 @@
 import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround, grantPartyXp } from '../engine/state.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
-import { showBanner } from '../engine/ui.js';
+import { showBanner, showTargetInfo } from '../engine/ui.js';
 import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
@@ -124,6 +124,8 @@ export function handleAttacks(dt) {
             });
           }
         } catch {}
+        // UI: show last enemy struck in lower-right
+        try { showTargetInfo(`Hit: ${e.name || 'Enemy'}`); } catch {}
         // Oyin: Kindle DoT
         if (hasOyin) {
           e._burnTimer = Math.max(e._burnTimer || 0, 1.5);

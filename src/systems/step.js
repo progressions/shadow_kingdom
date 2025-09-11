@@ -432,20 +432,22 @@ export function step(dt) {
             runtime.shieldActive = false;
           }
           e.hitTimer = e.hitCooldown;
-          if (taken > 0) {
-            player.hp = Math.max(0, player.hp - taken);
-            // Minimal or no knockback; keep player controllable
-            player.knockbackX = 0;
-            player.knockbackY = 0;
-            // Invincibility window and light interaction lock
-            player.invulnTimer = 0.6;
-            runtime.interactLock = Math.max(runtime.interactLock, 0.2);
-            // Mark recent hit for companion triggers
-            runtime._recentPlayerHitTimer = 0.25;
-            // Damage feedback
-            spawnFloatText(player.x + player.w/2, player.y - 6, `-${taken}`, { color: '#ff7a7a', life: 0.7 });
-            playSfx('hit');
-          } else {
+            if (taken > 0) {
+              player.hp = Math.max(0, player.hp - taken);
+              // Minimal or no knockback; keep player controllable
+              player.knockbackX = 0;
+              player.knockbackY = 0;
+              // Invincibility window and light interaction lock
+              player.invulnTimer = 0.6;
+              runtime.interactLock = Math.max(runtime.interactLock, 0.2);
+              // Mark recent hit for companion triggers
+              runtime._recentPlayerHitTimer = 0.25;
+              // Damage feedback
+              spawnFloatText(player.x + player.w/2, player.y - 6, `-${taken}`, { color: '#ff7a7a', life: 0.7 });
+              playSfx('hit');
+              // UI: show last attacker name in lower-right
+              try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`Struck by: ${e.name || 'Enemy'}`)); } catch {}
+            } else {
             // Blocked hit feedback
             spawnFloatText(player.x + player.w/2, player.y - 6, 'Blocked', { color: '#a8c6ff', life: 0.7 });
             playSfx('block');

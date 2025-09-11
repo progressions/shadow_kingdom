@@ -17,6 +17,7 @@ const partyUI = document.getElementById('party-ui');
 const bannerEl = document.getElementById('banner');
 const fadeEl = document.getElementById('fade');
 const questHintEl = document.getElementById('quest-hint');
+const targetInfoEl = document.getElementById('target-info');
 const levelTitleEl = document.getElementById('level-title');
 const musicThemeEl = document.getElementById('music-theme');
 
@@ -351,6 +352,17 @@ export function showBanner(text, durationMs = 1800) {
   showBanner._t = window.setTimeout(() => {
     bannerEl.classList.remove('show');
   }, durationMs);
+}
+
+// Lower-right identifier for last combat interaction
+export function showTargetInfo(text, durationMs = 1600) {
+  if (!targetInfoEl) return;
+  targetInfoEl.textContent = text || '';
+  targetInfoEl.classList.add('show');
+  window.clearTimeout(showTargetInfo._t);
+  showTargetInfo._t = window.setTimeout(() => {
+    targetInfoEl.classList.remove('show');
+  }, Math.max(250, durationMs|0));
 }
 
 // Append cache-busting version to asset URLs
