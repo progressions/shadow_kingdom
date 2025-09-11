@@ -155,7 +155,10 @@ export function selectChoice(index) {
     if (npc) {
       // Enforce party size limit
       if (companions.length >= 3) {
-        setOverlayDialog('Your party is full (max 3).', [ { label: 'Ok', action: 'end' } ]);
+        // Ask who to replace instead of blocking
+        const choices = companions.map((c, i) => ({ label: `Replace ${c.name || ('Companion ' + (i+1))}`, action: 'replace_companion', data: i }));
+        choices.push({ label: 'I changed my mine, wait here.', action: 'end' });
+        startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
         return;
       }
       // Spawn as companion using NPC sheet if available
@@ -167,6 +170,38 @@ export function selectChoice(index) {
       showBanner(`${npc.name || 'Companion'} joined your party!`);
       try { playSfx('partyJoin'); } catch {}
     }
+    endDialog();
+    exitChat(runtime);
+    return;
+  }
+  if (choice.action === 'replace_companion') {
+    const npc = runtime.activeNpc;
+    const idx = (typeof choice.data === 'number') ? choice.data : -1;
+    const comp = companions[idx];
+    if (!npc || !comp) { endDialog(); exitChat(runtime); return; }
+    // Dismiss the chosen companion without confirmation (spawn back as NPC nearby)
+    const spot = findNearbyFreeSpot(comp.x, comp.y, comp.w, comp.h);
+    const nx = spot ? spot.x : comp.x;
+    const ny = spot ? spot.y : comp.y;
+    const returned = spawnNpc(nx, ny, comp.dir || 'down', {
+      name: comp.name || 'Companion',
+      sheet: comp.sheet || null,
+      portrait: comp.portraitSrc || null,
+    });
+    // Reattach base dialog to allow future re-recruitment
+    try {
+      const key = (returned.name || '').toLowerCase();
+      if (key.includes('canopy')) setNpcDialog(returned, canopyDialog);
+      else if (key.includes('yorna')) setNpcDialog(returned, yornaDialog);
+      else if (key.includes('hola')) setNpcDialog(returned, holaDialog);
+    } catch {}
+    removeCompanion(comp);
+    // Recruit the active NPC into the now-free slot
+    spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+    const ni = npcs.indexOf(npc); if (ni !== -1) npcs.splice(ni, 1);
+    updatePartyUI(companions);
+    showBanner(`${npc.name || 'Companion'} joined your party!`);
+    try { playSfx('partyJoin'); } catch {}
     endDialog();
     exitChat(runtime);
     return;
