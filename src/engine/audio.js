@@ -48,6 +48,9 @@ let duckPrevVol = null; // for file-based music
 // Low-HP muffle state
 let muffleActive = false;
 let mufflePrevVol = null;
+let muffleTarget = 0;   // 0..1 desired muffle amount
+let muffleAmt = 0;      // 0..1 smoothed muffle amount (chip path)
+let muffleFadeId = null; // file path fade interval id
 
 // Title screen fanfare
 let titleFanfare = null;
@@ -136,19 +139,31 @@ export function setMusicMuffle(enabled) {
   const on = !!enabled;
   if (on === muffleActive) return;
   muffleActive = on;
-  // Chip path: nothing immediate, schedule() applies a lower cutoff each step
+  muffleTarget = on ? 1 : 0;
+  // Chip path fades via muffleAmt in schedule(); nothing immediate to do
   if (useChip) return;
-  // File-based: simulate muffle by ducking music volume while active
+  // File-based: smooth volume ramp to simulate muffle
   try {
-    if (currentMusic && typeof currentMusic.volume === 'number') {
-      if (on) {
-        if (mufflePrevVol == null) mufflePrevVol = currentMusic.volume;
-        currentMusic.volume = Math.max(0, (mufflePrevVol || currentMusic.volume) * 0.30);
-      } else {
-        if (mufflePrevVol != null) currentMusic.volume = mufflePrevVol;
-        mufflePrevVol = null;
-      }
+    if (!currentMusic || typeof currentMusic.volume !== 'number') return;
+    const from = currentMusic.volume;
+    if (on) {
+      if (mufflePrevVol == null) mufflePrevVol = from;
     }
+    const to = on ? Math.max(0, (mufflePrevVol || from) * 0.30) : (mufflePrevVol != null ? mufflePrevVol : from);
+    if (muffleFadeId) { clearInterval(muffleFadeId); muffleFadeId = null; }
+    const durationMs = 350;
+    const steps = Math.max(6, Math.floor(durationMs / 25));
+    let i = 0;
+    muffleFadeId = setInterval(() => {
+      i++;
+      if (!currentMusic) { clearInterval(muffleFadeId); muffleFadeId = null; return; }
+      const v = from + (to - from) * (i / steps);
+      try { currentMusic.volume = Math.max(0, v); } catch {}
+      if (i >= steps) {
+        clearInterval(muffleFadeId); muffleFadeId = null;
+        if (!on) mufflePrevVol = null;
+      }
+    }, 25);
   } catch {}
 }
 
@@ -478,8 +493,11 @@ function startChipMusic() {
       const baseCut = (section === 0 ? theme.filterBaseA : theme.filterBaseB);
       const range = theme.filterRange;
       const sweep = Math.sin(musicPhase * 0.2) * range * 0.5; // very slow
+      // Smooth muffle easing
+      muffleAmt = muffleAmt + (muffleTarget - muffleAmt) * 0.25; // ease toward target
       let cutoff = Math.max(500, baseCut + sweep);
-      if (muffleActive) cutoff = Math.max(200, cutoff * 0.20);
+      const scale = 1 - 0.8 * Math.max(0, Math.min(1, muffleAmt)); // down to 20%
+      cutoff = Math.max(200, cutoff * scale);
       musicFilter.frequency.setValueAtTime(cutoff, ac.currentTime);
     }
     // Drums
