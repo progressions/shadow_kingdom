@@ -928,6 +928,14 @@ export function step(dt) {
           if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_streets4_cleared'] = true; showBanner('Quest updated: Stitch the Streets — cleared'); }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
+        if (e.questId === 'snake_den') {
+          if (!runtime.questCounters) runtime.questCounters = {};
+          const key = 'snake_den_remaining';
+          const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
+          runtime.questCounters[key] = left;
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['snake_den_cleared'] = true; showBanner('Quest updated: Clear the Den — cleared'); }
+          else showBanner(`Quest: ${left} pest${left===1?'':'s'} left`);
+        }
       } catch {}
       // If Fana (enslaved sorceress) is defeated, show VN scene then spawn as recruitable NPC
       try {

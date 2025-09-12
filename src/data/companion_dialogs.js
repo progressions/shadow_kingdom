@@ -1075,4 +1075,36 @@ export const companionDialogs = {
       },
     },
   },
+  snek: {
+    start: 'root',
+    nodes: {
+      root: {
+        text: 'Snek: My Lord… I coil close. Say the word and I ssslither where you point.',
+        choices: [
+          { label: 'Start: Clear the Den', requires: { missingFlag: 'snake_den_started' }, next: 'snake_den_intro' },
+          { label: 'Turn in: Clear the Den', requires: { hasFlag: 'snake_den_cleared', missingFlag: 'snake_den_done' }, next: 'snake_den_turnin' },
+          { label: 'Back to companions', action: 'companion_back' },
+        ],
+      },
+      snake_den_intro: {
+        text: 'Snek: Three pestsss gnaw close by. We ssslip in and sssnap.',
+        choices: [
+          { label: 'Coil and go.', action: 'start_quest', data: { id: 'snake_den' }, next: 'snake_den_started' },
+          { label: 'Another time.', next: 'root' },
+        ],
+      },
+      snake_den_started: {
+        text: 'Snek: Cull three. Then we breathe easssy.',
+        choices: [ { label: 'Back', next: 'root' } ],
+      },
+      snake_den_turnin: {
+        text: 'Snek: Den cleaned. Your bite feelsss sharper.',
+        choices: [ { label: 'Good hunt. (Affinity +0.8)', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'snake_den_reward' }, next: 'snake_den_done' } ],
+      },
+      snake_den_done: {
+        text: 'Snek: I stay nearer now.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'snake_den_done' }, next: 'root' } ],
+      },
+    },
+  },
 };

@@ -531,12 +531,36 @@ export const snakeDialog = {
       choices: [
         { label: 'Yes, join me.', action: 'join_party', hint: 'Slow Aura · Small Bite' },
         { label: 'What can you do for us?', next: 'about' },
+        { label: 'Start: Clear the Den', requires: { missingFlag: 'snake_den_started' }, next: 'snake_den_intro' },
+        { label: 'Turn in: Clear the Den', requires: { hasFlag: 'snake_den_cleared', missingFlag: 'snake_den_done' }, next: 'snake_den_turnin' },
         { label: 'Not now.', action: 'end' },
       ],
     },
     about: {
       text: "Snek: My Lord, I make enemies near you move ssslower and sharpen your bite a little. Stay close and fights feel sssofter.",
       choices: [ { label: 'Join me.', action: 'join_party', hint: 'Slow Aura · Small Bite' }, { label: 'Later.', action: 'end' } ],
+    },
+    snake_den_intro: {
+      text: "Snek: Three pests, close by. We ssslip in, sssnap fast, and they sssilence.",
+      choices: [
+        { label: 'Coil and go.', action: 'start_quest', data: { id: 'snake_den' }, next: 'snake_den_started' },
+        { label: 'Another time.', next: 'intro' },
+      ],
+    },
+    snake_den_started: {
+      text: "Snek: Their den is marked. Cull three, and I will be pleasssed.",
+      choices: [ { label: 'Back', next: 'intro' } ],
+    },
+    snake_den_turnin: {
+      text: "Snek: Yesss. Clean earth. Your bite is better already.",
+      choices: [
+        { label: 'Good hunt. (Affinity +0.8)', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'snake_den_reward' }, next: 'snake_den_done' },
+      ],
+    },
+    snake_den_done: {
+      text: "Snek: I curl closer to your heelss."
+      ,
+      choices: [ { label: 'Back', action: 'set_flag', data: { key: 'snake_den_done' }, next: 'intro' } ],
     },
   },
 };

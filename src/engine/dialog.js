@@ -781,6 +781,17 @@ function handleStartQuest(data) {
       }).catch(()=>{});
       runtime.questCounters['varabella_crossfire_remaining'] = 3;
       try { showBanner('Quest started: Cut the Crossfire — 3 posts'); } catch {}
+    } else if (id === 'snake_den') {
+      // Level 1 Snake quest: defeat three nearby vermin
+      import('./state.js').then(m => {
+        const { player, spawnEnemy } = m;
+        const dx = 120, dy = 90;
+        spawnEnemy(player.x + dx, player.y - dy, 'mook', { name: 'Den Vermin', questId: 'snake_den', hp: 5, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'mook', { name: 'Den Vermin', questId: 'snake_den', hp: 5, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'mook', { name: 'Den Vermin', questId: 'snake_den', hp: 5, dmg: 4 });
+      }).catch(()=>{});
+      runtime.questCounters['snake_den_remaining'] = 3;
+      try { showBanner('Quest started: Clear the Den — 3 pests'); } catch {}
     }
   } catch {}
 }

@@ -232,6 +232,8 @@ export function makeSnakeSpriteSheet(color = '#3aa35a', outline = '#000000') {
 // Return a themed sheet for known character names
 export function sheetForName(name) {
   const key = (name || '').toLowerCase();
+  // Non-humanoid: Snake companion/NPC
+  if (key.includes('snek') || key.includes('snake') || key.includes('smek')) return makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
   // Level 1 canonical palettes - with feminine shape
   if (key.includes('canopy')) return makeSpriteSheet({ hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true });
   if (key.includes('yorna'))  return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true });
