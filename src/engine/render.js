@@ -727,10 +727,7 @@ function drawItemIcon(x, y, item) {
   const t = (runtime?._timeSec || 0);
   const bob = Math.round(Math.sin((t * 3.0) + (x * 0.05) + (y * 0.03)) * 1.5);
   const bx = x, by = y + bob;
-  // backdrop
-  ctx.globalAlpha = 0.85;
-  ctx.fillStyle = '#0b0b0b';
-  ctx.fillRect(bx - 2, by - 2, 16, 16);
+  ctx.globalAlpha = 1.0;
   // Determine type and colors
   const isKey = !!item?.keyId;
   const slot = String(item?.slot || '').toLowerCase();
@@ -744,69 +741,64 @@ function drawItemIcon(x, y, item) {
   else if (slot === 'legs') { color = '#b8a16a'; accent = '#6b5a2a'; }
   // Icon shapes
   const drawSword = () => {
-    // blade (diagonal)
-    ctx.strokeStyle = '#cfd8ff'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bx + 4, by + 3); ctx.lineTo(bx + 10, by + 9); ctx.stroke();
+    // blade (diagonal) — keep this look but smaller
+    ctx.strokeStyle = '#cfd8ff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx + 3, by + 3); ctx.lineTo(bx + 9, by + 9); ctx.stroke();
     // guard
-    ctx.strokeStyle = '#6b7bb8'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bx + 6, by + 6); ctx.lineTo(bx + 8, by + 4); ctx.stroke();
+    ctx.strokeStyle = '#6b7bb8'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx + 5, by + 6); ctx.lineTo(bx + 7, by + 4); ctx.stroke();
     // hilt
-    ctx.strokeStyle = '#414a6b'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bx + 3, by + 4); ctx.lineTo(bx + 5, by + 6); ctx.stroke();
+    ctx.strokeStyle = '#414a6b'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx + 2, by + 4); ctx.lineTo(bx + 4, by + 6); ctx.stroke();
   };
   const drawTorch = () => {
     // handle
-    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(bx + 6, by + 8, 2, 5);
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(bx + 5, by + 7, 2, 4);
     // flame
-    ctx.beginPath(); ctx.fillStyle = '#ffcc66'; ctx.arc(bx + 7, by + 7, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.fillStyle = '#ffa41a'; ctx.arc(bx + 7, by + 6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = '#ffcc66'; ctx.arc(bx + 6, by + 6, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = '#ffa41a'; ctx.arc(bx + 6, by + 5, 1.6, 0, Math.PI * 2); ctx.fill();
   };
   const drawShield = () => {
-    ctx.fillStyle = '#a6c1ff'; ctx.fillRect(bx + 4, by + 5, 8, 8);
-    ctx.strokeStyle = '#2f4a8a'; ctx.lineWidth = 1.5; ctx.strokeRect(bx + 4, by + 5, 8, 8);
-    ctx.fillStyle = '#2f4a8a'; ctx.fillRect(bx + 7, by + 8, 2, 2);
+    ctx.fillStyle = '#a6c1ff'; ctx.fillRect(bx + 4, by + 5, 6, 6);
+    ctx.strokeStyle = '#2f4a8a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 4, by + 5, 6, 6);
+    ctx.fillStyle = '#2f4a8a'; ctx.fillRect(bx + 6, by + 7, 1, 1);
   };
   const drawHelm = () => {
-    ctx.fillStyle = color; ctx.fillRect(bx + 4, by + 6, 8, 4);
-    ctx.fillStyle = accent; ctx.fillRect(bx + 3, by + 8, 10, 2);
+    ctx.fillStyle = color; ctx.fillRect(bx + 4, by + 6, 6, 3);
+    ctx.fillStyle = accent; ctx.fillRect(bx + 3, by + 8, 8, 1.5);
   };
   const drawChest = () => {
-    ctx.fillStyle = color; ctx.fillRect(bx + 4, by + 6, 8, 10);
-    ctx.fillStyle = accent; ctx.fillRect(bx + 5, by + 10, 6, 1);
+    ctx.fillStyle = color; ctx.fillRect(bx + 4, by + 6, 6, 7);
+    ctx.fillStyle = accent; ctx.fillRect(bx + 5, by + 9, 4, 1);
   };
   const drawKey = () => {
-    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(bx + 5, by + 6, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillRect(bx + 8, by + 5, 6, 2); ctx.fillRect(bx + 12, by + 7, 2, 2);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(bx + 5, by + 6, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(bx + 7, by + 5, 4, 1.5); ctx.fillRect(bx + 10, by + 6.5, 1.5, 1.5);
   };
   const drawPotion = (strength) => {
     // bottle
-    ctx.fillStyle = '#eaeaea'; ctx.fillRect(bx + 5, by + 5, 6, 8);
-    ctx.fillStyle = '#bdbdbd'; ctx.fillRect(bx + 6, by + 4, 4, 2); // neck
+    ctx.fillStyle = '#eaeaea'; ctx.fillRect(bx + 5, by + 6, 5, 6);
+    ctx.fillStyle = '#bdbdbd'; ctx.fillRect(bx + 6, by + 5, 3, 1.5); // neck
     // liquid color by strength
     const liq = (strength === 'light') ? '#68e873' : (strength === 'medium') ? '#59b0ff' : '#ff5a7a';
-    ctx.fillStyle = liq; ctx.fillRect(bx + 5, by + 9, 6, 4);
+    ctx.fillStyle = liq; ctx.fillRect(bx + 5, by + 9, 5, 3);
     // highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(bx + 7, by + 7, 1, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(bx + 7, by + 8, 1, 1);
   };
   const drawGeneric = () => {
-    ctx.fillStyle = color; ctx.fillRect(bx + 4, by + 4, 8, 8);
-    ctx.fillStyle = accent; ctx.fillRect(bx + 5, by + 6, 6, 1);
+    ctx.fillStyle = color; ctx.fillRect(bx + 4, by + 4, 6, 6);
+    ctx.fillStyle = accent; ctx.fillRect(bx + 5, by + 6, 4, 1);
   };
   // Routing: keys, potions, weapons, shields, armor, generic
   if (isKey) drawKey();
   else if (id === 'potion_light') drawPotion('light');
   else if (id === 'potion_medium') drawPotion('medium');
   else if (id === 'potion_strong') drawPotion('strong');
-  else if (slot === 'rightHand') drawSword();
-  else if (slot === 'leftHand') { if (id === 'torch') drawTorch(); else drawShield(); }
+  else if (slot === 'righthand') drawSword();
+  else if (slot === 'lefthand') { if (id === 'torch') drawTorch(); else drawShield(); }
   else if (slot === 'head') drawHelm();
   else if (slot === 'torso') drawChest();
   else drawGeneric();
-  // halo + border for clarity
-  ctx.globalAlpha = 0.25;
-  ctx.fillStyle = (id.startsWith('potion')) ? '#ffffff' : (slot === 'rightHand' ? '#6b7bb8' : (slot === 'leftHand' ? '#2f4a8a' : (slot === 'torso' ? '#2f6b2f' : '#000')));
-  ctx.beginPath(); ctx.arc(bx + 6, by + 7, 9, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 1.0;
-  ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 1.2; ctx.strokeRect(bx - 2, by - 2, 16, 16);
+  // No backdrop/halo/border — keep world clean
   ctx.restore();
 }
