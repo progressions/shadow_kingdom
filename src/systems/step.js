@@ -598,6 +598,20 @@ export function step(dt) {
       // mook: ~2px pad (baseline), featured: ~4px, boss: ~12px (increased)
       const pad = (String(e.kind).toLowerCase() === 'boss') ? 12.0 : (String(e.kind).toLowerCase() === 'featured' ? 4.0 : 2.0);
       if (rectsTouchOrOverlap(pr, er, pad)) {
+        // If a solid attack-blocking obstacle lies between enemy and player, prevent contact damage through walls
+        try {
+          const px = player.x + player.w / 2;
+          const py = player.y + player.h / 2;
+          const ex = e.x + e.w / 2;
+          const ey = e.y + e.h / 2;
+          let blocked = false;
+          for (const o of obstacles) {
+            if (!o || !o.blocksAttacks) continue;
+            if (o.type === 'gate' && o.locked === false) continue;
+            if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; }
+          }
+          if (blocked) continue;
+        } catch {}
         // If they actually overlap, separate just enough but still allow contact
         if (rectsIntersect(pr, er)) separateEntities(player, e, 0.65);
         // Overworld realtime damage on contact; apply armor DR with chip/crit/AP
