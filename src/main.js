@@ -7,7 +7,7 @@ import { buildTerrainBitmap, buildObstacles } from './engine/terrain.js';
 import { initInput } from './engine/input.js';
 import { render } from './engine/render.js';
 import { step } from './systems/step.js';
-import { setNpcDialog, startPrompt } from './engine/dialog.js';
+import { setNpcDialog, startPrompt, startSaveMenu } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap } from './engine/ui.js';
@@ -67,9 +67,10 @@ setupTitleScreen({
     startIntroScene();
   },
   onLoad: () => {
+    // Open the Save/Load interface to choose a slot to load
     hideTitleScreen();
     runtime.paused = false;
-    loadGame();
+    startSaveMenu();
   }
 });
 showTitleScreen();

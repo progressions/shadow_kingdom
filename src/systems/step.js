@@ -593,10 +593,10 @@ export function step(dt) {
     if (e.hitTimer === 0) {
       const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
       const er = { x: e.x, y: e.y, w: e.w, h: e.h };
-      // Enemy contact reach: give featured foes and bosses a slightly longer
-      // touch range than the player’s attack reach so approach is more dangerous.
-      // mook: ~2px pad (baseline), featured: ~4px, boss: ~6px
-      const pad = (String(e.kind).toLowerCase() === 'boss') ? 6.0 : (String(e.kind).toLowerCase() === 'featured' ? 4.0 : 2.0);
+      // Enemy contact reach: give featured foes and bosses a longer touch range
+      // so approach is more dangerous.
+      // mook: ~2px pad (baseline), featured: ~4px, boss: ~12px (increased)
+      const pad = (String(e.kind).toLowerCase() === 'boss') ? 12.0 : (String(e.kind).toLowerCase() === 'featured' ? 4.0 : 2.0);
       if (rectsTouchOrOverlap(pr, er, pad)) {
         // If they actually overlap, separate just enough but still allow contact
         if (rectsIntersect(pr, er)) separateEntities(player, e, 0.65);
