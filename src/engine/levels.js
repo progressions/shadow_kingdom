@@ -154,6 +154,47 @@ export function loadLevel1() {
       }
     }
   })();
+  // Additional dense rocks in the upper-right corner: +30 more
+  (function placeUpperRightRocksMore() {
+    const rng = () => Math.random();
+    const margin = TILE * 2;
+    // Slightly expand/spread area to fit more rocks without extreme overlap
+    const areaW = TILE * 22;
+    const areaH = TILE * 16;
+    const ax0 = Math.max(margin, world.w - areaW - margin);
+    const ay0 = Math.max(margin, margin);
+    const count = 30;
+    const placed = [];
+    const maxTries = 12;
+    for (let i = 0; i < count; i++) {
+      let placedOne = false;
+      for (let t = 0; t < maxTries && !placedOne; t++) {
+        const w = (12 + Math.floor(rng() * 20)) | 0;   // 12–32 px
+        const h = (10 + Math.floor(rng() * 16)) | 0;   // 10–26 px
+        const x = Math.round(ax0 + rng() * Math.max(1, areaW - w));
+        const y = Math.round(ay0 + rng() * Math.max(1, areaH - h));
+        const rect = { x, y, w, h };
+        let heavyOverlap = false;
+        for (const p of placed) {
+          const ix = Math.max(0, Math.min(rect.x + rect.w, p.x + p.w) - Math.max(rect.x, p.x));
+          const iy = Math.max(0, Math.min(rect.y + rect.h, p.y + p.h) - Math.max(rect.y, p.y));
+          const inter = ix * iy;
+          if (inter > 0 && inter >= 0.5 * Math.min(rect.w * rect.h, p.w * p.h)) { heavyOverlap = true; break; }
+        }
+        if (heavyOverlap) continue;
+        obstacles.push({ x, y, w, h, type: 'rock' });
+        placed.push(rect);
+        placedOne = true;
+      }
+      if (!placedOne) {
+        const w = 20, h = 16;
+        const x = Math.round(ax0 + rng() * Math.max(1, areaW - w));
+        const y = Math.round(ay0 + rng() * Math.max(1, areaH - h));
+        obstacles.push({ x, y, w, h, type: 'rock' });
+        placed.push({ x, y, w, h });
+      }
+    }
+  })();
   // Boss Vast inside
   const boss1x = cxw + cw/2 - 6;
   const boss1y = cyw + ch/2 - 8;
