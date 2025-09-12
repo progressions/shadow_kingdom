@@ -614,10 +614,11 @@ export function step(dt) {
               let sfx = 'hit';
               const chipBase = Math.round(raw * 0.10);
               const chip = Math.max(def.chipMin, Math.min(def.chipMax, chipBase));
-              if (isCrit) { label = `Crit ${taken}`; color = '#ffd166'; sfx = 'pierce'; }
-              else if ((ap > 0 || tDmg > 0) && (taken >= raw - dr)) { label = `Pierce! ${taken}`; color = '#ffd166'; sfx = 'pierce'; }
-              else if (toggles.chip && kind !== 'boss' && taken === chip && chip > 0) { label = `Grazed ${taken}`; color = '#a8c6ff'; sfx = 'hit'; }
-              spawnFloatText(player.x + player.w/2, player.y - 6, label || `-${taken}`, { color, life: 0.7 });
+              const fmt = (n) => Number.isFinite(n) ? Number(n).toFixed(2) : String(n);
+              if (isCrit) { label = `Crit ${fmt(taken)}`; color = '#ffd166'; sfx = 'pierce'; }
+              else if ((ap > 0 || tDmg > 0) && (taken >= raw - dr)) { label = `Pierce! ${fmt(taken)}`; color = '#ffd166'; sfx = 'pierce'; }
+              else if (toggles.chip && kind !== 'boss' && taken === chip && chip > 0) { label = `Grazed ${fmt(taken)}`; color = '#a8c6ff'; sfx = 'hit'; }
+              spawnFloatText(player.x + player.w/2, player.y - 6, label || `-${fmt(taken)}`, { color, life: 0.7 });
               playSfx(sfx);
               // UI: show last attacker name in lower-right (just the name)
               try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`${e.name || 'Enemy'}`)); } catch {}

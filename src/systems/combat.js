@@ -139,7 +139,8 @@ export function handleAttacks(dt) {
         try { showTargetInfo(`${e.name || 'Enemy'}`); } catch {}
         // Player crit feedback
         if (isCrit) {
-          import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Crit! ${Math.max(1, finalDmg)}`, { color: '#ffd166', life: 0.8 }));
+          const dmgTxt = Number(Math.max(1, finalDmg)).toFixed(2);
+          import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Crit! ${dmgTxt}`, { color: '#ffd166', life: 0.8 }));
           try { playSfx('pierce'); } catch {}
         }
         // Oyin: Kindle DoT
