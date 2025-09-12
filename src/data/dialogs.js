@@ -527,7 +527,7 @@ export const snakeDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Snake: My Lord… ssslither, sssafe. I curl near your heels, make foes drag their feet, and help your bite land harder. Do you want me to coil along?",
+      text: "Snek: My Lord… ssslither, sssafe. I curl near your heels, make foes drag their feet, and help your bite land harder. Do you want me to coil along?",
       choices: [
         { label: 'Yes, join me.', action: 'join_party', hint: 'Slow Aura · Small Bite' },
         { label: 'What can you do for us?', next: 'about' },
@@ -535,7 +535,7 @@ export const snakeDialog = {
       ],
     },
     about: {
-      text: "Snake: My Lord, I make enemies near you move ssslower and sharpen your bite a little. Stay close and fights feel sssofter.",
+      text: "Snek: My Lord, I make enemies near you move ssslower and sharpen your bite a little. Stay close and fights feel sssofter.",
       choices: [ { label: 'Join me.', action: 'join_party', hint: 'Slow Aura · Small Bite' }, { label: 'Later.', action: 'end' } ],
     },
   },

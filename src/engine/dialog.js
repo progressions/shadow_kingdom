@@ -170,7 +170,8 @@ export function selectChoice(index) {
       showBanner(`${npc.name || 'Companion'} joined your party!`);
       try {
         const nm = String(npc.name || '').toLowerCase();
-        if (nm.includes('snake')) playSfx('hiss');
+        const id = String(npc.dialogId || '').toLowerCase();
+        if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
         playSfx('partyJoin');
       } catch {}
     }
