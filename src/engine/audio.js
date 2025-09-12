@@ -38,6 +38,7 @@ const files = {
     beacon: 'assets/audio/sfx/beacon.wav',
     keepLine: 'assets/audio/sfx/keepLine.wav',
     quake: 'assets/audio/sfx/quake.wav',
+    hiss: 'assets/audio/sfx/hiss.wav',
   },
 };
 
@@ -359,6 +360,11 @@ function playSfxChip(name) {
       // Quick precise click + chime to indicate a tactical opening
       noiseBurst({ attack: 0.001, decay: 0.02, release: 0.02, gain: 0.10, t });
       envTone({ type: 'square', freq: 880.0, attack: 0.001, decay: 0.07, release: 0.04, gain: 0.10, t: t + 0.02 });
+      break;
+    case 'hiss':
+      // Soft hiss with slight sweep
+      noiseBurst({ attack: 0.001, decay: 0.12, release: 0.10, gain: 0.06, t });
+      envTone({ type: 'triangle', freq: 660.0, attack: 0.002, decay: 0.10, release: 0.06, gain: 0.06, t: t + 0.02 });
       break;
     case 'shield':
       // Soft shimmer to indicate a protective layer

@@ -168,7 +168,11 @@ export function selectChoice(index) {
       if (idx !== -1) npcs.splice(idx, 1);
       updatePartyUI(companions);
       showBanner(`${npc.name || 'Companion'} joined your party!`);
-      try { playSfx('partyJoin'); } catch {}
+      try {
+        const nm = String(npc.name || '').toLowerCase();
+        if (nm.includes('snake')) playSfx('hiss');
+        playSfx('partyJoin');
+      } catch {}
     }
     endDialog();
     exitChat(runtime);
