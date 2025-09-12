@@ -301,7 +301,8 @@ export function render(terrainBitmap, obstacles) {
       const t = runtime._timeSec || 0;
       const k = Math.max(0, Math.min(1, (thresh - ratio) / thresh));
       // Soft gray overlay (does not affect UI)
-      const grayAlpha = 0.12 + 0.20 * k;
+      // Stronger gray wash as HP drops (up to ~75%)
+      const grayAlpha = Math.max(0, Math.min(0.75, 0.25 + 0.50 * k));
       ctx.save();
       ctx.globalAlpha = grayAlpha;
       ctx.fillStyle = '#1a1a1a';
