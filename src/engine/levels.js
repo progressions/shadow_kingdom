@@ -101,14 +101,16 @@ export function loadLevel1() {
   const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', dialogId: 'hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
   setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
 
-  // Snake companion (Level 1): small slow aura + small bite (ATK)
-  try {
-    const snakeSheet = makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
-    const sx = Math.max(0, Math.min(world.w - 12, player.x + 140));
-    const sy = Math.max(0, Math.min(world.h - 16, player.y + 60));
-    const snake = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet: snakeSheet, vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
-    setNpcDialog(snake, snakeDialog);
-  } catch {}
+  // Snake companion (Level 1): small slow aura + small bite (ATK) — gated by Snake Mode
+  if (runtime.snakeMode) {
+    try {
+      const snakeSheet = makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
+      const sx = Math.max(0, Math.min(world.w - 12, player.x + 140));
+      const sy = Math.max(0, Math.min(world.h - 16, player.y + 60));
+      const snake = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet: snakeSheet, vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
+      setNpcDialog(snake, snakeDialog);
+    } catch {}
+  }
 
   return terrain;
 }

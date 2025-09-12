@@ -509,6 +509,8 @@ export const runtime = {
   _suspendRenderUntilRestore: false,
   // Combat tuning toggles
   combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
+  // Feature toggles
+  snakeMode: true,
 
 };
 

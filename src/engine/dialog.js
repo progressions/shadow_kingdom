@@ -112,6 +112,7 @@ export function startDebugMenu() {
     { label: 'Test: VN Intro Cooldown', action: 'debug_run_vn' },
     { label: 'Test: Enemy Intro After Load (vnId)', action: 'debug_run_enemy_intro' },
     { label: `God Mode: ${runtime.godMode ? 'On' : 'Off'}`, action: 'toggle_godmode' },
+    { label: `Snake Mode: ${runtime.snakeMode ? 'On' : 'Off'}`, action: 'toggle_snake_mode' },
     { label: 'Back', action: 'end' },
   ];
   startPrompt(null, 'Debug', choices);
@@ -297,6 +298,37 @@ export function selectChoice(index) {
   if (choice.action === 'save_menu_back') { buildAndShowSaveMenu(); return; }
   if (choice.action === 'open_debug') { startDebugMenu(); return; }
   if (choice.action === 'toggle_godmode') { runtime.godMode = !runtime.godMode; showBanner(`God Mode ${runtime.godMode ? 'Enabled' : 'Disabled'}`); startDebugMenu(); return; }
+  if (choice.action === 'toggle_snake_mode') {
+    runtime.snakeMode = !runtime.snakeMode;
+    showBanner(`Snake Mode ${runtime.snakeMode ? 'Enabled' : 'Disabled'}`);
+    try {
+      if ((runtime.currentLevel || 1) === 1) {
+        if (runtime.snakeMode) {
+          // Add Snek if not present
+          const exists = npcs.some(n => n && (String(n.name||'').toLowerCase().includes('snek') || String(n.dialogId||'').toLowerCase()==='snake'));
+          if (!exists) {
+            import('./sprites.js').then(sp => {
+              const sheet = sp.makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
+              const sx = Math.max(0, Math.min(world.w - 12, player.x + 100));
+              const sy = Math.max(0, Math.min(world.h - 16, player.y + 40));
+              const s = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet, vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
+              import('../data/dialogs.js').then(d => { if (d.snakeDialog) setNpcDialog(s, d.snakeDialog); });
+            });
+          }
+        } else {
+          // Remove Snek if present and not already a companion
+          for (let i = npcs.length - 1; i >= 0; i--) {
+            const n = npcs[i];
+            if (n && (String(n.name||'').toLowerCase().includes('snek') || String(n.dialogId||'').toLowerCase()==='snake')) {
+              npcs.splice(i, 1);
+            }
+          }
+        }
+      }
+    } catch {}
+    startDebugMenu();
+    return;
+  }
   if (choice.action === 'debug_run_all') {
     (async () => {
       try {
