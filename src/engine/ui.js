@@ -277,11 +277,14 @@ export function showTitleScreen() {
   // Do not auto‑play here (can be blocked by autoplay policy). We'll play on first gesture.
   // Gesture on overlay also unlocks audio and retries fanfare (for browsers requiring interaction)
   try {
-    titleEl.addEventListener('pointerdown', () => { 
-      initAudioUnlock(); 
-      try { 
-        stopMusic(); 
-        playTitleFanfare(); 
+    titleEl.addEventListener('pointerdown', () => {
+      // Prevent double-play if a key has already started the fanfare
+      if (runtime._titleFanfareFired) return;
+      runtime._titleFanfareFired = true;
+      initAudioUnlock();
+      try {
+        stopMusic();
+        playTitleFanfare();
         // Fade in ambient after the fanfare finishes
         import('./audio.js').then(m => m.startAmbientAfterFanfare && m.startAmbientAfterFanfare(2.8, 1.6)).catch(()=>{});
       } catch {}
@@ -594,6 +597,21 @@ export function showBanner(text, durationMs = 1800) {
   }, durationMs);
 }
 
+// Persistent banner helpers (stay until explicitly hidden)
+export function showPersistentBanner(text) {
+  if (!bannerEl) return;
+  bannerEl.textContent = text;
+  bannerEl.classList.add('show');
+  window.clearTimeout(showBanner._t);
+  showBanner._t = null;
+}
+export function hideBanner() {
+  if (!bannerEl) return;
+  bannerEl.classList.remove('show');
+  window.clearTimeout(showBanner._t);
+  showBanner._t = null;
+}
+
 // Lower-right identifier for last combat interaction
 export function showTargetInfo(text, durationMs = 1600) {
   if (!targetInfoEl) return;
@@ -819,12 +837,8 @@ export function updateQuestHint() {
   try {
     const f = runtime.questFlags || {};
     const c = runtime.questCounters || {};
-    // Tutorial: prompt to open inventory and equip a torch
-    if (f['tutorial_inv_equip_torch']) {
-      msg = 'Press I to open Inventory and equip a torch';
-    }
     // Fetch/Deliver — Canopy: Return the Ribbon
-    else if (f['canopy_fetch_ribbon_started'] && !f['canopy_fetch_ribbon_cleared']) {
+    if (f['canopy_fetch_ribbon_started'] && !f['canopy_fetch_ribbon_cleared']) {
       const items = (player?.inventory?.items || []);
       const hasRibbon = items.some(it => it && (it.id === 'relic_canopy' || it.keyId === 'relic_canopy'));
       msg = hasRibbon ? 'Quest — Return the Ribbon: Take it to the pedestal' : 'Quest — Return the Ribbon: Find the Ribbon';

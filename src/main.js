@@ -10,7 +10,7 @@ import { step } from './systems/step.js';
 import { setNpcDialog, startPrompt, startSaveMenu } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap } from './engine/ui.js';
+import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap, showPersistentBanner, hideBanner } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save_core.js';
 import { loadGame, getSaveMeta } from './engine/save.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
@@ -40,8 +40,8 @@ function startIntroScene() {
         { actor: null, text: 'The grove around you is torn—scuffed earth, snapped reeds, a smear of blood. You look down: your clothes aren\'t yours. Native garb. Sturdy boots. A knife scar on the belt.' },
         { actor: canopyIntroActor, text: 'Off in the distance, a blonde girl struggles against a soldier.', pan: true },
       ];
-      // Show a persistent hint to open inventory and equip a torch until the player opens it
-      try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tutorial_inv_equip_torch'] = true; } catch {}
+      // Show a persistent top banner hint to open inventory and equip a torch until the player opens it
+      try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tutorial_inv_equip_torch'] = true; showPersistentBanner('Press I to open Inventory and equip a torch'); } catch {}
       if (!Array.isArray(runtime._queuedVNs)) runtime._queuedVNs = [];
       for (let i = 1; i < lines.length; i++) runtime._queuedVNs.push(lines[i]);
       const more = runtime._queuedVNs.length > 0;

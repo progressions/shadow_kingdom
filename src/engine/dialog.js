@@ -1,5 +1,5 @@
 import { runtime, npcs, companions, spawnCompanion, removeCompanion, spawnNpc, obstacles, world, player } from './state.js';
-import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner, showMusicTheme } from './ui.js';
+import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner, showMusicTheme, hideBanner } from './ui.js';
 import { companionDialogs } from '../data/companion_dialogs.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 import { saveGame, loadGame, clearSave, getSaveMeta } from './save.js';
@@ -788,7 +788,10 @@ function handleStartQuest(data) {
 
 // Inventory menus
 export function startInventoryMenu() {
-  try { if (runtime?.questFlags) runtime.questFlags['tutorial_inv_equip_torch'] = false; } catch {}
+  try {
+    if (runtime?.questFlags) runtime.questFlags['tutorial_inv_equip_torch'] = false;
+    hideBanner();
+  } catch {}
   // Choose actor: Player or companions
   const choices = [
     { label: 'Player', action: 'open_inventory', data: 'player' },
