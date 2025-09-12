@@ -341,7 +341,7 @@ export function loadLevel1() {
   const boss1y = cyw + ch/2 - 8;
   spawnEnemy(boss1x, boss1y, 'boss', {
     name: 'Vast', vnId: 'enemy:vast', portrait: 'assets/portraits/level01/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
-    hp: 35, dmg: 7, speed: 10, hitCooldown: 0.75,  // Level 1 boss buff (reduced dmg)
+    hp: 35, dmg: 5, speed: 10, hitCooldown: 0.75,  // Level 1 boss buff (reduced dmg again)
     ap: 1, // light armor piercing
   });
   // Boss arena adds: 3 mooks + 1 featured foe around the boss
