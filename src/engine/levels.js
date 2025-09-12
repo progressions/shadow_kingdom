@@ -106,7 +106,7 @@ export function loadLevel1() {
     const snakeSheet = makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
     const sx = Math.max(0, Math.min(world.w - 12, player.x + 140));
     const sy = Math.max(0, Math.min(world.h - 16, player.y + 60));
-    const snake = spawnNpc(sx, sy, 'left', { name: 'Snake', dialogId: 'snake', sheet: snakeSheet, sheetPalette: snakePalette, vnOnSight: { text: 'Snake: My Lord… sssafe. I follow if you wish.' } });
+    const snake = spawnNpc(sx, sy, 'left', { name: 'Snake', dialogId: 'snake', sheet: snakeSheet, vnOnSight: { text: 'Snake: My Lord… sssafe. I follow if you wish.' } });
     setNpcDialog(snake, snakeDialog);
   } catch {}
 
