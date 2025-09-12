@@ -31,16 +31,26 @@ export function willAttackHitEnemy() {
   for (const e of enemies) {
     if (e.hp <= 0) continue;
     if (rectsIntersect(hb, e)) {
-      const px = player.x + player.w/2, py = player.y + player.h/2;
       const ex = e.x + e.w/2, ey = e.y + e.h/2;
-      let blocked = false;
-      for (const o of obstacles) {
-        if (o && o.blocksAttacks) {
-          if (o.type === 'gate' && o.locked === false) continue;
-          if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; }
+      const samples = [
+        [player.x + player.w/2, player.y + player.h/2],
+        [player.x, player.y],
+        [player.x + player.w, player.y],
+        [player.x, player.y + player.h],
+        [player.x + player.w, player.y + player.h],
+      ];
+      let losClear = false;
+      for (const [sx, sy] of samples) {
+        let rayBlocked = false;
+        for (const o of obstacles) {
+          if (o && o.blocksAttacks) {
+            if (o.type === 'gate' && o.locked === false) continue;
+            if (segmentIntersectsRect(sx, sy, ex, ey, o)) { rayBlocked = true; break; }
+          }
         }
+        if (!rayBlocked) { losClear = true; break; }
       }
-      if (!blocked) return true;
+      if (losClear) return true;
     }
   }
   return false;
@@ -85,16 +95,26 @@ export function handleAttacks(dt) {
     for (const e of enemies) {
       if (e.hp <= 0) continue;
       if (rectsIntersect(hb, e)) {
-        const px = player.x + player.w/2, py = player.y + player.h/2;
         const ex = e.x + e.w/2, ey = e.y + e.h/2;
-        let blocked = false;
-        for (const o of obstacles) {
-          if (o && o.blocksAttacks) {
-            if (o.type === 'gate' && o.locked === false) continue;
-            if (segmentIntersectsRect(px, py, ex, ey, o)) { blocked = true; break; }
+        const samples = [
+          [player.x + player.w/2, player.y + player.h/2],
+          [player.x, player.y],
+          [player.x + player.w, player.y],
+          [player.x, player.y + player.h],
+          [player.x + player.w, player.y + player.h],
+        ];
+        let losClear = false;
+        for (const [sx, sy] of samples) {
+          let rayBlocked = false;
+          for (const o of obstacles) {
+            if (o && o.blocksAttacks) {
+              if (o.type === 'gate' && o.locked === false) continue;
+              if (segmentIntersectsRect(sx, sy, ex, ey, o)) { rayBlocked = true; break; }
+            }
           }
+          if (!rayBlocked) { losClear = true; break; }
         }
-        if (blocked) continue;
+        if (!losClear) continue;
         const mods = getEquipStats(player);
         const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
         const dmg = Math.max(1, (player.damage || 1) + add);
