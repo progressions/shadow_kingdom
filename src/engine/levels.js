@@ -5,7 +5,7 @@ import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.j
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_WALLS, LEVEL5_TEMPLE_FEATURES, findSafeSpawn } from '../data/level5_temple_layout.js';
 import { makeSpriteSheet, sheetForName, makeSnakeSpriteSheet } from './sprites.js';
 import { setMusicLocation } from './audio.js';
-import { spawnEnemy, spawnNpc } from './state.js';
+import { spawnEnemy, spawnNpc, addItemToInventory } from './state.js';
 import { TILE } from './constants.js';
 import { setNpcDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
@@ -24,6 +24,18 @@ export function loadLevel1() {
   // Terrain and procedural obstacles
   const terrain = buildTerrainBitmap(world);
   obstacles.push(...buildObstacles(world, player, enemies, npcs));
+  // Initialize lighting: bright daytime by default (ambient 0). Authors can lower for night scenes.
+  try { import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{}); } catch {}
+  // TEMP: Darkness test — set Level 1 to dark and equip a torch
+  (function tempDarkTest() {
+    try {
+      // Force ambient to 0 (dark)
+      import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{});
+      // Give the player a small torch stack and auto-equip a lit torch
+      addItemToInventory(player.inventory, { id: 'torch', name: 'Torch', slot: 'leftHand', stackable: true, maxQty: 99, qty: 3 });
+      player.inventory.equipped.leftHand = { id: 'torch', name: 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
+    } catch {}
+  })();
 
   // Place some chests and breakables similar to start
   obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_sword', fixedItemId: 'sword_fine', opened: false, locked: false });

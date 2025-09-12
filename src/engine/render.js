@@ -1,6 +1,7 @@
 import { ctx } from './ui.js';
 import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext, spawners } from './state.js';
-import { DIRECTIONS, SPRITE_SIZE } from './constants.js';
+import { DIRECTIONS, SPRITE_SIZE, TILE } from './constants.js';
+import { MAX_LIGHT_LEVEL } from './lighting.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
 import { getSprite } from './sprite_loader.js';
@@ -309,6 +310,33 @@ export function render(terrainBitmap, obstacles) {
     }
     // Boss marker removed; keep glow only
   }
+
+  // Lighting overlay: coarse, tile-based darkness over world only (not UI)
+  try {
+    const L = runtime.lighting || null;
+    if (L && L.grid && typeof L._w === 'number' && typeof L._h === 'number') {
+      const gx = Math.max(0, Math.floor(camera.x / TILE));
+      const gy = Math.max(0, Math.floor(camera.y / TILE));
+      const gw = Math.min(L._w, Math.ceil((camera.x + camera.w) / TILE)) - gx;
+      const gh = Math.min(L._h, Math.ceil((camera.y + camera.h) / TILE)) - gy;
+      // Draw per-tile dark quads with alpha based on inverse light level
+      for (let ty = 0; ty < gh; ty++) {
+        for (let tx = 0; tx < gw; tx++) {
+          const lv = L.grid[(gy + ty) * L._w + (gx + tx)] | 0;
+          const darkness = Math.max(0, Math.min(1, 1 - (lv / (MAX_LIGHT_LEVEL || 1))))
+          // Slight cap so brightest tiles still have a tiny film; tune as desired
+          const alpha = Math.min(0.85, darkness * 0.85);
+          if (alpha <= 0.01) continue;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = '#000000';
+          const px = gx * TILE + tx * TILE - camera.x;
+          const py = gy * TILE + ty * TILE - camera.y;
+          ctx.fillRect(Math.round(px), Math.round(py), TILE, TILE);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  } catch {}
 
   // End world shake translate before UI overlay
   ctx.restore();

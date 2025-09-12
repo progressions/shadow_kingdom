@@ -512,6 +512,15 @@ export const runtime = {
   // Feature toggles
   snakeMode: false,
 
+  // Lighting (coarse, tile-based)
+  lighting: {
+    ambientLevel: 0, // 0..MAX_LIGHT_LEVEL
+    grid: null, // Uint8Array of tileW*tileH storing 0..MAX_LIGHT_LEVEL
+    _w: 0,
+    _h: 0,
+    nodes: [], // invisible light nodes: { x, y, level?, radius?, enabled? }
+  },
+
 };
 
 // ---- Leveling helpers ----

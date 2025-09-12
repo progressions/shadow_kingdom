@@ -1,4 +1,5 @@
 import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy, addItemToInventory, autoEquipIfBetter, normalizeInventory } from '../engine/state.js';
+import { rebuildLighting } from '../engine/lighting.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
@@ -186,6 +187,9 @@ export function step(dt) {
       }
     }
   } catch {}
+
+  // Rebuild lighting grid (coarse, tile-based). Throttle lightly (~60ms) to reduce cost.
+  try { rebuildLighting(60); } catch {}
 
   // --- Spawner tick ---
   try {

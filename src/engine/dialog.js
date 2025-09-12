@@ -111,6 +111,10 @@ export function startDebugMenu() {
     { label: 'Test: Opened Chest Persistence', action: 'debug_run_chest' },
     { label: 'Test: VN Intro Cooldown', action: 'debug_run_vn' },
     { label: 'Test: Enemy Intro After Load (vnId)', action: 'debug_run_enemy_intro' },
+    { label: 'Lighting: Ambient 0 (Dark)', action: 'light_ambient', data: 0 },
+    { label: 'Lighting: Ambient 4 (Dim)', action: 'light_ambient', data: 4 },
+    { label: 'Lighting: Ambient 8 (Bright)', action: 'light_ambient', data: 8 },
+    { label: 'Give Torches x3', action: 'debug_give_torches' },
     { label: `God Mode: ${runtime.godMode ? 'On' : 'Off'}`, action: 'toggle_godmode' },
     { label: `Snake Mode: ${runtime.snakeMode ? 'On' : 'Off'}`, action: 'toggle_snake_mode' },
     { label: 'Back', action: 'end' },
@@ -297,6 +301,22 @@ export function selectChoice(index) {
   if (choice.action === 'confirm_clear_slot') { clearSave(choice.data || 1); endDialog(); exitChat(runtime); return; }
   if (choice.action === 'save_menu_back') { buildAndShowSaveMenu(); return; }
   if (choice.action === 'open_debug') { startDebugMenu(); return; }
+  if (choice.action === 'light_ambient') {
+    const val = Math.max(0, Math.min(8, Number(choice.data || 0)));
+    import('./lighting.js').then(m => { try { m.setAmbientLevel(val); showBanner(`Ambient set to ${val}`); } catch {} startDebugMenu(); }).catch(() => startDebugMenu());
+    return;
+  }
+  if (choice.action === 'debug_give_torches') {
+    (async () => {
+      try {
+        const S = await import('./state.js');
+        S.addItemToInventory(player.inventory, { id: 'torch', name: 'Torch', slot: 'leftHand', stackable: true, maxQty: 99, qty: 3 });
+        showBanner('Added 3 Torches');
+      } catch {}
+      startDebugMenu();
+    })();
+    return;
+  }
   if (choice.action === 'toggle_godmode') { runtime.godMode = !runtime.godMode; showBanner(`God Mode ${runtime.godMode ? 'Enabled' : 'Disabled'}`); startDebugMenu(); return; }
   if (choice.action === 'toggle_snake_mode') {
     runtime.snakeMode = !runtime.snakeMode;
