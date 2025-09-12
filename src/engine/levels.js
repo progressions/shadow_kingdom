@@ -102,7 +102,7 @@ export function loadLevel1() {
     const gorgY = Math.round(cyw - TILE * 4);  // above top wall, safely outside
     spawnEnemy(gorgX, gorgY, 'featured', {
       name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/level01/Gorg/Gorg.mp4', sheet: gorgSheet, sheetPalette: gorgPalette,
-      hp: 20, dmg: 6, hitCooldown: 0.65,
+      hp: 40, dmg: 6, hitCooldown: 0.65,
     });
     // Two normal featured foes flanking Gorg
     spawnEnemy(gorgX - 28, gorgY - 12, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
@@ -522,7 +522,7 @@ export function loadLevel2() {
       vnOnSight: { text: introTexts.aarg },
       guaranteedDropId: 'key_nethra',
       // Level 2 key guardian: buffed stats
-      hp: 26,
+      hp: 52,
       dmg: 7,
       hitCooldown: 0.6,
     }
@@ -601,7 +601,7 @@ export function loadLevel3() {
     name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', 
     vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', 
     sheet: wightSheet, sheetPalette: wightPalette, 
-    hp: 32, dmg: 8, hitCooldown: 0.55,  // Level 3 key guardian buff (tougher featured foe)
+    hp: 64, dmg: 8, hitCooldown: 0.55,  // Level 3 key guardian buff (tougher featured foe)
   });
   // Two normal featured foes near Wight
   spawnEnemy(wx - 36, wy + 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
@@ -757,7 +757,7 @@ export function loadLevel4() {
     portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
     vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
     guaranteedDropId: 'key_sigil', 
-    hp: 38, dmg: 9, hitCooldown: 0.5,  // Level 4 key guardian buff (tougher featured foe)
+    hp: 76, dmg: 9, hitCooldown: 0.5,  // Level 4 key guardian buff (tougher featured foe)
     sheetPalette: blurbPalette,
   });
   // Two normal featured foes near Blurb
@@ -936,7 +936,7 @@ export function loadLevel5() {
     portraitDefeated: 'assets/portraits/level05/Fana/Fana.mp4',  // Shows normal Fana when defeated
     vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: I must... protect the temple... Vorthak commands...', lock: true, preDelaySec: 0.8 },
     guaranteedDropId: 'key_temple',  // Boss gate key
-    hp: 46, dmg: 11, hitCooldown: 0.45,  // Level 5 key guardian buff (tougher featured foe)
+    hp: 92, dmg: 11, hitCooldown: 0.45,  // Level 5 key guardian buff (tougher featured foe)
   });
   // Two normal featured foes near Fana
   spawnEnemy(kgx - TILE * 2, kgy + TILE * 1, 'featured', { name: 'Temple Sentinel', hp: 22, dmg: 9 });
