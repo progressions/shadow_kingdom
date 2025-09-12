@@ -494,6 +494,9 @@ export function render(terrainBitmap, obstacles) {
 
   // Quest target markers
   drawQuestMarkers();
+
+  // Tutorial markers (e.g., Level 1 sword chest)
+  drawTutorialMarkers(obstacles);
   
   // Update coordinate display in HTML
   const coordsEl = document.getElementById('coords');
@@ -673,6 +676,49 @@ function drawQuestMarkers() {
     }
     ctx.restore();
   }
+}
+
+function drawTutorialMarkers(obstacles) {
+  try {
+    if (!runtime || !runtime.questFlags) return;
+    if (!runtime.questFlags['tutorial_find_sword']) return;
+    if ((runtime.currentLevel || 1) !== 1) return;
+    // Find the Fine Sword chest in Level 1
+    const chest = obstacles && obstacles.find && obstacles.find(o => o && o.type === 'chest' && o.id === 'chest_l1_sword' && !o.opened);
+    if (!chest) return;
+    const tx = chest.x + chest.w / 2 - camera.x;
+    const ty = chest.y + chest.h / 2 - camera.y;
+    const margin = 12;
+    const inView = tx >= 0 && tx <= camera.w && ty >= 0 && ty <= camera.h;
+    ctx.save();
+    ctx.fillStyle = '#ffd166';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    if (inView) {
+      const px = Math.round(tx);
+      const py = Math.round(ty - 12);
+      ctx.beginPath();
+      ctx.moveTo(px, py - 4);
+      ctx.lineTo(px + 4, py);
+      ctx.lineTo(px, py + 4);
+      ctx.lineTo(px - 4, py);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else {
+      const cx = Math.max(margin, Math.min(camera.w - margin, tx));
+      const cy = Math.max(margin, Math.min(camera.h - margin, ty));
+      const ang = Math.atan2(ty - cy, tx - cx);
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-10, 6);
+      ctx.lineTo(-10, -6);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  } catch {}
 }
 
 function drawItemIcon(x, y, item) {

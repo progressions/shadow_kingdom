@@ -1138,6 +1138,14 @@ function doEquip(actorTag, slot, index, itemId) {
     // Create equipped torch instance with burn timer (ms)
     const equippedTorch = { id: 'torch', name: stack.name || 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
     eq[slot] = equippedTorch;
+    // Tutorial: after equipping a torch, prompt to find a weapon and mark the sword chest
+    try {
+      if (!runtime.questFlags) runtime.questFlags = {};
+      if (!runtime.questFlags['tutorial_find_sword_done'] && !runtime.questFlags['tutorial_find_sword']) {
+        runtime.questFlags['tutorial_find_sword'] = true;
+        showBanner("You've got to find a weapon! Check a nearby chest");
+      }
+    } catch {}
   } else {
     // Normal equip flow: equip selected and remove from items
     eq[slot] = it;

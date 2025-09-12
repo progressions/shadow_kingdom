@@ -351,6 +351,11 @@ export function tryInteract() {
           // Remove chest immediately after opening
           const idx = obstacles.indexOf(o);
           if (idx !== -1) obstacles.splice(idx, 1);
+          // Tutorial: mark sword chest objective done
+          try {
+            if (!runtime.questFlags) runtime.questFlags = {};
+            if (o.id === 'chest_l1_sword') runtime.questFlags['tutorial_find_sword_done'] = true;
+          } catch {}
         } else {
           // No loot: remove the chest from the world immediately
           const idx = obstacles.indexOf(o);
