@@ -1088,11 +1088,36 @@ function doEquip(actorTag, slot, index, itemId) {
   }
   if (!it || it.slot !== slot) return;
   const eq = actor.inventory.equipped;
-  // swap: move currently equipped back to items
-  if (eq[slot]) items.push(eq[slot]);
-  // equip selected and remove from items
-  eq[slot] = it;
-  items.splice(idx, 1);
+  // Special-case: Torch behavior (stackable) — equipping consumes 1 from stack and creates a single-use equipped torch
+  const isTorch = (it && it.id === 'torch' && it.stackable && slot === 'leftHand');
+  // Swap: if something already equipped in this slot
+  if (eq[slot]) {
+    const cur = eq[slot];
+    // If currently equipped is a torch, unequipping it consumes it (do not return to backpack)
+    if (slot === 'leftHand' && cur && cur.id === 'torch') {
+      // drop without adding back
+      eq[slot] = null;
+    } else {
+      items.push(cur);
+      eq[slot] = null;
+    }
+  }
+  if (isTorch) {
+    // Consume 1 from the stack in backpack and equip a fresh single-use torch instance
+    const stack = items[idx];
+    if (!stack || stack.id !== 'torch') return;
+    const qty = Math.max(0, stack.qty || 0);
+    if (qty <= 0) return;
+    stack.qty = qty - 1;
+    if (stack.qty <= 0) items.splice(idx, 1);
+    // Create equipped torch instance with burn timer (ms)
+    const equippedTorch = { id: 'torch', name: stack.name || 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
+    eq[slot] = equippedTorch;
+  } else {
+    // Normal equip flow: equip selected and remove from items
+    eq[slot] = it;
+    items.splice(idx, 1);
+  }
   // Refresh equipment panel
   updatePartyUI(companions);
 }
@@ -1102,7 +1127,13 @@ function doUnequip(actorTag, slot) {
   if (!actor || !actor.inventory) return;
   const eq = actor.inventory.equipped;
   if (!eq[slot]) return;
-  actor.inventory.items.push(eq[slot]);
-  eq[slot] = null;
+  // Torch rule: unequipping a lit torch consumes it (do not return to backpack)
+  if (slot === 'leftHand' && eq[slot] && eq[slot].id === 'torch') {
+    try { showBanner('Torch consumed'); } catch {}
+    eq[slot] = null;
+  } else {
+    actor.inventory.items.push(eq[slot]);
+    eq[slot] = null;
+  }
   updatePartyUI(companions);
 }

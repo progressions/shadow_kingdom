@@ -171,6 +171,22 @@ export function step(dt) {
     normalizeInventory(player.inventory);
   } catch {}
 
+  // Torch burnout: if a torch is equipped in left hand, tick down and consume on expiry
+  try {
+    const eq = player?.inventory?.equipped || {};
+    const LH = eq.leftHand || null;
+    if (LH && LH.id === 'torch') {
+      // Initialize timer if missing
+      if (typeof LH.burnMsRemaining !== 'number' || !(LH.burnMsRemaining >= 0)) LH.burnMsRemaining = 180000; // 180s default
+      LH.burnMsRemaining = Math.max(0, LH.burnMsRemaining - dt * 1000);
+      if (LH.burnMsRemaining <= 0) {
+        // Torch burned out — consume (remove from slot)
+        eq.leftHand = null;
+        try { showBanner('Torch burned out'); } catch {}
+      }
+    }
+  } catch {}
+
   // --- Spawner tick ---
   try {
     if (Array.isArray(spawners) && spawners.length) {
