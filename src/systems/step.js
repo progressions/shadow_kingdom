@@ -1189,20 +1189,20 @@ export function step(dt) {
           try {
             if (!picked) {
               // no-op
-            } else if (picked.slot === 'head' || picked.slot === 'torso' || picked.slot === 'legs') {
-              autoEquipIfBetter(player, picked.slot);
-            } else if (!picked.stackable && picked.slot === 'rightHand') {
-              // Weapons: auto-equip if the slot is empty OR the new weapon is strictly better
-              autoEquipIfBetter(player, 'rightHand');
-            } else if (!picked.stackable && picked.slot === 'leftHand') {
-              // Left-hand: auto-equip if slot empty, or if both current and new have stats and new is strictly better.
-              const eqNow = player?.inventory?.equipped || {};
-              const cur = eqNow.leftHand || null;
-              const hasStats = (it) => !!it && (((typeof it.dr === 'number') && it.dr > 0) || ((typeof it.atk === 'number') && it.atk > 0));
-              if (!cur) {
-                autoEquipIfBetter(player, 'leftHand');
-              } else if (hasStats(cur) && hasStats(picked)) {
-                autoEquipIfBetter(player, 'leftHand');
+            } else if (!picked.stackable) {
+              const slot = picked.slot;
+              const valid = slot === 'head' || slot === 'torso' || slot === 'legs' || slot === 'leftHand' || slot === 'rightHand';
+              if (valid) {
+                const eqNow = player?.inventory?.equipped || {};
+                const cur = eqNow[slot] || null;
+                const hasStats = (it) => !!it && (((typeof it.dr === 'number') && it.dr > 0) || ((typeof it.atk === 'number') && it.atk > 0));
+                if (!cur) {
+                  // Empty slot: equip it
+                  autoEquipIfBetter(player, slot);
+                } else if (hasStats(cur) && hasStats(picked)) {
+                  // Both have meaningful stats: upgrade if strictly better for the slot
+                  autoEquipIfBetter(player, slot);
+                }
               }
             }
           } catch {}
