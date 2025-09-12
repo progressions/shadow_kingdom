@@ -11,6 +11,14 @@ export function initInput() {
     initAudioUnlock();
     const gameplayKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "];
     if (gameplayKeys.includes(e.key)) e.preventDefault();
+    // If awaiting game-over key, any key shows the Game Over menu
+    if (runtime._awaitGameOverKey) {
+      e.preventDefault();
+      runtime._awaitGameOverKey = false;
+      // Show the Game Over menu
+      import('./dialog.js').then(d => d.startGameOver && d.startGameOver());
+      return;
+    }
     // No special freeze handling — VN intros removed
     if (runtime.gameState === 'chat') {
       if (e.key === 'Escape') {

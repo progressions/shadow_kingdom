@@ -58,6 +58,22 @@ export function render(terrainBitmap, obstacles) {
   } catch {}
   ctx.save();
   if (allowShake) ctx.translate(shakeX, shakeY);
+  // Apply death zoom (zoom out a bit around screen center)
+  try {
+    if (typeof runtime._deathZoom === 'number' || typeof runtime._deathZoomTarget === 'number') {
+      const zt = (typeof runtime._deathZoomTarget === 'number') ? runtime._deathZoomTarget : 1.0;
+      const cur = (typeof runtime._deathZoom === 'number') ? runtime._deathZoom : 1.0;
+      const nz = cur + (zt - cur) * 0.08; // ease toward
+      runtime._deathZoom = nz;
+      if (Math.abs(nz - zt) < 0.001) runtime._deathZoom = zt;
+      const z = Math.max(0.6, Math.min(1.0, nz));
+      if (z !== 1.0) {
+        ctx.translate(camera.w/2, camera.h/2);
+        ctx.scale(z, z);
+        ctx.translate(-camera.w/2, -camera.h/2);
+      }
+    }
+  } catch {}
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
@@ -173,6 +189,7 @@ export function render(terrainBitmap, obstacles) {
   drawables.sort((a, b) => (a.y + a.h) - (b.y + b.h));
 
   for (const d of drawables) {
+    if (d.isPlayer && runtime._hidePlayer) continue;
     const scale = d.spriteScale || 1;
     let drew = false;
     // Custom sprite path via spriteId (supports 32x32 and meta frames)

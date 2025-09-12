@@ -1108,9 +1108,22 @@ export function step(dt) {
     }
   }
 
-  // Death check → Game Over
+  // Death check → Dramatic Game Over sequence
   if (!runtime.gameOver && player.hp <= 0) {
-    startGameOver();
+    try {
+      // Pause simulation and VN, hide player sprite, and apply zoom-out target
+      runtime.paused = true; runtime.disableVN = true;
+      runtime._hidePlayer = true;
+      runtime._deathZoomTarget = 0.9; // zoom out a bit
+      // Spawn player corpse and blood one time
+      if (!runtime._didDeathEffects) {
+        runtime._didDeathEffects = true;
+        try { import('../engine/state.js').then(s => { s.spawnCorpse(player.x, player.y, { kind: 'player', dir: player.dir || 'down' }); s.spawnStain(player.x + player.w/2, player.y + player.h/2, { life: 3.5 }); }); } catch {}
+        try { import('../engine/ui.js').then(u => u.showBanner && u.showBanner('Your journey has ended...')); } catch {}
+      }
+      // Wait for any key press to show the Game Over menu
+      runtime._awaitGameOverKey = true;
+    } catch {}
   }
 
   // Camera follow
