@@ -175,6 +175,13 @@ export function selectChoice(index) {
         const id = String(npc.dialogId || '').toLowerCase();
         if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
         playSfx('partyJoin');
+        // Tutorial: clear healer banner when Canopy is recruited
+        if (!runtime.questFlags) runtime.questFlags = {};
+        if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
+          runtime.questFlags['tutorial_save_canopy_done'] = true;
+          runtime.questFlags['tutorial_save_canopy'] = false;
+          hideBanner();
+        }
       } catch {}
     }
     endDialog();
@@ -209,7 +216,16 @@ export function selectChoice(index) {
     const ni = npcs.indexOf(npc); if (ni !== -1) npcs.splice(ni, 1);
     updatePartyUI(companions);
     showBanner(`${npc.name || 'Companion'} joined your party!`);
-    try { playSfx('partyJoin'); } catch {}
+    try {
+      playSfx('partyJoin');
+      if (!runtime.questFlags) runtime.questFlags = {};
+      const nm2 = String(npc.name || '').toLowerCase();
+      if (nm2.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
+        runtime.questFlags['tutorial_save_canopy_done'] = true;
+        runtime.questFlags['tutorial_save_canopy'] = false;
+        hideBanner();
+      }
+    } catch {}
     endDialog();
     exitChat(runtime);
     return;

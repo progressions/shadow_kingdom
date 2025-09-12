@@ -1,6 +1,6 @@
 import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround, grantPartyXp } from '../engine/state.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
-import { showBanner, showTargetInfo } from '../engine/ui.js';
+import { showBanner, showTargetInfo, showPersistentBanner, hideBanner } from '../engine/ui.js';
 import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
@@ -361,7 +361,17 @@ export function tryInteract() {
             if (!runtime.questFlags) runtime.questFlags = {};
             if (o.id === 'chest_l1_sword') {
               runtime.questFlags['tutorial_find_sword_done'] = true;
-              import('../engine/ui.js').then(u => u.hideBanner && u.hideBanner());
+              // Clear prior tutorial banner (torch hint)
+              hideBanner();
+              // Start healer tutorial: prompt to save Canopy
+              const alreadyHasCanopy = companions.some(c => (c.name || '').toLowerCase().includes('canopy'));
+              if (!alreadyHasCanopy) {
+                runtime.questFlags['tutorial_save_canopy'] = true;
+                showPersistentBanner('You need a healer! Save Canopy from the bandits!');
+              } else {
+                // If already recruited, immediately mark as done
+                runtime.questFlags['tutorial_save_canopy_done'] = true;
+              }
             }
           } catch {}
         } else {
