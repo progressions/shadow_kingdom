@@ -3,7 +3,7 @@ import { buildObstacles, buildTerrainBitmap, tileType } from './terrain.js';
 import { LEVEL4_CITY_WALL_RECTS, LEVEL4_SIZE } from '../data/level4_city_walls.js';
 import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.js';
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_WALLS, LEVEL5_TEMPLE_FEATURES, findSafeSpawn } from '../data/level5_temple_layout.js';
-import { makeSpriteSheet, sheetForName } from './sprites.js';
+import { makeSpriteSheet, sheetForName, makeSnakeSpriteSheet } from './sprites.js';
 import { setMusicLocation } from './audio.js';
 import { spawnEnemy, spawnNpc } from './state.js';
 import { TILE } from './constants.js';
@@ -103,8 +103,7 @@ export function loadLevel1() {
 
   // Snake companion (Level 1): small slow aura + small bite (ATK)
   try {
-    const snakePalette = { hair: '#3a5a3a', longHair: false, dress: false, shirt: '#6fbf6f', pants: '#2a3a2a', outline: '#000000' };
-    const snakeSheet = makeSpriteSheet(snakePalette);
+    const snakeSheet = makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
     const sx = Math.max(0, Math.min(world.w - 12, player.x + 140));
     const sy = Math.max(0, Math.min(world.h - 16, player.y + 60));
     const snake = spawnNpc(sx, sy, 'left', { name: 'Snake', dialogId: 'snake', sheet: snakeSheet, sheetPalette: snakePalette, vnOnSight: { text: 'Snake: My Lord… sssafe. I follow if you wish.' } });

@@ -162,6 +162,73 @@ export const companionSheets = [
   makeSpriteSheet({ shirt: '#ffd07f', hair: '#d14a24', longHair: true, dress: true, dressColor: '#ffbf5e', feminineShape: true }),
 ];
 
+// Simple 16x16 snake sprite sheet (2 frames × 4 directions)
+export function makeSnakeSpriteSheet(color = '#3aa35a', outline = '#000000') {
+  const cols = FRAMES_PER_DIR;
+  const rows = DIRECTIONS.length;
+  const w = cols * SPRITE_SIZE;
+  const h = rows * SPRITE_SIZE;
+  let off, g;
+  try { if (typeof OffscreenCanvas !== 'undefined') { off = new OffscreenCanvas(w, h); g = off.getContext('2d'); } } catch {}
+  if (!g) { off = document.createElement('canvas'); off.width = w; off.height = h; g = off.getContext('2d'); }
+  g.imageSmoothingEnabled = false;
+
+  function drawSnake(x, y, frame, dir) {
+    g.clearRect(x, y, SPRITE_SIZE, SPRITE_SIZE);
+    const ox = x; const oy = y;
+    // Helper to plot a dot (2x2 for visibility)
+    function dot(px, py, c) { g.fillStyle = c; g.fillRect(ox + px, oy + py, 2, 2); }
+    // Body parameters
+    const segs = 6;
+    const base = [
+      { x: 2, y: 12 }, { x: 4, y: 11 }, { x: 6, y: 10 }, { x: 8, y: 9 }, { x: 10, y: 8 }, { x: 12, y: 7 },
+    ];
+    // Directional transform
+    function tx(p) {
+      const f = (frame % 2) === 0 ? 0 : 1; // subtle wiggle
+      let u = { x: p.x, y: p.y };
+      // Apply direction rotation (approximate for 4 dirs)
+      if (dir === 'up') { u = { x: 14 - p.x, y: 14 - p.y }; }
+      else if (dir === 'left') { u = { x: p.y, y: 14 - p.x }; }
+      else if (dir === 'right') { u = { x: 14 - p.y, y: p.x }; }
+      // Wiggle offset
+      const wob = ((u.x + u.y) % 3) === 0 ? f : 0;
+      return { x: Math.max(0, Math.min(14, u.x + wob)), y: Math.max(0, Math.min(14, u.y)) };
+    }
+    // Draw shadow outline first
+    g.fillStyle = outline;
+    for (let i = 0; i < segs; i++) {
+      const p = tx(base[i]);
+      g.fillRect(ox + p.x, oy + p.y, 2, 2);
+    }
+    // Draw body
+    for (let i = 0; i < segs; i++) {
+      const p = tx(base[i]);
+      dot(p.x, p.y, color);
+    }
+    // Head (slightly larger) + eye
+    const head = tx(base[segs - 1]);
+    g.fillStyle = color; g.fillRect(ox + head.x - 1, oy + head.y - 1, 4, 4);
+    // Eye on facing side
+    g.fillStyle = outline;
+    if (dir === 'down') g.fillRect(ox + head.x + 1, oy + head.y, 1, 1);
+    else if (dir === 'up') g.fillRect(ox + head.x - 1, oy + head.y, 1, 1);
+    else if (dir === 'left') g.fillRect(ox + head.x, oy + head.y + 1, 1, 1);
+    else g.fillRect(ox + head.x + 2, oy + head.y + 1, 1, 1);
+  }
+
+  for (let r = 0; r < rows; r++) {
+    const dir = DIRECTIONS[r];
+    for (let c = 0; c < cols; c++) {
+      const x = c * SPRITE_SIZE;
+      const y = r * SPRITE_SIZE;
+      drawSnake(x, y, c, dir);
+    }
+  }
+  if (typeof off.transferToImageBitmap === 'function') { try { return off.transferToImageBitmap(); } catch {} }
+  return off;
+}
+
 // Return a themed sheet for known character names
 export function sheetForName(name) {
   const key = (name || '').toLowerCase();
