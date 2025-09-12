@@ -83,6 +83,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 
 **Auras:**
 - Attack Range: +1 pixel
+- Keen Timing: small crit chance (+5%)
 
 **Triggers:**
 - **Rally**: When HP < 60%, heals 2 HP and grants +1 ATK for 3 seconds (8s cooldown)
@@ -100,6 +101,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 **Auras:**
 - Enemy Slow: 15% in 42px radius around player
 - Damage Reduction: +1 DR
+- Keen Edge: small crit chance (+5%)
 
 **Triggers:**
 - **Dust Veil**: When 2+ enemies are within 60px, applies 40% slow to all nearby enemies for 0.8 seconds (6s cooldown)
@@ -157,7 +159,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 - Regeneration: +0.1 HP/sec
 
 **Triggers:**
-- **Cheer**: Burst heal 3 HP in 80px radius when player HP < 50% (12s cooldown)
+- **Cheer**: Burst heal 3 HP in 80px radius when player HP < 50% and briefly speeds up your attacks (noticeable aspd boost for ~3.5s; 12s cooldown)
 
 **Quest Line:** Securing safe paths through the ruins
 
@@ -171,6 +173,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 
 **Auras:**
 - Attack Range: +1 pixel
+- Sharp Eye: small crit chance (+5%)
 
 **Triggers:**
 - **Call the Angle**: When enemies within 140px, grants +1 ATK and +2 range for 3s (9s cooldown)
@@ -225,6 +228,7 @@ To maintain game balance, companion buffs have maximum stack limits:
 - **Touch DR**: +1 max
 - **Slow**: 25% max
 - **Attack Speed**: +50% max
+- **Crit Chance (from auras)**: +15% max
 
 ---
 

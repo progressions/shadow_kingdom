@@ -31,6 +31,8 @@ export const companionEffectsByKey = {
   oyin: {
     auras: [
       { type: 'range', value: 1 },
+      // Keen timing: small crit chance aura for the player
+      { type: 'crit', value: 0.05 },
     ],
     // rally trigger handled in code
   },
@@ -38,6 +40,8 @@ export const companionEffectsByKey = {
     auras: [
       { type: 'slow', value: 0.15, radius: 42, anchor: 'player' },
       { type: 'dr', value: 1 },
+      // Sharpened reads: small crit chance to spot weak points
+      { type: 'crit', value: 0.05 },
     ],
     // dust veil trigger handled in code
   },
@@ -62,6 +66,8 @@ export const companionEffectsByKey = {
     auras: [
       // Tactical awareness: slightly extended range
       { type: 'range', value: 1 },
+      // Sharp eye: small crit chance bonus
+      { type: 'crit', value: 0.05 },
     ],
     triggers: {
       // Timing window: brief ATK + range buff when enemies are nearby
@@ -100,4 +106,5 @@ export const COMPANION_BUFF_CAPS = {
   touchDR: 1,
   slow: 0.25, // 25%
   aspd: 0.5,  // +50% attack speed (cooldown reduction factor)
+  crit: 0.15, // +15% absolute crit chance cap from auras
 };

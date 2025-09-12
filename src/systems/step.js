@@ -554,12 +554,44 @@ export function step(dt) {
       if (rectsTouchOrOverlap(pr, er, pad)) {
         // If they actually overlap, separate just enough but still allow contact
         if (rectsIntersect(pr, er)) separateEntities(player, e, 0.65);
-        // Overworld realtime damage on contact; apply armor DR
+        // Overworld realtime damage on contact; apply armor DR with chip/crit/AP
         if (player.invulnTimer <= 0) {
+          const toggles = runtime?.combatToggles || { chip: true, enemyCrits: true, ap: true };
           const baseDr = (getEquipStats(player).dr || 0) + (runtime?.combatBuffs?.dr || 0) + (runtime?.combatBuffs?.touchDR || 0);
-          const dr = baseDr + (player.levelDrBonus || 0);
-          const raw = e.touchDamage || 1;
-          let taken = Math.max(0, raw - dr);
+          const dr = baseDr + (player.levelDrBonus || 0) + (runtime?.tempTouchDr || 0);
+          const raw = Math.max(0, e.touchDamage || 1);
+          const kind = String(e.kind || 'mook').toLowerCase();
+          // Defaults by class
+          const def = (kind === 'boss') ? { cc: 0.12, ignore: 0.7, bonus: 3, chipMin: 0, chipMax: 0 }
+                        : (kind === 'featured') ? { cc: 0.10, ignore: 0.6, bonus: 2, chipMin: 1, chipMax: 2 }
+                        : { cc: 0.06, ignore: 0.5, bonus: 1, chipMin: 1, chipMax: 1 };
+          // Pull overrides from enemy if present
+          const cc = (typeof e.critChance === 'number') ? e.critChance : def.cc;
+          const cIgnore = (typeof e.critDrIgnore === 'number') ? e.critDrIgnore : def.ignore;
+          const cBonus = (typeof e.critBonus === 'number') ? e.critBonus : def.bonus;
+          const ap = toggles.ap ? Math.max(0, (typeof e.ap === 'number') ? e.ap : 0) : 0;
+          const tDmg = toggles.ap ? Math.max(0, (typeof e.trueDamage === 'number') ? e.trueDamage : 0) : 0;
+
+          // Roll crit
+          const isCrit = toggles.enemyCrits && Math.random() < cc;
+          // Effective DR after crit/AP
+          let effDr = dr;
+          if (isCrit) effDr = Math.max(0, effDr * (1 - cIgnore));
+          if (ap > 0) effDr = Math.max(0, effDr - ap);
+
+          // Base result after DR
+          let taken = Math.max(0, raw - effDr);
+          // Add crit bonus and any true damage (applies after DR)
+          if (isCrit) taken += Math.max(0, cBonus);
+          if (tDmg > 0) taken += tDmg;
+
+          // Universal chip floor for mook/featured only
+          if (toggles.chip && kind !== 'boss') {
+            const chipBase = Math.round(raw * 0.10);
+            const chip = Math.max(def.chipMin, Math.min(def.chipMax, chipBase));
+            if (taken > 0 && taken < chip) taken = chip;
+            if (taken === 0 && chip > 0) taken = chip; // allow chip even if DR fully blocked
+          }
           if (runtime.godMode) taken = 0;
           if (runtime.shieldActive && taken > 0) {
             taken = 0;
@@ -576,9 +608,17 @@ export function step(dt) {
               runtime.interactLock = Math.max(runtime.interactLock, 0.2);
               // Mark recent hit for companion triggers
               runtime._recentPlayerHitTimer = 0.25;
-              // Damage feedback
-              spawnFloatText(player.x + player.w/2, player.y - 6, `-${taken}`, { color: '#ff7a7a', life: 0.7 });
-              playSfx('hit');
+              // Damage feedback: Crit/AP/Graze distinct text
+              let label = null;
+              let color = '#ff7a7a';
+              let sfx = 'hit';
+              const chipBase = Math.round(raw * 0.10);
+              const chip = Math.max(def.chipMin, Math.min(def.chipMax, chipBase));
+              if (isCrit) { label = `Crit ${taken}`; color = '#ffd166'; sfx = 'pierce'; }
+              else if ((ap > 0 || tDmg > 0) && (taken >= raw - dr)) { label = `Pierce! ${taken}`; color = '#ffd166'; sfx = 'pierce'; }
+              else if (toggles.chip && kind !== 'boss' && taken === chip && chip > 0) { label = `Grazed ${taken}`; color = '#a8c6ff'; sfx = 'hit'; }
+              spawnFloatText(player.x + player.w/2, player.y - 6, label || `-${taken}`, { color, life: 0.7 });
+              playSfx(sfx);
               // UI: show last attacker name in lower-right (just the name)
               try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`${e.name || 'Enemy'}`)); } catch {}
             } else {
@@ -627,6 +667,8 @@ export function step(dt) {
         e._secondPhase = true;
         // Increase boss contact damage and attack speed for second phase
         e.touchDamage = Math.max(1, (e.touchDamage || 0) + 2);
+        // Add boss special: true damage component in later phases
+        e.trueDamage = Math.max(2, (e.trueDamage || 0), 2);
         e.hitCooldown = Math.max(0.5, (e.hitCooldown || 0.8) * 0.7);
         e.speed = Math.max(8, (e.speed || 12) * 1.1);
         try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Empowered!', { color: '#ffd166', life: 0.8 }); } catch {}
@@ -650,6 +692,8 @@ export function step(dt) {
         e.hp = e.maxHp;
         e._thirdPhase = true;
         e.touchDamage = Math.max(1, (e.touchDamage || 0) + 3);
+        // Stronger true damage in Vorthak's final phase
+        e.trueDamage = Math.max(3, (e.trueDamage || 0), 3);
         e.hitCooldown = Math.max(0.35, (e.hitCooldown || 0.8) * 0.7);
         e.speed = Math.max(9, (e.speed || 12) * 1.15);
         try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Final Form!', { color: '#ff7a7a', life: 0.9 }); } catch {}
@@ -1178,7 +1222,7 @@ export function step(dt) {
 function applyCompanionAuras(dt) {
   // Reset buffs
   const buffs = runtime.combatBuffs;
-  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0; buffs.aspd = 0;
+  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0; buffs.aspd = 0; buffs.crit = 0;
   // Prepare per-enemy slow accumulation
   const slowAccum = new Array(enemies.length).fill(0);
   // Synergy: Urn + Varabella small boost when both are present
@@ -1204,6 +1248,7 @@ function applyCompanionAuras(dt) {
         case 'range': buffs.range += (a.value || 0) * mult; break;
         case 'touchDR': buffs.touchDR += (a.value || 0) * mult; break;
         case 'aspd': buffs.aspd += (a.value || 0) * mult; break; // attack speed bonus (fractional)
+        case 'crit': buffs.crit += (a.value || 0) * mult; break; // absolute crit chance add
         case 'slow': {
           const rad = a.radius || 0;
           if (rad > 0) {
@@ -1230,7 +1275,10 @@ function applyCompanionAuras(dt) {
   buffs.range = Math.min(buffs.range, COMPANION_BUFF_CAPS.range);
   // Include temporary touch DR from triggers (e.g., Nellis Keep the Line)
   buffs.touchDR = Math.min(buffs.touchDR + (runtime.tempTouchDr || 0), COMPANION_BUFF_CAPS.touchDR);
+  // Include temporary attack speed bonus from triggers (e.g., Urn Cheer)
+  buffs.aspd += (runtime.tempAspdBonus || 0);
   buffs.aspd = Math.min(buffs.aspd, COMPANION_BUFF_CAPS.aspd);
+  buffs.crit = Math.min(buffs.crit, COMPANION_BUFF_CAPS.crit || buffs.crit);
   // Regen
   if (buffs.regen > 0 && player.hp > 0) {
     player.hp = Math.min(player.maxHp, player.hp + buffs.regen * dt);
@@ -1253,6 +1301,11 @@ function applyCompanionAuras(dt) {
   if ((runtime._tempRangeTimer || 0) > 0) {
     runtime._tempRangeTimer = Math.max(0, (runtime._tempRangeTimer || 0) - dt);
     if (runtime._tempRangeTimer === 0) runtime.tempRangeBonus = 0;
+  }
+  // Decay temporary attack speed bonus from triggers (e.g., Urn Cheer)
+  if ((runtime._tempAspdTimer || 0) > 0) {
+    runtime._tempAspdTimer = Math.max(0, (runtime._tempAspdTimer || 0) - dt);
+    if (runtime._tempAspdTimer === 0) runtime.tempAspdBonus = 0;
   }
   // Decay temporary touch DR from triggers (e.g., Nellis Keep the Line)
   if ((runtime._tempTouchDrTimer || 0) > 0) {
@@ -1404,7 +1457,7 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Urn Cheer: burst heal when HP dips low
+  // Urn Cheer: burst heal when HP dips low + brief attack speed boost
   if (has('urn')) {
     const base = companionEffectsByKey.urn?.triggers?.cheer || { hpThresh: 0.5, heal: 3, radius: 80, cooldownSec: 12 };
     const m = multFor('urn');
@@ -1413,11 +1466,16 @@ function handleCompanionTriggers(dt) {
       heal: Math.round((base.heal || 3) * m),
       radius: (base.radius || 80),
       cooldownSec: (base.cooldownSec || 12) / (1 + (m - 1) * 0.5),
+      aspdBonus: Math.min(0.35, 0.25 * m), // moderate, noticeable boost
+      aspdDur: 3.5 * m,
     };
     const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
     if ((cds.urnCheer || 0) <= 0 && player.hp > 0 && hpRatio <= eff.hpThresh) {
       // Heal player (companions do not track HP in this slice)
       player.hp = Math.min(player.maxHp, player.hp + eff.heal);
+      // Temporary attack speed boost
+      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, eff.aspdBonus);
+      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, eff.aspdDur);
       // Visuals and SFX
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Cheer!', { color: '#8effc1', life: 0.9 });
       for (let i = 0; i < 8; i++) spawnSparkle(player.x + player.w/2 + (Math.random()*12-6), player.y - 6 + (Math.random()*8-4));

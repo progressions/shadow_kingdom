@@ -34,7 +34,7 @@ export const canopyDialog = {
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_canopy' }, next: 'post_l5_canopy' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'You can lean on me, I\'ve got you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_intro_encourage' }, next: 'after_aff' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'Share a plan (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -44,7 +44,7 @@ export const canopyDialog = {
       choices: [ { label: 'We keep moving.', action: 'set_flag', data: { key: 'post_l5_canopy' }, next: 'intro' } ],
     },
     about: {
-      text: "Canopy: My Lord, I keep us on our feet—small heals, steady regen, and a burst shield when it counts. Stay near and I’ll trim the worst hits.",
+      text: "Canopy: My Lord, I keep you standing. I gently heal you over time, give quick touch‑ups, and raise a short shield that blocks a hit when things get rough. Stay near me and hard hits feel softer.",
       choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
@@ -66,7 +66,7 @@ export const yornaDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_yorna' }, next: 'post_l5_yorna' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
-        { label: 'What can you do?', next: 'skills' },
+        { label: 'What can you do for me?', next: 'skills' },
         { label: 'You hit hard; I\'ll keep the lane open.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
         { label: 'Trade tactics (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'No thanks.', action: 'end' },
@@ -77,7 +77,7 @@ export const yornaDialog = {
       choices: [ { label: 'Stay sharp.', action: 'set_flag', data: { key: 'post_l5_yorna' }, next: 'intro' } ],
     },
     skills: {
-      text: "Yorna: Chief, I crack fronts and hold aggro. I create openings, interrupt lanes, and give you room to swing.",
+      text: "Yorna: Chief, I make space. I step into the crowd, bump enemies off your line, and open clear lanes so your swings land clean. Stick close and fights get simpler.",
       choices: [
         { label: 'Sounds great — join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Maybe later.', action: 'end' },
@@ -102,7 +102,7 @@ export const holaDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_hola' }, next: 'post_l5_hola' },
         { label: 'Yes, please join.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'You\'re doing fine. Stay close and speak up if you need.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'hola_intro_encourage' }, next: 'after_aff' },
         { label: 'Practice a formation (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not now.', action: 'end' },
@@ -113,7 +113,7 @@ export const holaDialog = {
       choices: [ { label: 'We\'ll be ready.', action: 'set_flag', data: { key: 'post_l5_hola' }, next: 'intro' } ],
     },
     about: {
-      text: "Hola: My Lord, I slow crowds and peel trouble off you. Gusts push back, and I can set a hush that breaks enemy focus.",
+      text: "Hola: My Lord, I give you breathing room. I slow enemies around you and shove crowds back so you can breathe. I also soften the little bumps that chip at you.",
       choices: [
         { label: 'Alright, join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
         { label: 'Maybe later.', action: 'end' },
@@ -138,7 +138,7 @@ export const oyinDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_oyin' }, next: 'post_l5_oyin' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Ignite · Rally · Burn Weaken' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'You’re doing fine; breathe and stay with me.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'oyin_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -148,7 +148,7 @@ export const oyinDialog = {
       choices: [ { label: 'On we go.', action: 'set_flag', data: { key: 'post_l5_oyin' }, next: 'intro' } ],
     },
     about: {
-      text: "Oyin: My Lord, I prime enemies with flame and rally your strike when we need momentum. Burned foes stagger and fall faster.",
+      text: "Oyin: My Lord, I help you land bigger hits. I spot chances for strong strikes, add a small flame to enemies we hit, and when you’re hurting I cheer to heal you and make your hands move faster.",
       choices: [ { label: 'Join me.', action: 'join_party', hint: 'Ignite · Rally · Burn Weaken' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
@@ -166,7 +166,7 @@ export const twilDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_twil' }, next: 'post_l5_twil' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Scout · Weak Points · Shortcuts' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'Your read is sharp; call the line and I’ll follow.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'twil_intro_encourage' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
       ],
@@ -176,7 +176,7 @@ export const twilDialog = {
       choices: [ { label: 'Cut them.', action: 'set_flag', data: { key: 'post_l5_twil' }, next: 'intro' } ],
     },
     about: {
-      text: "Twil: Master, I tag weak spots and show shortcuts. Stick with my calls and we’ll cut time and blood both.",
+      text: "Twil: Master, I help you hit smarter. I point out weak spots so your big hits land more often, make nearby enemies hesitate, and stretch your reach a little.",
       choices: [ { label: 'Good. Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
@@ -194,7 +194,7 @@ export const tinDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_tin' }, next: 'post_l5_tin' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Tempo · Attack Speed · Safe Footing' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'Take point and sing out. I’ll keep space clear.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'tin_intro_encourage' }, next: 'after_aff' },
         { label: 'Maybe later.', action: 'end' },
       ],
@@ -204,7 +204,7 @@ export const tinDialog = {
       choices: [ { label: 'Together.', action: 'set_flag', data: { key: 'post_l5_tin' }, next: 'intro' } ],
     },
     about: {
-      text: "Tin: My Lord, I keep you nimble—attack speed up close, safe footing ahead. When I hum, your hands fly.",
+      text: "Tin: My Lord, I speed you up. I boost your attack rhythm, nudge enemies off you in a pinch, and point out safer lines so you don’t get bogged down.",
       choices: [ { label: 'Join me.', action: 'join_party', hint: 'Tempo · Attack Speed · Safe Footing' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
@@ -222,7 +222,7 @@ export const nellisDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_nellis' }, next: 'post_l5_nellis' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'Stay near and mirror me—we’ll be fine.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'nellis_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -232,7 +232,7 @@ export const nellisDialog = {
       choices: [ { label: 'Keep the line.', action: 'set_flag', data: { key: 'post_l5_nellis' }, next: 'intro' } ],
     },
     about: {
-      text: "Nellis: Sire, I steady your guard and lift your reach. I’ll keep a light where you need one most.",
+      text: "Nellis: Sire, I steady you. I take the edge off glancing blows, make your reach a bit longer, and slow crowds when they press too close.",
       choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
@@ -251,7 +251,7 @@ export const urnDialog = {
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_urn' }, next: 'post_l5_urn' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Burn · Heat Ward' },
         { label: "I like your energy—let's lift together.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'urn_intro_encourage' }, next: 'after_aff' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'Quests', next: 'quests' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -261,7 +261,7 @@ export const urnDialog = {
       choices: [ { label: 'We will.', action: 'set_flag', data: { key: 'post_l5_urn' }, next: 'intro' } ],
     },
     about: {
-      text: "Urn: Mister, I grew up on these streets. I cheer to lift you and give quick patch‑ups when it stings. I keep eyes up and steps light, and I can mark safe paths so people stop bleeding on the cobbles.",
+      text: "Urn: Mister, I lift you up. I give small steady healing, cheer to patch you and make your hands faster for a moment, and mark safer steps so you don’t get clipped.",
       choices: [
         { label: 'Sounds perfect—join me.', action: 'join_party', hint: 'Support · Small Heals · Cheer' },
         { label: 'Maybe later.', action: 'end' },
@@ -321,13 +321,13 @@ export const fanaDialog = {
       text: "Fana: My Prince, the chains broke when you struck me down—the fire didn't. I burn what clings and shield you with heat when it counts. If you'll have me, I'll fight beside you.",
       choices: [
         { label: 'Yes, join me.', action: 'join_party' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'You’re free now. Breathe, then walk with me.', action: 'affinity_add', data: { target: 'active', amount: 0.6, flag: 'fana_intro_reassure' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
       ],
     },
     about: {
-      text: "Fana: My Prince, I scorch the rot and ward you with heat. I’m best where the press is thick and the air needs clearing.",
+      text: "Fana: My Prince, I burn off what clings to you and throw a warm ward when the crush is heavy. Keep me close and the mess thins out.",
       choices: [ { label: 'Walk with me.', action: 'join_party', hint: 'Burn · Heat Ward' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
@@ -391,7 +391,7 @@ export const varabellaDialog = {
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_vara' }, next: 'post_l5_vara' },
         { label: 'Competence. Join me.', action: 'join_party', hint: 'Angles · Extended Reach' },
         { label: "Spare the sarcasm; I value sharp eyes.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'varabella_intro_respect' }, next: 'after_aff' },
-        { label: 'What can you do for us?', next: 'about' },
+        { label: 'What can you do for me?', next: 'about' },
         { label: 'Quests', next: 'quests' },
         { label: 'Pass.', action: 'end' },
       ],
@@ -401,7 +401,7 @@ export const varabellaDialog = {
       choices: [ { label: 'Eyes up.', action: 'set_flag', data: { key: 'post_l5_vara' }, next: 'intro' } ],
     },
     about: {
-      text: "Varabella: Boss man, I had a window over the plaza when it cracked. I learned where to stand and when to move—staying put gets you eaten. Urn and I found each other in the ruins and refused to die alone. Sightlines, angles, timing. I extend your angles, stretch your range, and call exits you won’t miss.",
+      text: "Varabella: Boss man, I spot angles. I help you hit from a bit farther, raise your chance to land telling blows, and call brief windows where your swings hit harder and farther.",
       choices: [
         { label: 'Good. I need that—join me.', action: 'join_party', hint: 'Angles · Extended Reach' },
         { label: 'Maybe later.', action: 'end' },
@@ -473,7 +473,7 @@ export const cowsillDialog = {
       choices: [ { label: 'Let\'s go.', action: 'set_flag', data: { key: 'post_l5_cowsill' }, next: 'intro' } ],
     },
     about: {
-      text: "Cowsill: My Lord, I mirror your rhythm to double impact and stagger groups. Pair up and we’ll bulldoze lines together.",
+      text: "Cowsill: My Lord, I hit with you. I make your strikes land heavier, sometimes add a second hit, and keep our tempo up so we plow through groups.",
       choices: [ { label: 'Join me.', action: 'join_party', hint: 'Strike Partner · Amplify · Stagger' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {

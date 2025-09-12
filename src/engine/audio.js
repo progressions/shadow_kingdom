@@ -19,6 +19,7 @@ const files = {
   sfx: {
     attack: 'assets/audio/sfx/attack.wav',
     hit: 'assets/audio/sfx/hit.wav',
+    pierce: 'assets/audio/sfx/pierce.wav',
     uiOpen: 'assets/audio/sfx/ui-open.wav',
     uiMove: 'assets/audio/sfx/ui-move.wav',
     uiSelect: 'assets/audio/sfx/ui-select.wav',
@@ -237,6 +238,11 @@ function playSfxChip(name) {
       break;
     case 'hit':
       noiseBurst({ attack: 0.001, decay: 0.05, release: 0.05, gain: 0.18, t });
+      break;
+    case 'pierce':
+      // sharper, piercing strike (used for crit/AP)
+      envTone({ type: 'square',   freq: 1100, attack: 0.001, decay: 0.05, release: 0.03, gain: 0.14, t });
+      envTone({ type: 'triangle', freq: 1500, attack: 0.001, decay: 0.06, release: 0.03, gain: 0.10, t: t + 0.01 });
       break;
     case 'uiOpen':
       envTone({ type: 'triangle', freq: 660, attack: 0.001, decay: 0.06, release: 0.02, gain: 0.08, t });

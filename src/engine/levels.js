@@ -81,6 +81,7 @@ export function loadLevel1() {
   spawnEnemy(boss1x, boss1y, 'boss', {
     name: 'Vast', vnId: 'enemy:vast', portrait: 'assets/portraits/level01/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
     hp: 35, dmg: 8, speed: 10, hitCooldown: 0.75,  // Level 1 boss buff
+    ap: 1, // light armor piercing
   });
   // Boss arena adds: 3 mooks + 1 featured foe around the boss
   spawnEnemy(boss1x - 24, boss1y,      'mook', { name: 'Greenwood Bandit' });
@@ -203,6 +204,7 @@ export function loadLevel2() {
     speed: 12,
     hitCooldown: 0.7,
     vnOnSight: { text: introTexts.nethra },
+    ap: 2,
   });
   // Boss arena adds: 4 mooks + 2 featured foes inside the arena
   spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
@@ -353,6 +355,7 @@ export function loadLevel3() {
     dmg: 12,
     speed: 14,
     hitCooldown: 0.65,  // Level 3 boss buff
+    ap: 2,
   });
   // Boss arena adds: 5 mooks + 2 featured foes inside the arena
   spawnEnemy(cx - 26, cy,        'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
@@ -508,6 +511,7 @@ export function loadLevel4() {
     speed: 16,
     hitCooldown: 0.6,  // Level 4 boss buff
     onDefeatNextLevel: 5,
+    ap: 3,
   });
   // Boss arena adds: 6 mooks + 2 featured foes inside the arena
   spawnEnemy(cx - 26, cy,        'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
@@ -664,6 +668,7 @@ export function loadLevel5() {
   spawnEnemy(cx, cy, 'boss', {
     name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32, 
     hp: 100, dmg: 16, speed: 18, hitCooldown: 0.55,  // Level 5 boss buff
+    ap: 5,
     // Boss portraits for VN overlays
     portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4',
     portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4',

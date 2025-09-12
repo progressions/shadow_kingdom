@@ -270,6 +270,12 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     portraitDefeated: opts.portraitDefeated || null,
     // Optional spawner link
     spawnerId: opts.spawnerId || null,
+    // Optional combat tuning fields
+    critChance: (typeof opts.critChance === 'number') ? Math.max(0, Math.min(1, opts.critChance)) : undefined,
+    critDrIgnore: (typeof opts.critDrIgnore === 'number') ? Math.max(0, Math.min(1, opts.critDrIgnore)) : undefined,
+    critBonus: (typeof opts.critBonus === 'number') ? Math.max(0, Math.floor(opts.critBonus)) : undefined,
+    ap: (typeof opts.ap === 'number') ? Math.max(0, Math.floor(opts.ap)) : undefined,
+    trueDamage: (typeof opts.trueDamage === 'number') ? Math.max(0, Math.floor(opts.trueDamage)) : undefined,
     // Optional minimal VN intro config
     vnOnSight: opts.vnOnSight || null,
     // Stable VN identity key (e.g., 'enemy:gorg') for persistence
@@ -454,7 +460,7 @@ export const runtime = {
   introCooldown: 0,
   
   // Aggregated companion buffs (recomputed each frame)
-  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, aspd: 0 },
+  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, aspd: 0, crit: 0 },
   // Companion ability cooldowns and shield state (Phase 2)
   companionCDs: { yornaEcho: 0, canopyShield: 0, holaGust: 0 },
   shieldActive: false,
@@ -480,6 +486,8 @@ export const runtime = {
   // Temporary combat buffs (timed)
   tempAtkBonus: 0,
   _tempAtkTimer: 0,
+  tempAspdBonus: 0,
+  _tempAspdTimer: 0,
   // One-time VN affinity flags to prevent repeats
   affinityFlags: {},
   questFlags: {},
@@ -499,6 +507,8 @@ export const runtime = {
   _vorthakGateRelockTimer: 0,
   // Rendering guard during level swap+restore to avoid showing default spawns
   _suspendRenderUntilRestore: false,
+  // Combat tuning toggles
+  combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
 
 };
 

@@ -104,15 +104,26 @@ export function handleAttacks(dt) {
           const dxm = ex - px, dym = ey - py;
           if ((dxm*dxm + dym*dym) <= (48*48)) finalDmg += 1;
         }
+        // Player crit pipeline (chance + DR penetration + multiplier)
+        const toggles = runtime?.combatToggles || { playerCrits: true };
+        let isCrit = false;
+        if (toggles.playerCrits) {
+          let critChance = 0.08 + (runtime?.combatBuffs?.crit || 0); // base 8% + aura bonuses
+          if (Math.random() < critChance) {
+            isCrit = true;
+            finalDmg = Math.ceil(finalDmg * 1.5);
+          }
+        }
         const before = e.hp;
-        e.hp -= dmg;
-        if (finalDmg !== dmg) e.hp -= (finalDmg - dmg);
-        // Apply enemy DR (base + temporary) after all player-side adds
+        // Apply damage first, then heal back by effective DR (preserves existing trigger flow)
+        e.hp -= finalDmg;
+        // Apply enemy DR (base + temporary), with 50% penetration on crit
         try {
-          const enemyDr = Math.max(0, (e._baseDr || 0) + (e._tempDr || 0));
+          let enemyDr = Math.max(0, (e._baseDr || 0) + (e._tempDr || 0));
+          if (isCrit) enemyDr = Math.max(0, enemyDr * 0.5);
           if (enemyDr > 0) {
-            const reduce = Math.min(enemyDr, Math.max(0, e.hp - (before - finalDmg))); // just ensure non-negative
-            e.hp += reduce; // negate part of the damage
+            const reduce = Math.min(enemyDr, finalDmg);
+            e.hp += reduce; // negate part of the applied damage
           }
           // Mark recent hit to drive enemy on-hit triggers
           e._recentHitTimer = Math.max(e._recentHitTimer || 0, 0.9);
@@ -126,6 +137,11 @@ export function handleAttacks(dt) {
         } catch {}
         // UI: show last enemy struck in lower-right (just the name)
         try { showTargetInfo(`${e.name || 'Enemy'}`); } catch {}
+        // Player crit feedback
+        if (isCrit) {
+          import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Crit! ${Math.max(1, finalDmg)}`, { color: '#ffd166', life: 0.8 }));
+          try { playSfx('pierce'); } catch {}
+        }
         // Oyin: Kindle DoT
         if (hasOyin) {
           e._burnTimer = Math.max(e._burnTimer || 0, 1.5);
