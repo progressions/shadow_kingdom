@@ -429,28 +429,15 @@ export function render(terrainBitmap, obstacles) {
     const pct = Math.max(0, Math.min(1, need > 0 ? (cur / need) : 0));
     drawBar(6, 14, 60, 3, pct, '#ffd166');
   } catch {}
-  // Torch meter under XP (only when a torch is equipped)
+  // Torch meter under XP (only when a torch is equipped) — very small
   try {
     const LH = player?.inventory?.equipped?.leftHand || null;
     if (LH && LH.id === 'torch') {
       const maxMs = 180000; // default torch duration
       const left = Math.max(0, Number(LH.burnMsRemaining || 0));
       const pctT = Math.max(0, Math.min(1, left / maxMs));
-      drawBar(6, 18, 60, 3, pctT, '#ffd166');
-      // Small label with remaining time to the right of bars
-      const mm = Math.floor(left / 60000);
-      const ss = Math.floor((left % 60000) / 1000);
-      const mmss = `${String(mm).padStart(1,'0')}:${String(ss).padStart(2,'0')}`;
-      ctx.save();
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 3;
-      ctx.fillStyle = '#ffd166';
-      ctx.strokeText(`Torch ${mmss}`, 70, 14);
-      ctx.fillText(`Torch ${mmss}`, 70, 14);
-      ctx.restore();
+      // Much smaller footprint: narrower and thinner bar, no label
+      drawBar(6, 18, 36, 2, pctT, '#ffd166');
     }
   } catch {}
   // Player Level label

@@ -1119,10 +1119,17 @@ export function step(dt) {
           addItemToInventory(player.inventory, toAdd);
           showBanner(`Picked up ${picked?.name || 'an item'}`);
           playSfx('pickup');
-          // Auto-equip only for armor slots (head/torso/legs). Do not auto-equip hand items to avoid replacing torches.
+          // Auto-equip rules:
+          // - Armor (head/torso/legs): auto-equip if strictly better.
+          // - Hands: auto-equip only if the target hand is empty, and only for non-stackable items (won't auto-equip torches).
           try {
-            if (picked && (picked.slot === 'head' || picked.slot === 'torso' || picked.slot === 'legs')) {
+            if (!picked) {
+              // no-op
+            } else if (picked.slot === 'head' || picked.slot === 'torso' || picked.slot === 'legs') {
               autoEquipIfBetter(player, picked.slot);
+            } else if ((picked.slot === 'leftHand' || picked.slot === 'rightHand') && !picked.stackable) {
+              const eqNow = player?.inventory?.equipped || {};
+              if (!eqNow[picked.slot]) autoEquipIfBetter(player, picked.slot);
             }
           } catch {}
         }
