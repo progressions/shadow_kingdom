@@ -311,8 +311,12 @@ export function render(terrainBitmap, obstacles) {
 
       // Red edge vignette with subtle pulse
       const pulse = 0.85 + 0.15 * Math.sin(t * 6);
-      const edgeA = (0.25 + 0.35 * k) * pulse; // 0.25..0.60
-      const thick = Math.max(24, Math.floor(Math.min(camera.w, camera.h) * 0.12));
+      // Stronger red as HP gets lower; ease-in for responsiveness
+      const edgeBase = 0.15, edgeMax = 0.85;
+      const eased = Math.pow(k, 0.8);
+      const edgeA = Math.max(0, Math.min(1, (edgeBase + (edgeMax - edgeBase) * eased) * pulse));
+      const minDim = Math.min(camera.w, camera.h);
+      const thick = Math.max(24, Math.floor(minDim * (0.10 + 0.10 * k)));
 
       // Top
       let g = ctx.createLinearGradient(0, 0, 0, thick);
