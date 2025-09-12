@@ -27,8 +27,8 @@ export function loadLevel1() {
   // Level 1 defaults: start dim and equip a torch
   (function initDarkStart() {
     try {
-      // Start dim in Level 1
-      import('./lighting.js').then(m => m.setAmbientLevel(4)).catch(()=>{});
+      // Start fully dark in Level 1
+      import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{});
       // Give the player a small torch stack and equip a lit torch for visibility
       addItemToInventory(player.inventory, { id: 'torch', name: 'Torch', slot: 'leftHand', stackable: true, maxQty: 99, qty: 3 });
       // Do not auto-equip; torches begin unlit in the inventory
