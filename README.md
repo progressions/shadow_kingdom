@@ -2,6 +2,8 @@ Shadow Kingdom (HTML5 Canvas)
 
 Run by opening index.html directly in your browser. No installs or build steps required.
 
+Changelog: See `CHANGELOG.md` for a history of notable changes.
+
 Controls:
 - Move: WASD or Arrow Keys
 - Toggle grid: G
