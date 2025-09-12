@@ -195,6 +195,46 @@ export function loadLevel1() {
       }
     }
   })();
+
+  // Distribute additional trees across the whole level (30 more)
+  (function scatterMoreTrees() {
+    const count = 30;
+    const placed = 0;
+    const tryPlace = () => {
+      // Pick a random tile; avoid 1-tile border
+      const tx = 1 + Math.floor(Math.random() * Math.max(1, world.tileW - 2));
+      const ty = 1 + Math.floor(Math.random() * Math.max(1, world.tileH - 2));
+      // Skip water tiles
+      try { if (tileType(tx, ty) === 'water') return false; } catch {}
+      const w = 12, h = 12;
+      const x = tx * TILE + 2;
+      const y = ty * TILE + 4;
+      // Avoid heavy overlap with existing obstacles (allow light touch for natural clustering)
+      const rect = { x, y, w, h };
+      for (const o of obstacles) {
+        if (!o) continue;
+        const ix = Math.max(0, Math.min(rect.x + rect.w, o.x + o.w) - Math.max(rect.x, o.x));
+        const iy = Math.max(0, Math.min(rect.y + rect.h, o.y + o.h) - Math.max(rect.y, o.y));
+        const inter = ix * iy;
+        if (inter > 0 && inter >= 0.25 * Math.min(rect.w * rect.h, (o.w||0) * (o.h||0))) return false;
+      }
+      obstacles.push({ x, y, w, h, type: 'tree' });
+      return true;
+    };
+    for (let i = 0; i < count; i++) {
+      let ok = false;
+      for (let t = 0; t < 20 && !ok; t++) ok = tryPlace();
+      if (!ok) {
+        // Force place somewhere near last random pick with smaller size
+        const tx = 1 + Math.floor(Math.random() * Math.max(1, world.tileW - 2));
+        const ty = 1 + Math.floor(Math.random() * Math.max(1, world.tileH - 2));
+        const w = 10, h = 10;
+        const x = tx * TILE + 3;
+        const y = ty * TILE + 5;
+        obstacles.push({ x, y, w, h, type: 'tree' });
+      }
+    }
+  })();
   // Boss Vast inside
   const boss1x = cxw + cw/2 - 6;
   const boss1y = cyw + ch/2 - 8;
