@@ -376,10 +376,10 @@ export function loadLevel1() {
   // Snake companion (Level 1): small slow aura + small bite (ATK) — gated by Snake Mode
   if (runtime.snakeMode) {
     try {
-      const snakeSheet = makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
+      const snakeSheet = null; // use external sprite
       const sx = Math.max(0, Math.min(world.w - 12, player.x + 140));
       const sy = Math.max(0, Math.min(world.h - 16, player.y + 60));
-      const snake = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet: snakeSheet, vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
+      const snake = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet: snakeSheet, spriteId: 'assets/snake_sprite_strip_64x20', vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
       setNpcDialog(snake, snakeDialog);
     } catch {}
   }

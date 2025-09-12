@@ -163,8 +163,8 @@ export function selectChoice(index) {
         startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
         return;
       }
-      // Spawn as companion using NPC sheet if available
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+      // Spawn as companion; preserve external sprite if present
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
       // Remove NPC from world
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
@@ -193,6 +193,7 @@ export function selectChoice(index) {
     const returned = spawnNpc(nx, ny, comp.dir || 'down', {
       name: comp.name || 'Companion',
       sheet: comp.sheet || null,
+      spriteId: comp.spriteId || null,
       portrait: comp.portraitSrc || null,
     });
     // Reattach base dialog to allow future re-recruitment
@@ -204,7 +205,7 @@ export function selectChoice(index) {
     } catch {}
     removeCompanion(comp);
     // Recruit the active NPC into the now-free slot
-    spawnCompanion(npc.x, npc.y, npc.sheet || null, { name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+    spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
     const ni = npcs.indexOf(npc); if (ni !== -1) npcs.splice(ni, 1);
     updatePartyUI(companions);
     showBanner(`${npc.name || 'Companion'} joined your party!`);
@@ -324,13 +325,10 @@ export function selectChoice(index) {
           // Add Snek if not present
           const exists = npcs.some(n => n && (String(n.name||'').toLowerCase().includes('snek') || String(n.dialogId||'').toLowerCase()==='snake'));
           if (!exists) {
-            import('./sprites.js').then(sp => {
-              const sheet = sp.makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
-              const sx = Math.max(0, Math.min(world.w - 12, player.x + 100));
-              const sy = Math.max(0, Math.min(world.h - 16, player.y + 40));
-              const s = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet, vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
-              import('../data/dialogs.js').then(d => { if (d.snakeDialog) setNpcDialog(s, d.snakeDialog); });
-            });
+            const sx = Math.max(0, Math.min(world.w - 12, player.x + 100));
+            const sy = Math.max(0, Math.min(world.h - 16, player.y + 40));
+            const s = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet: null, spriteId: 'assets/snake_sprite_strip_64x20', vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
+            import('../data/dialogs.js').then(d => { if (d.snakeDialog) setNpcDialog(s, d.snakeDialog); });
           }
         } else {
           // Remove Snek if present and not already a companion
