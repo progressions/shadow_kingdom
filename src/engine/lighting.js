@@ -115,15 +115,21 @@ export function rebuildLighting(throttleMs = 0) {
       const tx = queueTx[qs]|0, ty = queueTy[qs]|0, lv = queueLv[qs]|0; qs++;
       if (lv <= 1) continue;
       const nl = lv - 1;
-      // 4-neighbors; do not pass through blockers
-      // Up
-      if (ty - 1 >= 0 && !blk[(ty - 1) * w + tx]) enqueue(tx, ty - 1, nl);
-      // Down
-      if (ty + 1 < h && !blk[(ty + 1) * w + tx]) enqueue(tx, ty + 1, nl);
-      // Left
-      if (tx - 1 >= 0 && !blk[ty * w + (tx - 1)]) enqueue(tx - 1, ty, nl);
-      // Right
-      if (tx + 1 < w && !blk[ty * w + (tx + 1)]) enqueue(tx + 1, ty, nl);
+      // 4-neighbors; light blocked tiles but do not propagate through them
+      const handle = (nx, ny) => {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
+        const idx = ny * w + nx;
+        if (blk[idx]) {
+          // Let light hit the blocker tile (so rocks/walls can be visibly lit) but stop there
+          if (nl > L.grid[idx]) L.grid[idx] = nl;
+        } else {
+          enqueue(nx, ny, nl);
+        }
+      };
+      handle(tx, ty - 1);
+      handle(tx, ty + 1);
+      handle(tx - 1, ty);
+      handle(tx + 1, ty);
     }
     // reset queue for next source
     qs = 0; qe = 0;
@@ -137,4 +143,3 @@ export function sampleLightAtPx(x, y) {
   const lv = L.grid[ty * L._w + tx] | 0;
   return Math.max(0, Math.min(MAX_LIGHT_LEVEL, lv));
 }
-
