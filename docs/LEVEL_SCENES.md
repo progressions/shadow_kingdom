@@ -12,7 +12,7 @@ This guide shows how to add a new level that follows the pattern used in Level 2
 - Spawn the boss inside the arena (with optional mooks) and wire level transition after defeat.
 - Assign stable ids at spawn time:
   - Gates: `id` (e.g., `castle_gate`, `nethra_gate`, …)
-  - Chests: `id` (e.g., `chest_l1_sword`)
+  - Chests: `id` (e.g., `chest_l1_weapon`)
   - Breakables: `id` (e.g., `brk_l1_0`)
   - Unique actors: set `vnId` (e.g., `enemy:vast`, `enemy:gorg`).
 - Add optional chests/breakables and any recruitable NPCs.

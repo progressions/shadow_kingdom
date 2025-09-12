@@ -36,7 +36,7 @@ export function loadLevel1() {
   })();
 
   // Place some chests and breakables similar to start
-  obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_sword', fixedItemId: 'sword_fine', opened: false, locked: false });
+  obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_weapon', fixedItemId: 'dagger', opened: false, locked: false });
   obstacles.push({ x: Math.round(player.x - TILE * 8), y: Math.round(player.y + TILE * 6), w: 12, h: 10, type: 'chest', id: 'chest_l1_extra', lootTier: 'rare', opened: false, locked: false });
   const brk = [
     { x: Math.round(player.x + TILE * 10), y: Math.round(player.y + TILE * 6) },

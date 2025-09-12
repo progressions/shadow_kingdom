@@ -2,7 +2,7 @@
 export const LEVEL_DESCRIPTORS = {
   1: {
     gates: ['castle_gate'],
-    chests: ['chest_l1_sword', 'chest_l1_extra'],
+    chests: ['chest_l1_weapon', 'chest_l1_extra'],
     breakables: ['brk_l1_0', 'brk_l1_1'],
     uniqueActors: ['enemy:vast', 'enemy:gorg'],
   },

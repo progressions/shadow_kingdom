@@ -43,7 +43,7 @@ async function testOpenedChestPersistence(slot = 9) {
   try {
     const ok = await goToLevel(1);
     if (!ok) throw new Error('Failed to load Level 1');
-    const chestId = 'chest_l1_sword';
+    const chestId = 'chest_l1_weapon';
     await openChestById(chestId);
     // Save and read back
     saveGame(slot);
@@ -149,7 +149,7 @@ async function testWorldDeltasOrder(slot = 6) {
     const gate = obstacles.find(o => o && o.type === 'gate' && o.id === 'castle_gate');
     if (!gate) throw new Error('Gate not found');
     gate.locked = false;
-    await openChestById('chest_l1_sword');
+    await openChestById('chest_l1_weapon');
     // Save/Load
     saveGame(slot);
     await sleep(120);
@@ -157,7 +157,7 @@ async function testWorldDeltasOrder(slot = 6) {
     await sleep(200);
     const { obstacles: obs2 } = await import('../engine/state.js');
     const gate2 = obs2.find(o => o && o.type === 'gate' && o.id === 'castle_gate');
-    const chest2 = obs2.find(o => o && o.type === 'chest' && o.id === 'chest_l1_sword');
+    const chest2 = obs2.find(o => o && o.type === 'chest' && o.id === 'chest_l1_weapon');
     if (!gate2 || gate2.locked) throw new Error('Gate not unlocked after load');
     if (!chest2 || !chest2.opened) throw new Error('Chest not opened after load');
     report.ok = true; report.details = 'Gate unlocked + chest opened persist';

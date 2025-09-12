@@ -359,7 +359,7 @@ export function tryInteract() {
           // Tutorial: mark sword chest objective done
           try {
             if (!runtime.questFlags) runtime.questFlags = {};
-            if (o.id === 'chest_l1_sword') {
+            if (o.id === 'chest_l1_weapon') {
               runtime.questFlags['tutorial_find_sword_done'] = true;
               // Clear prior tutorial banner (torch hint)
               hideBanner();
@@ -367,7 +367,14 @@ export function tryInteract() {
               const alreadyHasCanopy = companions.some(c => (c.name || '').toLowerCase().includes('canopy'));
               if (!alreadyHasCanopy) {
                 runtime.questFlags['tutorial_save_canopy'] = true;
-                showPersistentBanner('You need a healer! Save Canopy from the bandits!');
+                // Delay slightly so 'Chest opened' / 'Picked up' banners don't overwrite it
+                setTimeout(() => {
+                  try {
+                    if (runtime.questFlags['tutorial_save_canopy'] && !runtime.questFlags['tutorial_save_canopy_done']) {
+                      showPersistentBanner('You need a healer! Save Canopy from the bandits!');
+                    }
+                  } catch {}
+                }, 600);
               } else {
                 // If already recruited, immediately mark as done
                 runtime.questFlags['tutorial_save_canopy_done'] = true;

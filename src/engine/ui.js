@@ -726,6 +726,23 @@ export function updateMinimap() {
   ctx.clearRect(0, 0, _miniW, _miniH);
   ctx.drawImage(_miniBase, 0, 0);
   ctx.drawImage(_miniFog, 0, 0);
+  // Tutorial objective: highlight Level 1 sword chest on minimap
+  try {
+    const f = runtime.questFlags || {};
+    if (f['tutorial_find_sword'] && !f['tutorial_find_sword_done'] && (runtime.currentLevel || 1) === 1) {
+      const chest = (OBSTACLES || []).find(o => o && o.type === 'chest' && o.id === 'chest_l1_weapon' && !o.opened);
+      if (chest) {
+        const tx = Math.max(0, Math.min(_miniW-1, Math.floor(chest.x / TILE)));
+        const ty = Math.max(0, Math.min(_miniH-1, Math.floor(chest.y / TILE)));
+        ctx.fillStyle = '#ffd166';
+        ctx.fillRect(tx, ty, Math.max(1, Math.ceil(chest.w / TILE)), Math.max(1, Math.ceil(chest.h / TILE)));
+        // small pulsing ring
+        ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tx-1, ty-1, Math.max(3, Math.ceil(chest.w / TILE)+2), Math.max(3, Math.ceil(chest.h / TILE)+2));
+      }
+    }
+  } catch {}
   // Player dot
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(Math.floor(player.x / TILE), Math.floor(player.y / TILE), 1, 1);

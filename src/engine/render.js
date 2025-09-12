@@ -683,8 +683,8 @@ function drawTutorialMarkers(obstacles) {
     if (!runtime || !runtime.questFlags) return;
     if (!runtime.questFlags['tutorial_find_sword']) return;
     if ((runtime.currentLevel || 1) !== 1) return;
-    // Find the Fine Sword chest in Level 1
-    const chest = obstacles && obstacles.find && obstacles.find(o => o && o.type === 'chest' && o.id === 'chest_l1_sword' && !o.opened);
+    // Find the Level 1 weapon chest
+    const chest = obstacles && obstacles.find && obstacles.find(o => o && o.type === 'chest' && o.id === 'chest_l1_weapon' && !o.opened);
     if (!chest) return;
     const tx = chest.x + chest.w / 2 - camera.x;
     const ty = chest.y + chest.h / 2 - camera.y;
