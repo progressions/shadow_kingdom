@@ -8,12 +8,14 @@ export const ENEMY_LOOT = {
     { id: 'stick', w: 20 },
     { id: 'torch', w: 15 },
     { id: 'cap_leather', w: 10 },
+    { id: 'potion_light', w: 8 },
   ],
   featured: [
     { id: 'dagger', w: 25 },
     { id: 'buckler', w: 20 },
     { id: 'armor_leather', w: 15 },
     { id: 'sword_fine', w: 10 },
+    { id: 'potion_light', w: 10 },
   ],
   boss: [
     // Boss no longer drops the castle key; use featured foe key-bearer instead
@@ -25,6 +27,7 @@ export const CHEST_LOOT = {
     { id: 'torch', w: 30 },
     { id: 'cap_leather', w: 25 },
     { id: 'shirt_cloth', w: 20 },
+    { id: 'potion_light', w: 15 },
   ],
   rare: [
     { id: 'helm_bronze', w: 35 },
@@ -39,12 +42,14 @@ export const BREAKABLE_LOOT = {
     { id: 'torch', w: 25 },
     { id: 'stick', w: 20 },
     { id: 'cap_leather', w: 10 },
+    { id: 'potion_light', w: 12 },
   ],
   crate: [
     { id: 'stick', w: 25 },
     { id: 'buckler', w: 12 },
     { id: 'shirt_cloth', w: 18 },
     { id: 'sword_fine', w: 5 },
+    { id: 'potion_light', w: 8 },
   ],
 };
 
@@ -68,11 +73,14 @@ export const ENEMY_LOOT_L2 = {
   mook: [
     { id: 'torch', w: 20 },
     { id: 'stick', w: 15 },
+    { id: 'potion_light', w: 10 },
+    { id: 'potion_medium', w: 8 },
   ],
   featured: [
     { id: 'dagger', w: 20 },
     { id: 'buckler', w: 15 },
     { id: 'armor_scaled', w: 12 },
+    { id: 'potion_medium', w: 10 },
   ],
   boss: [
     // Level 2 bosses generally have scripted/guaranteed drops; leave empty
@@ -83,10 +91,12 @@ export const CHEST_LOOT_L2 = {
   common: [
     { id: 'torch', w: 35 },
     { id: 'shirt_cloth', w: 25 },
+    { id: 'potion_light', w: 12 },
   ],
   rare: [
     { id: 'armor_scaled', w: 28 },
     { id: 'helm_bronze', w: 22 },
     { id: 'sword_fine', w: 20 },
+    { id: 'potion_medium', w: 12 },
   ],
 };

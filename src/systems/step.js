@@ -1214,6 +1214,25 @@ export function step(dt) {
           }
         }
         const shouldSalvage = !isKey && (sameCount >= 3);
+        // Special-case: Health potions auto-consume on pickup if not at full HP; otherwise leave on ground
+        const isPotion = picked && (picked.id === 'potion_light' || picked.id === 'potion_medium' || picked.id === 'potion_strong');
+        if (isPotion) {
+          const healAmt = (picked.id === 'potion_light') ? 4 : (picked.id === 'potion_medium') ? 8 : 14;
+          if (player.hp < player.maxHp) {
+            // Consume and heal
+            itemsOnGround.splice(ii, 1);
+            const before = player.hp;
+            player.hp = Math.min(player.maxHp, player.hp + healAmt);
+            const gained = Math.max(0, player.hp - before);
+            showBanner(`Drank ${picked.name}: +${gained} HP`);
+            playSfx('pickup');
+            // small sparkle burst
+            for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
+          }
+          // If at full health, do not pick up; leave item on ground
+          continue;
+        }
+
         itemsOnGround.splice(ii, 1);
         if (shouldSalvage) {
           showBanner(`Salvaged ${picked?.name || 'item'}`);
