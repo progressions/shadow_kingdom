@@ -30,7 +30,7 @@ export function loadLevel1() {
       import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{});
       // Give the player a small torch stack and equip a lit torch for visibility
       addItemToInventory(player.inventory, { id: 'torch', name: 'Torch', slot: 'leftHand', stackable: true, maxQty: 99, qty: 3 });
-      player.inventory.equipped.leftHand = { id: 'torch', name: 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
+      // Do not auto-equip; torches begin unlit in the inventory
     } catch {}
   })();
 
