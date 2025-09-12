@@ -34,7 +34,7 @@ export const canopyDialog = {
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_canopy' }, next: 'post_l5_canopy' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'You can lean on me, I\'ve got you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_intro_encourage' }, next: 'after_aff' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'Share a plan (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not right now.', action: 'end' },
       ],
