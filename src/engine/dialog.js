@@ -1158,8 +1158,8 @@ function doEquip(actorTag, slot, index, itemId) {
     try {
       if (!runtime.questFlags) runtime.questFlags = {};
       if (!runtime.questFlags['tutorial_find_sword_done'] && !runtime.questFlags['tutorial_find_sword']) {
+        // Enable the top-of-screen quest hint and minimap marker; no extra persistent banner needed
         runtime.questFlags['tutorial_find_sword'] = true;
-        showPersistentBanner("You've got to find a weapon! Check a nearby chest");
       }
     } catch {}
   } else {
