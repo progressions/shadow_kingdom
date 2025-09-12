@@ -1139,9 +1139,9 @@ export function step(dt) {
           addItemToInventory(player.inventory, toAdd);
           showBanner(`Picked up ${picked?.name || 'an item'}`);
           playSfx('pickup');
-          // Auto-equip if this improves current gear
+          // Auto-equip only for armor slots (head/torso/legs). Do not auto-equip hand items to avoid replacing torches.
           try {
-            if (picked && (picked.slot === 'head' || picked.slot === 'torso' || picked.slot === 'legs' || picked.slot === 'leftHand' || picked.slot === 'rightHand')) {
+            if (picked && (picked.slot === 'head' || picked.slot === 'torso' || picked.slot === 'legs')) {
               autoEquipIfBetter(player, picked.slot);
             }
           } catch {}

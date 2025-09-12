@@ -236,6 +236,41 @@ export function loadLevel1() {
     }
   })();
 
+  // Distribute 30 more trees across the level (second pass)
+  (function scatterMoreTrees2() {
+    const count = 30;
+    function tryPlace() {
+      const tx = 1 + Math.floor(Math.random() * Math.max(1, world.tileW - 2));
+      const ty = 1 + Math.floor(Math.random() * Math.max(1, world.tileH - 2));
+      try { if (tileType(tx, ty) === 'water') return false; } catch {}
+      const w = 12, h = 12;
+      const x = tx * TILE + 2;
+      const y = ty * TILE + 4;
+      const rect = { x, y, w, h };
+      for (const o of obstacles) {
+        if (!o) continue;
+        const ix = Math.max(0, Math.min(rect.x + rect.w, o.x + o.w) - Math.max(rect.x, o.x));
+        const iy = Math.max(0, Math.min(rect.y + rect.h, o.y + o.h) - Math.max(rect.y, o.y));
+        const inter = ix * iy;
+        if (inter > 0 && inter >= 0.25 * Math.min(rect.w * rect.h, (o.w||0) * (o.h||0))) return false;
+      }
+      obstacles.push({ x, y, w, h, type: 'tree' });
+      return true;
+    }
+    for (let i = 0; i < count; i++) {
+      let ok = false;
+      for (let t = 0; t < 20 && !ok; t++) ok = tryPlace();
+      if (!ok) {
+        // force place with a slight jitter
+        const tx = 1 + Math.floor(Math.random() * Math.max(1, world.tileW - 2));
+        const ty = 1 + Math.floor(Math.random() * Math.max(1, world.tileH - 2));
+        const x = tx * TILE + 3;
+        const y = ty * TILE + 5;
+        obstacles.push({ x, y, w: 10, h: 10, type: 'tree' });
+      }
+    }
+  })();
+
   // Add more barrels and crates across the level to supply torches (barrels drop torches more often)
   (function scatterMoreBreakables() {
     const wantBarrels = 16;
