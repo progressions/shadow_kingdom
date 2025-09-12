@@ -235,6 +235,53 @@ export function loadLevel1() {
       }
     }
   })();
+
+  // Add more barrels and crates across the level to supply torches (barrels drop torches more often)
+  (function scatterMoreBreakables() {
+    const wantBarrels = 16;
+    const wantCrates = 8;
+    const inViewRadius = 120; // try not to spawn too close to initial player camera center
+    // Compute next breakable id index to avoid collisions with earlier IDs
+    let nextIdx = 0;
+    for (const o of obstacles) if (o && (o.type === 'barrel' || o.type === 'crate') && typeof o.id === 'string' && o.id.startsWith('brk_l1_')) {
+      const n = parseInt(o.id.slice('brk_l1_'.length), 10);
+      if (!isNaN(n)) nextIdx = Math.max(nextIdx, n + 1);
+    }
+    function place(kind) {
+      const w = 12, h = 12;
+      for (let t = 0; t < 40; t++) {
+        const x = Math.round(Math.random() * Math.max(0, world.w - w));
+        const y = Math.round(Math.random() * Math.max(0, world.h - h));
+        // Avoid water tiles roughly by sampling tile center
+        try {
+          const tx = Math.floor((x + w/2) / TILE), ty = Math.floor((y + h/2) / TILE);
+          if (tileType(tx, ty) === 'water') continue;
+        } catch {}
+        // Avoid near-initial camera center to reduce immediate clutter
+        const dx = (x + w/2) - player.x;
+        const dy = (y + h/2) - player.y;
+        if ((dx*dx + dy*dy) < (inViewRadius * inViewRadius)) continue;
+        // Avoid heavy overlap
+        const rect = { x, y, w, h };
+        let blocked = false;
+        for (const o of obstacles) {
+          if (!o) continue;
+          const ix = Math.max(0, Math.min(rect.x + rect.w, o.x + o.w) - Math.max(rect.x, o.x));
+          const iy = Math.max(0, Math.min(rect.y + rect.h, o.y + o.h) - Math.max(rect.y, o.y));
+          const inter = ix * iy;
+          if (inter > 0 && inter >= 0.35 * Math.min(rect.w * rect.h, (o.w||0) * (o.h||0))) { blocked = true; break; }
+        }
+        if (blocked) continue;
+        const id = `brk_l1_${nextIdx++}`;
+        obstacles.push({ x, y, w, h, type: kind, id, hp: 2 });
+        return true;
+      }
+      return false;
+    }
+    let b = 0, c = 0;
+    while (b < wantBarrels) { if (place('barrel')) b++; else break; }
+    while (c < wantCrates) { if (place('crate')) c++; else break; }
+  })();
   // Boss Vast inside
   const boss1x = cxw + cw/2 - 6;
   const boss1y = cyw + ch/2 - 8;
