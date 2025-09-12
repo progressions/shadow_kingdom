@@ -109,12 +109,12 @@ export const companionEffectsByKey = {
 
 // Global caps to keep stacks reasonable
 export const COMPANION_BUFF_CAPS = {
-  atk: 2,
-  dr: 2,
-  regen: 0.4, // HP per second
-  range: 3,   // pixels
-  touchDR: 1,
-  slow: 0.25, // 25%
-  aspd: 0.5,  // +50% attack speed (cooldown reduction factor)
-  crit: 0.15, // +15% absolute crit chance cap from auras
+  atk: 3,      // higher max attack bonus from auras
+  dr: 3,       // higher max damage reduction from auras
+  regen: 0.6,  // HP per second (increased sustain ceiling)
+  range: 4,    // pixels (slightly longer reach stacking)
+  touchDR: 2,  // stronger mitigation vs touch/contact damage
+  slow: 0.35,  // 35% max slow from stacked auras/triggers
+  aspd: 0.75,  // up to +75% attack speed from stacked sources
+  crit: 0.25,  // up to +25% absolute crit chance from auras
 };
