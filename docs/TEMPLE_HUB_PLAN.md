@@ -26,7 +26,7 @@ This document details the post‑Level 5 flow where defeating Vorthak rescues Ca
 - `level6_reached` — set when Level 6 loads; used to gate hub‑specific dialog.
 - `level7_reached`, `level8_reached`, `level9_reached` — set when those quest levels load; used for progressive content and follow‑ups.
 
-All flags persist via `runtime.questFlags` in Save v2.
+All flags persist via `runtime.questFlags` and are included in saves.
 
 ## Level Flow
 
@@ -162,7 +162,7 @@ Gating examples:
 
 ## Save / Load Considerations
 
-- All flags used for hubs/quests (e.g., `hub_unlocked`, `levelN_reached`, `<id>_started/_cleared/_done`) are already persisted in v2.
+- All flags used for hubs/quests (e.g., `hub_unlocked`, `levelN_reached`, `<id>_started/_cleared/_done`) are already persisted by the save system.
 - Ensure new levels (7–9) have descriptors to stabilize gates/chests/unique actors.
 - When loading into Level 6, do not spawn hub NPC duplicates for companions present in party; rely on runtime presence check.
 

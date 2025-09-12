@@ -48,7 +48,7 @@ This document describes the current save system. It stores stable world deltas a
 ```
 
 Notes:
-- uniqueActors uses stable ids (vnId: `enemy:vast`, `enemy:gorg`, etc.). Loaders spawn defaults; v2 removes/keeps and sets HP based on this map.
+- uniqueActors uses stable ids (vnId: `enemy:vast`, `enemy:gorg`, etc.). Loaders spawn defaults; the restore path removes/keeps and sets HP based on this map.
 - dynamicEnemies preserves every non-unique enemy exactly (position, HP, basic stats), so a saved crowd loads identically.
 
 ## Player / Companions / Inventory

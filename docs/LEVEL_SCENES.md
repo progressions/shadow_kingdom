@@ -28,7 +28,7 @@ This guide shows how to add a new level that follows the pattern used in Level 2
 - Keys and gates:
   - Key Guardian: set `guaranteedDropId: 'key_<id>'` on a featured enemy.
   - Gate: push an obstacle `{ type: 'gate', id: '<gate_id>', keyId: 'key_<id>', locked: true, blocksAttacks: true }`.
-- Level descriptors (v2 saves): `src/engine/level_descriptors.js` defines per-level ids for gates, chests, breakables, and unique actors. Keep these in sync with level spawns so saves can apply world deltas deterministically.
+- Level descriptors (save system): `src/engine/level_descriptors.js` defines per-level ids for gates, chests, breakables, and unique actors. Keep these in sync with level spawns so saves can apply world deltas deterministically.
 
 3) Template Snippet (inside a new `loadLevelN()`)
 
@@ -120,7 +120,7 @@ export function loadLevelN() {
 - Gate obstacles
   - `type: 'gate'`, `id: '..._gate'`, `keyId: 'key_...'`, `locked: true`, `blocksAttacks: true`.
   - Combat code checks for `gate` collision in interact logic (opening requires having the key).
-  - Save v2 records gate states by id and restores them on load.
+  - Saves record gate states by id and restore them on load.
 - Clearing arena interior
   - Ensure to remove procedural obstacles inside the arena footprint and where the gate gap will be, or the gate may be blocked.
 
@@ -150,7 +150,7 @@ try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['leve
 - Boss transition: Set `onDefeatNextLevel: N+1` on the boss to advance automatically after defeat. The defeated VN displays before fade.
 - Level reach flags: In each `loadLevelN()`, set `runtime.questFlags['levelN_reached'] = true` to gate companion quests/dialogs.
 
-9) Save v2 Notes for Level Authors
+9) Save Notes for Level Authors
 - Ensure ids are stable and present:
   - Gates in obstacles carry `id`; add them to the level descriptor.
   - Chests and breakables also have `id`; add them to the descriptor.
