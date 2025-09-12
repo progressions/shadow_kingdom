@@ -35,6 +35,7 @@ export function initInput() {
         { label: 'Save/Load', action: 'open_save_menu' },
         { label: 'Inventory', action: 'open_inventory' },
         { label: 'Debug', action: 'open_debug' },
+        { label: 'Main Menu', action: 'return_to_main' },
       ]);
       e.preventDefault();
       return;

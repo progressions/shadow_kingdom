@@ -342,6 +342,17 @@ export function selectChoice(index) {
     })();
     return;
   }
+  if (choice.action === 'return_to_main') {
+    try {
+      // Close any dialog overlay
+      endDialog();
+      // Pause the game and show the title screen
+      runtime.paused = true;
+      import('./audio.js').then(a => { try { a.stopMusic && a.stopMusic(); } catch {} });
+      import('./ui.js').then(u => { try { u.showTitleScreen && u.showTitleScreen(); } catch {} });
+    } catch {}
+    return;
+  }
   if (choice.action === 'debug_run_chest') {
     (async () => {
       try {
