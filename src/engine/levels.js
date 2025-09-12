@@ -24,14 +24,11 @@ export function loadLevel1() {
   // Terrain and procedural obstacles
   const terrain = buildTerrainBitmap(world);
   obstacles.push(...buildObstacles(world, player, enemies, npcs));
-  // Initialize lighting: bright daytime by default (ambient 0). Authors can lower for night scenes.
-  try { import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{}); } catch {}
-  // TEMP: Darkness test — set Level 1 to dark and equip a torch
-  (function tempDarkTest() {
+  // Level 1 defaults: start in darkness and equip a torch
+  (function initDarkStart() {
     try {
-      // Force ambient to 0 (dark)
       import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{});
-      // Give the player a small torch stack and auto-equip a lit torch
+      // Give the player a small torch stack and equip a lit torch for visibility
       addItemToInventory(player.inventory, { id: 'torch', name: 'Torch', slot: 'leftHand', stackable: true, maxQty: 99, qty: 3 });
       player.inventory.equipped.leftHand = { id: 'torch', name: 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
     } catch {}
