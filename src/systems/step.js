@@ -1233,18 +1233,38 @@ export function step(dt) {
     }
   } catch {}
 
-  // Music mode switching based on on-screen enemies, with debounce
+  // Music mode switching based on nearby alive enemies (not during menus/chats), with debounce
   {
-    const view = { x: camera.x, y: camera.y, w: camera.w, h: camera.h };
-    let bossOn = false, anyOn = false;
-    for (const e of enemies) {
-      if (e.hp <= 0) continue;
-      const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
-      if (!on) continue;
-      anyOn = true;
-      if (String(e.kind).toLowerCase() === 'boss') { bossOn = true; break; }
+    // Suppress menace while in overlays/menus
+    if (runtime.gameState !== 'play') {
+      if (runtime.musicMode !== 'normal') {
+        runtime.musicModePending = 'normal';
+        runtime.musicModeSwitchTimer = Math.min(runtime.musicModeSwitchTimer || 0, 0.6);
+      }
+    } else {
+      const view = { x: camera.x, y: camera.y, w: camera.w, h: camera.h };
+      let bossOn = false, anyOn = false;
+      // Require proximity to the player to count as danger (prevents far-edge enemies from flipping music)
+      const px = player.x + player.w / 2;
+      const py = player.y + player.h / 2;
+      const dangerR = 220; // pixels
+      const dangerR2 = dangerR * dangerR;
+      for (const e of enemies) {
+        if (!e || e.hp <= 0) continue;
+        // Must be within the camera view
+        const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
+        if (!on) continue;
+        // And within proximity of the player
+        const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+        const dx = ex - px, dy = ey - py;
+        if ((dx*dx + dy*dy) > dangerR2) continue;
+        anyOn = true;
+        if (String(e.kind).toLowerCase() === 'boss') { bossOn = true; break; }
+      }
+      var desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
+      // If player HP is very low, prefer low mode over normal even without visible enemies to keep tension
+      try { if (!anyOn) { const ratio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp || 10))); if (ratio <= 0.15) desired = 'low'; } } catch {}
     }
-    const desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
     if (desired === runtime.musicMode) {
       // Already in this mode; clear any pending switch
       runtime.musicModePending = null;
