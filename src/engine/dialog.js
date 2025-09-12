@@ -343,7 +343,7 @@ export function selectChoice(index) {
           if (!exists) {
             const sx = Math.max(0, Math.min(world.w - 12, player.x + 100));
             const sy = Math.max(0, Math.min(world.h - 16, player.y + 40));
-            const s = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet: null, spriteId: 'assets/snake_sprite_strip_64x20', vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
+            const s = spawnNpc(sx, sy, 'left', { name: 'Snek', dialogId: 'snake', sheet: null, spriteId: 'assets/snake_sprite_strip_64x20', portrait: 'assets/portraits/level01/Snek/Snek.mp4', vnOnSight: { text: 'Snek: My Lord… sssafe. I follow if you wish.' } });
             import('../data/dialogs.js').then(d => { if (d.snakeDialog) setNpcDialog(s, d.snakeDialog); });
           }
         } else {
