@@ -143,7 +143,7 @@ export function setMusicMuffle(enabled) {
     if (currentMusic && typeof currentMusic.volume === 'number') {
       if (on) {
         if (mufflePrevVol == null) mufflePrevVol = currentMusic.volume;
-        currentMusic.volume = Math.max(0, (mufflePrevVol || currentMusic.volume) * 0.65);
+        currentMusic.volume = Math.max(0, (mufflePrevVol || currentMusic.volume) * 0.30);
       } else {
         if (mufflePrevVol != null) currentMusic.volume = mufflePrevVol;
         mufflePrevVol = null;
@@ -479,7 +479,7 @@ function startChipMusic() {
       const range = theme.filterRange;
       const sweep = Math.sin(musicPhase * 0.2) * range * 0.5; // very slow
       let cutoff = Math.max(500, baseCut + sweep);
-      if (muffleActive) cutoff = Math.max(350, cutoff * 0.45);
+      if (muffleActive) cutoff = Math.max(200, cutoff * 0.20);
       musicFilter.frequency.setValueAtTime(cutoff, ac.currentTime);
     }
     // Drums
