@@ -18,23 +18,25 @@ function drawBossOutline(img, sx, sy, sw, sh, dx, dy, dw, dh, color = '#ffd166')
   } else {
     _olCtx.clearRect(0, 0, _olW, _olH);
   }
-  // Draw sprite to offscreen
+  // Draw sprite to offscreen and tint to a solid mask
   _olCtx.globalCompositeOperation = 'source-over';
   _olCtx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
-  // Colorize to outline color
   _olCtx.globalCompositeOperation = 'source-in';
   _olCtx.fillStyle = color;
   _olCtx.fillRect(0, 0, dw, dh);
   _olCtx.globalCompositeOperation = 'source-over';
-  // Draw colored mask around the sprite to create an outline
-  const offs = [
-    [-1, 0], [1, 0], [0, -1], [0, 1],
-    [-1, -1], [1, -1], [-1, 1], [1, 1],
-  ];
-  for (const [ox, oy] of offs) {
-    ctx.drawImage(_olCan, Math.round(dx + ox), Math.round(dy + oy));
-  }
+  // Draw the tinted mask with a soft shadow to create a glow instead of a hard outline
+  ctx.save();
+  const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : 0;
+  const pulse = 0.85 + 0.15 * Math.sin(t * 4);
+  // Brighter, tighter glow
+  ctx.globalAlpha = 0.75 * pulse;
+  ctx.shadowBlur = Math.max(6, Math.min(18, Math.floor(Math.max(dw, dh) * 0.14)));
+  ctx.shadowColor = 'rgba(255,209,102,1.0)';
+  ctx.drawImage(_olCan, Math.round(dx), Math.round(dy));
+  ctx.restore();
 }
+
 
 function drawBar(x, y, w, h, pct, color) {
   ctx.save();
@@ -305,6 +307,7 @@ export function render(terrainBitmap, obstacles) {
       ctx.fillText('!', sx, sy);
       ctx.restore();
     }
+    // Boss marker removed; keep glow only
   }
 
   // End world shake translate before UI overlay
