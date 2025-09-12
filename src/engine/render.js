@@ -188,6 +188,8 @@ export function render(terrainBitmap, obstacles) {
   drawables.push({
     x: player.x, y: player.y, w: player.w, h: player.h,
     dir: player.dir, frame: player.animFrame, sheet: playerSheet, isPlayer: true,
+    // Allow player to use custom external sprites via spriteId
+    spriteId: player.spriteId || null, spriteRef: player, spriteScale: player.spriteScale || 1,
   });
   drawables.sort((a, b) => (a.y + a.h) - (b.y + b.h));
 

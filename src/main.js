@@ -25,6 +25,9 @@ setupChatInputHandlers(runtime);
 initInput();
 updatePartyUI([]);
 
+// If a custom player sprite sheet exists, use it (2 frames × 4 directions, 16×16 each)
+try { player.spriteId = player.spriteId || 'assets/sprites/custom/hero'; } catch {}
+
 // Title screen setup: show image, then fade-in menu
 function startIntroScene() {
   try {
