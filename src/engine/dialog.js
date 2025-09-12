@@ -788,6 +788,7 @@ function handleStartQuest(data) {
 
 // Inventory menus
 export function startInventoryMenu() {
+  try { if (runtime?.questFlags) runtime.questFlags['tutorial_inv_equip_torch'] = false; } catch {}
   // Choose actor: Player or companions
   const choices = [
     { label: 'Player', action: 'open_inventory', data: 'player' },

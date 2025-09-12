@@ -819,8 +819,12 @@ export function updateQuestHint() {
   try {
     const f = runtime.questFlags || {};
     const c = runtime.questCounters || {};
+    // Tutorial: prompt to open inventory and equip a torch
+    if (f['tutorial_inv_equip_torch']) {
+      msg = 'Press I to open Inventory and equip a torch';
+    }
     // Fetch/Deliver — Canopy: Return the Ribbon
-    if (f['canopy_fetch_ribbon_started'] && !f['canopy_fetch_ribbon_cleared']) {
+    else if (f['canopy_fetch_ribbon_started'] && !f['canopy_fetch_ribbon_cleared']) {
       const items = (player?.inventory?.items || []);
       const hasRibbon = items.some(it => it && (it.id === 'relic_canopy' || it.keyId === 'relic_canopy'));
       msg = hasRibbon ? 'Quest — Return the Ribbon: Take it to the pedestal' : 'Quest — Return the Ribbon: Find the Ribbon';
