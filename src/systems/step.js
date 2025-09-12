@@ -1179,6 +1179,16 @@ export function step(dt) {
     }
   }
 
+  // Low-HP music muffle: when the player's HP is low, muffle background music
+  try {
+    const ratio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp || 10)));
+    const low = ratio <= 0.35;
+    if (!!runtime._musicMuffleOn !== low) {
+      runtime._musicMuffleOn = low;
+      import('../engine/audio.js').then(a => { if (a.setMusicMuffle) a.setMusicMuffle(low); }).catch(()=>{});
+    }
+  } catch {}
+
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
   // then show a simple VN once when first seen
   if (runtime.gameState === 'play' && (runtime.introCooldown || 0) <= 0 && !runtime.disableVN) {

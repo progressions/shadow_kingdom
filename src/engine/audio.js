@@ -45,6 +45,9 @@ const cache = new Map();
 // Music ducking state (for VN intro sting)
 let duckTimers = { restore: null };
 let duckPrevVol = null; // for file-based music
+// Low-HP muffle state
+let muffleActive = false;
+let mufflePrevVol = null;
 
 // Title screen fanfare
 let titleFanfare = null;
@@ -126,6 +129,27 @@ export function toggleChipMode() {
   useChip = !useChip;
   stopMusic();
   if (musicEnabled) tryStartMusic(trackForMode(menaceMode));
+}
+
+// Enable/disable low-HP music muffle (chip: lower lowpass cutoff; file: gentle volume duck)
+export function setMusicMuffle(enabled) {
+  const on = !!enabled;
+  if (on === muffleActive) return;
+  muffleActive = on;
+  // Chip path: nothing immediate, schedule() applies a lower cutoff each step
+  if (useChip) return;
+  // File-based: simulate muffle by ducking music volume while active
+  try {
+    if (currentMusic && typeof currentMusic.volume === 'number') {
+      if (on) {
+        if (mufflePrevVol == null) mufflePrevVol = currentMusic.volume;
+        currentMusic.volume = Math.max(0, (mufflePrevVol || currentMusic.volume) * 0.65);
+      } else {
+        if (mufflePrevVol != null) currentMusic.volume = mufflePrevVol;
+        mufflePrevVol = null;
+      }
+    }
+  } catch {}
 }
 
 // Optional location override (e.g., Level 6 hub special theme)
@@ -454,7 +478,8 @@ function startChipMusic() {
       const baseCut = (section === 0 ? theme.filterBaseA : theme.filterBaseB);
       const range = theme.filterRange;
       const sweep = Math.sin(musicPhase * 0.2) * range * 0.5; // very slow
-      const cutoff = Math.max(500, baseCut + sweep);
+      let cutoff = Math.max(500, baseCut + sweep);
+      if (muffleActive) cutoff = Math.max(350, cutoff * 0.45);
       musicFilter.frequency.setValueAtTime(cutoff, ac.currentTime);
     }
     // Drums
