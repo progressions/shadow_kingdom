@@ -49,11 +49,19 @@ export const canopyDialog = {
     },
     after_aff: {
       text: 'Canopy: My Lord, thank you. I\'ll do my best to keep everyone whole.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
     bond: {
       text: 'Canopy: My Lord, a good plan is a steady breath. I\'m with you.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
   },
 };
@@ -66,7 +74,7 @@ export const yornaDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_yorna' }, next: 'post_l5_yorna' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
-        { label: 'What can you do for me?', next: 'skills' },
+        { label: 'What can you do for us?', next: 'skills' },
         { label: 'You hit hard; I\'ll keep the lane open.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
         { label: 'Trade tactics (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'No thanks.', action: 'end' },
@@ -85,11 +93,19 @@ export const yornaDialog = {
     },
     after_aff: {
       text: 'Yorna: Chief, that\'s the way—clear space and we\'ll bulldoze through.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'What can you do for us?', next: 'skills' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
     bond: {
       text: 'Yorna: Chief, I like how you think. I\'ll match your pace.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'What can you do for us?', next: 'skills' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
   },
 };
@@ -102,7 +118,7 @@ export const holaDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_hola' }, next: 'post_l5_hola' },
         { label: 'Yes, please join.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'You\'re doing fine. Stay close and speak up if you need.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'hola_intro_encourage' }, next: 'after_aff' },
         { label: 'Practice a formation (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not now.', action: 'end' },
@@ -121,11 +137,19 @@ export const holaDialog = {
     },
     after_aff: {
       text: 'Hola: My Lord, okay… I\'ll try to keep pace. Thank you.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
     bond: {
       text: 'Hola: My Lord, that helps. If we keep it simple, I\'ll be ready.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
   },
 };
@@ -138,7 +162,7 @@ export const oyinDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_oyin' }, next: 'post_l5_oyin' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Ignite · Rally · Burn Weaken' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'You’re doing fine; breathe and stay with me.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'oyin_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -153,7 +177,7 @@ export const oyinDialog = {
     },
     after_aff: {
       text: 'Oyin: My Lord, thanks… I can try a little longer if you lead.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'What can you do for us?', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -166,7 +190,7 @@ export const twilDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_twil' }, next: 'post_l5_twil' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Scout · Weak Points · Shortcuts' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'Your read is sharp; call the line and I’ll follow.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'twil_intro_encourage' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
       ],
@@ -181,7 +205,11 @@ export const twilDialog = {
     },
     after_aff: {
       text: 'Twil: Master, ha—nice. Keep up and I’ll make it easy.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Scout · Weak Points · Shortcuts' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Scout · Weak Points · Shortcuts' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
   },
 };
@@ -194,7 +222,7 @@ export const tinDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_tin' }, next: 'post_l5_tin' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Tempo · Attack Speed · Safe Footing' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'Take point and sing out. I’ll keep space clear.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'tin_intro_encourage' }, next: 'after_aff' },
         { label: 'Maybe later.', action: 'end' },
       ],
@@ -209,7 +237,7 @@ export const tinDialog = {
     },
     after_aff: {
       text: 'Tin: My Lord, got it—short steps and wide eyes. Let’s move.',
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'What can you do for us?', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -222,7 +250,7 @@ export const nellisDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_nellis' }, next: 'post_l5_nellis' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'Stay near and mirror me—we’ll be fine.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'nellis_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -237,7 +265,11 @@ export const nellisDialog = {
     },
     after_aff: {
       text: 'Nellis: Sire, all right. I’ll match your pace.',
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Defense · Extended Reach · Steady Pace' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
   },
 };
@@ -251,7 +283,7 @@ export const urnDialog = {
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_urn' }, next: 'post_l5_urn' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Burn · Heat Ward' },
         { label: "I like your energy—let's lift together.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'urn_intro_encourage' }, next: 'after_aff' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'Quests', next: 'quests' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -269,7 +301,7 @@ export const urnDialog = {
     },
     after_aff: {
       text: "Urn: Mister, yes! Okay—short steps, long view. Let's go.",
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'What can you do for us?', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
     quests: {
       text: 'Urn: Mister, we can make the paths safer. Where do we start?',
@@ -321,7 +353,7 @@ export const fanaDialog = {
       text: "Fana: My Prince, the chains broke when you struck me down—the fire didn't. I burn what clings and shield you with heat when it counts. If you'll have me, I'll fight beside you.",
       choices: [
         { label: 'Yes, join me.', action: 'join_party' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'You’re free now. Breathe, then walk with me.', action: 'affinity_add', data: { target: 'active', amount: 0.6, flag: 'fana_intro_reassure' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
       ],
@@ -332,7 +364,7 @@ export const fanaDialog = {
     },
     after_aff: {
       text: "Fana: My Prince, thank you. I'll keep pace—and keep the fire pointed forward.",
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'What can you do for us?', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
@@ -391,7 +423,7 @@ export const varabellaDialog = {
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_vara' }, next: 'post_l5_vara' },
         { label: 'Competence. Join me.', action: 'join_party', hint: 'Angles · Extended Reach' },
         { label: "Spare the sarcasm; I value sharp eyes.", action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'varabella_intro_respect' }, next: 'after_aff' },
-        { label: 'What can you do for me?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'Quests', next: 'quests' },
         { label: 'Pass.', action: 'end' },
       ],
@@ -409,7 +441,11 @@ export const varabellaDialog = {
     },
     after_aff: {
       text: "Varabella: Boss man, you listen. Fine—I'll keep you standing.",
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Angles · Extended Reach' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Join me.', action: 'join_party', hint: 'Angles · Extended Reach' },
+        { label: 'What can you do for us?', next: 'about' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
     quests: {
       text: 'Varabella: Boss man, clear sightlines, clean exits. Pick one.',
@@ -463,7 +499,7 @@ export const cowsillDialog = {
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_cowsill' }, next: 'post_l5_cowsill' },
         { label: 'Yes, join me!', action: 'join_party', hint: 'Strike Partner · Amplify · Stagger' },
         { label: "Let's strike as one! (Affinity +0.3)", action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'cowsill_intro_team' }, next: 'after_aff' },
-        { label: 'What can you do?', next: 'about' },
+        { label: 'What can you do for us?', next: 'about' },
         { label: 'Tell me your technique (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'Not right now.', action: 'end' },
       ],
@@ -478,11 +514,11 @@ export const cowsillDialog = {
     },
     after_aff: {
       text: "Cowsill: My Lord, yes! That's the spirit! Together we're unstoppable!",
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'What can you do for us?', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
     bond: {
       text: "Cowsill: It's all about timing—when you swing, I follow through. Double the impact, half the effort!",
-      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'Later.', action: 'end' } ],
+      choices: [ { label: 'Join me.', action: 'join_party' }, { label: 'What can you do for us?', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
   },
 };
