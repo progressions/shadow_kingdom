@@ -232,8 +232,10 @@ function spawnCompanionFromRecord(d) {
   // Add feminineShape flag to companions when loading from saves
   const paletteWithShape = d.sheetPalette ? { ...d.sheetPalette, feminineShape: true } : null;
   const sheet = paletteWithShape ? makeSpriteSheet(paletteWithShape) : sheetForName(d.name);
+  const nameKey = String(d.name || '').toLowerCase();
+  const spriteId = d.spriteId || ( (nameKey.includes('snek') || nameKey.includes('snake') || nameKey.includes('smek')) ? 'assets/snake_sprite_strip_64x20' : null );
   const comp = spawnCompanion(d.x, d.y, sheet, {
-    spriteId: d.spriteId || null,
+    spriteId,
     name: d.name,
     portrait: d.portrait || null,
     sheetPalette: d.sheetPalette || null,
@@ -303,8 +305,10 @@ function spawnNpcFromRecord(d) {
   const isFemaleNpc = d.name && ['canopy', 'yorna', 'hola', 'oyin', 'twil', 'tin', 'nellis', 'urn', 'varabella', 'ell', 'fana', 'rose'].some(n => d.name.toLowerCase().includes(n));
   const paletteWithShape = (d.sheetPalette && isFemaleNpc) ? { ...d.sheetPalette, feminineShape: true } : d.sheetPalette;
   const sheet = paletteWithShape ? makeSpriteSheet(paletteWithShape) : sheetForName(d.name);
+  const nameKey2 = String(d.name || '').toLowerCase();
+  const spriteId2 = d.spriteId || ( (nameKey2.includes('snek') || nameKey2.includes('snake') || nameKey2.includes('smek')) ? 'assets/snake_sprite_strip_64x20' : null );
   const npc = spawnNpc(d.x, d.y, d.dir || 'down', {
-    spriteId: d.spriteId || null,
+    spriteId: spriteId2,
     name: d.name,
     sheet,
     portrait: d.portrait || null,
