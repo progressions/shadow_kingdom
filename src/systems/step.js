@@ -731,6 +731,13 @@ export function step(dt) {
         e.touchDamage = Math.max(1, (e.touchDamage || 0) + 2);
         // Add boss special: true damage component in later phases
         e.trueDamage = Math.max(2, (e.trueDamage || 0), 2);
+        // Vast (Level 1) exception: make her deal less damage in phase 2
+        if (e.vnId === 'enemy:vast') {
+          // Net reduce touch damage compared to phase 1
+          e.touchDamage = Math.max(1, (e.touchDamage || 0) - 3);
+          // Remove true damage component for Vast's second phase
+          e.trueDamage = 0;
+        }
         e.hitCooldown = Math.max(0.5, (e.hitCooldown || 0.8) * 0.7);
         e.speed = Math.max(8, (e.speed || 12) * 1.1);
         try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Empowered!', { color: '#ffd166', life: 0.8 }); } catch {}
