@@ -2,16 +2,24 @@
 
 ## Overview
 
-Shadow Kingdom features a dynamic, procedurally-generated 8-bit music system that responds to gameplay in real-time. The music is created using the Web Audio API, generating all sounds programmatically without any audio files.
+Shadow Kingdom features a dynamic music system that responds to gameplay in real time.
+
+- Chip synth (default): procedurally generates 8‑bit style music via the Web Audio API.
+- File playback (optional): if music files exist under `assets/audio/music/`, the engine can play them instead. Use `toggleChipMode()` to switch between chip and file modes.
+- SFX are file‑based under `assets/audio/sfx/` and play in either mode.
 
 ## Core Architecture
 
-### Music Generation Engine
+### Music Engines
 
-The system uses Web Audio oscillators to generate music in real-time:
-- **No audio files** - all music is synthesized
-- **8-bit aesthetic** - square, triangle, sine, and sawtooth waveforms
-- **Dynamic composition** - music changes based on game state
+Chip engine (default):
+- Web Audio oscillators generate all parts programmatically
+- 8‑bit aesthetic (square/triangle/sine/saw) with envelopes and filter sweeps
+- Composition adapts to game state (location and danger)
+
+File engine (optional):
+- Looped tracks selected by intensity: `ambient`, `ambient_low`, `ambient_high`
+- Smooth cross‑fades and volume ducking for events
 
 ### Key Components
 
@@ -165,6 +173,11 @@ Oscillator --> Gain --> Filter --> Master Gain --> Destination
 - **Lazy initialization** - Create context on first user interaction
 - **Debouncing** - 1.5 second delay between music changes
 - **Atmosphere cleanup** - Clear timers when stopping music
+
+### Event Stingers and Ducking
+
+- VN intros briefly duck background music and play a short sting to spotlight characters.
+- Low HP muffle: when player HP is low, music is muffled (chip: lowpass filter, file: gentle volume reduction) and a heartbeat SFX may play.
 
 ## Atmospheric Sounds
 

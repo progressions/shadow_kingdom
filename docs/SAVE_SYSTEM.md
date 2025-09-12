@@ -1,6 +1,6 @@
-# Save System v2 — Deterministic World + Explicit Enemies
+# Save System — Deterministic World + Explicit Enemies
 
-This document describes the current, single save system (v2). It stores stable world deltas and explicit enemies, and restores the scene deterministically. There is no legacy mode.
+This document describes the current save system. It stores stable world deltas and explicit enemies, and restores the scene deterministically. The storage schema is `schema: "save"` with `version: 3`.
 
 ## Goals
 
@@ -9,20 +9,20 @@ This document describes the current, single save system (v2). It stores stable w
 
 ## Where Saves Live
 
-- Local: `localStorage` per slot — `shadow_kingdom_save_<slot>`
+- Local: `localStorage` per slot — `shadow_kingdom_save_<slot>` using an atomic double‑buffer (`..._A`/`..._B` and a pointer key) to guard against partial writes
 - Autosave: `shadow_kingdom_autosave` (does not overwrite slots)
 
 ## Load Flow
 
-- `loadGame(slot)`: parses payload (schema `v2`). If `currentLevel` differs, stashes payload and sets `runtime.pendingLevel`. The main loop loads the level, then `applyPendingRestoreV2()` applies the payload.
-- VN overlays are closed before swap; after swap the saved world/enemies are applied.
+- `loadGame(slot)`: parses payload (schema `save`). If `currentLevel` differs, stashes payload and sets `runtime.pendingLevel`. The main loop loads the target level, then `applyPendingRestore()` applies the payload.
+- VN intros and spawners are suppressed during the transition; after swap the saved world/enemies are applied and play resumes.
 
-## Payload Structure (Top‑Level, v2)
+## Payload Structure (Top‑Level)
 
 ```jsonc
 {
-  "schema": "v2",
-  "version": 2,
+  "schema": "save",
+  "version": 3,
   "at": 1757600000000,
   "currentLevel": 1,
   "player": { "x": 800, "y": 520, "hp": 10, "dir": "down", "level": 1, "xp": 6 },
@@ -66,7 +66,7 @@ Notes:
 
 ## VN / Flags / Quests
 
-- vnSeen: prevents re‑playing VN intros.
+- vnSeen: prevents re‑playing VN intros (NPCs only; enemy intros are derived by encounter id).
 - affinityFlags: once-only affinity awards.
 - questFlags / questCounters: booleans and numeric progress.
 
@@ -81,7 +81,7 @@ Notes:
 
 ## Portraits
 
-- Portrait paths use level-scoped layout: `assets/portraits/levelXX/<Name>/<File>.mp4`.
+- Portrait paths may be absolute or level‑scoped (e.g., `assets/portraits/levelXX/<Name>/<File>.mp4`).
 - Legacy saves are normalized on load.
 
 ## Autosave
@@ -92,6 +92,9 @@ Notes:
 
 - Set `window.DEBUG_ENEMIES = true` to log spawns/restores/removals and draw enemy markers on screen.
 
+## Legacy Appendix (v1 examples)
+
+The following examples reflect an earlier payload shape that stored all enemies in a single `enemies` array. They are retained for historical reference and do not represent the current on‑disk format.
 
 ```jsonc
 {

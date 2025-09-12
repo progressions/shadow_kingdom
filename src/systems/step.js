@@ -190,27 +190,7 @@ export function step(dt) {
     }
   } catch {}
 
-  // Update torch timer UI elements (throttled)
-  try {
-    runtime._torchUiTick = (runtime._torchUiTick || 0) + dt;
-    if (runtime._torchUiTick >= 0.2) {
-      runtime._torchUiTick = 0;
-      const label = document.getElementById('torch-timer-label');
-      const fill = document.getElementById('torch-timer-fill');
-      if (label && fill) {
-        const LH = player?.inventory?.equipped?.leftHand || null;
-        if (LH && LH.id === 'torch') {
-          const left = Math.max(0, Number(LH.burnMsRemaining || 0));
-          const mm = Math.floor(left / 60000);
-          const ss = Math.floor((left % 60000) / 1000);
-          const mmss = `${String(mm).padStart(1,'0')}:${String(ss).padStart(2,'0')}`;
-          label.textContent = `Torch ${mmss}`;
-          const pct = Math.max(0, Math.min(1, left / 180000));
-          fill.style.width = `${Math.round(pct * 100)}%`;
-        }
-      }
-    }
-  } catch {}
+  // (Torch timer HUD now drawn in render overlay; no DOM updates needed)
 
   // Rebuild lighting grid (coarse, tile-based). Throttle lightly (~60ms) to reduce cost.
   try { rebuildLighting(60); } catch {}

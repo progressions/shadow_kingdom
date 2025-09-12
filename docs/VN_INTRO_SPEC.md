@@ -12,11 +12,10 @@ This document specifies the “visual novel (VN) intro on first appearance” fe
 ## User Experience
 
 1) Player moves; a flagged character first enters the camera view.
-2) The game briefly “spotlights” the character (0.5–1.0s):
-   - Camera centers on the character.
-   - Character sprite subtly flickers and/or a soft pulse highlights them.
-   - Gameplay simulation is frozen during this cue (inputs ignored for this short window only).
-3) VN overlay opens with the character’s portrait, name, and configured dialog tree.
+2) The game briefly spotlights the character with a short camera pan (no global freeze).
+   - Camera pans to center the character.
+   - A subtle pulse/flicker may highlight them.
+3) VN overlay opens with the character’s portrait, name, and configured dialog tree; gameplay input is paused while the overlay is active.
 4) Player makes a choice; VN closes.
 5) Game reliably resumes; camera returns to the player (instantly or via a short smooth pan).
 6) The intro never triggers for this character again (persisted across saves).
@@ -68,20 +67,19 @@ spawnNpc(x, y, 'down', {
 
 ## Runtime State
 
-- `runtime.preIntro: { actorRef, conf, t } | null` — active spotlight countdown.
-- `runtime.freezeWorld: boolean` — freeze simulation during pre-intro only.
 - `runtime.introCooldown: number` — seconds until another intro may start.
-- `runtime.cameraPan: { fromX, fromY, toX, toY, t, dur } | null` — optional smooth pan back to the player after VN.
-- `runtime.vnSeen: Record<string, boolean>` — persisted map of which `id`s have been shown (see Persistence).
+- `runtime.cameraPan: { fromX, fromY, toX, toY, t, dur } | null` — smooth pan to the actor and back to the player.
+- `runtime.pendingIntro: { actor, text } | null` — when set, the next update opens a VN for this actor.
+- `runtime._queuedVNs?: Array<{ actor?, text, pan? }>` — queue of additional intros; each uses a “Continue” choice in the VN.
+- `runtime.vnSeen: Record<string, boolean>` — map of which intro keys have been shown (see Persistence).
 
 ## Persistence
 
-- Save `runtime.vnSeen` in the game payload (e.g., under `meta.vnSeen`).
-- On load, restore into `runtime.vnSeen`.
-- ID derivation:
+- Saves persist VN seen keys for NPCs; enemy intro seen state is derived from encounter identity (vnId) at load.
+- On load, enemy identity is normalized and missing intros are reattached where appropriate.
+- Key derivation:
   - Use `vnOnSight.id` if provided.
-  - Else use a stable key from entity name (lowercased) and type, e.g., `npc:scholar`.
-  - Boss may have a fixed ID, e.g., `enemy:boss`.
+  - Else use a stable key from entity name (lowercased) and type, e.g., `npc:scholar` or `enemy:gorg`.
 
 ## Lifecycle Flow
 
@@ -90,11 +88,8 @@ flowchart TD
   visible[Entity enters camera view] --> check{Eligible?}
   check -- seen/cooldown/overlay --> wait[Do nothing]
   check -- ok --> spot[Start pre-intro]
-  spot --> freeze[freezeWorld = true; preIntro = {t = preDelaySec}]
-  freeze --> cue[Center camera; draw pulse/flicker]
-  cue --> open{t <= 0?}
-  open -- no --> cue
-  open -- yes --> vn[Open VN overlay]
+  spot --> cue[Pan camera; draw pulse/flicker]
+  cue --> vn[Open VN overlay]
   vn --> play[Gameplay resumes when VN closes]
   play --> pan[Optional smooth camera pan back to player]
   pan --> done[Set vnSeen[id] = true; set cooldown]
@@ -115,10 +110,8 @@ flowchart TD
 
 ## Input/Audio Behavior
 
-- Pre-intro (freeze window):
-  - Ignore all inputs (Esc, B, movement, etc.).
-  - Do NOT open pause menu.
-  - Optionally duck music by ~3 dB or play a short sting.
+- Pre-intro: no global freeze; inputs continue until the VN opens (pan is visual only).
+- VN intros duck music briefly and may play a short sting.
 - VN overlay:
   - Standard VN input rules apply (number keys, arrows, Enter, clicks).
   - If `lock = true`, ignore Esc/click to close.
@@ -127,7 +120,6 @@ flowchart TD
 
 ## Reliability Requirements (No Soft-Lock)
 
-- Always clear `freezeWorld` when opening the VN and again when closing it (double-safety).
 - On `exitChat`, always:
   - Clear any leftover `preIntro` state.
   - Start camera pan back to player (or snap if very close).
@@ -184,9 +176,8 @@ flowchart TD
 - [ ] Cooldown prevents back-to-back intros; other flagged entities can trigger later.
 - [ ] Seen flags persist across save/load.
 
-## Non-Goals (for v1)
+## Notes
 
-- No queued intros; only nearest/first wins.
+- Multiple intros are queued; each VN shows a “Continue” choice until the queue drains.
 - No dynamic pathfinding or cinematic movement; camera only.
 - No audio voice-over; just SFX/music tweaks.
-

@@ -319,13 +319,32 @@ export function render(terrainBitmap, obstacles) {
       const gy = Math.max(0, Math.floor(camera.y / TILE));
       const gw = Math.min(L._w, Math.ceil((camera.x + camera.w) / TILE)) - gx;
       const gh = Math.min(L._h, Math.ceil((camera.y + camera.h) / TILE)) - gy;
+      // Precompute which visible tiles contain a rock so they remain slightly visible in darkness
+      const rockTiles = new Set();
+      try {
+        for (const o of obstacles || []) {
+          if (!o || o.type !== 'rock') continue;
+          // Skip rocks outside the view bounds for speed
+          if (o.x > camera.x + camera.w || o.x + o.w < camera.x || o.y > camera.y + camera.h || o.y + o.h < camera.y) continue;
+          const tx0 = Math.max(gx, Math.floor(o.x / TILE));
+          const ty0 = Math.max(gy, Math.floor(o.y / TILE));
+          const tx1 = Math.min(gx + gw - 1, Math.floor((o.x + o.w - 1) / TILE));
+          const ty1 = Math.min(gy + gh - 1, Math.floor((o.y + o.h - 1) / TILE));
+          for (let ty = ty0; ty <= ty1; ty++) {
+            for (let tx = tx0; tx <= tx1; tx++) rockTiles.add(ty * L._w + tx);
+          }
+        }
+      } catch {}
       // Draw per-tile dark quads with alpha based on inverse light level
       for (let ty = 0; ty < gh; ty++) {
         for (let tx = 0; tx < gw; tx++) {
-          const lv = L.grid[(gy + ty) * L._w + (gx + tx)] | 0;
-          const darkness = Math.max(0, Math.min(1, 1 - (lv / (MAX_LIGHT_LEVEL || 1))))
+          const gidx = (gy + ty) * L._w + (gx + tx);
+          const lv = L.grid[gidx] | 0;
+          const darkness = Math.max(0, Math.min(1, 1 - (lv / (MAX_LIGHT_LEVEL || 1))));
           // Slight cap so brightest tiles still have a tiny film; tune as desired
-          const alpha = Math.min(0.85, darkness * 0.85);
+          let alpha = Math.min(0.85, darkness * 0.85);
+          // Keep rocks slightly visible even at full dark (reduce max alpha over rock tiles)
+          if (rockTiles.has(gidx)) alpha = Math.min(alpha, 0.55);
           if (alpha <= 0.01) continue;
           ctx.globalAlpha = alpha;
           ctx.fillStyle = '#000000';
@@ -409,6 +428,30 @@ export function render(terrainBitmap, obstacles) {
     const cur = Math.max(0, player.xp || 0);
     const pct = Math.max(0, Math.min(1, need > 0 ? (cur / need) : 0));
     drawBar(6, 14, 60, 3, pct, '#ffd166');
+  } catch {}
+  // Torch meter under XP (only when a torch is equipped)
+  try {
+    const LH = player?.inventory?.equipped?.leftHand || null;
+    if (LH && LH.id === 'torch') {
+      const maxMs = 180000; // default torch duration
+      const left = Math.max(0, Number(LH.burnMsRemaining || 0));
+      const pctT = Math.max(0, Math.min(1, left / maxMs));
+      drawBar(6, 18, 60, 3, pctT, '#ffd166');
+      // Small label with remaining time to the right of bars
+      const mm = Math.floor(left / 60000);
+      const ss = Math.floor((left % 60000) / 1000);
+      const mmss = `${String(mm).padStart(1,'0')}:${String(ss).padStart(2,'0')}`;
+      ctx.save();
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = '#ffd166';
+      ctx.strokeText(`Torch ${mmss}`, 70, 14);
+      ctx.fillText(`Torch ${mmss}`, 70, 14);
+      ctx.restore();
+    }
   } catch {}
   // Player Level label
   try {

@@ -34,7 +34,9 @@ Notes:
 - Companion dialogs are editable in `src/data/companion_dialogs.js`.
   - Keys are lowercase companion names, each with a `start` node and `nodes` map.
   - Use `action: 'companion_back'` to return to the companion selector and `action: 'dismiss_companion'` to remove them.
-- Saves are stored in your browser's localStorage under a single slot.
+- Saves use 3 manual slots plus an autosave, stored in your browser's localStorage with an atomic double‑buffer for corruption safety.
+ - Quick Save: F6 (or Ctrl+S) writes the current slot; Quick Load: F7.
+ - Autosave can be toggled in the Save/Load menu (every ~60s) and does not overwrite manual slots.
  - Inventory saves and loads with the game (equipped items and backpack).
  - Sample items defined in `src/data/items.js` — use "Add Sample Items" inside a character's inventory to test.
  - A small party UI shows current companions at the top-right.

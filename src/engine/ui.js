@@ -493,41 +493,6 @@ export function updatePartyUI(companions) {
       fill.style.borderRadius = '2px';
       bar.appendChild(fill);
       chip.appendChild(bar);
-      // Torch timer placed just under the first XP bar (upper-left)
-      if (idx === 0) {
-        const LH = player?.inventory?.equipped?.leftHand || null;
-        if (LH && LH.id === 'torch') {
-          const maxMs = 180000; // default torch duration
-          const left = Math.max(0, Number(LH.burnMsRemaining || 0));
-          const pctT = Math.max(0, Math.min(1, left / maxMs));
-          const wrap = document.createElement('div');
-          wrap.style.marginTop = '4px';
-          const label = document.createElement('div');
-          label.id = 'torch-timer-label';
-          label.style.fontSize = '11px';
-          label.style.opacity = '0.85';
-          const mm = Math.floor(left / 60000);
-          const ss = Math.floor((left % 60000) / 1000);
-          const mmss = `${String(mm).padStart(1,'0')}:${String(ss).padStart(2,'0')}`;
-          label.textContent = `Torch ${mmss}`;
-          const tbar = document.createElement('div');
-          tbar.style.width = '100%';
-          tbar.style.height = '4px';
-          tbar.style.background = '#1a1a1a';
-          tbar.style.border = '1px solid #333';
-          tbar.style.borderRadius = '3px';
-          const tfill = document.createElement('div');
-          tfill.id = 'torch-timer-fill';
-          tfill.style.height = '100%';
-          tfill.style.width = `${Math.round(pctT * 100)}%`;
-          tfill.style.background = '#ffd166';
-          tfill.style.borderRadius = '2px';
-          tbar.appendChild(tfill);
-          wrap.appendChild(label);
-          wrap.appendChild(tbar);
-          chip.appendChild(wrap);
-        }
-      }
     } catch {}
     partyUI.appendChild(chip);
   });
