@@ -20,6 +20,7 @@ const files = {
     attack: 'assets/audio/sfx/attack.wav',
     hit: 'assets/audio/sfx/hit.wav',
     pierce: 'assets/audio/sfx/pierce.wav',
+    heartbeat: 'assets/audio/sfx/heartbeat.wav',
     uiOpen: 'assets/audio/sfx/ui-open.wav',
     uiMove: 'assets/audio/sfx/ui-move.wav',
     uiSelect: 'assets/audio/sfx/ui-select.wav',
@@ -418,6 +419,15 @@ function playSfxChip(name) {
       envTone({ type: 'sine',     freq: 90,  attack: 0.004, decay: 0.20, release: 0.14, gain: 0.11, t: t + 0.02 });
       // Short muted noise for rumble
       noiseBurst({ attack: 0.002, decay: 0.12, release: 0.10, gain: 0.06, t });
+      break;
+    case 'heartbeat':
+      // Low HP heartbeat: soft "lub-dub" thump
+      // First thump
+      envTone({ type: 'triangle', freq: 90, attack: 0.005, decay: 0.08, release: 0.06, gain: 0.16, t });
+      envTone({ type: 'sine',     freq: 55, attack: 0.004, decay: 0.10, release: 0.06, gain: 0.12, t });
+      // Second lighter thump shortly after
+      envTone({ type: 'triangle', freq: 85, attack: 0.004, decay: 0.06, release: 0.05, gain: 0.12, t: t + 0.18 });
+      envTone({ type: 'sine',     freq: 50, attack: 0.004, decay: 0.08, release: 0.05, gain: 0.10, t: t + 0.18 });
       break;
   }
 }

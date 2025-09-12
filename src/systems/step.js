@@ -1187,6 +1187,18 @@ export function step(dt) {
       runtime._musicMuffleOn = low;
       import('../engine/audio.js').then(a => { if (a.setMusicMuffle) a.setMusicMuffle(low); }).catch(()=>{});
     }
+    // Low-HP heartbeat: periodic thump that speeds up as HP drops
+    runtime._heartbeatTimer = Math.max(0, (runtime._heartbeatTimer || 0) - dt);
+    if (low && (runtime.gameState !== 'chat')) {
+      const k = Math.max(0, Math.min(1, (0.35 - ratio) / 0.35));
+      const period = Math.max(0.40, 1.00 - 0.55 * k); // 1.0s near threshold -> 0.45s near zero
+      if ((runtime._heartbeatTimer || 0) <= 0) {
+        try { import('../engine/audio.js').then(m => m.playSfx && m.playSfx('heartbeat')); } catch {}
+        runtime._heartbeatTimer = period;
+      }
+    } else {
+      runtime._heartbeatTimer = 0;
+    }
   } catch {}
 
   // Minimal VN-on-sight: for any NPC or enemy with vnOnSight, pan camera to them,
