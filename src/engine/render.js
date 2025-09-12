@@ -253,9 +253,13 @@ export function render(terrainBitmap, obstacles) {
           ctx.drawImage(img, sx, sy, fw, fh, dx, dy, destW, destH);
         }
         drew = true;
-      } else if (!ent._spriteLoading) {
-        ent._spriteLoading = true;
-        getSprite(ent.spriteId).then(s => { ent._sprite = s; ent._spriteLoading = false; }).catch(() => { ent._spriteLoading = false; });
+      } else {
+        if (!ent._spriteLoading) {
+          ent._spriteLoading = true;
+          getSprite(ent.spriteId).then(s => { ent._sprite = s; ent._spriteLoading = false; }).catch(() => { ent._spriteLoading = false; });
+        }
+        // Suppress legacy fallback while custom sprite is loading
+        drew = true;
       }
     }
     if (!drew) {

@@ -1235,6 +1235,7 @@ export function step(dt) {
 
   // Music mode switching based on nearby alive enemies (not during menus/chats), with debounce
   {
+    let desired = 'normal';
     // Suppress menace while in overlays/menus
     if (runtime.gameState !== 'play') {
       if (runtime.musicMode !== 'normal') {
@@ -1261,7 +1262,7 @@ export function step(dt) {
         anyOn = true;
         if (String(e.kind).toLowerCase() === 'boss') { bossOn = true; break; }
       }
-      var desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
+      desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
       // If player HP is very low, prefer low mode over normal even without visible enemies to keep tension
       try { if (!anyOn) { const ratio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp || 10))); if (ratio <= 0.15) desired = 'low'; } } catch {}
     }
