@@ -207,7 +207,15 @@ export function render(terrainBitmap, obstacles) {
         let fw = 32, fh = 32, sx = 0, sy = 0;
         if (meta && Array.isArray(meta.frames?.[d.dir]) && meta.frames[d.dir].length) {
           const frames = meta.frames[d.dir];
-          const idx = Math.max(0, d.frame % frames.length);
+          let idx = 0;
+          // If we have 3+ frames, assume [idle, walk1, walk2, ...]. Use idle when not moving,
+          // and alternate walk frames when moving. Otherwise, fall back to animFrame modulo length.
+          if (frames.length >= 3) {
+            if (ent && ent.moving) idx = 1 + ((ent.animFrame || 0) % 2);
+            else idx = 0;
+          } else {
+            idx = Math.max(0, (ent && typeof ent.animFrame === 'number' ? ent.animFrame : 0) % frames.length);
+          }
           const fr = frames[idx];
           sx = fr.x|0; sy = fr.y|0; fw = fr.w||32; fh = fr.h||32;
         } else {
@@ -223,8 +231,17 @@ export function render(terrainBitmap, obstacles) {
         // Anchor: default bottom-center; meta.anchor in [0..1] if provided
         let ax = 0.5, ay = 1.0;
         if (meta && meta.anchor) { ax = Number(meta.anchor.x) || ax; ay = Number(meta.anchor.y) || ay; }
-        const dx = Math.round(d.x + d.w/2 - ax * destW - camera.x);
-        const dy = Math.round(d.y + d.h - ay * destH - camera.y);
+        let dx = Math.round(d.x + d.w/2 - ax * destW - camera.x);
+        let dy = Math.round(d.y + d.h - ay * destH - camera.y);
+        // If this sprite only has a single frame per direction (or none defined),
+        // simulate a tiny walk bob when moving by nudging the draw Y by 1px.
+        try {
+          if (ent && ent.moving) {
+            // Toggle a subtle 1px bob while moving (works for single- or multi-frame sheets)
+            const bob = (ent.animFrame % 2 === 1) ? -1 : 0;
+            dy += bob;
+          }
+        } catch {}
         // Boss outline (gold) around sprite
         if (ent && String(ent.kind).toLowerCase() === 'boss') {
           drawBossOutline(img, sx, sy, fw, fh, dx, dy, destW, destH, '#ffd166');
