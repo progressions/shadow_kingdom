@@ -346,6 +346,7 @@ export function selectChoice(index) {
     try {
       // Close any dialog overlay
       endDialog();
+      exitChat(runtime);
       // Pause the game and show the title screen
       runtime.paused = true;
       import('./audio.js').then(a => { try { a.stopMusic && a.stopMusic(); } catch {} });
