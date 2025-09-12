@@ -171,6 +171,8 @@ export function step(dt) {
     // Keep inventory consistent (recover keys accidentally put into equipped, etc.)
     normalizeInventory(player.inventory);
   } catch {}
+  // Decay global input suppression timer (used for death scene)
+  try { if ((runtime._suppressInputTimer || 0) > 0) runtime._suppressInputTimer = Math.max(0, (runtime._suppressInputTimer || 0) - dt); } catch {}
 
   // Torch burnout: if a torch is equipped in left hand, tick down and consume on expiry
   try {
@@ -1156,16 +1158,28 @@ export function step(dt) {
       // Pause simulation and VN, hide player sprite, and apply zoom-out target
       runtime.paused = true; runtime.disableVN = true;
       runtime._hidePlayer = true;
-      runtime._deathZoomTarget = 0.9; // zoom out a bit
+      runtime._deathZoomTarget = 0.85; // zoom out a bit more for drama
       // Spawn player corpse and blood one time
       if (!runtime._didDeathEffects) {
         runtime._didDeathEffects = true;
         try { import('../engine/state.js').then(s => { s.spawnCorpse(player.x, player.y, { kind: 'player', dir: player.dir || 'down' }); s.spawnStain(player.x + player.w/2, player.y + player.h/2, { life: 3.5 }); }); } catch {}
         try { import('../engine/ui.js').then(u => u.showBanner && u.showBanner('Your journey has ended...')); } catch {}
+        // Suppress input briefly so attack key doesn't skip the scene
+        runtime._suppressInputTimer = Math.max(runtime._suppressInputTimer || 0, 1.0);
+        // Delay before accepting the Game Over key press
+        runtime._deathDelay = Math.max(runtime._deathDelay || 0, 1.2);
       }
-      // Wait for any key press to show the Game Over menu
-      runtime._awaitGameOverKey = true;
     } catch {}
+  }
+
+  // After death, wait for delay to elapse before enabling Game Over key prompt
+  if (!runtime.gameOver && player.hp <= 0) {
+    if ((runtime._deathDelay || 0) > 0) {
+      runtime._deathDelay = Math.max(0, (runtime._deathDelay || 0) - dt);
+      if (runtime._deathDelay === 0) {
+        runtime._awaitGameOverKey = true;
+      }
+    }
   }
 
   // Camera follow

@@ -511,6 +511,9 @@ export const runtime = {
   combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
   // Feature toggles
   snakeMode: false,
+  // Scene helpers
+  _suppressInputTimer: 0, // seconds to ignore input (e.g., immediately after death)
+  _deathDelay: 0,         // delay before accepting Game Over key
 
   // Lighting (coarse, tile-based)
   lighting: {

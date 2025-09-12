@@ -19,6 +19,11 @@ export function initInput() {
       import('./dialog.js').then(d => d.startGameOver && d.startGameOver());
       return;
     }
+    // Suppress input briefly (e.g., right after death) to avoid skipping scenes
+    if ((runtime._suppressInputTimer || 0) > 0) {
+      e.preventDefault();
+      return;
+    }
     // No special freeze handling — VN intros removed
     if (runtime.gameState === 'chat') {
       if (e.key === 'Escape') {
