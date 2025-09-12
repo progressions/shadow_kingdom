@@ -115,19 +115,20 @@ class ChiptuneFanfare {
 
     // Play all parts
     melody.forEach(n => {
-      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'square', 0.15);
+      // Lower lead gain for gentler intro
+      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'square', 0.08);
     });
 
     harmony.forEach(n => {
-      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'triangle', 0.10);
+      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'triangle', 0.06);
     });
 
     bass.forEach(n => {
-      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'triangle', 0.20);
+      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'triangle', 0.10);
     });
 
     arpeggio.forEach(n => {
-      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'sawtooth', 0.08);
+      this.createOscillator(this.note(n.note), startTime + n.time * beat, n.dur * beat, 'sawtooth', 0.04);
     });
 
     // Reset playing flag after fanfare completes
