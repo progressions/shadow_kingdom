@@ -26,7 +26,7 @@ initInput();
 updatePartyUI([]);
 
 // If a custom player sprite sheet exists, use it (2 frames × 4 directions, 16×16 each)
-try { player.spriteId = player.spriteId || 'assets/sprites/custom/hero'; } catch {}
+try { player.spriteId = player.spriteId || 'assets/fantasy_character_spritesheet_32x64'; } catch {}
 
 // Title screen setup: show image, then fade-in menu
 function startIntroScene() {
