@@ -1214,7 +1214,7 @@ export function step(dt) {
             if (e && e.id === picked.id) sameCount += 1;
           }
         }
-        const shouldSalvage = !isKey && (sameCount >= 3);
+        const isFull = !isKey && (sameCount >= 3);
         // Special-case: Health potions auto-consume on pickup if not at full HP; otherwise leave on ground
         const isPotion = picked && (picked.id === 'potion_light' || picked.id === 'potion_medium' || picked.id === 'potion_strong');
         if (isPotion) {
@@ -1234,11 +1234,12 @@ export function step(dt) {
           continue;
         }
 
+        if (isFull) {
+          // At cap: do not auto-pickup; leave on ground
+          continue;
+        }
         itemsOnGround.splice(ii, 1);
-        if (shouldSalvage) {
-          showBanner(`Salvaged ${picked?.name || 'item'}`);
-          playSfx('pickup');
-        } else {
+        {
           // Collect
           let toAdd = picked;
           try { toAdd = JSON.parse(JSON.stringify(picked)); } catch {}
