@@ -8,7 +8,7 @@ import { setMusicLocation } from './audio.js';
 import { spawnEnemy, spawnNpc } from './state.js';
 import { TILE } from './constants.js';
 import { setNpcDialog } from './dialog.js';
-import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
+import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
 import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
 
@@ -100,6 +100,16 @@ export function loadLevel1() {
   const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', dialogId: 'yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
   const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', dialogId: 'hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
   setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
+
+  // Snake companion (Level 1): small slow aura + small bite (ATK)
+  try {
+    const snakePalette = { hair: '#3a5a3a', longHair: false, dress: false, shirt: '#6fbf6f', pants: '#2a3a2a', outline: '#000000' };
+    const snakeSheet = makeSpriteSheet(snakePalette);
+    const sx = Math.max(0, Math.min(world.w - 12, player.x + 140));
+    const sy = Math.max(0, Math.min(world.h - 16, player.y + 60));
+    const snake = spawnNpc(sx, sy, 'left', { name: 'Snake', dialogId: 'snake', sheet: snakeSheet, sheetPalette: snakePalette });
+    setNpcDialog(snake, snakeDialog);
+  } catch {}
 
   return terrain;
 }

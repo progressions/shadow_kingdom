@@ -95,6 +95,16 @@ export const companionEffectsByKey = {
       doubleStrike: { chance: 0.2, dmgMult: 1.5, cooldownSec: 3 },
     },
   },
+  snake: {
+    // Ssil the Snake — subtle control + bite
+    auras: [
+      // Venomous presence: slight enemy slow near the player
+      { type: 'slow', value: 0.10, radius: 36, anchor: 'player' },
+      // Fang focus: a small attack boost
+      { type: 'atk', value: 1 },
+    ],
+    // Triggers could be added later (e.g., brief stronger slow on recent hit)
+  },
 };
 
 // Global caps to keep stacks reasonable
