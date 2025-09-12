@@ -25,9 +25,8 @@ setupChatInputHandlers(runtime);
 initInput();
 updatePartyUI([]);
 
-// Experiment: use single-frame 16×16 sprite (same image for all directions)
-// Place PNG at: assets/sprites/custom/hero_single.png (16×16)
-try { player.spriteId = 'assets/sprites/custom/hero_single'; } catch {}
+// Use user's single-frame 16×16 sprite at assets/sprites/custom/player.png
+try { player.spriteId = 'assets/sprites/custom/player'; } catch {}
 
 // Title screen setup: show image, then fade-in menu
 function startIntroScene() {
