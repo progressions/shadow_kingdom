@@ -5,6 +5,37 @@ import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
 import { getSprite } from './sprite_loader.js';
 
+// Cached offscreen for sprite outlines
+let _olCan = null, _olCtx = null, _olW = 0, _olH = 0;
+
+function drawBossOutline(img, sx, sy, sw, sh, dx, dy, dw, dh, color = '#ffd166') {
+  // Ensure offscreen of correct size
+  if (!_olCan || _olW !== dw || _olH !== dh) {
+    _olCan = document.createElement('canvas');
+    _olCan.width = dw; _olCan.height = dh;
+    _olCtx = _olCan.getContext('2d');
+    _olW = dw; _olH = dh;
+  } else {
+    _olCtx.clearRect(0, 0, _olW, _olH);
+  }
+  // Draw sprite to offscreen
+  _olCtx.globalCompositeOperation = 'source-over';
+  _olCtx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+  // Colorize to outline color
+  _olCtx.globalCompositeOperation = 'source-in';
+  _olCtx.fillStyle = color;
+  _olCtx.fillRect(0, 0, dw, dh);
+  _olCtx.globalCompositeOperation = 'source-over';
+  // Draw colored mask around the sprite to create an outline
+  const offs = [
+    [-1, 0], [1, 0], [0, -1], [0, 1],
+    [-1, -1], [1, -1], [-1, 1], [1, 1],
+  ];
+  for (const [ox, oy] of offs) {
+    ctx.drawImage(_olCan, Math.round(dx + ox), Math.round(dy + oy));
+  }
+}
+
 function drawBar(x, y, w, h, pct, color) {
   ctx.save();
   ctx.fillStyle = '#00000055'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
@@ -172,25 +203,9 @@ export function render(terrainBitmap, obstacles) {
         if (meta && meta.anchor) { ax = Number(meta.anchor.x) || ax; ay = Number(meta.anchor.y) || ay; }
         const dx = Math.round(d.x + d.w/2 - ax * destW - camera.x);
         const dy = Math.round(d.y + d.h - ay * destH - camera.y);
-        // Boss glow/highlight (subtle pulsing halo)
+        // Boss outline (gold) around sprite
         if (ent && String(ent.kind).toLowerCase() === 'boss') {
-          const t = runtime._timeSec || 0;
-          const pulse = 0.6 + 0.4 * Math.sin(t * 4);
-          const cx = dx + destW / 2;
-          const cy = dy + destH * 0.9; // near feet
-          const rx = Math.max(10, destW * 0.55);
-          const ry = Math.max(6, destH * 0.18);
-          ctx.save();
-          ctx.globalAlpha = 0.5 * pulse;
-          ctx.fillStyle = '#ffd166';
-          ctx.shadowBlur = 12 + 10 * pulse;
-          ctx.shadowColor = 'rgba(255,209,102,0.9)';
-          if (ctx.ellipse) {
-            ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
-          } else {
-            ctx.beginPath(); ctx.arc(cx, cy, Math.max(rx, ry), 0, Math.PI * 2); ctx.fill();
-          }
-          ctx.restore();
+          drawBossOutline(img, sx, sy, fw, fh, dx, dy, destW, destH, '#ffd166');
         }
         if (d.isPlayer && player.invulnTimer > 0) {
           const flicker = Math.floor(performance.now() / 100) % 2 === 0;
@@ -213,25 +228,9 @@ export function render(terrainBitmap, obstacles) {
       const destH = SPRITE_SIZE * scale;
       const dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
       const dy = Math.round(d.y - (destH - d.h) - camera.y);
-      // Boss glow/highlight (subtle pulsing halo)
+      // Boss outline (gold) around sprite
       if (d.spriteRef && String(d.spriteRef.kind).toLowerCase() === 'boss') {
-        const t = runtime._timeSec || 0;
-        const pulse = 0.6 + 0.4 * Math.sin(t * 4);
-        const cx = dx + destW / 2;
-        const cy = dy + destH * 0.9; // near feet
-        const rx = Math.max(10, destW * 0.55);
-        const ry = Math.max(6, destH * 0.18);
-        ctx.save();
-        ctx.globalAlpha = 0.5 * pulse;
-        ctx.fillStyle = '#ffd166';
-        ctx.shadowBlur = 12 + 10 * pulse;
-        ctx.shadowColor = 'rgba(255,209,102,0.9)';
-        if (ctx.ellipse) {
-          ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
-        } else {
-          ctx.beginPath(); ctx.arc(cx, cy, Math.max(rx, ry), 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.restore();
+        drawBossOutline(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH, '#ffd166');
       }
       if (d.isPlayer && player.invulnTimer > 0) {
         const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
