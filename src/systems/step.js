@@ -498,8 +498,35 @@ export function step(dt) {
       e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
     } else {
       e.knockbackX = 0; e.knockbackY = 0;
-      let dx = (player.x - e.x), dy = (player.y - e.y);
-      const dist = Math.hypot(dx, dy) || 1; dx/=dist; dy/=dist;
+      // Decide target behavior: chase if player is near, otherwise wander
+      const ex = e.x + e.w/2, ey = e.y + e.h/2;
+      const pxp = player.x + player.w/2, pyp = player.y + player.h/2;
+      const ddx = (pxp - ex), ddy = (pyp - ey);
+      const dist2 = ddx*ddx + ddy*ddy;
+      const baseAggro = (e.kind === 'boss') ? 280 : (e.kind === 'featured' ? 220 : 180);
+      const aggroR = (typeof e.aggroRadius === 'number') ? e.aggroRadius : baseAggro;
+      const aggroR2 = aggroR * aggroR;
+      let dx, dy;
+      if (dist2 <= aggroR2) {
+        // Chase player
+        const d = Math.hypot(ddx, ddy) || 1; dx = ddx / d; dy = ddy / d;
+        e._aggro = true;
+      } else {
+        // Wander: pick a direction for a short duration, sometimes pause
+        e._aggro = false;
+        e._wanderTimer = Math.max(0, (e._wanderTimer || 0) - dt);
+        if ((e._wanderTimer || 0) <= 0) {
+          e._wanderTimer = 0.9 + Math.random() * 1.6; // 0.9–2.5s
+          e._wanderPause = Math.random() < 0.22;      // brief idle sometimes
+          // Small chance to bias wandering away from hazards by nudging current facing
+          const baseAng = Math.atan2(ddy, ddx) + (Math.random() * 1.8 - 0.9);
+          e._wanderAngle = (typeof e._wanderAngle === 'number' && Math.random() < 0.4)
+            ? (e._wanderAngle + (Math.random() * 1.2 - 0.6))
+            : baseAng;
+        }
+        if (e._wanderPause) { dx = 0; dy = 0; }
+        else { dx = Math.cos(e._wanderAngle || 0); dy = Math.sin(e._wanderAngle || 0); }
+      }
       const oldX = e.x, oldY = e.y;
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
@@ -511,36 +538,42 @@ export function step(dt) {
       const offsets = [-0.9, -0.5, 0, 0.5, 0.9]; // radians near target
       let best = { x: baseDir.x, y: baseDir.y };
       let bestScore = Infinity;
-      const px = e.x + e.w/2, py = e.y + e.h/2;
+      const px = ex, py = ey;
       const avoidBias = (e.kind === 'boss') ? 0.5 : (e.kind === 'featured' ? 0.8 : 1.0);
-      for (const a of offsets) {
-        const ca = Math.cos(a), sa = Math.sin(a);
-        const vx = baseDir.x * ca - baseDir.y * sa;
-        const vy = baseDir.x * sa + baseDir.y * ca;
-        // Alignment penalty (prefer towards player)
-        const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
-        const alignPenalty = (1 - dot) * 0.6;
-        // Hazard exposure along a short ray with 3 samples
-        let haz = 0;
-        const samples = [0.33, 0.66, 1.0];
-        const stepLen = 26; // px
-        for (const t of samples) {
-          const cx = px + vx * stepLen * t;
-          const cy = py + vy * stepLen * t;
-          const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
-          for (const o of obstacles) {
-            if (!o) continue;
-            if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
-            // quick reject by distance
-            const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy;
-            if ((ox*ox + oy*oy) > (160*160)) continue;
-            if (rectsIntersect(probe, o)) {
-              haz += (o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12);
+      if (baseDir.x !== 0 || baseDir.y !== 0) {
+        for (const a of offsets) {
+          const ca = Math.cos(a), sa = Math.sin(a);
+          const vx = baseDir.x * ca - baseDir.y * sa;
+          const vy = baseDir.x * sa + baseDir.y * ca;
+          // Alignment penalty (prefer towards player)
+          const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
+          const alignPenalty = (1 - dot) * 0.6;
+          // Hazard exposure along a short ray with 3 samples
+          let haz = 0;
+          const samples = [0.33, 0.66, 1.0];
+          const stepLen = 26; // px
+          for (const t of samples) {
+            const cx = px + vx * stepLen * t;
+            const cy = py + vy * stepLen * t;
+            const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
+            for (const o of obstacles) {
+              if (!o) continue;
+              if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
+              // quick reject by distance
+              const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy;
+              if ((ox*ox + oy*oy) > (160*160)) continue;
+              if (rectsIntersect(probe, o)) {
+                haz += (o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12);
+              }
             }
           }
+          const score = alignPenalty + haz * avoidBias;
+          if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
         }
-        const score = alignPenalty + haz * avoidBias;
-        if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
+      } else {
+        // Idle this frame (no movement direction)
+        best = { x: 0, y: 0 };
+        bestScore = 0;
       }
 
       // Temporary enemy speed boost from triggers
