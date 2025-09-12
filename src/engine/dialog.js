@@ -1,5 +1,5 @@
 import { runtime, npcs, companions, spawnCompanion, removeCompanion, spawnNpc, obstacles, world, player } from './state.js';
-import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner, showMusicTheme, hideBanner } from './ui.js';
+import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner, showMusicTheme, hideBanner, showPersistentBanner } from './ui.js';
 import { companionDialogs } from '../data/companion_dialogs.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 import { saveGame, loadGame, clearSave, getSaveMeta } from './save.js';
@@ -1143,7 +1143,7 @@ function doEquip(actorTag, slot, index, itemId) {
       if (!runtime.questFlags) runtime.questFlags = {};
       if (!runtime.questFlags['tutorial_find_sword_done'] && !runtime.questFlags['tutorial_find_sword']) {
         runtime.questFlags['tutorial_find_sword'] = true;
-        showBanner("You've got to find a weapon! Check a nearby chest");
+        showPersistentBanner("You've got to find a weapon! Check a nearby chest");
       }
     } catch {}
   } else {
