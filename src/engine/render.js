@@ -292,6 +292,49 @@ export function render(terrainBitmap, obstacles) {
 
   // End world shake translate before UI overlay
   ctx.restore();
+
+  // Low-HP screen treatment: gray desaturation + red edge vignette
+  try {
+    const ratio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp || 10)));
+    const thresh = 0.35;
+    if (ratio <= thresh) {
+      const t = runtime._timeSec || 0;
+      const k = Math.max(0, Math.min(1, (thresh - ratio) / thresh));
+      // Soft gray overlay (does not affect UI)
+      const grayAlpha = 0.12 + 0.20 * k;
+      ctx.save();
+      ctx.globalAlpha = grayAlpha;
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, camera.w, camera.h);
+      ctx.restore();
+
+      // Red edge vignette with subtle pulse
+      const pulse = 0.85 + 0.15 * Math.sin(t * 6);
+      const edgeA = (0.25 + 0.35 * k) * pulse; // 0.25..0.60
+      const thick = Math.max(24, Math.floor(Math.min(camera.w, camera.h) * 0.12));
+
+      // Top
+      let g = ctx.createLinearGradient(0, 0, 0, thick);
+      g.addColorStop(0, `rgba(255,74,74,${edgeA})`);
+      g.addColorStop(1, 'rgba(255,74,74,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, camera.w, thick);
+      // Bottom
+      g = ctx.createLinearGradient(0, camera.h - thick, 0, camera.h);
+      g.addColorStop(0, 'rgba(255,74,74,0)');
+      g.addColorStop(1, `rgba(255,74,74,${edgeA})`);
+      ctx.fillStyle = g; ctx.fillRect(0, camera.h - thick, camera.w, thick);
+      // Left
+      g = ctx.createLinearGradient(0, 0, thick, 0);
+      g.addColorStop(0, `rgba(255,74,74,${edgeA})`);
+      g.addColorStop(1, 'rgba(255,74,74,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, thick, camera.h);
+      // Right
+      g = ctx.createLinearGradient(camera.w - thick, 0, camera.w, 0);
+      g.addColorStop(0, 'rgba(255,74,74,0)');
+      g.addColorStop(1, `rgba(255,74,74,${edgeA})`);
+      ctx.fillStyle = g; ctx.fillRect(camera.w - thick, 0, thick, camera.h);
+    }
+  } catch {}
   // Player UI overlay
   // HP bar with low-HP warning (turn red and glow)
   const hpRatio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp)));
