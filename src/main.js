@@ -80,17 +80,24 @@ setupTitleScreen({
 });
 showTitleScreen();
 
-// Enable Continue if a recent save exists (check autosave and slot 1)
+// Enable Continue if a recent save exists (check autosave and slots 1-3; pick most recent)
 (async function enableContinueIfAvailable(){
   try {
-    const [ma, m1] = await Promise.allSettled([ getSaveMeta('auto'), getSaveMeta(1) ]);
-    const A = (ma.status === 'fulfilled') ? ma.value : { exists:false, at:null };
-    const B = (m1.status === 'fulfilled') ? m1.value : { exists:false, at:null };
-    let best = null;
-    if (A && A.exists) best = { slot: 'auto', at: Number(A.at || 0) };
-    if (B && B.exists) {
-      const at1 = Number(B.at || 0);
-      if (!best || at1 > best.at) best = { slot: 1, at: at1 };
+    const settled = await Promise.allSettled([
+      getSaveMeta('auto'),
+      getSaveMeta(1),
+      getSaveMeta(2),
+      getSaveMeta(3),
+    ]);
+    const slots = ['auto', 1, 2, 3];
+    let best = null; // { slot, at }
+    for (let i = 0; i < settled.length; i++) {
+      const res = settled[i];
+      const meta = (res.status === 'fulfilled') ? res.value : { exists: false, at: null };
+      if (meta && meta.exists) {
+        const at = Number(meta.at || 0);
+        if (!best || at > best.at) best = { slot: slots[i], at };
+      }
     }
     if (best) {
       continueSlot = best.slot;
