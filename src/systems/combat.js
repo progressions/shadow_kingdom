@@ -252,6 +252,7 @@ function tryUnlockGate(hb) {
       try {
         const meta = runtime?.questMeta || {};
         const flags = runtime?.questFlags || {};
+        const clearedNow = [];
         for (const [qid, m] of Object.entries(meta)) {
           if (!m) continue;
           const matchesKey = !m.keyId || m.keyId === (o.keyId || o.id || 'gate') || m.keyId === itm.keyId;
@@ -259,10 +260,14 @@ function tryUnlockGate(hb) {
           if (!matchesKey || !matchesGate) continue;
           if (flags[`${qid}_started`] && !flags[`${qid}_cleared`]) {
             runtime.questFlags[`${qid}_cleared`] = true;
+            clearedNow.push(qid);
             matched = true;
             if (m.consumeOnUse) shouldConsume = true;
             if (m.clearBanner) clearSuffix = String(m.clearBanner);
           }
+        }
+        if (clearedNow.length) {
+          import('../engine/quests.js').then(q => { try { clearedNow.forEach(id => q.autoTurnInIfCleared && q.autoTurnInIfCleared(id)); } catch {} }).catch(()=>{});
         }
       } catch {}
       // Unlock gate and announce with optional quest update suffix
@@ -354,7 +359,10 @@ export function tryInteract() {
           // Tutorial: mark sword chest objective done
           try {
             if (!runtime.questFlags) runtime.questFlags = {};
-            if (o.id === 'chest_l1_sword') runtime.questFlags['tutorial_find_sword_done'] = true;
+            if (o.id === 'chest_l1_sword') {
+              runtime.questFlags['tutorial_find_sword_done'] = true;
+              import('../engine/ui.js').then(u => u.hideBanner && u.hideBanner());
+            }
           } catch {}
         } else {
           // No loot: remove the chest from the world immediately

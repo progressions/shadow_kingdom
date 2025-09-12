@@ -3,6 +3,7 @@ import { rebuildLighting } from '../engine/lighting.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
+import { autoTurnInIfCleared } from '../engine/quests.js';
 import { clearFadeOverlay } from '../engine/ui.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats } from '../engine/utils.js';
@@ -802,6 +803,7 @@ export function step(dt) {
             if (!runtime.questFlags) runtime.questFlags = {};
             runtime.questFlags['yorna_knot_cleared'] = true;
             showBanner('Quest updated: Cut the Knot — cleared');
+            try { autoTurnInIfCleared('yorna_knot'); } catch {}
           } else {
             showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
           }
@@ -811,7 +813,7 @@ export function step(dt) {
           const key = 'urn_rooftops_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['urn_rooftops_cleared'] = true; showBanner('Quest updated: Secure the Rooftops — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['urn_rooftops_cleared'] = true; showBanner('Quest updated: Secure the Rooftops — cleared'); try { autoTurnInIfCleared('urn_rooftops'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'varabella_crossfire') {
@@ -819,7 +821,7 @@ export function step(dt) {
           const key = 'varabella_crossfire_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['varabella_crossfire_cleared'] = true; showBanner('Quest updated: Cut the Crossfire — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['varabella_crossfire_cleared'] = true; showBanner('Quest updated: Cut the Crossfire — cleared'); try { autoTurnInIfCleared('varabella_crossfire'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'canopy_triage') {
@@ -827,7 +829,7 @@ export function step(dt) {
           const key = 'canopy_triage_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_triage_cleared'] = true; showBanner('Quest updated: Breath and Bandages — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_triage_cleared'] = true; showBanner('Quest updated: Breath and Bandages — cleared'); try { autoTurnInIfCleared('canopy_triage'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'twil_trace') {
@@ -835,7 +837,7 @@ export function step(dt) {
           const key = 'twil_trace_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_trace_cleared'] = true; showBanner('Quest updated: Trace the Footprints — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_trace_cleared'] = true; showBanner('Quest updated: Trace the Footprints — cleared'); try { autoTurnInIfCleared('twil_trace'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'yorna_ring') {
@@ -843,7 +845,7 @@ export function step(dt) {
           const key = 'yorna_ring_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['yorna_ring_cleared'] = true; showBanner('Quest updated: Shatter the Ring — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['yorna_ring_cleared'] = true; showBanner('Quest updated: Shatter the Ring — cleared'); try { autoTurnInIfCleared('yorna_ring'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'yorna_causeway') {
@@ -851,7 +853,7 @@ export function step(dt) {
           const key = 'yorna_causeway_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['yorna_causeway_cleared'] = true; showBanner('Quest updated: Hold the Causeway — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['yorna_causeway_cleared'] = true; showBanner('Quest updated: Hold the Causeway — cleared'); try { autoTurnInIfCleared('yorna_causeway'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'hola_silence') {
@@ -859,7 +861,7 @@ export function step(dt) {
           const key = 'hola_silence_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['hola_silence_cleared'] = true; showBanner('Quest updated: Break the Silence — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['hola_silence_cleared'] = true; showBanner('Quest updated: Break the Silence — cleared'); try { autoTurnInIfCleared('hola_silence'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'hola_breath_bog') {
@@ -867,7 +869,7 @@ export function step(dt) {
           const key = 'hola_breath_bog_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['hola_breath_bog_cleared'] = true; showBanner('Quest updated: Breath Over Bog — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['hola_breath_bog_cleared'] = true; showBanner('Quest updated: Breath Over Bog — cleared'); try { autoTurnInIfCleared('hola_breath_bog'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'oyin_ember') {
@@ -875,7 +877,7 @@ export function step(dt) {
           const key = 'oyin_ember_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['oyin_ember_cleared'] = true; showBanner('Quest updated: Carry the Ember — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['oyin_ember_cleared'] = true; showBanner('Quest updated: Carry the Ember — cleared'); try { autoTurnInIfCleared('oyin_ember'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'twil_wake') {
@@ -883,7 +885,7 @@ export function step(dt) {
           const key = 'twil_wake_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_wake_cleared'] = true; showBanner('Quest updated: Cut the Wake — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_wake_cleared'] = true; showBanner('Quest updated: Cut the Wake — cleared'); try { autoTurnInIfCleared('twil_wake'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'tin_shallows') {
@@ -891,7 +893,7 @@ export function step(dt) {
           const key = 'tin_shallows_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tin_shallows_cleared'] = true; showBanner('Quest updated: Mark the Shallows — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tin_shallows_cleared'] = true; showBanner('Quest updated: Mark the Shallows — cleared'); try { autoTurnInIfCleared('tin_shallows'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'tin_gaps4') {
@@ -899,7 +901,7 @@ export function step(dt) {
           const key = 'tin_gaps4_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tin_gaps4_cleared'] = true; showBanner('Quest updated: Flag the Gaps — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tin_gaps4_cleared'] = true; showBanner('Quest updated: Flag the Gaps — cleared'); try { autoTurnInIfCleared('tin_gaps4'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'nellis_beacon') {
@@ -907,7 +909,7 @@ export function step(dt) {
           const key = 'nellis_beacon_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['nellis_beacon_cleared'] = true; showBanner('Quest updated: Raise the Beacon — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['nellis_beacon_cleared'] = true; showBanner('Quest updated: Raise the Beacon — cleared'); try { autoTurnInIfCleared('nellis_beacon'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'nellis_crossroads4') {
@@ -915,7 +917,7 @@ export function step(dt) {
           const key = 'nellis_crossroads4_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['nellis_crossroads4_cleared'] = true; showBanner('Quest updated: Light the Crossroads — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['nellis_crossroads4_cleared'] = true; showBanner('Quest updated: Light the Crossroads — cleared'); try { autoTurnInIfCleared('nellis_crossroads4'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'canopy_sister2') {
@@ -923,7 +925,7 @@ export function step(dt) {
           const key = 'canopy_sister2_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_sister2_cleared'] = true; showBanner('Quest updated: Ribbon in the Dust — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_sister2_cleared'] = true; showBanner('Quest updated: Ribbon in the Dust — cleared'); try { autoTurnInIfCleared('canopy_sister2'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'canopy_sister3') {
@@ -931,7 +933,7 @@ export function step(dt) {
           const key = 'canopy_sister3_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_sister3_cleared'] = true; showBanner('Quest updated: Reeds and Echoes — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_sister3_cleared'] = true; showBanner('Quest updated: Reeds and Echoes — cleared'); try { autoTurnInIfCleared('canopy_sister3'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'canopy_streets4') {
@@ -939,7 +941,7 @@ export function step(dt) {
           const key = 'canopy_streets4_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_streets4_cleared'] = true; showBanner('Quest updated: Stitch the Streets — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_streets4_cleared'] = true; showBanner('Quest updated: Stitch the Streets — cleared'); try { autoTurnInIfCleared('canopy_streets4'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'snake_den') {
@@ -947,7 +949,7 @@ export function step(dt) {
           const key = 'snake_den_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['snake_den_cleared'] = true; showBanner('Quest updated: Clear the Den — cleared'); }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['snake_den_cleared'] = true; showBanner('Quest updated: Clear the Den — cleared'); try { autoTurnInIfCleared('snake_den'); } catch {} }
           else showBanner(`Quest: ${left} pest${left===1?'':'s'} left`);
         }
       } catch {}
@@ -1571,6 +1573,7 @@ function handleCompanionTriggers(dt) {
             if (used >= 2) {
               runtime.questFlags['hola_practice_cleared'] = true;
               showBanner('Quest updated: Find Her Voice — cleared');
+              try { autoTurnInIfCleared('hola_practice'); } catch {}
             } else {
               showBanner(`Quest: Gust used ${used}/2`);
             }
