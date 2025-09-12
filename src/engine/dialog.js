@@ -107,8 +107,6 @@ function timeAgo(ts) {
 // Debug menu
 export function startDebugMenu() {
   const choices = [
-    { label: 'Run Light Tests (both)', action: 'debug_run_all' },
-    { label: 'Test: Opened Chest Persistence', action: 'debug_run_chest' },
     { label: 'Test: VN Intro Cooldown', action: 'debug_run_vn' },
     { label: 'Test: Enemy Intro After Load (vnId)', action: 'debug_run_enemy_intro' },
     { label: 'Lighting: Ambient 0 (Dark)', action: 'light_ambient', data: 0 },

@@ -75,6 +75,25 @@ export function loadLevel1() {
   add(cxw, cyw, t, ch);
   add(cxw + cw - t, cyw, t, ch);
   add(gapX, cyw, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
+  // Subtle gate lights: a soft beacon at the gap and two small sidelights to hint the doorway
+  try {
+    if (!runtime._l1GateLightsAdded) {
+      import('./lighting.js').then(m => {
+        try {
+          // Center beacon just outside the gate opening (above the top wall)
+          const gx = Math.round(gapX + gap / 2);
+          const gy = Math.max(0, Math.round(cyw - 10));
+          m.addLightNode({ x: gx, y: gy, level: 5, radius: 4 });
+          // Sidelights just inside the top wall, left and right edges of the gap
+          const leftX = Math.round(gapX - 6), rightX = Math.round(gapX + gap + 6);
+          const sideY = Math.round(cyw + 4);
+          m.addLightNode({ x: leftX,  y: sideY, level: 3, radius: 2 });
+          m.addLightNode({ x: rightX, y: sideY, level: 3, radius: 2 });
+        } catch {}
+      }).catch(()=>{});
+      runtime._l1GateLightsAdded = true;
+    }
+  } catch {}
   // Move Key Guardian Gorg near the boss arena (outside, above the top wall)
   // Place him just outside the arena in the lower-right region so he's closer to the gate
   (function placeGorgNearCastle() {
@@ -330,6 +349,16 @@ export function loadLevel1() {
   spawnEnemy(boss1x + 24, boss1y,      'mook', { name: 'Greenwood Bandit' });
   spawnEnemy(boss1x,      boss1y + 24, 'mook', { name: 'Greenwood Bandit' });
   spawnEnemy(boss1x,      boss1y - 28, 'featured', { name: 'Bandit Lieutenant', hp: 12, dmg: 6 });
+
+  // Add an ambient light source inside the boss arena to soften darkness
+  try {
+    if (!runtime._l1ArenaLightAdded) {
+      const cx = Math.round(cxw + cw / 2);
+      const cy = Math.round(cyw + ch / 2);
+      import('./lighting.js').then(m => { try { m.addLightNode({ x: cx, y: cy, level: 7 }); } catch {} });
+      runtime._l1ArenaLightAdded = true;
+    }
+  } catch {}
 
   // NPCs - with feminine shape
   const canopyPalette = { hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true };

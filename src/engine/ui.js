@@ -330,6 +330,18 @@ function enableTitleKeyHandlers() {
     // Capture phase handler to block downstream game input when title is up
     if (!titleEl || titleEl.style.display === 'none') return;
     const key = e.key;
+    // On first key interaction at title, unlock audio and fire fanfare (mirrors pointerdown path)
+    try {
+      if (!runtime._titleFanfareFired) {
+        runtime._titleFanfareFired = true;
+        initAudioUnlock();
+        try {
+          stopMusic();
+          playTitleFanfare();
+          import('./audio.js').then(m => m.startAmbientAfterFanfare && m.startAmbientAfterFanfare(2.8, 1.6)).catch(()=>{});
+        } catch {}
+      }
+    } catch {}
     // Move focus left/up
     if (key === 'ArrowUp' || key === 'ArrowLeft' || key.toLowerCase() === 'k' || key.toLowerCase() === 'w' || key.toLowerCase() === 'a') {
       e.preventDefault(); e.stopPropagation(); moveTitleFocus(-1); return;
