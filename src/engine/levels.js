@@ -53,15 +53,6 @@ export function loadLevel1() {
   // Gorg — featured key-bearer
   const gorgPalette = { skin: '#ff4a4a', shirt: '#8a1a1a', pants: '#6a0f0f', hair: '#2a0000', outline: '#000000' };
   const gorgSheet = makeSpriteSheet(gorgPalette);
-  // Key Guardian (L1): Gorg + two supporting featured foes nearby
-  const gorgX = yornaPos.x + 44, gorgY = yornaPos.y + 34;
-  spawnEnemy(gorgX, gorgY, 'featured', {
-    name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/level01/Gorg/Gorg.mp4', sheet: gorgSheet, sheetPalette: gorgPalette,
-    hp: 20, dmg: 6, hitCooldown: 0.65,  // Level 1 key guardian buff (tougher featured foe)
-  });
-  // Two normal featured foes flanking Gorg
-  spawnEnemy(gorgX - 28, gorgY - 12, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
-  spawnEnemy(gorgX + 30, gorgY + 10, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
 
   // Castle with boss Vast
   const cw = TILE * 14, ch = TILE * 10, t = 8, gap = 16;
@@ -75,6 +66,42 @@ export function loadLevel1() {
   add(cxw, cyw, t, ch);
   add(cxw + cw - t, cyw, t, ch);
   add(gapX, cyw, gap, t, 'gate', { locked: true, blocksAttacks: true, id: 'castle_gate', keyId: 'castle_gate' });
+  // Move Key Guardian Gorg near the boss arena (outside, above the top wall)
+  // Place him just outside the arena in the lower-right region so he's closer to the gate
+  (function placeGorgNearCastle() {
+    const gorgX = Math.round(cxw + cw/2 - 12); // near arena center horizontally
+    const gorgY = Math.round(cyw - TILE * 4);  // above top wall, safely outside
+    spawnEnemy(gorgX, gorgY, 'featured', {
+      name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/level01/Gorg/Gorg.mp4', sheet: gorgSheet, sheetPalette: gorgPalette,
+      hp: 20, dmg: 6, hitCooldown: 0.65,
+    });
+    // Two normal featured foes flanking Gorg
+    spawnEnemy(gorgX - 28, gorgY - 12, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
+    spawnEnemy(gorgX + 30, gorgY + 10,  'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
+  })();
+  // Rocky terrain above the castle: clustered rounded rock outcrops (blocking)
+  (function placeRockyOutcrops() {
+    // Build several overlapping rock chunks above and slightly left of the gate,
+    // leaving a central lane clear to approach the arena opening.
+    const rocks = [
+      // big base chunks
+      { x: Math.round(cxw + cw * 0.08), y: Math.round(cyw - TILE * 7 - 4), w: 44, h: 22 },
+      { x: Math.round(cxw + cw * 0.20), y: Math.round(cyw - TILE * 6 - 2), w: 36, h: 20 },
+      // rounded lobes
+      { x: Math.round(cxw + cw * 0.05), y: Math.round(cyw - TILE * 5 - 10), w: 26, h: 16 },
+      { x: Math.round(cxw + cw * 0.17), y: Math.round(cyw - TILE * 7 - 14), w: 24, h: 16 },
+      { x: Math.round(cxw + cw * 0.28), y: Math.round(cyw - TILE * 6 - 16), w: 22, h: 14 },
+      // smaller accent stones
+      { x: Math.round(cxw + cw * 0.12), y: Math.round(cyw - TILE * 8 - 6), w: 16, h: 12 },
+      { x: Math.round(cxw + cw * 0.02), y: Math.round(cyw - TILE * 6 - 8), w: 18, h: 12 },
+    ];
+    for (const r of rocks) {
+      // Ensure within world bounds
+      const rx = Math.max(0, Math.min(world.w - 12, r.x));
+      const ry = Math.max(0, Math.min(world.h - 12, r.y));
+      obstacles.push({ x: rx, y: ry, w: r.w, h: r.h, type: 'rock' });
+    }
+  })();
   // Boss Vast inside
   const boss1x = cxw + cw/2 - 6;
   const boss1y = cyw + ch/2 - 8;
