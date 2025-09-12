@@ -61,7 +61,6 @@ export function startCompanionAction(comp) {
   startPrompt(comp, `What do you want to do with ${comp.name || 'this companion'}?`, [
     { label: 'Talk', action: 'companion_talk', data: comp },
     { label: 'Dismiss', action: 'dismiss_companion', data: comp },
-    { label: 'Inventory', action: 'open_inventory', data: comp },
     { label: 'Back', action: 'companion_back' },
   ]);
 }
@@ -280,8 +279,8 @@ export function selectChoice(index) {
     return;
   }
   if (choice.action === 'open_inventory') {
-    const tag = (typeof choice.data !== 'undefined') ? choice.data : (runtime.activeNpc || null);
-    openInventoryMenu(tag);
+    // Only the Player has inventory; open directly
+    openInventoryMenu('player');
     return;
   }
   if (choice.action === 'vn_continue') {
@@ -792,13 +791,8 @@ export function startInventoryMenu() {
     if (runtime?.questFlags) runtime.questFlags['tutorial_inv_equip_torch'] = false;
     hideBanner();
   } catch {}
-  // Choose actor: Player or companions
-  const choices = [
-    { label: 'Player', action: 'open_inventory', data: 'player' },
-    ...companions.map((c, i) => ({ label: c.name || `Companion ${i+1}`, action: 'open_inventory', data: i })),
-    { label: 'Close', action: 'end' },
-  ];
-  startPrompt(null, 'Inventory — Choose Character', choices);
+  // Open Player inventory directly
+  openInventoryMenu('player');
 }
 
 function resolveActor(tag) {
@@ -827,7 +821,7 @@ async function openInventoryMenu(actorTag) {
   // Attach player ref once (runtime has no direct player export here)
   if (!runtime._playerRef) runtime._playerRef = (await import('./state.js')).player;
   const actor = resolveActor(actorTag);
-  if (!actor) { startInventoryMenu(); return; }
+  if (!actor) { openInventoryMenu('player'); return; }
   const eq = actor.inventory?.equipped || {};
   const equippedLines = ['head','torso','legs','leftHand','rightHand'].map(s => {
     const it = eq[s];
@@ -844,7 +838,7 @@ async function openInventoryMenu(actorTag) {
 
 function openSlotMenu(actorTag, slot) {
   const actor = resolveActor(actorTag);
-  if (!actor) { startInventoryMenu(); return; }
+  if (!actor) { openInventoryMenu('player'); return; }
   let items = (actor.inventory?.items || []).filter(it => it.slot === slot);
   items = sortItemsDefault(items);
   const eq = actor.inventory?.equipped || {};
@@ -859,13 +853,13 @@ function openSlotMenu(actorTag, slot) {
   } else {
     choices.push({ label: 'No items for this slot', action: 'inventory_back' });
   }
-  choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
+  choices.push({ label: 'Back', action: 'open_inventory' });
   startPrompt(actor, `${slotLabel(slot)} — Choose`, choices);
 }
 
 function openQuickEquipList(actorTag) {
   const actor = resolveActor(actorTag);
-  if (!actor) { startInventoryMenu(); return; }
+  if (!actor) { openInventoryMenu('player'); return; }
   let items = actor.inventory?.items || [];
   items = sortItemsDefault(items);
   const eq = actor.inventory?.equipped || {};
@@ -877,7 +871,7 @@ function openQuickEquipList(actorTag) {
     if (it) choices.push({ label: `Unequip ${it.name} (${slotLabel(s)})`, action: 'inv_unequip', data: { actorTag, slot: s } });
   }
   if (items.length === 0) {
-    choices.push({ label: 'Backpack is empty', action: 'open_inventory', data: actorTag });
+    choices.push({ label: 'Backpack is empty', action: 'open_inventory' });
   } else {
     for (const it of items) {
       const slot = it.slot;
@@ -886,7 +880,7 @@ function openQuickEquipList(actorTag) {
       choices.push({ label, action: 'inv_quick_equip', data: { actorTag, itemId: it.id, slot } });
     }
   }
-  choices.push({ label: 'Back', action: 'open_inventory', data: actorTag });
+  choices.push({ label: 'Back', action: 'open_inventory' });
   startPrompt(actor, 'Backpack — Click to Equip', choices);
 }
 
@@ -955,7 +949,7 @@ async function doTransfer(fromTag, toTag, itemId) {
 
 function openItemActions(actorTag, itemId) {
   const actor = resolveActor(actorTag);
-  if (!actor) { startInventoryMenu(); return; }
+  if (!actor) { openInventoryMenu('player'); return; }
   const items = actor.inventory?.items || [];
   const idx = items.findIndex(x => x.id === itemId);
   if (idx === -1) { openQuickEquipList(actorTag); return; }

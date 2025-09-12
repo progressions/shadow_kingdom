@@ -70,7 +70,7 @@ export function initInput() {
       // Open save/load menu
       startSaveMenu();
     } else if (e.key.toLowerCase() === 'i') {
-      // Open inventory menu
+      // Open Player inventory directly
       startInventoryMenu();
     } else if (e.key.toLowerCase() === 'm') {
       toggleMute();
