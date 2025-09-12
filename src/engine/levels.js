@@ -7,7 +7,7 @@ import { makeSpriteSheet, sheetForName, makeSnakeSpriteSheet } from './sprites.j
 import { setMusicLocation } from './audio.js';
 import { spawnEnemy, spawnNpc, addItemToInventory } from './state.js';
 import { TILE } from './constants.js';
-import { setNpcDialog, startPrompt } from './dialog.js';
+import { setNpcDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
 import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
@@ -31,14 +31,6 @@ export function loadLevel1() {
       // Give the player a small torch stack and equip a lit torch for visibility
       addItemToInventory(player.inventory, { id: 'torch', name: 'Torch', slot: 'leftHand', stackable: true, maxQty: 99, qty: 3 });
       player.inventory.equipped.leftHand = { id: 'torch', name: 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
-      // One-time Level 1 intro narration noting the torch
-      if (!runtime.questFlags) runtime.questFlags = {};
-      if (!runtime.questFlags['l1_intro_seen']) {
-        const text = 'The Greenwood is dim; cold dark presses in.\n' +
-                     '\nYou find yourself with a torch. Its light is short—but enough to begin.';
-        startPrompt(null, text, [ { label: 'Continue', action: 'end' } ]);
-        runtime.questFlags['l1_intro_seen'] = true;
-      }
     } catch {}
   })();
 

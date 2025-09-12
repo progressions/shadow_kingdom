@@ -493,6 +493,41 @@ export function updatePartyUI(companions) {
       fill.style.borderRadius = '2px';
       bar.appendChild(fill);
       chip.appendChild(bar);
+      // Torch timer placed just under the first XP bar (upper-left)
+      if (idx === 0) {
+        const LH = player?.inventory?.equipped?.leftHand || null;
+        if (LH && LH.id === 'torch') {
+          const maxMs = 180000; // default torch duration
+          const left = Math.max(0, Number(LH.burnMsRemaining || 0));
+          const pctT = Math.max(0, Math.min(1, left / maxMs));
+          const wrap = document.createElement('div');
+          wrap.style.marginTop = '4px';
+          const label = document.createElement('div');
+          label.id = 'torch-timer-label';
+          label.style.fontSize = '11px';
+          label.style.opacity = '0.85';
+          const mm = Math.floor(left / 60000);
+          const ss = Math.floor((left % 60000) / 1000);
+          const mmss = `${String(mm).padStart(1,'0')}:${String(ss).padStart(2,'0')}`;
+          label.textContent = `Torch ${mmss}`;
+          const tbar = document.createElement('div');
+          tbar.style.width = '100%';
+          tbar.style.height = '4px';
+          tbar.style.background = '#1a1a1a';
+          tbar.style.border = '1px solid #333';
+          tbar.style.borderRadius = '3px';
+          const tfill = document.createElement('div');
+          tfill.id = 'torch-timer-fill';
+          tfill.style.height = '100%';
+          tfill.style.width = `${Math.round(pctT * 100)}%`;
+          tfill.style.background = '#ffd166';
+          tfill.style.borderRadius = '2px';
+          tbar.appendChild(tfill);
+          wrap.appendChild(label);
+          wrap.appendChild(tbar);
+          chip.appendChild(wrap);
+        }
+      }
     } catch {}
     partyUI.appendChild(chip);
   });
@@ -511,39 +546,6 @@ export function updatePartyUI(companions) {
   ];
   box.innerHTML = lines.join('');
   partyUI.appendChild(box);
-  // Torch timer: small bar indicating remaining burn on equipped torch
-  try {
-    const LH = player?.inventory?.equipped?.leftHand || null;
-    if (LH && LH.id === 'torch') {
-      const maxMs = 180000; // default torch duration
-      const left = Math.max(0, Number(LH.burnMsRemaining || 0));
-      const pct = Math.max(0, Math.min(1, left / maxMs));
-      const wrap = document.createElement('div');
-      wrap.style.marginTop = '6px';
-      const label = document.createElement('div');
-      label.style.fontSize = '11px';
-      label.style.opacity = '0.85';
-      const mm = Math.floor(left / 60000);
-      const ss = Math.floor((left % 60000) / 1000);
-      const mmss = `${String(mm).padStart(1,'0')}:${String(ss).padStart(2,'0')}`;
-      label.textContent = `Torch ${mmss}`;
-      const bar = document.createElement('div');
-      bar.style.width = '100%';
-      bar.style.height = '4px';
-      bar.style.background = '#1a1a1a';
-      bar.style.border = '1px solid #333';
-      bar.style.borderRadius = '3px';
-      const fill = document.createElement('div');
-      fill.style.height = '100%';
-      fill.style.width = `${Math.round(pct * 100)}%`;
-      fill.style.background = '#ffd166';
-      fill.style.borderRadius = '2px';
-      bar.appendChild(fill);
-      wrap.appendChild(label);
-      wrap.appendChild(bar);
-      partyUI.appendChild(wrap);
-    }
-  } catch {}
   // Buff badges from companions
   const buffs = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
   const f2 = (v) => Number(v || 0).toFixed(2);
