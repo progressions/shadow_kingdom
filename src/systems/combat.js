@@ -5,7 +5,7 @@ import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
-import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, rollFromTable, itemById } from '../data/loot.js';
+import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, CHEST_LOOT_L3, rollFromTable, itemById } from '../data/loot.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -365,7 +365,8 @@ export function tryInteract() {
         try { if (o.fixedItemId) item = itemById(o.fixedItemId); } catch {}
         if (!item) {
           const tier = o.lootTier || 'common';
-          const tableSrc = (runtime.currentLevel === 2) ? CHEST_LOOT_L2 : CHEST_LOOT;
+          const lvl = runtime.currentLevel || 1;
+          const tableSrc = (lvl === 2) ? CHEST_LOOT_L2 : (lvl >= 3 ? CHEST_LOOT_L3 : CHEST_LOOT);
           item = rollFromTable(tableSrc[tier] || []);
         }
         if (item) {

@@ -100,3 +100,40 @@ export const CHEST_LOOT_L2 = {
     { id: 'potion_medium', w: 12 },
   ],
 };
+
+// --- Level 3+ (Marsh/City/Temple) loot tables ---
+export const ENEMY_LOOT_L3 = {
+  mook: [
+    { id: 'torch', w: 15 },
+    { id: 'stick', w: 10 },
+    { id: 'potion_light', w: 10 },
+    { id: 'potion_medium', w: 10 },
+  ],
+  featured: [
+    { id: 'dagger', w: 15 },
+    { id: 'buckler', w: 12 },
+    { id: 'armor_scaled', w: 12 },
+    { id: 'sword_fine', w: 12 },
+    { id: 'potion_medium', w: 12 },
+    { id: 'potion_strong', w: 8 },
+  ],
+  boss: [
+    // Bosses usually have scripted drops; leave empty unless needed
+  ],
+};
+
+export const CHEST_LOOT_L3 = {
+  common: [
+    { id: 'torch', w: 25 },
+    { id: 'shirt_cloth', w: 20 },
+    { id: 'potion_light', w: 16 },
+    { id: 'potion_medium', w: 12 },
+  ],
+  rare: [
+    { id: 'armor_chain', w: 24 },
+    { id: 'helm_bronze', w: 18 },
+    { id: 'sword_fine', w: 18 },
+    { id: 'potion_medium', w: 14 },
+    { id: 'potion_strong', w: 10 },
+  ],
+};

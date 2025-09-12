@@ -13,7 +13,7 @@ import { completionXpForLevel, grantPartyXp } from '../engine/state.js';
 import { exitChat } from '../engine/ui.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges, showMusicTheme } from '../engine/ui.js';
-import { ENEMY_LOOT, ENEMY_LOOT_L2, rollFromTable, itemById } from '../data/loot.js';
+import { ENEMY_LOOT, ENEMY_LOOT_L2, ENEMY_LOOT_L3, rollFromTable, itemById } from '../data/loot.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -1047,7 +1047,8 @@ export function step(dt) {
         let drop = null;
         if (e.guaranteedDropId) drop = itemById(e.guaranteedDropId);
         if (!drop) {
-          const tableSrc = (runtime.currentLevel === 2) ? ENEMY_LOOT_L2 : ENEMY_LOOT;
+          const lvl = runtime.currentLevel || 1;
+          const tableSrc = (lvl === 2) ? ENEMY_LOOT_L2 : (lvl >= 3 ? ENEMY_LOOT_L3 : ENEMY_LOOT);
           const table = tableSrc[(e.kind || 'mook')] || [];
           drop = rollFromTable(table);
         }
