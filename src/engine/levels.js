@@ -387,6 +387,8 @@ export function loadLevel2() {
   // Build terrain + obstacles (desert theme)
   const terrain = buildTerrainBitmap(world, 'desert');
   obstacles.push(...buildObstacles(world, player, enemies, npcs, 'desert'));
+  // Level 2: full daylight — set bright ambient lighting
+  try { import('./lighting.js').then(m => m.setAmbientLevel(8)).catch(()=>{}); } catch {}
   // Environmental tiles: patches of mud (slow) and fire (burn) in the desert
   obstacles.push({ x: Math.round(player.x + TILE * 8), y: Math.round(player.y + TILE * 6), w: TILE * 4, h: TILE * 2, type: 'mud' });
   obstacles.push({ x: Math.round(player.x - TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
