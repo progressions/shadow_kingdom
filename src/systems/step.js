@@ -152,7 +152,17 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 }
 
 export function step(dt) {
-  // Pause the world while VN/inventory overlay is open
+  // Allow death-scene timers to progress even while paused (to avoid freeze)
+  try {
+    if (player.hp <= 0) {
+      if ((runtime._suppressInputTimer || 0) > 0) runtime._suppressInputTimer = Math.max(0, (runtime._suppressInputTimer || 0) - dt);
+      if ((runtime._deathDelay || 0) > 0) {
+        runtime._deathDelay = Math.max(0, (runtime._deathDelay || 0) - dt);
+        if (runtime._deathDelay === 0) runtime._awaitGameOverKey = true;
+      }
+    }
+  } catch {}
+  // Pause the world while VN/inventory overlay is open (but keep the above timers running)
   if (runtime.gameState === 'chat') return;
   if (runtime.paused) return;
   // Advance chemistry timers
@@ -183,9 +193,21 @@ export function step(dt) {
       if (typeof LH.burnMsRemaining !== 'number' || !(LH.burnMsRemaining >= 0)) LH.burnMsRemaining = 180000; // 180s default
       LH.burnMsRemaining = Math.max(0, LH.burnMsRemaining - dt * 1000);
       if (LH.burnMsRemaining <= 0) {
-        // Torch burned out — consume (remove from slot)
+        // Torch burned out — consume (remove from slot) and try to auto-equip a fresh one from inventory
         eq.leftHand = null;
-        try { showBanner('Torch burned out'); } catch {}
+        let relit = false;
+        try {
+          const inv = player?.inventory?.items || [];
+          const idx = inv.findIndex(s => s && s.stackable && s.id === 'torch' && (s.qty||0) > 0);
+          if (idx !== -1) {
+            inv[idx].qty = Math.max(0, (inv[idx].qty || 0) - 1);
+            if (inv[idx].qty <= 0) inv.splice(idx, 1);
+            // Equip a fresh single-use torch instance
+            eq.leftHand = { id: 'torch', name: 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
+            relit = true;
+          }
+        } catch {}
+        try { showBanner(relit ? 'Lit a new torch' : 'Torch burned out'); } catch {}
       }
     }
   } catch {}
