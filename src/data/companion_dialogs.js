@@ -247,6 +247,8 @@ export const companionDialogs = {
         choices: [
           { label: 'What\'s your style?', next: 'style' },
           { label: 'Everything alright?', next: 'mood' },
+          { label: 'Kill Vast (L1)', requires: { flag: 'yorna_vast_started', not: true }, next: 'vast_intro' },
+          { label: 'Turn in: Kill Vast', requires: { flag: 'yorna_vast_cleared', missingFlag: 'yorna_vast_done' }, next: 'vast_turnin' },
           // Bond entries
           { label: 'Open space', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
           { label: 'Strategy talk (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
@@ -261,6 +263,25 @@ export const companionDialogs = {
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
+      vast_intro: {
+        text: "Yorna: First job: kill Vast in the castle to the southeast. The gate's locked; Gorg has the brass key outside the northeast wall.",
+        choices: [
+          { label: 'We end her.', action: 'start_quest', data: { id: 'yorna_vast' }, next: 'vast_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ],
+      },
+      vast_started: {
+        text: "Yorna: Stay with me. We take the key, open the gate, finish Vast.",
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      vast_turnin: {
+        text: 'Yorna: Vast is dead. The valley\'s safer. Next.',
+        choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'yorna_vast_reward' }, next: 'vast_done' } ],
+      },
+      vast_done: {
+        text: 'Yorna: Onward.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_vast_done' }, next: 'root' } ],
+      },
       bond_menu: {
         text: "Yorna: If you want my respect, earn it. You're halfway there.",
         choices: [
@@ -273,7 +294,7 @@ export const companionDialogs = {
           { label: 'Five and six.', requires: { partyHas: 'canopy', hasFlag: 'canopy_yorna_respect' }, next: 'ack_canopy_y' },
           { label: 'Twil reads the wind', requires: { partyHas: 'twil' }, next: 'xc_twil' },
           { label: 'Canopy keeps them standing', requires: { partyHas: 'canopy' }, next: 'xc_canopy' },
-          { label: 'Hola sets her breath', requires: { partyHas: 'hola' }, next: 'xc_hola' },
+          { label: 'Hola sets her pace', requires: { partyHas: 'hola' }, next: 'xc_hola' },
           { label: 'Oyin echoes my strike', requires: { partyHas: 'oyin' }, next: 'xc_oyin' },
           { label: 'Back', next: 'root' },
         ],
@@ -427,6 +448,7 @@ export const companionDialogs = {
         choices: [
           { label: 'What magic do you know?', next: 'magic' },
           { label: 'How\'s the journey?', next: 'mood' },
+          { label: 'Castle and key', next: 'castle_hint' },
           // Bond entries
           { label: 'Small steps (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
           { label: 'Speak up (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
@@ -467,6 +489,10 @@ export const companionDialogs = {
       bond10: {
         text: "Hola: If you walk, I'll walk. If you run, I'll try. I won't leave.",
         choices: [ { label: 'Back', next: 'bond_menu' } ],
+      },
+      castle_hint: {
+        text: "Hola: The castle gate needs a brass key. Gorg—the red brute—walks outside the wall. If I keep the breeze steady—um—I can point us there. If it slips, say my name and I'll set it again.",
+        choices: [ { label: 'Back', next: 'root' } ],
       },
       quests: {
         text: 'Hola: My Lord, I can practice… if you stay close.',

@@ -4,15 +4,15 @@
 export const introTexts = {
   canopy:
     "You see a blonde‑haired healer in a blue dress, ringed by snarling foes and fighting to keep her footing. Calm resolve steels her gaze as she beckons you closer, ready to mend every wound if you can help her break through.\n" +
-    "\nCanopy: \"I'm pinned down—too many of them! Help me break through and I'll mend every scrape I can.\"",
+    "\nCanopy: \"I'm looking for my sister—Ell. Urathar's raiders took her when they burned our village. Help me break through and I'll keep you standing.\"",
 
   yorna:
-    "A red‑haired fighter in a black dress wades into the fray, blade up and shoulders squared as if the chaos is a familiar road. She moves with ruthless confidence, daring you to keep pace as she aims to cut the monsters down.\n" +
-    "\nYorna: \"Finally, someone moving with purpose. Let's carve these monsters to pieces—try to keep up.\"",
+    "A red‑haired fighter squares up, eyes on the stone keep to the southeast. Her stance is steady and her purpose is plain.\n" +
+    "\nYorna: \"Vast is in that castle. Urathar wants this valley. I'm here to stop them. If you go, I go.\"",
 
   hola:
-    "A black‑haired sorceress in a white dress clutches a weathered spellbook, lips shaping half‑remembered words as the monsters press in. Her hands tremble, but determination flickers behind the fear as she searches for the spell that will turn the tide.\n" +
-    "\nHola: \"I… I'm trying to remember the right incantation. There are so many of them—please stay close while I try again.\"",
+    "A black‑haired sorceress hugs a weathered spellbook, counting breaths as she tests the air like a student tasting a lesson. Her gaze keeps sliding toward a black‑walled keep; the wind tastes faintly of ash.\n" +
+    "\nHola: \"My Lord… Vast shut herself behind that gate. I'm still learning, but I can keep a little breeze pointing us there. The brute with the brass key—Gorg—walks outside the wall. If we take it, I… I can help you reach her.\"",
 
   vast:
     "A black‑haired sorceress in a black dress stands before the castle gate, the air around her shimmering like heat off stone. Power coils lazily at her fingertips as she regards you with cool amusement, certain the light here will not last.\n" +

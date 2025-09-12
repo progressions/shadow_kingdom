@@ -29,7 +29,7 @@ export const canopyDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Canopy: My Lord, I'm Canopy—the one who keeps people standing. I mend wounds, steady your breath, and I can throw up a safeguard when things get ugly. If you lead, I'll keep everyone whole. Join you?",
+      text: "Canopy: My Lord, I'm Canopy. I'm searching these woods for my sister—Ell. Urathar's raiders took her when they burned our village. I keep you standing: slow healing, a little less damage, and a short shield if your health drops. If you lead, I'll keep you standing. Shall I come?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_canopy' }, next: 'post_l5_canopy' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
@@ -56,7 +56,7 @@ export const canopyDialog = {
       ],
     },
     bond: {
-      text: 'Canopy: My Lord, a good plan is a steady breath. I\'m with you.',
+      text: 'Canopy: My Lord, a good plan is simple and steady. I\'m with you.',
       choices: [
         { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'What can you do for us?', next: 'about' },
@@ -70,12 +70,12 @@ export const yornaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Yorna: Chief, name's Yorna. I take the front, break lines, and make openings. Stand with me and we'll smash through anything. Need a hand?",
+      text: "Yorna: Name's Yorna. I hit hard and I don't quit. The castle is to the southeast. The gate's locked—Gorg, the red brute, carries a brass key outside the northeast wall. We take it, open the gate, kill Vast, and keep this valley ours. Want me along?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_yorna' }, next: 'post_l5_yorna' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'What can you do for us?', next: 'skills' },
-        { label: 'You hit hard; I\'ll keep the lane open.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
+        { label: 'You hit hard; I\'ll stay with you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
         { label: 'Trade tactics (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
         { label: 'No thanks.', action: 'end' },
       ],
@@ -85,7 +85,7 @@ export const yornaDialog = {
       choices: [ { label: 'Stay sharp.', action: 'set_flag', data: { key: 'post_l5_yorna' }, next: 'intro' } ],
     },
     skills: {
-      text: "Yorna: Chief, I make space. I step into the crowd, bump enemies off your line, and open clear lanes so your swings land clean. Stick close and fights get simpler.",
+      text: "Yorna: I take the front and keep trouble off you. I hit hard and extend your reach so you can land hits from a bit farther. Stay close and fights get easier.",
       choices: [
         { label: 'Sounds great — join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Maybe later.', action: 'end' },
@@ -114,7 +114,7 @@ export const holaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Hola: My Lord, I'm Hola. I work the wind—slow their feet, shove them back, and turn tight fights into breathing room. I'll stay close and keep the gust ready. Shall I come?",
+      text: "Hola: My Lord, I'm Hola. I try to give you breathing room—slow steps, small shoves—and I'm still learning. If we head northeast to the castle, the key hangs from the red brute's belt—Gorg. Vast burned my first spell to smoke; I want to try again. I'll do better if you call the pace. Shall I come?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_hola' }, next: 'post_l5_hola' },
         { label: 'Yes, please join.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },

@@ -808,6 +808,17 @@ export function step(dt) {
             showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
           }
         }
+        // Yorna: Kill Vast (Level 1) — mark cleared when Vast is defeated
+        if (e.vnId === 'enemy:vast') {
+          try {
+            if (!runtime.questFlags) runtime.questFlags = {};
+            if (runtime.questFlags['yorna_vast_started'] && !runtime.questFlags['yorna_vast_cleared']) {
+              runtime.questFlags['yorna_vast_cleared'] = true;
+              showBanner('Quest updated: Kill Vast — cleared');
+              try { autoTurnInIfCleared('yorna_vast'); } catch {}
+            }
+          } catch {}
+        }
         if (e.questId === 'urn_rooftops') {
           if (!runtime.questCounters) runtime.questCounters = {};
           const key = 'urn_rooftops_remaining';
