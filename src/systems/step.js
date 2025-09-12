@@ -1191,9 +1191,13 @@ export function step(dt) {
               // no-op
             } else if (picked.slot === 'head' || picked.slot === 'torso' || picked.slot === 'legs') {
               autoEquipIfBetter(player, picked.slot);
-            } else if ((picked.slot === 'leftHand' || picked.slot === 'rightHand') && !picked.stackable) {
+            } else if (!picked.stackable && picked.slot === 'rightHand') {
+              // Weapons: auto-equip if the slot is empty OR the new weapon is strictly better
+              autoEquipIfBetter(player, 'rightHand');
+            } else if (!picked.stackable && picked.slot === 'leftHand') {
+              // Shields/left-hand: keep conservative behavior — only auto-equip if empty
               const eqNow = player?.inventory?.equipped || {};
-              if (!eqNow[picked.slot]) autoEquipIfBetter(player, picked.slot);
+              if (!eqNow.leftHand) autoEquipIfBetter(player, 'leftHand');
             }
           } catch {}
         }
