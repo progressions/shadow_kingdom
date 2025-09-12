@@ -343,8 +343,9 @@ export function render(terrainBitmap, obstacles) {
           const darkness = Math.max(0, Math.min(1, 1 - (lv / (MAX_LIGHT_LEVEL || 1))));
           // Slight cap so brightest tiles still have a tiny film; tune as desired
           let alpha = Math.min(0.85, darkness * 0.85);
-          // Keep rocks slightly visible even at full dark (reduce max alpha over rock tiles)
-          if (rockTiles.has(gidx)) alpha = Math.min(alpha, 0.55);
+          // Keep rocks slightly visible near light, but not in total darkness
+          // Only reduce darkness on rock tiles if there is some light on that tile
+          if (rockTiles.has(gidx) && lv > 0) alpha = Math.min(alpha, 0.55);
           if (alpha <= 0.01) continue;
           ctx.globalAlpha = alpha;
           ctx.fillStyle = '#000000';

@@ -341,7 +341,7 @@ export function loadLevel1() {
   const boss1y = cyw + ch/2 - 8;
   spawnEnemy(boss1x, boss1y, 'boss', {
     name: 'Vast', vnId: 'enemy:vast', portrait: 'assets/portraits/level01/Vast/Vast video.mp4', portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4', portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4', onDefeatNextLevel: 2, vnOnSight: { text: introTexts.vast },
-    hp: 35, dmg: 8, speed: 10, hitCooldown: 0.75,  // Level 1 boss buff
+    hp: 35, dmg: 7, speed: 10, hitCooldown: 0.75,  // Level 1 boss buff (reduced dmg)
     ap: 1, // light armor piercing
   });
   // Boss arena adds: 3 mooks + 1 featured foe around the boss
@@ -484,7 +484,7 @@ export function loadLevel2() {
     onDefeatNextLevel: 3,
     // Level 2 boss: buffed stats
     hp: 50,
-    dmg: 10,
+    dmg: 9,
     speed: 12,
     hitCooldown: 0.7,
     vnOnSight: { text: introTexts.nethra },
@@ -636,7 +636,7 @@ export function loadLevel3() {
     portraitDefeated: 'assets/portraits/level03/Luula/Luula defeated.mp4',
     onDefeatNextLevel: 4,
     hp: 65,
-    dmg: 12,
+    dmg: 11,
     speed: 14,
     hitCooldown: 0.65,  // Level 3 boss buff
     ap: 2,
@@ -791,7 +791,7 @@ export function loadLevel4() {
     portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4',
     portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4',
     hp: 80,
-    dmg: 14,
+    dmg: 13,
     speed: 16,
     hitCooldown: 0.6,  // Level 4 boss buff
     onDefeatNextLevel: 5,
@@ -951,7 +951,7 @@ export function loadLevel5() {
   const cx = bossLoc.x * TILE; const cy = bossLoc.y * TILE;
   spawnEnemy(cx, cy, 'boss', {
     name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32, 
-    hp: 100, dmg: 16, speed: 18, hitCooldown: 0.55,  // Level 5 boss buff
+    hp: 100, dmg: 15, speed: 18, hitCooldown: 0.55,  // Level 5 boss buff (reduced dmg)
     ap: 5,
     // Boss portraits for VN overlays
     portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4',
