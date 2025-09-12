@@ -730,6 +730,7 @@ function drawItemIcon(x, y, item) {
   // Determine type and colors
   const isKey = !!item?.keyId;
   const slot = String(item?.slot || '').toLowerCase();
+  const id = String(item?.id || '').toLowerCase();
   let color = '#8ab4ff'; let accent = '#eaeaea';
   if (isKey) { color = '#ffd166'; accent = '#7a4a1a'; }
   else if (slot === 'rightHand') { color = '#8ab4ff'; accent = '#3a5a9a'; }
@@ -739,12 +740,24 @@ function drawItemIcon(x, y, item) {
   else if (slot === 'legs') { color = '#b8a16a'; accent = '#6b5a2a'; }
   // Icon shapes
   const drawSword = () => {
-    ctx.fillStyle = color; ctx.fillRect(x + 5, y + 2, 2, 8);
-    ctx.fillStyle = accent; ctx.fillRect(x + 3, y + 6, 6, 2);
+    // blade
+    ctx.fillStyle = '#cfd8ff'; ctx.fillRect(x + 6, y + 2, 1, 7);
+    // guard
+    ctx.fillStyle = '#6b7bb8'; ctx.fillRect(x + 4, y + 6, 5, 1);
+    // hilt
+    ctx.fillStyle = '#414a6b'; ctx.fillRect(x + 6, y + 7, 1, 2);
   };
   const drawTorch = () => {
-    ctx.fillStyle = '#a65a1a'; ctx.fillRect(x + 5, y + 5, 2, 5);
-    ctx.fillStyle = '#ffcc66'; ctx.beginPath(); ctx.arc(x + 6, y + 4, 3, 0, Math.PI * 2); ctx.fill();
+    // handle
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(x + 5, y + 6, 2, 4);
+    // flame
+    ctx.beginPath(); ctx.fillStyle = '#ffcc66'; ctx.arc(x + 6, y + 5, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = '#ffa41a'; ctx.arc(x + 6, y + 4, 2, 0, Math.PI * 2); ctx.fill();
+  };
+  const drawShield = () => {
+    ctx.fillStyle = '#a6c1ff'; ctx.fillRect(x + 3, y + 4, 6, 6);
+    ctx.strokeStyle = '#2f4a8a'; ctx.lineWidth = 1; ctx.strokeRect(x + 3, y + 4, 6, 6);
+    ctx.fillStyle = '#2f4a8a'; ctx.fillRect(x + 6, y + 6, 1, 2);
   };
   const drawHelm = () => {
     ctx.fillStyle = color; ctx.fillRect(x + 3, y + 4, 6, 4);
@@ -758,15 +771,31 @@ function drawItemIcon(x, y, item) {
     ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x + 4, y + 4, 3, 0, Math.PI * 2); ctx.fill();
     ctx.fillRect(x + 6, y + 3, 5, 2); ctx.fillRect(x + 9, y + 5, 2, 2);
   };
+  const drawPotion = (strength) => {
+    // bottle
+    ctx.fillStyle = '#eaeaea'; ctx.fillRect(x + 4, y + 3, 4, 6);
+    ctx.fillStyle = '#bdbdbd'; ctx.fillRect(x + 5, y + 2, 2, 1); // neck
+    // liquid color by strength
+    const liq = (strength === 'light') ? '#68e873' : (strength === 'medium') ? '#59b0ff' : '#ff5a7a';
+    ctx.fillStyle = liq; ctx.fillRect(x + 4, y + 5, 4, 4);
+    // highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x + 5, y + 4, 1, 1);
+  };
   const drawGeneric = () => {
     ctx.fillStyle = color; ctx.fillRect(x + 3, y + 3, 6, 6);
     ctx.fillStyle = accent; ctx.fillRect(x + 4, y + 4, 4, 1);
   };
+  // Routing: keys, potions, weapons, shields, armor, generic
   if (isKey) drawKey();
+  else if (id === 'potion_light') drawPotion('light');
+  else if (id === 'potion_medium') drawPotion('medium');
+  else if (id === 'potion_strong') drawPotion('strong');
   else if (slot === 'rightHand') drawSword();
-  else if (slot === 'leftHand') drawTorch();
+  else if (slot === 'leftHand') { if (id === 'torch') drawTorch(); else drawShield(); }
   else if (slot === 'head') drawHelm();
   else if (slot === 'torso') drawChest();
   else drawGeneric();
+  // crisp border for clarity
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 1; ctx.strokeRect(x - 1, y - 1, 12, 12);
   ctx.restore();
 }
