@@ -119,6 +119,8 @@ export function serializeSave() {
     uniqueActors,
     dynamicEnemies,
     spawners: spawnerRecords,
+    // Feature toggles
+    snakeMode: !!(runtime && runtime.snakeMode),
   };
   return normalizeSave(payload);
 }
@@ -348,6 +350,8 @@ export function applyPendingRestore() {
     runtime.questFlags = {}; (data.questFlags||[]).forEach(k => runtime.questFlags[k]=true);
     runtime.questCounters = {}; Object.assign(runtime.questCounters, data.questCounters||{});
     runtime.questMeta = {}; Object.assign(runtime.questMeta, data.questMeta||{});
+    // Feature toggles
+    runtime.snakeMode = !!data.snakeMode;
     // Companions
     companions.length = 0;
     if (Array.isArray(data.companions)) {

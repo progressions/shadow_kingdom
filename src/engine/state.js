@@ -510,7 +510,7 @@ export const runtime = {
   // Combat tuning toggles
   combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
   // Feature toggles
-  snakeMode: true,
+  snakeMode: false,
 
 };
 
