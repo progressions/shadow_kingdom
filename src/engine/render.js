@@ -412,6 +412,31 @@ export function render(terrainBitmap, obstacles) {
       ctx.restore();
     }
     // Boss marker removed; keep glow only
+    // Debug tactics overlay
+    try {
+      if (window && (window.DEBUG_TACTICS || window.DEBUG_ENEMIES)) {
+        const sx = Math.round(e.x + e.w/2 - camera.x);
+        const sy = Math.round(e.y - 14 - camera.y);
+        ctx.save();
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = '#eaeaea';
+        const tags = [];
+        if (e._dashTelegraph && e._dashTelegraph > 0) tags.push(`Dash*${e._dashTelegraph.toFixed(2)}`);
+        else if (e._dashTimer && e._dashTimer > 0) tags.push(`Dash ${e._dashTimer.toFixed(2)}`);
+        if (e._jukeTimer && e._jukeTimer > 0) tags.push(`Juke ${e._jukeTimer.toFixed(2)}`);
+        if (e._coverTimer && e._coverTimer > 0) tags.push(`Cover ${e._coverTimer.toFixed(2)}`);
+        if (e._braceTimer && e._braceTimer > 0) tags.push(`Brace ${e._braceTimer.toFixed(2)}`);
+        if (e._advanceTimer && e._advanceTimer > 0) tags.push(`Advance ${e._advanceTimer.toFixed(2)}`);
+        if (tags.length) {
+          const txt = tags.join(' | ');
+          ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeText(txt, sx, sy);
+          ctx.fillText(txt, sx, sy);
+        }
+        ctx.restore();
+      }
+    } catch {}
   }
 
   // Lighting overlay: coarse, tile-based darkness over world only (not UI)

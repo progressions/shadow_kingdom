@@ -365,6 +365,18 @@ export function step(dt) {
                 e._braceSpeedMul = TT.brace.speedMul;
                 e._tempDr = Math.max(e._tempDr || 0, addDr);
                 e._tempDrTimer = Math.max(e._tempDrTimer || 0, dur);
+                // Advance-under-fire: track short hit streak and trigger a push-through window
+                const win = TT.advance.windowSec || 0.8;
+                if ((e._hitStreakTimer || 0) > 0) e._hitStreakCount = (e._hitStreakCount || 0) + 1; else e._hitStreakCount = 1;
+                e._hitStreakTimer = win;
+                if (e._hitStreakCount >= (TT.advance.triggerHits || 2)) {
+                  e._advanceTimer = Math.max(e._advanceTimer || 0, TT.advance.durationSec || 0.6);
+                  e._advanceSpeedMul = TT.advance.speedMul || 1.3;
+                  e._advanceKbMul = TT.advance.kbMul || 0.2;
+                  // Optionally clamp dash cooldown to encourage a quick gap-closer soon
+                  if ((e._dashCd || 0) > (TT.advance.dashCooldownCapSec || 5.0)) e._dashCd = TT.advance.dashCooldownCapSec || 5.0;
+                  e._hitStreakCount = 0; // reset streak after triggering
+                }
               }
             } catch {}
             // Twil (swapped): fire arrows kindle quest progress for Light the Fuse
@@ -390,10 +402,15 @@ export function step(dt) {
                 e._burnDps = Math.max(e._burnDps || 0, 0.35);
               }
             } catch {}
-            // Knockback from projectile dir
+            // Knockback from projectile dir (reduced for elites; further reduced if braced/advancing)
             const dvx = p.vx, dvy = p.vy; const mag = Math.hypot(dvx, dvy) || 1;
-            e.knockbackX = (dvx / mag) * (p.knockback || 60);
-            e.knockbackY = (dvy / mag) * (p.knockback || 60);
+            const kind2 = String(e.kind || 'mook').toLowerCase();
+            let kb = (p.knockback || 60);
+            if (kind2 === 'boss') kb *= 0.22; else if (kind2 === 'featured') kb *= 0.33;
+            if (e._braceTimer && e._braceTimer > 0) kb *= Math.max(0.1, Math.min(1, (e._braceKbMul || 1)));
+            if (e._advanceTimer && e._advanceTimer > 0) kb *= Math.max(0.1, Math.min(1, (e._advanceKbMul || 1)));
+            e.knockbackX = (dvx / mag) * kb;
+            e.knockbackY = (dvy / mag) * kb;
             // Consume or pierce
             if (p.pierce > 0) { p.pierce--; }
             else { removeIdx.push(i); }
@@ -828,10 +845,14 @@ export function step(dt) {
       const braceMul = (e._braceTimer && e._braceTimer > 0) ? (e._braceSpeedMul || 1) : 1;
       const kbBrace = (e._braceTimer && e._braceTimer > 0) ? (e._braceKbMul || 1) : 1;
       const kbDash = (e._dashTimer && e._dashTimer > 0 && (!e._dashTelegraph || e._dashTelegraph <= 0)) ? (e._dashKbMul || 1) : 1;
-      const kbMul = Math.min(kbBrace, kbDash);
+      const kbAdvance = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceKbMul || 1) : 1;
+      const kbMul = Math.min(kbBrace, kbDash, kbAdvance);
       const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul;
       moveWithCollision(e, e.knockbackX * dt * mul * kbMul, e.knockbackY * dt * mul * kbMul, solidsForEnemy);
-      e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
+      // Rapidly settle knockback when braced or advancing so AI regains control
+      const settle = (e._advanceTimer && e._advanceTimer > 0) || (e._braceTimer && e._braceTimer > 0);
+      const decay = Math.pow(0.001, dt) * (settle ? 0.2 : 1);
+      e.knockbackX *= decay; e.knockbackY *= decay;
     } else {
       e.knockbackX = 0; e.knockbackY = 0;
       // Decide target behavior: chase if player is near, otherwise wander
@@ -871,7 +892,7 @@ export function step(dt) {
               e._dashTimer = Math.max(0, (e._dashTimer || 0) - dt);
               // Lock heading to dash direction
               if (typeof e._dashDirX === 'number' && typeof e._dashDirY === 'number') { dx = e._dashDirX; dy = e._dashDirY; }
-            } else if ((e._dashCd || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0 && (e._braceTimer || 0) <= 0) {
+            } else if ((e._dashCd || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0 && ((e._braceTimer || 0) <= 0 || (e._advanceTimer || 0) > 0)) {
               // Conditions to start dash: mid-range and LOS clear
               const distPx = d;
               const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
@@ -925,8 +946,9 @@ export function step(dt) {
                 if (lateral <= rad + (AI_TUNING.global.juke.lateralPadPx || 6)) { trigger = { nvx, nvy, rx, ry }; break; }
               }
               if (trigger) {
-                const TT = AI_TUNING[kind];
-                const chance = TT.juke.chance;
+                let TT = AI_TUNING[kind];
+                // Slightly increase juke chance if currently under an advance window (sustained fire)
+                const chance = (e._advanceTimer && e._advanceTimer > 0) ? Math.min(0.6, (TT.juke.chance || 0) + 0.1) : TT.juke.chance;
                 if (Math.random() < chance) {
                   const dur = TT.juke.durationSec;
                   const mult = TT.juke.speedMul;
@@ -967,7 +989,7 @@ export function step(dt) {
               return false;
             })();
             // Choose new cover target when LOS is clear and player is at range
-            if ((e._coverTimer || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverCd || 0) <= 0 && rangedAware && !losBlocked && dist > (AI_TUNING.global.cover.minDist || 80) && dist < (AI_TUNING.global.cover.maxDist || 260)) {
+            if ((e._coverTimer || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverCd || 0) <= 0 && (e._advanceTimer || 0) <= 0 && rangedAware && !losBlocked && dist > (AI_TUNING.global.cover.minDist || 80) && dist < (AI_TUNING.global.cover.maxDist || 260)) {
               let best = null; let bestScore = Infinity;
               for (const o of obstacles) {
                 if (!o || !o.blocksAttacks) continue;
@@ -1009,7 +1031,7 @@ export function step(dt) {
         try {
           if (elite) {
             const dist = d;
-            if (rangedAware && dist >= (AI_TUNING.global.zigzag.minDist || 60) && dist <= (AI_TUNING.global.zigzag.maxDist || 220) && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0) {
+            if (rangedAware && dist >= (AI_TUNING.global.zigzag.minDist || 60) && dist <= (AI_TUNING.global.zigzag.maxDist || 220) && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0 && (e._advanceTimer || 0) <= 0) {
               e._strafeTimer = Math.max(0, (e._strafeTimer || 0) - dt);
               if ((e._strafeTimer || 0) <= 0) {
                 e._strafeSign = (typeof e._strafeSign === 'number') ? e._strafeSign : (e.avoidSign || 1);
@@ -1050,7 +1072,8 @@ export function step(dt) {
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
       const braceMul = (e._braceTimer && e._braceTimer > 0) ? (e._braceSpeedMul || 1) : 1;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul;
+      const advMul = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceSpeedMul || 1) : 1;
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul * advMul;
 
       // Hazard avoidance steering: pick a nearby direction with lower hazard exposure
       const baseDir = { x: dx, y: dy };
@@ -1100,7 +1123,8 @@ export function step(dt) {
       const jukeMult = (e._jukeTimer && e._jukeTimer > 0) ? (e._jukeMult || 1) : 1;
       const dashTeleMul = (e._dashTelegraph && e._dashTelegraph > 0) ? 0.4 : 1; // slow slightly during telegraph
       const dashMult = ((e._dashTimer && e._dashTimer > 0) && (!e._dashTelegraph || e._dashTelegraph <= 0)) ? (e._dashSpeedMult || 1) : 1;
-      const spdMul = spdBoost * Math.max(jukeMult, dashMult) * dashTeleMul;
+      const advMult = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceSpeedMul || 1) : 1;
+      const spdMul = spdBoost * Math.max(jukeMult, dashMult) * dashTeleMul * advMult;
       moveWithCollision(e, best.x * e.speed * spdMul * mul * dt, best.y * e.speed * spdMul * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
@@ -1172,6 +1196,11 @@ export function step(dt) {
     if (e._braceTimer && e._braceTimer > 0) e._braceTimer = Math.max(0, e._braceTimer - dt);
     if (e._coverCd && e._coverCd > 0) e._coverCd = Math.max(0, e._coverCd - dt);
     if (e._dashCd && e._dashCd > 0) e._dashCd = Math.max(0, e._dashCd - dt);
+    if (e._hitStreakTimer && e._hitStreakTimer > 0) {
+      e._hitStreakTimer = Math.max(0, e._hitStreakTimer - dt);
+      if (e._hitStreakTimer === 0) e._hitStreakCount = 0;
+    }
+    if (e._advanceTimer && e._advanceTimer > 0) e._advanceTimer = Math.max(0, e._advanceTimer - dt);
     if (e._burnTimer && e._burnTimer > 0) {
       e._burnTimer = Math.max(0, e._burnTimer - dt);
       const dps = e._burnDps || 0;

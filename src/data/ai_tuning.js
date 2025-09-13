@@ -19,14 +19,16 @@ export const AI_TUNING = {
     brace:  { durationSec: 0.9, kbMul: 0.30, speedMul: 0.85, projDr: 2 },
     juke:   { chance: 0.22, cooldownSec: 1.0, durationSec: 0.28, speedMul: 1.35 },
     cover:  { commitSec: 1.0 },
-    dash:   { telegraphSec: 0.18, durationSec: 0.45, speedMul: 2.8, kbMul: 0.20, cooldownBaseSec: 6.5, cooldownJitterSec: 1.5 },
+    dash:   { telegraphSec: 0.18, durationSec: 0.45, speedMul: 2.8, kbMul: 0.15, cooldownBaseSec: 6.5, cooldownJitterSec: 1.5 },
+    advance:{ triggerHits: 2, windowSec: 0.8, durationSec: 0.7, speedMul: 1.5, kbMul: 0.12, dashCooldownCapSec: 4.5 },
   },
   featured: {
     zigzag: { weight: 0.40, commitSec: 0.6 },
     brace:  { durationSec: 0.75, kbMul: 0.40, speedMul: 0.90, projDr: 1.5 },
-    juke:   { chance: 0.12, cooldownSec: 1.4, durationSec: 0.22, speedMul: 1.25 },
+    juke:   { chance: 0.16, cooldownSec: 1.2, durationSec: 0.22, speedMul: 1.25 },
     cover:  { commitSec: 0.8 },
-    dash:   { telegraphSec: 0.16, durationSec: 0.35, speedMul: 2.2, kbMul: 0.35, cooldownBaseSec: 11.0, cooldownJitterSec: 2.0 },
+    dash:   { telegraphSec: 0.16, durationSec: 0.35, speedMul: 2.2, kbMul: 0.20, cooldownBaseSec: 9.0, cooldownJitterSec: 1.5 },
+    advance:{ triggerHits: 2, windowSec: 0.8, durationSec: 0.6, speedMul: 1.35, kbMul: 0.20, dashCooldownCapSec: 5.0 },
   },
   mook: {
     zigzag: { weight: 0.0, commitSec: 0.0 },
@@ -36,4 +38,3 @@ export const AI_TUNING = {
     dash:   { telegraphSec: 0.0, durationSec: 0.0, speedMul: 1.0, kbMul: 1.0, cooldownBaseSec: 0.0, cooldownJitterSec: 0.0 },
   },
 };
-
