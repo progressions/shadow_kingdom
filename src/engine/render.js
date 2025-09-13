@@ -322,6 +322,14 @@ export function render(terrainBitmap, obstacles) {
             dy += bob;
           }
         } catch {}
+        // Boss telegraph wiggle: tiny jitter while telegraphing melee/ranged
+        try {
+          if (ent && String(ent.kind||'').toLowerCase() === 'boss' && ((ent._meleeTele && ent._meleeTele > 0) || (ent._shootTele && ent._shootTele > 0))) {
+            const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
+            dx += Math.sin(t * 22) * 1.0;
+            dy += Math.cos(t * 20) * 0.6;
+          }
+        } catch {}
         // Boss outline (gold) around sprite
         if (ent && String(ent.kind).toLowerCase() === 'boss') {
           drawBossOutline(img, sx, sy, fw, fh, dx, dy, destW, destH, '#ffd166');
@@ -349,12 +357,21 @@ export function render(terrainBitmap, obstacles) {
       const sy = row * SPRITE_SIZE;
       const destW = SPRITE_SIZE * scale;
       const destH = SPRITE_SIZE * scale;
-      const dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
-      const dy = Math.round(d.y - (destH - d.h) - camera.y);
+      let dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
+      let dy = Math.round(d.y - (destH - d.h) - camera.y);
       // Boss outline (gold) around sprite
       if (d.spriteRef && String(d.spriteRef.kind).toLowerCase() === 'boss') {
         drawBossOutline(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH, '#ffd166');
       }
+      // Boss telegraph wiggle (legacy sheet path)
+      try {
+        const ent = d.spriteRef;
+        if (ent && String(ent.kind||'').toLowerCase() === 'boss' && ((ent._meleeTele && ent._meleeTele > 0) || (ent._shootTele && ent._shootTele > 0))) {
+          const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
+          dx += Math.sin(t * 22) * 1.0;
+          dy += Math.cos(t * 20) * 0.6;
+        }
+      } catch {}
       if (d.isPlayer && player.invulnTimer > 0) {
         const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
         if (!flicker) ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
@@ -395,6 +412,39 @@ export function render(terrainBitmap, obstacles) {
   for (const e of enemies) {
     if (e.hp <= 0) continue;
     drawBar(e.x - 2 - camera.x, e.y - 4 - camera.y, e.w + 4, 2, e.hp / e.maxHp, '#ff5555');
+    // Boss telegraph overlays
+    try {
+      if (String(e.kind||'').toLowerCase() === 'boss') {
+        const cx = Math.round(e.x + e.w/2 - camera.x);
+        const cy = Math.round(e.y + e.h/2 - camera.y);
+        // Melee telegraph ring — subtle, filled, low opacity
+        if (e._meleeTele && e._meleeTele > 0) {
+          ctx.save();
+          const t = Math.max(0, Math.min(1, e._meleeTele / 0.2));
+          const rBase = Math.max(12, Math.floor(Math.max(e.w, e.h) / 2) + 4);
+          const r = rBase + (1 - t) * 3;
+          ctx.globalAlpha = 0.12; // low opacity
+          ctx.fillStyle = '#ff9a3d';
+          ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+        // Ranged telegraph aim line
+        if (e._shootTele && e._shootTele > 0) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,154,61,0.75)';
+          ctx.lineWidth = 1.5;
+          let ang = e._shootAim;
+          if (typeof ang !== 'number') {
+            const px = player.x + player.w/2 - camera.x, py = player.y + player.h/2 - camera.y;
+            ang = Math.atan2(py - cy, px - cx);
+          }
+          const len = 24;
+          const ex = cx + Math.cos(ang) * len, ey = cy + Math.sin(ang) * len;
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+          ctx.restore();
+        }
+      }
+    } catch {}
     // Aggro tell: show '!' when player is within 80px
     const dx = (e.x - player.x), dy = (e.y - player.y);
     if ((dx*dx + dy*dy) <= (80*80)) {

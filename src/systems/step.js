@@ -1231,7 +1231,7 @@ export function step(dt) {
       if (moved < 0.1) { e.stuckTime += dt; if (e.stuckTime > 0.6) { e.avoidSign *= -1; e.stuckTime = 0; } }
       else e.stuckTime = 0;
 
-      // Enemy ranged attack (MVP)
+      // Enemy ranged attack with telegraph for bosses
       if (e.ranged) {
         e._shootCd = Math.max(0, (e._shootCd || 0) - dt);
         // Check LOS and range
@@ -1251,14 +1251,39 @@ export function step(dt) {
             if (!blocked) { losClear = true; break; }
           }
           if (losClear) {
-            const ang = Math.atan2(py2 - ey, px2 - ex) + (e.aimError || 0) * (Math.random()*2 - 1);
-            const spd = Math.max(60, e.projectileSpeed || 160);
-            const vx = Math.cos(ang) * spd;
-            const vy = Math.sin(ang) * spd;
-            const dmg = Math.max(1, e.projectileDamage || Math.max(1, (e.touchDamage||1) - 1));
-            spawnProjectile(ex, ey, { team: 'enemy', vx, vy, damage: dmg, life: 1.8, sourceId: e.id, color: '#ff9a3d' });
-            e._shootCd = Math.max(0.2, e.shootCooldown || 1.2);
-            try { playSfx('attack'); } catch {}
+            const kind = String(e.kind||'').toLowerCase();
+            // Bosses: brief telegraph before firing
+            if (kind === 'boss') {
+              e._shootTele = Math.max(0, (e._shootTele || 0) - dt);
+              if (!e._shootTele || e._shootTele <= 0) {
+                // Start telegraph and cache aim
+                e._shootAim = Math.atan2(py2 - ey, px2 - ex);
+                e._shootTele = (AI_TUNING.boss?.ranged?.telegraphSec) || 0.14;
+                // Do not fire this frame; fire after telegraph expires
+              } else {
+                // Waiting for telegraph to finish; skip firing
+              }
+              if (e._shootTele <= 0) {
+                const ang = (e._shootAim || Math.atan2(py2 - ey, px2 - ex)) + (e.aimError || 0) * (Math.random()*2 - 1);
+                const spd = Math.max(60, e.projectileSpeed || 160);
+                const vx = Math.cos(ang) * spd;
+                const vy = Math.sin(ang) * spd;
+                const dmg = Math.max(1, e.projectileDamage || Math.max(1, (e.touchDamage||1) - 1));
+                spawnProjectile(ex, ey, { team: 'enemy', vx, vy, damage: dmg, life: 1.8, sourceId: e.id, color: '#ff9a3d' });
+                e._shootCd = Math.max(0.2, e.shootCooldown || 1.2);
+                try { playSfx('attack'); } catch {}
+              }
+            } else {
+              // Non-boss: fire immediately
+              const ang = Math.atan2(py2 - ey, px2 - ex) + (e.aimError || 0) * (Math.random()*2 - 1);
+              const spd = Math.max(60, e.projectileSpeed || 160);
+              const vx = Math.cos(ang) * spd;
+              const vy = Math.sin(ang) * spd;
+              const dmg = Math.max(1, e.projectileDamage || Math.max(1, (e.touchDamage||1) - 1));
+              spawnProjectile(ex, ey, { team: 'enemy', vx, vy, damage: dmg, life: 1.8, sourceId: e.id, color: '#ff9a3d' });
+              e._shootCd = Math.max(0.2, e.shootCooldown || 1.2);
+              try { playSfx('attack'); } catch {}
+            }
           }
         }
       }
@@ -1319,6 +1344,20 @@ export function step(dt) {
         } catch {}
         // If they actually overlap, separate just enough but still allow contact
         if (rectsIntersect(pr, er)) separateEntities(player, e, 0.65);
+        // Boss melee telegraph: brief wind-up before the hit
+        const isBoss = String(e.kind||'').toLowerCase() === 'boss';
+        if (isBoss) {
+          e._meleeTele = Math.max(0, (e._meleeTele || 0) - dt);
+          if ((e._meleeTele || 0) <= 0 && player.invulnTimer <= 0) {
+            e._meleeTele = (AI_TUNING.boss?.melee?.telegraphSec) || 0.18;
+            // Delay actual damage until telegraph expires
+            continue;
+          }
+          if ((e._meleeTele || 0) > 0) {
+            // Still telegraphing; skip applying damage this frame
+            continue;
+          }
+        }
         // Overworld realtime damage on contact; apply armor DR with chip/crit/AP
         if (player.invulnTimer <= 0) {
           const toggles = runtime?.combatToggles || { chip: true, enemyCrits: true, ap: true };
