@@ -149,13 +149,16 @@ export function loadLevel1() {
   (function placeGorgNearCastle() {
     const gorgX = Math.round(cxw + cw/2 - 12); // near arena center horizontally
     const gorgY = Math.round(cyw - TILE * 4);  // above top wall, safely outside
-    spawnEnemy(gorgX, gorgY, 'featured', {
+    const gorg = spawnEnemy(gorgX, gorgY, 'featured', {
       name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/level01/Gorg/Gorg.mp4', sheet: gorgSheet, sheetPalette: gorgPalette,
       hp: 40, dmg: 6, hitCooldown: 0.65,
     });
+    // Reduce early aggro so the player can meet companions before Gorg notices
+    try { gorg.aggroRadius = 160; } catch {}
     // Two normal featured foes flanking Gorg
-    spawnEnemy(gorgX - 28, gorgY - 12, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
-    spawnEnemy(gorgX + 30, gorgY + 10,  'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
+    const b1 = spawnEnemy(gorgX - 28, gorgY - 12, 'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
+    const b2 = spawnEnemy(gorgX + 30, gorgY + 10,  'featured', { name: 'Woodland Brute', hp: 8, dmg: 4 });
+    try { b1.aggroRadius = 150; b2.aggroRadius = 150; } catch {}
   })();
   // Rocky terrain above the castle: clustered rounded rock outcrops (blocking)
   (function placeRockyOutcrops() {

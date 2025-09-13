@@ -27,7 +27,7 @@ export const introTexts = {
     "\nNethra: \"Vast failed, but I will not. Urathar\'s shadow lengthens—turn back or be unmade.\"",
 
   oyin:
-    "A young traveler steadies her hands on the tinderbox, eyes bright but wavering. She tucks a strand of blonde hair behind her ear, trying to look braver than she feels.\n" +
+    "A young traveler steadies her hands and counts under her breath, eyes bright but wavering. She tucks a strand of blonde hair behind her ear, trying to look braver than she feels.\n" +
     "\nOyin: \"I—I'll try to help. I\'m still learning, but if you need me… I can try.\"",
 
   twil:

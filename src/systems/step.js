@@ -195,6 +195,9 @@ export function step(dt) {
   try { if ((runtime._suppressInputTimer || 0) > 0) runtime._suppressInputTimer = Math.max(0, (runtime._suppressInputTimer || 0) - dt); } catch {}
   // Decay player dash cooldown (double-tap) timer
   try { if ((runtime._dashCooldown || 0) > 0) runtime._dashCooldown = Math.max(0, (runtime._dashCooldown || 0) - dt); } catch {}
+  // Decay dash-combo lockout and vulnerability timers
+  try { if ((runtime._dashComboLockout || 0) > 0) runtime._dashComboLockout = Math.max(0, (runtime._dashComboLockout || 0) - dt); } catch {}
+  try { if ((runtime._dashComboVulnTimer || 0) > 0) runtime._dashComboVulnTimer = Math.max(0, (runtime._dashComboVulnTimer || 0) - dt); } catch {}
 
   // Torch burnout: if a torch is equipped in left hand, tick down and consume on expiry
   try {
@@ -463,6 +466,13 @@ export function step(dt) {
             let taken = Math.max(0, raw - effDr);
             if (isCrit) taken += Math.max(0, cBonus);
             if (tDmg > 0) taken += tDmg;
+            // Dash Combo vulnerability: increase damage taken while vulnerable
+            try {
+              if ((runtime._dashComboVulnTimer || 0) > 0 && taken > 0) {
+                const mul = 1 + Math.max(0, (typeof runtime._dashComboVulnMul === 'number') ? runtime._dashComboVulnMul : 0.25);
+                taken = Math.max(1, Math.ceil(taken * mul));
+              }
+            } catch {}
             if (toggles.chip && kind !== 'boss') {
               const chipBase = Math.round(raw * 0.10);
               const chip = Math.max(def.chipMin, Math.min(def.chipMax, chipBase));
@@ -474,7 +484,14 @@ export function step(dt) {
             if (taken > 0) {
               player.hp = Math.max(0, player.hp - taken);
               player.knockbackX = 0; player.knockbackY = 0;
-              player.invulnTimer = 0.6;
+              let invul = 0.6;
+              try {
+                if ((runtime._dashComboVulnTimer || 0) > 0) {
+                  const red = (typeof runtime._dashComboInvulnOnHitSec === 'number') ? runtime._dashComboInvulnOnHitSec : 0.35;
+                  invul = Math.min(invul, red);
+                }
+              } catch {}
+              player.invulnTimer = invul;
               runtime.interactLock = Math.max(runtime.interactLock, 0.2);
               runtime._recentPlayerHitTimer = 0.25;
               let label = null; let color = '#ff7a7a'; let sfx = 'hit';
@@ -892,7 +909,8 @@ export function step(dt) {
       const ddx = (pxp - ex), ddy = (pyp - ey);
       const dist2 = ddx*ddx + ddy*ddy;
       const roleKind = String(e.kind || 'mook').toLowerCase();
-      const baseAggro = (roleKind === 'boss') ? 280 : (roleKind === 'featured' ? 220 : 180);
+      // Base aggro radii (px). Featured slightly reduced to encourage exploration.
+      const baseAggro = (roleKind === 'boss') ? 280 : (roleKind === 'featured' ? 190 : 180);
       const aggroR = (typeof e.aggroRadius === 'number') ? e.aggroRadius : baseAggro;
       const aggroR2 = aggroR * aggroR;
       let dx, dy;
@@ -1436,6 +1454,13 @@ export function step(dt) {
           // Add crit bonus and any true damage (applies after DR)
           if (isCrit) taken += Math.max(0, cBonus);
           if (tDmg > 0) taken += tDmg;
+          // Dash Combo vulnerability: increase damage taken while vulnerable
+          try {
+            if ((runtime._dashComboVulnTimer || 0) > 0 && taken > 0) {
+              const mul = 1 + Math.max(0, (typeof runtime._dashComboVulnMul === 'number') ? runtime._dashComboVulnMul : 0.25);
+              taken = Math.max(1, Math.ceil(taken * mul));
+            }
+          } catch {}
 
           // Universal chip floor for mook/featured only
           if (toggles.chip && kind !== 'boss') {
@@ -1459,8 +1484,15 @@ export function step(dt) {
               // Minimal or no knockback; keep player controllable
               player.knockbackX = 0;
               player.knockbackY = 0;
-              // Invincibility window and light interaction lock
-              player.invulnTimer = 0.6;
+              // Invincibility window and light interaction lock (reduced if dash-combo vulnerable)
+              let invul = 0.6;
+              try {
+                if ((runtime._dashComboVulnTimer || 0) > 0) {
+                  const red = (typeof runtime._dashComboInvulnOnHitSec === 'number') ? runtime._dashComboInvulnOnHitSec : 0.35;
+                  invul = Math.min(invul, red);
+                }
+              } catch {}
+              player.invulnTimer = invul;
               runtime.interactLock = Math.max(runtime.interactLock, 0.2);
               // Mark recent hit for companion triggers
               runtime._recentPlayerHitTimer = 0.25;
@@ -2226,7 +2258,7 @@ export function step(dt) {
 function applyCompanionAuras(dt) {
   // Reset buffs
   const buffs = runtime.combatBuffs;
-  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0; buffs.rangedDR = 0; buffs.aspd = 0; buffs.crit = 0;
+  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0; buffs.rangedDR = 0; buffs.aspd = 0; buffs.crit = 0; buffs.dashCdr = 0;
   // Reset wind deflection
   if (!runtime.projectileDeflect) runtime.projectileDeflect = { chance: 0, radius: 0 };
   runtime.projectileDeflect.chance = 0;
@@ -2258,6 +2290,7 @@ function applyCompanionAuras(dt) {
         case 'aspd': buffs.aspd += (a.value || 0) * mult; break; // attack speed bonus (fractional)
         case 'rangedDR': buffs.rangedDR += (a.value || 0) * mult; break; // resistance vs ranged/projectile damage
         case 'crit': buffs.crit += (a.value || 0) * mult; break; // absolute crit chance add
+        case 'dashCdr': buffs.dashCdr += (a.value || 0) * mult; break; // dash cooldown reduction (fractional)
         case 'slow': {
           const rad = a.radius || 0;
           if (rad > 0) {
@@ -2296,6 +2329,7 @@ function applyCompanionAuras(dt) {
   buffs.aspd = Math.min(buffs.aspd, COMPANION_BUFF_CAPS.aspd);
   buffs.crit = Math.min(buffs.crit, COMPANION_BUFF_CAPS.crit || buffs.crit);
   buffs.rangedDR = Math.min(buffs.rangedDR, COMPANION_BUFF_CAPS.rangedDR || buffs.rangedDR);
+  buffs.dashCdr = Math.min(buffs.dashCdr, COMPANION_BUFF_CAPS.dashCdr || buffs.dashCdr);
   // Cap deflect chance
   if (!runtime.projectileDeflect) runtime.projectileDeflect = { chance: 0, radius: 0 };
   runtime.projectileDeflect.chance = Math.min(runtime.projectileDeflect.chance || 0, COMPANION_BUFF_CAPS.deflect || (runtime.projectileDeflect.chance || 0));

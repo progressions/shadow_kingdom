@@ -20,6 +20,21 @@ export function startAttack() {
   player.attackTimer = 0;
   player.lastAttack = now;
   playSfx('attack');
+  // Dash Combo: if dashing or within a short window after, empower this swing and apply vulnerability+lockout
+  try {
+    const t = runtime._timeSec || 0;
+    const inWindow = (t <= (runtime._dashComboReadyUntil || -1)) || ((runtime._dashTimer || 0) > 0);
+    if (inWindow && (runtime._dashComboLockout || 0) <= 0) {
+      runtime._dashComboActive = true;
+      runtime._dashComboAppliedThisSwing = false;
+      const lock = (typeof runtime._dashComboLockoutSec === 'number') ? runtime._dashComboLockoutSec : 0.6;
+      runtime._dashComboLockout = Math.max(runtime._dashComboLockout || 0, lock);
+      const vuln = (typeof runtime._dashComboVulnDurSec === 'number') ? runtime._dashComboVulnDurSec : 0.6;
+      runtime._dashComboVulnTimer = Math.max(runtime._dashComboVulnTimer || 0, vuln);
+      try { import('../engine/state.js').then(m => m.spawnFloatText(player.x + player.w/2, player.y - 12, 'Dash Strike!', { color: '#9ae6ff', life: 0.8 })); } catch {}
+      try { playSfx('tumbleUp'); } catch {}
+    }
+  } catch {}
 }
 
 export function willAttackHitEnemy() {
@@ -138,6 +153,16 @@ export function handleAttacks(dt) {
             finalDmg = Math.ceil(finalDmg * 1.5);
           }
         }
+        // Dash Combo damage bonus applies to first enemy hit this swing
+        try {
+          if (runtime._dashComboActive && !runtime._dashComboAppliedThisSwing) {
+            const mult = (typeof runtime._dashComboDmgMult === 'number') ? runtime._dashComboDmgMult : 1.5;
+            finalDmg = Math.ceil(finalDmg * Math.max(1, mult));
+            runtime._dashComboAppliedThisSwing = true;
+            runtime._dashComboActive = false;
+            import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Dash +${Math.max(1, Math.ceil(finalDmg - dmg))}`, { color: '#9ae6ff', life: 0.7 }));
+          }
+        } catch {}
         const before = e.hp;
         // Apply damage first, then heal back by effective DR (preserves existing trigger flow)
         e.hp -= finalDmg;
@@ -254,6 +279,8 @@ export function handleAttacks(dt) {
   if (player.attackTimer >= player.attackDuration) {
     player.attacking = false;
     player._didHit = false;
+    // Clear any leftover dash-combo swing flags on end of swing
+    try { runtime._dashComboActive = false; runtime._dashComboAppliedThisSwing = false; } catch {}
   }
 }
 

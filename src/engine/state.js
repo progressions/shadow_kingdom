@@ -533,7 +533,7 @@ export const runtime = {
   introCooldown: 0,
   
   // Aggregated companion buffs (recomputed each frame)
-  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, rangedDR: 0, aspd: 0, crit: 0 },
+  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, rangedDR: 0, aspd: 0, crit: 0, dashCdr: 0 },
   // Wind deflection aura (derived each frame from companions)
   projectileDeflect: { chance: 0, radius: 0 },
   // Companion ability cooldowns and shield state (Phase 2)
@@ -613,6 +613,21 @@ export const runtime = {
   _dashDurationDefault: 0.14,
   _dashSpeedDefault: 340, // px/sec
   _dashDoubleTapWindow: 0.25, // seconds between taps to trigger dash
+  _dashCooldownDefault: 0.80, // seconds after a dash before another can start (longer base)
+
+  // --- Dash Combo (dash -> attack) ---
+  _dashComboReadyUntil: 0,     // timeSec deadline when a dash-attack will count as a combo
+  _dashComboActive: false,     // true if the current melee swing should get combo damage
+  _dashComboAppliedThisSwing: false, // internal: has the bonus been applied this swing
+  _dashComboLockout: 0,        // cannot start another combo until this decays
+  _dashComboVulnTimer: 0,      // while >0, player is vulnerable (takes extra damage, fewer i-frames)
+  // Tunables
+  _dashComboWindowSec: 0.25,
+  _dashComboDmgMult: 1.5,          // combo hit damage multiplier
+  _dashComboVulnMul: 0.25,         // +25% damage taken while vulnerable
+  _dashComboVulnDurSec: 0.6,       // vulnerability duration after the combo attack starts
+  _dashComboInvulnOnHitSec: 0.35,  // reduced i-frames when hit during vulnerability
+  _dashComboLockoutSec: 0.6,       // cannot start another combo during this lockout
 
 };
 

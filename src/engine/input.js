@@ -2,7 +2,7 @@ import { runtime, world } from './state.js';
 import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice, showBanner, cycleMinimapMode, beginMinimapPeek, endMinimapPeek } from './ui.js';
 import { startAttack, tryInteract, willAttackHitEnemy, startRangedAttack } from '../systems/combat.js';
 import { selectChoice, startCompanionSelector, startSaveMenu, startInventoryMenu, startPrompt } from '../engine/dialog.js';
-import { initAudioUnlock, toggleMute, toggleMusic, stopMusic } from './audio.js';
+import { initAudioUnlock, toggleMute, toggleMusic, stopMusic, playSfx } from './audio.js';
 import { saveGame, loadGame } from './save.js';
 
 export function initInput() {
@@ -38,11 +38,13 @@ export function initInput() {
       if (e.key === 'Enter') { activateFocusedChoice(); e.preventDefault(); return; }
       return; // ignore other keys while in chat
     }
-    runtime.keys.add(e.key.toLowerCase());
-    // Double-tap WASD to dash in that direction
+    // Double-tap WASD/Arrow keys to dash in that direction
     try {
       const k = e.key.toLowerCase();
-      if (k === 'w' || k === 'a' || k === 's' || k === 'd') {
+      const allowed = (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'arrowup' || k === 'arrowdown' || k === 'arrowleft' || k === 'arrowright');
+      // Count a tap only on the transition from up->down (ignore auto-repeat and held state)
+      const wasHeld = runtime.keys.has(k);
+      if (allowed && !e.repeat && !wasHeld) {
         const now = (typeof performance !== 'undefined' && performance.now) ? (performance.now() / 1000) : (Date.now() / 1000);
         const last = (runtime._dashLastTap && typeof runtime._dashLastTap[k] === 'number') ? runtime._dashLastTap[k] : -999;
         const windowSec = (typeof runtime._dashDoubleTapWindow === 'number') ? runtime._dashDoubleTapWindow : 0.25;
@@ -50,22 +52,38 @@ export function initInput() {
         if (canDash && (now - last) <= windowSec) {
           // Start dash in axis-aligned direction of the tapped key
           let vx = 0, vy = 0;
-          if (k === 'w') vy = -1; else if (k === 's') vy = 1; else if (k === 'a') vx = -1; else if (k === 'd') vx = 1;
+          if (k === 'w' || k === 'arrowup') vy = -1;
+          else if (k === 's' || k === 'arrowdown') vy = 1;
+          else if (k === 'a' || k === 'arrowleft') vx = -1;
+          else if (k === 'd' || k === 'arrowright') vx = 1;
           const spd = (typeof runtime._dashSpeedDefault === 'number') ? runtime._dashSpeedDefault : 340;
           runtime._dashVx = vx * spd;
           runtime._dashVy = vy * spd;
           runtime._dashTimer = (typeof runtime._dashDurationDefault === 'number') ? runtime._dashDurationDefault : 0.14;
-          runtime._dashCooldown = Math.max(runtime._dashCooldown || 0, 0.25);
+          // Prime dash-combo window (dash -> attack)
+          try {
+            const nowT = runtime._timeSec || 0;
+            const win = (typeof runtime._dashComboWindowSec === 'number') ? runtime._dashComboWindowSec : 0.25;
+            runtime._dashComboReadyUntil = nowT + win;
+          } catch {}
+          const cdBase = (typeof runtime._dashCooldownDefault === 'number') ? runtime._dashCooldownDefault : 0.35;
+          const cdr = (runtime?.combatBuffs?.dashCdr || 0);
+          const effCd = Math.max(0.06, cdBase / Math.max(1e-6, (1 + cdr)));
+          runtime._dashCooldown = Math.max(runtime._dashCooldown || 0, effCd);
           // Face the dash direction immediately
           try { import('./state.js').then(m => { const p = m.player; if (p) { if (Math.abs(vx) > Math.abs(vy)) p.dir = vx < 0 ? 'left' : 'right'; else if (vy !== 0) p.dir = vy < 0 ? 'up' : 'down'; } }); } catch {}
+          // Subtle SFX for feedback
+          try { playSfx('slipstream'); } catch {}
           // Optional: subtle screen shake could reinforce the feel (kept minimal)
           try { runtime.shakeTimer = Math.max(runtime.shakeTimer || 0, 0.05); } catch {}
         }
-        // Update last tap time for this key
+        // Update last tap time for this key on genuine taps only
         if (!runtime._dashLastTap) runtime._dashLastTap = {};
         runtime._dashLastTap[k] = now;
       }
     } catch {}
+    // Finally mark the key as held
+    runtime.keys.add(e.key.toLowerCase());
     if (e.key === 'Escape') {
       // Pause game and music
       runtime.paused = true;

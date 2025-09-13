@@ -1,5 +1,5 @@
 // Companion effect definitions for realtime auras (Phase 1)
-// Types: atk, dr, regen, range, slow, touchDR
+// Types: atk, dr, regen, range, slow, touchDR, rangedDR, deflect, aspd, crit, dashCdr
 // For slow auras, radius is in pixels and anchor can be 'player' or 'self'.
 
 export const companionEffectsByKey = {
@@ -27,6 +27,8 @@ export const companionEffectsByKey = {
       { type: 'rangedDR', value: 3 },
       // Wind deflection: chance to deflect incoming projectiles near the player
       { type: 'deflect', value: 0.35, radius: 56, anchor: 'player' },
+      // Slipstream (passive): modest dash cooldown reduction
+      { type: 'dashCdr', value: 0.15 },
     ],
     triggers: {
       gust: { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 },
@@ -46,6 +48,8 @@ export const companionEffectsByKey = {
       // Adopt Oyin's prior role: precision + reach (and fire synergy handled in code)
       { type: 'range', value: 1 },
       { type: 'crit', value: 0.05 },
+      // Quick step: minor dash cooldown reduction
+      { type: 'dashCdr', value: 0.10 },
     ],
     // Fire-on-arrow handled in projectile impact code
   },
@@ -53,6 +57,8 @@ export const companionEffectsByKey = {
     auras: [
       // Hype: increase attack speed (reduces attack cooldown)
       { type: 'aspd', value: 0.12 },
+      // Slipstream: reduce dash cooldown noticeably
+      { type: 'dashCdr', value: 0.20 },
     ],
     // Triggers can be added later (Slipstream, Tumble Up, etc.)
   },
@@ -123,4 +129,5 @@ export const COMPANION_BUFF_CAPS = {
   slow: 0.35,  // 35% max slow from stacked auras/triggers
   aspd: 0.75,  // up to +75% attack speed from stacked sources
   crit: 0.25,  // up to +25% absolute crit chance from auras
+  dashCdr: 0.75, // dash cooldown reduction factor used as (cd / (1 + dashCdr))
 };

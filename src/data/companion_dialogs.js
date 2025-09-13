@@ -631,9 +631,9 @@ export const companionDialogs = {
         text: 'Oyin: My Lord, I can practice… if you have time.',
         choices: [
           // Bond entries
-          { label: 'A spark (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
-          { label: 'Tinder and air (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
-          { label: 'Firelight (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Steady hands (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Count to three (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Brave voice (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           // Quest entries (movement/control now)
           { label: 'Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'twil_trace_intro_oyin' },
           { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared', missingFlag: 'twil_trace_done' }, next: 'twil_trace_turnin_oyin' },
@@ -645,9 +645,9 @@ export const companionDialogs = {
       bond_menu: {
         text: 'Oyin: My Lord, I want to be braver than I am.',
         choices: [
-          { label: 'A spark (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
-          { label: 'Tinder and air (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
-          { label: 'Firelight (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
+          { label: 'Steady hands (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
+          { label: 'Count to three (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
+          { label: 'Brave voice (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           { label: 'About Yorna…', requires: { partyHas: 'yorna', missingFlag: 'yorna_oyin_truce' }, next: 'hint_yorna' },
           { label: 'Mediate: Call and Echo', requires: { partyHas: 'yorna', missingFlag: 'yorna_oyin_truce' }, next: 'mediate_yorna_intro' },
           { label: 'After call and echo', requires: { partyHas: 'yorna', hasFlag: 'yorna_oyin_truce' }, next: 'ack_yorna_o' },
