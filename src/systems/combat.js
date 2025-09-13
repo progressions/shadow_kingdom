@@ -116,6 +116,7 @@ export function handleAttacks(dt) {
             o.opened = true;
             try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
             showBanner('Chest opened');
+            try { playSfx('uiOpen'); } catch {}
             const idx = obstacles.indexOf(o);
             if (idx !== -1) obstacles.splice(idx, 1);
             // Tutorial flags similar to interact path
