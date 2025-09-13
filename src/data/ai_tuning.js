@@ -21,6 +21,9 @@ export const AI_TUNING = {
     cover:  { commitSec: 1.0 },
     dash:   { telegraphSec: 0.18, durationSec: 0.45, speedMul: 2.8, kbMul: 0.15, cooldownBaseSec: 6.5, cooldownJitterSec: 1.5 },
     advance:{ triggerHits: 2, windowSec: 0.8, durationSec: 0.7, speedMul: 1.5, kbMul: 0.12, dashCooldownCapSec: 4.5 },
+    // Pursuit/steering
+    engageDistPx: 240, // clamp pursuit steering within this distance
+    steering: { hazardWeightMul: 0.6, obstaclePenaltyMul: 0.6 },
   },
   featured: {
     zigzag: { weight: 0.40, commitSec: 0.6 },
@@ -29,6 +32,8 @@ export const AI_TUNING = {
     cover:  { commitSec: 0.8 },
     dash:   { telegraphSec: 0.16, durationSec: 0.35, speedMul: 2.2, kbMul: 0.20, cooldownBaseSec: 9.0, cooldownJitterSec: 1.5 },
     advance:{ triggerHits: 2, windowSec: 0.8, durationSec: 0.6, speedMul: 1.35, kbMul: 0.20, dashCooldownCapSec: 5.0 },
+    engageDistPx: 200,
+    steering: { hazardWeightMul: 0.8, obstaclePenaltyMul: 0.85 },
   },
   mook: {
     zigzag: { weight: 0.0, commitSec: 0.0 },

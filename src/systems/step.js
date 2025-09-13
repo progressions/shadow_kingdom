@@ -159,6 +159,11 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 export function step(dt) {
   // Allow death-scene timers to progress even while paused (to avoid freeze)
   try {
+    // Safety: ensure player is visible if alive (debug overlays should not hide the player)
+    if (player.hp > 0 && runtime._hidePlayer) {
+      runtime._hidePlayer = false;
+      runtime._deathZoom = 1.0; runtime._deathZoomTarget = 1.0;
+    }
     if (player.hp <= 0) {
       if ((runtime._suppressInputTimer || 0) > 0) runtime._suppressInputTimer = Math.max(0, (runtime._suppressInputTimer || 0) - dt);
       if ((runtime._deathDelay || 0) > 0) {
@@ -240,7 +245,7 @@ export function step(dt) {
   // Rebuild lighting grid (coarse, tile-based). Throttle lightly (~60ms) to reduce cost.
   try { rebuildLighting(60); } catch {}
   // Rebuild pathfinding flow field on a throttle; dirty on player tile change or gate toggles
-  try { rebuildFlowField(200); } catch {}
+  try { rebuildFlowField(150); } catch {}
 
   // --- Projectiles tick ---
   if (Array.isArray(projectiles) && projectiles.length) {
@@ -872,6 +877,32 @@ export function step(dt) {
           const dir = sampleFlowDirAt(ex, ey);
           if (dir && (dir.x !== 0 || dir.y !== 0)) { dx = dir.x; dy = dir.y; }
         } catch {}
+        // If no flow direction (likely disconnected components) and LOS is blocked by a wall,
+        // commit to a wall-follow (tangential) direction to search for an opening.
+        try {
+          const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+          const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+          let losBlockedWF = false;
+          for (const o of obstacles) {
+            if (!o) continue;
+            if (o.type === 'gate' && o.locked === false) continue;
+            // consider strong blockers; chest/mud/fire/lava are non-blocking for movement
+            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+            if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losBlockedWF = true; break; }
+          }
+          const flowDirNull = (() => { try { const d = sampleFlowDirAt(ex, ey); return !d || (d.x === 0 && d.y === 0); } catch { return true; } })();
+          if (flowDirNull && losBlockedWF) {
+            e._wallTimer = Math.max(0, (e._wallTimer || 0) - dt);
+            if ((e._wallTimer || 0) <= 0) {
+              const sign = (typeof e._strafeSign === 'number') ? e._strafeSign : (e.avoidSign || 1);
+              // Tangent vector along the blocking surface (perpendicular to player heading)
+              const tx = -dy * sign, ty = dx * sign; const nm = Math.hypot(tx, ty) || 1;
+              e._wallDirX = tx / nm; e._wallDirY = ty / nm;
+              e._wallTimer = (String(e.kind).toLowerCase() === 'boss') ? 1.2 : 0.9;
+            }
+            if ((e._wallTimer || 0) > 0 && typeof e._wallDirX === 'number') { dx = e._wallDirX; dy = e._wallDirY; }
+          }
+        } catch {}
         const kind = String(e.kind || 'mook').toLowerCase();
         const elite = (kind === 'boss' || kind === 'featured');
         // Ranged awareness helpers
@@ -988,8 +1019,9 @@ export function step(dt) {
               }
               return false;
             })();
-            // Choose new cover target when LOS is clear and player is at range
-            if ((e._coverTimer || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverCd || 0) <= 0 && (e._advanceTimer || 0) <= 0 && rangedAware && !losBlocked && dist > (AI_TUNING.global.cover.minDist || 80) && dist < (AI_TUNING.global.cover.maxDist || 260)) {
+            // Choose new cover target when LOS is clear, recently shot, and at range
+            const recentlyShot = (e._recentHitTimer || 0) > 0;
+            if ((e._coverTimer || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverCd || 0) <= 0 && (e._advanceTimer || 0) <= 0 && recentlyShot && !losBlocked && dist > Math.max(100, (AI_TUNING.global.cover.minDist || 80)) && dist < (AI_TUNING.global.cover.maxDist || 260)) {
               let best = null; let bestScore = Infinity;
               for (const o of obstacles) {
                 if (!o || !o.blocksAttacks) continue;
@@ -1009,7 +1041,16 @@ export function step(dt) {
                   if (segmentIntersectsRect(adjx, adjy, px2, py2, o)) covered = true;
                   if (!covered) continue;
                   const dxp = adjx - ex2, dyp = adjy - ey2; const dd = Math.hypot(dxp, dyp);
-                  const score = dd + Math.random()*2; // prefer nearer cover; add tiny noise
+                  const curToPlayer = Math.hypot(px2 - ex2, py2 - ey2);
+                  const coverToPlayer = Math.hypot(px2 - adjx, py2 - adjy);
+                  const delta = Math.max(0, coverToPlayer - curToPlayer); // moving farther from player is penalized
+                  const awayPenalty = delta * 0.8;
+                  // Misalignment penalty relative to current heading (avoid picking cover that pushes away from pursuit)
+                  const bx = dx, by = dy; const bl = Math.hypot(bx, by) || 1;
+                  const ax = adjx - ex2, ay = adjy - ey2; const al = Math.hypot(ax, ay) || 1;
+                  const align = Math.max(-1, Math.min(1, (bx/bl) * (ax/al) + (by/bl) * (ay/al)));
+                  const misalign = (1 - align) * 1.5;
+                  const score = dd + awayPenalty + misalign + Math.random()*1.5; // prefer nearer, not-away cover
                   if (score < bestScore) { bestScore = score; best = { x: adjx, y: adjy }; }
                 }
               }
@@ -1075,13 +1116,28 @@ export function step(dt) {
       const advMul = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceSpeedMul || 1) : 1;
       const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul * advMul;
 
-      // Hazard avoidance steering: pick a nearby direction with lower hazard exposure
+      // Hazard/obstacle avoidance steering: pick a nearby direction with lower hazard exposure and fewer imminent collisions
       const baseDir = { x: dx, y: dy };
       const offsets = [-0.9, -0.5, 0, 0.5, 0.9]; // radians near target
       let best = { x: baseDir.x, y: baseDir.y };
       let bestScore = Infinity;
       const px = ex, py = ey;
       const avoidBias = (e.kind === 'boss') ? 0.5 : (e.kind === 'featured' ? 0.8 : 1.0);
+      const steerT = (AI_TUNING[String(e.kind||'mook').toLowerCase()]?.steering) || { hazardWeightMul: 1, obstaclePenaltyMul: 1 };
+      // If LOS to player is clear, prefer direct heading and avoid steering away from target
+      let losClearToPlayer = false;
+      try {
+        const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+        const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+        let blocked = false;
+        for (const o of obstacles) {
+          if (!o) continue;
+          if (o.type === 'gate' && o.locked === false) continue;
+          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+          if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { blocked = true; break; }
+        }
+        losClearToPlayer = !blocked;
+      } catch {}
       if (baseDir.x !== 0 || baseDir.y !== 0) {
         for (const a of offsets) {
           const ca = Math.cos(a), sa = Math.sin(a);
@@ -1089,9 +1145,10 @@ export function step(dt) {
           const vy = baseDir.x * sa + baseDir.y * ca;
           // Alignment penalty (prefer towards player)
           const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
-          const alignPenalty = (1 - dot) * 0.6;
+          const alignPenalty = (1 - dot) * (losClearToPlayer ? 0.3 : 0.6);
           // Hazard exposure along a short ray with 3 samples
           let haz = 0;
+          let obs = 0;
           const samples = [0.33, 0.66, 1.0];
           const stepLen = 26; // px
           for (const t of samples) {
@@ -1100,22 +1157,40 @@ export function step(dt) {
             const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
             for (const o of obstacles) {
               if (!o) continue;
-              if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
-              // quick reject by distance
-              const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy;
-              if ((ox*ox + oy*oy) > (160*160)) continue;
-              if (rectsIntersect(probe, o)) {
-                haz += (o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12);
+              // Hazards (non-blocking)
+              if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava') {
+                const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (160*160)) continue;
+                if (rectsIntersect(probe, o)) { haz += ((o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12)); }
+              } else {
+                // Blocking obstacles: penalize directions that will collide
+                let blocks = o.blocksAttacks === true || o.type === 'wall' || o.type === 'water' || (o.type === 'gate' && o.locked !== false);
+                if (!blocks) continue;
+                // quick distance check
+                const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (180*180)) continue;
+                if (!losClearToPlayer && rectsIntersect(probe, o)) { obs += 50; }
               }
             }
           }
-          const score = alignPenalty + haz * avoidBias;
+          const score = alignPenalty + (haz * avoidBias * (steerT.hazardWeightMul || 1)) + (obs * (steerT.obstaclePenaltyMul || 1));
           if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
         }
       } else {
         // Idle this frame (no movement direction)
         best = { x: 0, y: 0 };
         bestScore = 0;
+      }
+      // If LOS is clear, avoid steering away: trust the direct heading
+      if (losClearToPlayer) {
+        // Strong clamp when within engage band: don't choose directions pointing away
+        const dlen = Math.hypot(ddx, ddy) || 1;
+        const ux = ddx / dlen, uy = ddy / dlen;
+        const dotDirect = (best.x * ux + best.y * uy);
+        const ek = String(e.kind||'mook').toLowerCase();
+        const engageDist = (AI_TUNING[ek]?.engageDistPx) || 180;
+        const engage = dlen <= engageDist;
+        if (engage && dotDirect < 0.2) {
+          best = { x: baseDir.x, y: baseDir.y };
+        }
       }
 
       // Temporary enemy speed boost from triggers
@@ -1940,22 +2015,27 @@ export function step(dt) {
     } else {
       const view = { x: camera.x, y: camera.y, w: camera.w, h: camera.h };
       let bossOn = false, anyOn = false;
-      // Require proximity to the player to count as danger (prevents far-edge enemies from flipping music)
+      // Proximity radii (boss has a wider pull, and does not require on-screen)
       const px = player.x + player.w / 2;
       const py = player.y + player.h / 2;
-      const dangerR = 220; // pixels
+      const dangerR = 300; // was 220 — widen general danger radius
       const dangerR2 = dangerR * dangerR;
+      const bossR = 460;   // boss-specific wider radius, ignores on-screen check
+      const bossR2 = bossR * bossR;
       for (const e of enemies) {
         if (!e || e.hp <= 0) continue;
-        // Must be within the camera view
-        const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
-        if (!on) continue;
-        // And within proximity of the player
         const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
         const dx = ex - px, dy = ey - py;
+        const isBoss = String(e.kind).toLowerCase() === 'boss';
+        if (isBoss) {
+          if ((dx*dx + dy*dy) <= bossR2) { bossOn = true; break; }
+          continue;
+        }
+        // Non-boss: must be within camera view and within general danger radius
+        const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
+        if (!on) continue;
         if ((dx*dx + dy*dy) > dangerR2) continue;
         anyOn = true;
-        if (String(e.kind).toLowerCase() === 'boss') { bossOn = true; break; }
       }
       desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
       // If player HP is very low, prefer low mode over normal even without visible enemies to keep tension
