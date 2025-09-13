@@ -87,6 +87,72 @@ export function handleAttacks(dt) {
     if (player.dir === 'down')  { hb.h += range; }
     // Attempt to unlock any gate hit by the attack
     tryUnlockGate(hb);
+    // Open chests with melee (not projectiles): if melee hitbox overlaps a chest, open it
+    try {
+      for (let i = 0; i < obstacles.length; i++) {
+        const o = obstacles[i];
+        if (!o || o.type !== 'chest') continue;
+        const or = { x: o.x, y: o.y, w: o.w, h: o.h };
+        if (!rectsIntersect(hb, or)) continue;
+        // Handle lock (require key if locked)
+        if (o.locked) {
+          const keyId = o.keyId || o.id;
+          const items = player?.inventory?.items || [];
+          const itm = items.find(it => it && (it.keyId === keyId));
+          if (!itm) { showBanner('Locked — you need a key'); break; }
+          o.locked = false;
+        }
+        if (!o.opened) {
+          let item = null;
+          try { if (o.fixedItemId) item = itemById(o.fixedItemId); } catch {}
+          if (!item) {
+            const tier = o.lootTier || 'common';
+            const lvl = runtime.currentLevel || 1;
+            const tableSrc = (lvl === 2) ? CHEST_LOOT_L2 : (lvl >= 3 ? CHEST_LOOT_L3 : CHEST_LOOT);
+            item = rollFromTable(tableSrc[tier] || []);
+          }
+          if (item) {
+            import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
+            o.opened = true;
+            try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
+            showBanner('Chest opened');
+            const idx = obstacles.indexOf(o);
+            if (idx !== -1) obstacles.splice(idx, 1);
+            // Tutorial flags similar to interact path
+            try {
+              if (!runtime.questFlags) runtime.questFlags = {};
+              if (o.id === 'chest_l1_weapon') {
+                runtime.questFlags['tutorial_find_sword_done'] = true;
+                hideBanner();
+                const alreadyHasCanopy = companions.some(c => (c.name || '').toLowerCase().includes('canopy'));
+                if (!alreadyHasCanopy) {
+                  runtime.questFlags['tutorial_save_canopy'] = true;
+                  setTimeout(() => {
+                    try {
+                      if (runtime.questFlags['tutorial_save_canopy'] && !runtime.questFlags['tutorial_save_canopy_done']) {
+                        showPersistentBanner('You need a healer! Save Canopy from the bandits!');
+                      }
+                    } catch {}
+                  }, 600);
+                } else {
+                  runtime.questFlags['tutorial_save_canopy_done'] = true;
+                }
+              }
+            } catch {}
+          } else {
+            const idx = obstacles.indexOf(o);
+            if (idx !== -1) obstacles.splice(idx, 1);
+            try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
+            showBanner('Empty chest');
+          }
+        } else {
+          const idx = obstacles.indexOf(o);
+          if (idx !== -1) obstacles.splice(idx, 1);
+          showBanner('Empty chest');
+        }
+        break; // open at most one chest per swing
+      }
+    } catch {}
     // Damage breakables (barrels/crates)
     for (let i = obstacles.length - 1; i >= 0; i--) {
       const o = obstacles[i];
