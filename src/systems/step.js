@@ -15,7 +15,7 @@ import { completionXpForLevel, grantPartyXp } from '../engine/state.js';
 import { projectiles, spawnProjectile } from '../engine/state.js';
 import { exitChat } from '../engine/ui.js';
 import { saveGame } from '../engine/save.js';
-import { showBanner, updateBuffBadges, showMusicTheme } from '../engine/ui.js';
+import { showBanner, updateBuffBadges, showMusicTheme, showTargetInfo } from '../engine/ui.js';
 import { ENEMY_LOOT, ENEMY_LOOT_L2, ENEMY_LOOT_L3, rollFromTable, itemById, BREAKABLE_LOOT } from '../data/loot.js';
 import { AI_TUNING } from '../data/ai_tuning.js';
 
@@ -2032,6 +2032,27 @@ export function step(dt) {
 
   // NPC idle
   for (const n of npcs) { n.idleTime += dt; if (n.idleTime > 0.6) { n.idleTime = 0; n.animFrame = (n.animFrame + 1) % FRAMES_PER_DIR; } }
+
+  // Show item label when passing over an item (lower-right target info)
+  if (itemsOnGround && itemsOnGround.length) {
+    try {
+      const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+      let best = null; let bestD2 = Infinity;
+      const px = player.x + player.w/2, py = player.y + player.h/2;
+      for (const it of itemsOnGround) {
+        if (!it || !it.item) continue;
+        const ir = { x: it.x, y: it.y, w: it.w, h: it.h };
+        if (!rectsIntersect(pr, ir)) continue;
+        const cx = it.x + it.w/2, cy = it.y + it.h/2;
+        const d2 = (cx - px) * (cx - px) + (cy - py) * (cy - py);
+        if (d2 < bestD2) { bestD2 = d2; best = it; }
+      }
+      if (best) {
+        const nm = best.item?.name || best.item?.id || 'Item';
+        showTargetInfo(nm, 800);
+      }
+    } catch {}
+  }
 
   // Auto-pickup items on ground within small radius
   if (itemsOnGround && itemsOnGround.length) {

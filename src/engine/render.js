@@ -1148,6 +1148,7 @@ function drawItemIcon(x, y, item) {
   else if (id === 'potion_light') drawPotion('light');
   else if (id === 'potion_medium') drawPotion('medium');
   else if (id === 'potion_strong') drawPotion('strong');
+  else if (id.includes('arrow')) drawSword();
   else if (slot === 'righthand') drawSword();
   else if (slot === 'lefthand') { if (id === 'torch') drawTorch(); else drawShield(); }
   else if (slot === 'head') drawHelm();
