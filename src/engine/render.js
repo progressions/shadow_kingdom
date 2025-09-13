@@ -374,11 +374,29 @@ export function render(terrainBitmap, obstacles) {
               }
             } catch {}
 
-            if (d.isPlayer && player.invulnTimer > 0) {
-              const flicker = Math.floor(performance.now() / 100) % 2 === 0;
-              if (!flicker) ctx.drawImage(ent._sprite.image, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
-            } else {
+            // Unified invuln flicker gate for base + overlays
+            const _hideThisFrame = (player.invulnTimer > 0) && ((Math.floor(performance.now() / 100) % 2) === 0);
+            if (!_hideThisFrame) {
+              // Base sprite
               ctx.drawImage(ent._sprite.image, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+              // Armor overlays (if equipped). Draw order: legs -> torso -> head
+              try {
+                const eq = player?.inventory?.equipped || {};
+                const drawOv = (propImg, propLoad, path) => {
+                  if (!path) return;
+                  if (ent[propImg] && ent[propImg].image && canDrawImage(ent[propImg].image)) {
+                    ctx.drawImage(ent[propImg].image, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+                  } else if (!ent[propLoad]) {
+                    ent[propLoad] = true; // mark loading
+                    getSprite(path)
+                      .then(s => { ent[propImg] = s; ent[propLoad] = false; })
+                      .catch(() => { ent[propLoad] = false; });
+                  }
+                };
+                if (eq.legs)  drawOv('_ovLegs',  '_ovLegsLoading',  'assets/sprites/custom/leg.png');
+                if (eq.torso) drawOv('_ovTorso', '_ovTorsoLoading', 'assets/sprites/custom/torso.png');
+                if (eq.head)  drawOv('_ovHead',  '_ovHeadLoading',  'assets/sprites/custom/helmet.png');
+              } catch {}
             }
           } else {
             if (!ent._spriteLoading) {
