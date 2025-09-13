@@ -137,7 +137,11 @@ export function initInput() {
             if (!c) { showBanner('No companion nearby'); return; }
             const ok = setTorchBearer(c);
             if (ok) {
-              showBanner(`${c.name || 'Companion'} is carrying the torch`);
+              // Show remaining burn time
+              const ms = Math.max(0, Math.floor(runtime._torchBurnMs || 0));
+              const mm = Math.floor(ms / 60000);
+              const ss = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+              showBanner(`Torch handed to ${c.name || 'Companion'} (${mm}:${ss} left)`);
               import('./ui.js').then(u => u.updatePartyUI && u.updatePartyUI(companions)).catch(()=>{});
             } else {
               showBanner('No torches available');

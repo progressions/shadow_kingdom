@@ -362,8 +362,11 @@ export function selectChoice(index) {
     try {
       const ok = setTorchBearer(comp);
       if (ok) {
-        const line = torchBark(comp);
-        showBanner(`${comp?.name || 'Companion'}: ${line}`);
+        // Confirmation with remaining time
+        const ms = Math.max(0, Math.floor(runtime._torchBurnMs || 0));
+        const mm = Math.floor(ms / 60000);
+        const ss = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+        showBanner(`Torch handed to ${comp?.name || 'Companion'} (${mm}:${ss} left)`);
       } else {
         showBanner('No torches available');
       }
@@ -389,8 +392,10 @@ export function selectChoice(index) {
       if (comp) {
         const ok = setTorchBearer(comp);
         if (ok) {
-          const line = torchBark(comp);
-          showBanner(`${comp.name || 'Companion'}: ${line}`);
+          const ms = Math.max(0, Math.floor(runtime._torchBurnMs || 0));
+          const mm = Math.floor(ms / 60000);
+          const ss = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+          showBanner(`Torch handed to ${comp.name || 'Companion'} (${mm}:${ss} left)`);
         } else {
           showBanner('No torches available');
         }
