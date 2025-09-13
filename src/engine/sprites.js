@@ -30,6 +30,7 @@ export function makeSpriteSheet(paletteOverrides = {}) {
     const dress = !!paletteOverrides.dress;
     const dressColor = paletteOverrides.dressColor || shirt;
     const feminineShape = !!paletteOverrides.feminineShape;
+    const accent = paletteOverrides.accent || paletteOverrides.accentColor || null; // optional tiny highlight
     const bob = frame === 0 ? 0 : 1;
     const ox = x;
     const oy = y + bob;
@@ -83,6 +84,8 @@ export function makeSpriteSheet(paletteOverrides = {}) {
           for (let i = 1; i < 7; i++) px(i, j, pants);
         }
       }
+      // Tiny chest brooch/accent (optional)
+      if (accent) { px(3, 8, accent); }
       
       // Feet
       px(2 + (frame===0?1:0) - dx, 15, outline);
@@ -124,6 +127,8 @@ export function makeSpriteSheet(paletteOverrides = {}) {
       } else {
         for (let i = 4; i < 12; i++) for (let j = 12; j < 15; j++) px(i-4, j, pants);
       }
+      // Tiny chest brooch/accent (optional)
+      if (accent) { px(3, 8, accent); }
       px(2 + (frame===0?1:0) - dx, 15, outline);
       px(5 - (frame===0?1:0) + dx, 15, outline);
       g.strokeStyle = outline; g.lineWidth = 1;
