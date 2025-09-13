@@ -468,47 +468,41 @@ export function render(terrainBitmap, obstacles) {
       ctx.fillStyle = g; ctx.fillRect(camera.w - thick, 0, thick, camera.h);
     }
   } catch {}
-  // Player UI overlay
-  // HP bar with low-HP warning (turn red and glow)
-  const hpRatio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp)));
-  if (hpRatio <= 0.35) {
-    const t = (runtime._timeSec || 0);
-    const pulse = 0.5 + 0.5 * Math.sin(t * 8);
-    const intensity = Math.max(0.3, Math.min(1.0, (0.5 - hpRatio) * 2));
-    ctx.save();
-    ctx.shadowBlur = 6 + 10 * intensity * pulse;
-    ctx.shadowColor = 'rgba(255,74,74,0.85)'; // red glow
-    drawBar(6, 6, 60, 5, hpRatio, '#ff5555');
-    ctx.restore();
-  } else {
-    drawBar(6, 6, 60, 5, hpRatio, '#4fa3ff');
-  }
-  // Player XP bar under HP
+  // DOM HUD Bars: HP/XP/Torch
   try {
+    const hpBar = document.getElementById('hp-bar')?.querySelector('.fill');
+    const hpRow = document.getElementById('hp-row');
+    const hpRatio = Math.max(0, Math.min(1, player.hp / Math.max(1, player.maxHp)));
+    if (hpBar) hpBar.style.width = `${Math.round(hpRatio * 100)}%`;
+    if (hpRow) {
+      if (hpRatio <= 0.35) hpRow.classList.add('low'); else hpRow.classList.remove('low');
+    }
     const need = xpToNext(Math.max(1, player.level || 1));
     const cur = Math.max(0, player.xp || 0);
-    const pct = Math.max(0, Math.min(1, need > 0 ? (cur / need) : 0));
-    drawBar(6, 14, 60, 3, pct, '#ffd166');
-  } catch {}
-  // Torch meter under XP (only when a torch is equipped) — very small
-  try {
-    const LH = player?.inventory?.equipped?.leftHand || null;
-    if (LH && LH.id === 'torch') {
-      const maxMs = 180000; // default torch duration
-      const left = Math.max(0, Number(LH.burnMsRemaining || 0));
-      const pctT = Math.max(0, Math.min(1, left / maxMs));
-      // Much smaller footprint: narrower and thinner bar, no label
-      drawBar(6, 18, 36, 2, pctT, '#ffd166');
+    const xpPct = Math.max(0, Math.min(1, need > 0 ? (cur / need) : 0));
+    const xpBar = document.getElementById('xp-bar')?.querySelector('.fill');
+    if (xpBar) xpBar.style.width = `${Math.round(xpPct * 100)}%`;
+    const torchRow = document.getElementById('torch-row');
+    const torchBar = document.getElementById('torch-bar')?.querySelector('.fill');
+    let torchPct = 0; let torchVisible = false;
+    // Companion torch bearer
+    if ((runtime._torchBurnMs || 0) > 0 && runtime._torchBearerRef) {
+      torchPct = Math.max(0, Math.min(1, (runtime._torchBurnMs || 0) / 180000));
+      torchVisible = true;
+    } else {
+      // Player torch
+      const LH = player?.inventory?.equipped?.leftHand || null;
+      if (LH && LH.id === 'torch') {
+        const left = Math.max(0, Number(LH.burnMsRemaining || 0));
+        torchPct = Math.max(0, Math.min(1, left / 180000));
+        torchVisible = true;
+      }
     }
+    if (torchBar) torchBar.style.width = `${Math.round(torchPct * 100)}%`;
+    if (torchRow) torchRow.style.display = torchVisible ? '' : 'none';
   } catch {}
   // DOM HUD (sharp text): update Lv and Arrows labels
   try {
-    const lvlEl = document.getElementById('hud-level');
-    if (lvlEl) {
-      const lv = Math.max(1, player.level || 1);
-      const want = `Lv ${lv}`;
-      if (lvlEl.textContent !== want) lvlEl.textContent = want;
-    }
     const lvlChip = document.getElementById('hud-level-chip');
     if (lvlChip) {
       const lv = Math.max(1, player.level || 1);

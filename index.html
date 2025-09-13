@@ -242,22 +242,26 @@
         z-index: 5; /* below VN and title overlays */
       }
 
-      /* HUD: top-left sharp labels */
-      #hud-top-left { position: absolute; left: 6px; top: 24px; display: grid; gap: 2px; z-index: 6; pointer-events: none; }
+      /* HUD Bars Panel */
+      #hud-panel { position: absolute; left: 6px; top: 6px; z-index: 6; display: grid; gap: 10px; pointer-events: none;
+        background: rgba(0,0,0,0.6); border: 1px solid #444; border-radius: 8px; padding: 8px 10px; }
+      #hud-panel .row { display: flex; align-items: center; gap: 8px; }
+      #hud-panel .bar { position: relative; width: 180px; height: 12px; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; overflow: hidden; }
+      #hud-panel .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #4fa3ff; }
+      #hud-panel .hp .bar { height: 12px; }
+      #hud-panel .xp .bar { height: 10px; background: #333; width: 160px; }
+      #hud-panel .xp .bar .fill { background: #ffd166; }
+      #hud-panel .torch .bar { height: 8px; background: #333; width: 140px; }
+      #hud-panel .torch .bar .fill { background: #ffd166; }
+      /* Low HP pulse */
+      #hud-panel .hp.low .bar .fill { background: #ff5555; box-shadow: 0 0 10px rgba(255,74,74,0.9); animation: hpPulse 0.9s ease-in-out infinite; }
+      @keyframes hpPulse { 0%{ box-shadow: 0 0 6px rgba(255,74,74,0.6)} 50%{ box-shadow: 0 0 12px rgba(255,74,74,1)} 100%{ box-shadow: 0 0 6px rgba(255,74,74,0.6)} }
+      /* Level chip beside XP */
+      #hud-level-chip { background: rgba(15,15,15,0.75); color: #eaeaea; border: 1px solid #444; border-radius: 8px; padding: 1px 6px; font: 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: 0.2px; }
+      /* HUD: top-left sharp labels inside the panel */
+      #hud-top-left { display: grid; gap: 2px; }
       #hud-top-left .hud-label { font: 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; color: #eaeaea; opacity: 0.95; text-shadow: 0 1px 0 #000; }
       #hud-top-left .muted { color: #a8c6ff; }
-      #hud-level-chip {
-        position: absolute; left: 70px; top: 6px;
-        background: rgba(15,15,15,0.75);
-        color: #eaeaea;
-        border: 1px solid #444;
-        border-radius: 8px;
-        padding: 2px 6px;
-        font: 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        letter-spacing: 0.2px;
-        z-index: 6;
-        pointer-events: none;
-      }
 
       /* Level title overlay */
       #level-title {
@@ -282,7 +286,7 @@
       /* Music theme overlay (top-left) */
       #music-theme {
         position: absolute;
-        top: 12px;
+        top: 90px; /* moved down to avoid HUD overlap */
         left: 12px;
         background: rgba(15,15,15,0.75);
         color: #eaeaea;
@@ -295,6 +299,7 @@
         transform: translateY(-4px);
         transition: opacity 220ms ease, transform 220ms ease;
         pointer-events: none;
+        z-index: 7; /* above HUD panel */
       }
       #music-theme.show { opacity: 1; transform: translateY(0); }
 
@@ -306,13 +311,19 @@
       <div class="main-panel">
         <div id="game-wrapper">
           <canvas id="game" width="320" height="180" aria-label="Sprite game canvas"></canvas>
-          <!-- Chip label near XP meter for clarity -->
-          <div id="hud-level-chip"></div>
-          <!-- Sharp HUD labels (DOM text) -->
-          <div id="hud-top-left">
-            <div id="hud-level" class="hud-label" aria-live="polite"></div>
-            <div id="hud-ammo" class="hud-label" aria-live="polite"></div>
-            <div id="hud-torch" class="hud-label" aria-live="polite"></div>
+          <!-- DOM HUD Bars (wrapped in a rounded HUD panel) -->
+          <div id="hud-panel" aria-hidden="false">
+            <div class="row hp" id="hp-row"><div class="bar" id="hp-bar"><div class="fill"></div></div></div>
+            <div class="row xp" id="xp-row">
+              <div class="bar" id="xp-bar"><div class="fill"></div></div>
+              <div id="hud-level-chip"></div>
+            </div>
+            <div class="row torch" id="torch-row" style="display:none"><div class="bar" id="torch-bar"><div class="fill"></div></div></div>
+            <!-- Crisp labels -->
+            <div id="hud-top-left">
+              <div id="hud-ammo" class="hud-label" aria-live="polite"></div>
+              <div id="hud-torch" class="hud-label" aria-live="polite"></div>
+            </div>
           </div>
           <div class="hint">Move: <kbd>WASD</kbd>/<kbd>Arrows</kbd> · Attack: <kbd>Space</kbd>/<kbd>J</kbd> · Grid: <kbd>G</kbd> · Companions: <kbd>C</kbd> · Save/Load: <kbd>P</kbd> · Mute: <kbd>M</kbd> · Music: <kbd>B</kbd> · <span id="coords" style="font-size: 9px; opacity: 0.7;"></span></div>
         </div>
