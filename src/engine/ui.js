@@ -59,6 +59,7 @@ export function enterChat(runtime) {
   runtime.gameState = 'chat';
   runtime.keys.clear();
   // No sidebar input focus; VN overlay handles choices
+  try { updateOverlayDim(); } catch {}
   // Show portrait overlay if NPC has one
   const npc = runtime.activeNpc;
   if (overlay) {
