@@ -347,7 +347,18 @@ export function render(terrainBitmap, obstacles) {
             else if (dir === 'up') colBase = 4;
             else colBase = 0; // down and right
             const frameCol = (ent.animFrame || 0) % 2; // alternate while moving AND idle
-            const col = colBase + frameCol;
+            let col = colBase + frameCol;
+
+            // Attack columns: if sheet has 12 cols, add +6 offset while attacking
+            const imgBase = ent._sprite.image;
+            const baseCols = (imgBase && imgBase.width) ? Math.max(1, Math.floor(imgBase.width / SPRITE_SIZE)) : 6;
+            try {
+              const nowSec = (typeof performance !== 'undefined' && performance.now) ? (performance.now() / 1000) : (Date.now() / 1000);
+              const recentRanged = (typeof player.lastRanged === 'number') && ((nowSec - player.lastRanged) <= 0.22);
+              const attackActive = !!player.attacking || recentRanged;
+              if (attackActive && baseCols >= 12) col += 6;
+            } catch {}
+
             const sx = col * SPRITE_SIZE;
             const sy = row * SPRITE_SIZE;
 
@@ -385,7 +396,19 @@ export function render(terrainBitmap, obstacles) {
                 const drawOv = (propImg, propLoad, path) => {
                   if (!path) return;
                   if (ent[propImg] && ent[propImg].image && canDrawImage(ent[propImg].image)) {
-                    ctx.drawImage(ent[propImg].image, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+                    // Support both 6‑col and 12‑col overlays. If overlay has only 6 columns,
+                    // map attack columns (6..11) back down by -6 so armor still renders during attacks.
+                    let osx = sx;
+                    try {
+                      const oimg = ent[propImg].image;
+                      const ocols = (oimg && oimg.width) ? Math.max(1, Math.floor(oimg.width / SPRITE_SIZE)) : 6;
+                      if (ocols < 12) {
+                        const curCol = Math.floor(sx / SPRITE_SIZE);
+                        const col6 = curCol % 6; // wrap attack to idle/walk pair
+                        osx = col6 * SPRITE_SIZE;
+                      }
+                    } catch {}
+                    ctx.drawImage(ent[propImg].image, osx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
                   } else if (!ent[propLoad]) {
                     ent[propLoad] = true; // mark loading
                     getSprite(path)
