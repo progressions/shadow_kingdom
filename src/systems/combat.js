@@ -90,6 +90,7 @@ export function handleAttacks(dt) {
         const idx = obstacles.indexOf(o);
         if (idx !== -1) obstacles.splice(idx, 1);
         playSfx('break');
+        try { import('../engine/pathfinding.js').then(m => m.markFlowDirty && m.markFlowDirty()).catch(()=>{}); } catch {}
       }
     }
     const hasOyin = companions.some(c => (c.name || '').toLowerCase().includes('oyin'));

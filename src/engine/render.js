@@ -5,6 +5,7 @@ import { MAX_LIGHT_LEVEL } from './lighting.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
 import { getSprite } from './sprite_loader.js';
+import { sampleFlowDirAt } from './pathfinding.js';
 
 // Cached offscreen for sprite outlines
 let _olCan = null, _olCtx = null, _olW = 0, _olH = 0;
@@ -80,6 +81,48 @@ export function render(terrainBitmap, obstacles) {
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
+  // Debug: flow field vectors overlay (coarse), when enabled
+  try {
+    if (window && window.DEBUG_FLOW) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0, 200, 255, 0.35)';
+      ctx.fillStyle = 'rgba(0, 200, 255, 0.35)';
+      ctx.lineWidth = 1;
+      const s = TILE;
+      const tx0 = Math.max(0, Math.floor(camera.x / s));
+      const ty0 = Math.max(0, Math.floor(camera.y / s));
+      const tx1 = Math.min(world.tileW - 1, Math.floor((camera.x + camera.w) / s));
+      const ty1 = Math.min(world.tileH - 1, Math.floor((camera.y + camera.h) / s));
+      const step = 3; // sample every N tiles for readability
+      for (let ty = ty0; ty <= ty1; ty += step) {
+        for (let tx = tx0; tx <= tx1; tx += step) {
+          const px = tx * s + s/2;
+          const py = ty * s + s/2;
+          const dir = sampleFlowDirAt(px, py);
+          if (!dir) continue;
+          const sx = Math.round(px - camera.x);
+          const sy = Math.round(py - camera.y);
+          const len = 6;
+          const ex = sx + Math.round(dir.x * len);
+          const ey = sy + Math.round(dir.y * len);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+          // arrow head
+          const ang = Math.atan2(dir.y, dir.x);
+          const ah = 3;
+          ctx.beginPath();
+          ctx.moveTo(ex, ey);
+          ctx.lineTo(ex - Math.cos(ang - Math.PI/6) * ah, ey - Math.sin(ang - Math.PI/6) * ah);
+          ctx.lineTo(ex - Math.cos(ang + Math.PI/6) * ah, ey - Math.sin(ang + Math.PI/6) * ah);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+  } catch {}
   // Projectiles (simple circles with low-noise tracer)
   try {
     if (Array.isArray(projectiles) && projectiles.length) {

@@ -1,56 +1,67 @@
 import { runtime, world, player, obstacles } from './state.js';
 import { TILE } from './constants.js';
 
-const INF = 0xffff;
+const INF = 1e12; // large for weighted distances
 
 function ensureFlowStruct() {
   if (!runtime._flow) runtime._flow = { dist: null, w: 0, h: 0, lastBuildAt: 0, lastPlayerTx: -1, lastPlayerTy: -1, dirty: true };
   return runtime._flow;
 }
 
-function buildBlockedGrid() {
+function buildBlockedAndHazardGrids() {
   const w = world.tileW|0, h = world.tileH|0;
   const blocked = new Uint8Array(w * h);
+  const hazard = new Uint8Array(w * h); // 0=normal, 1=mud, 2=fire, 3=lava (weights will map)
   // Mark any obstacle that blocks movement (mirrors moveWithCollision logic)
   for (const o of obstacles) {
     if (!o) continue;
     if (o.type === 'gate' && o.locked === false) continue; // opened gates do not block
     // Non-blocking types
-    if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+    if (o.type === 'chest') continue;
     const x1 = Math.max(0, Math.floor(o.x / TILE));
     const y1 = Math.max(0, Math.floor(o.y / TILE));
     const x2 = Math.min(w - 1, Math.floor((o.x + o.w - 1) / TILE));
     const y2 = Math.min(h - 1, Math.floor((o.y + o.h - 1) / TILE));
+    // Hazard weights for mud/fire/lava (non-blocking)
+    const hazCode = (o.type === 'mud') ? 1 : (o.type === 'fire') ? 2 : (o.type === 'lava') ? 3 : 0;
     for (let ty = y1; ty <= y2; ty++) {
       for (let tx = x1; tx <= x2; tx++) {
-        blocked[ty * w + tx] = 1;
+        const idx = ty * w + tx;
+        if (hazCode) {
+          // store max hazard level if overlapping
+          if (hazard[idx] < hazCode) hazard[idx] = hazCode;
+        } else {
+          // blocking types: walls, rocks, locked gates, etc.
+          if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') blocked[idx] = 1;
+        }
       }
     }
   }
-  return blocked;
+  return { blocked, hazard };
 }
 
-function bfsFromPlayer(blocked) {
+function dijkstraFromPlayer(blocked, hazard) {
   const w = world.tileW|0, h = world.tileH|0;
-  const dist = new Uint16Array(w * h);
-  dist.fill(INF);
+  const dist = new Float32Array(w * h);
+  for (let i = 0; i < dist.length; i++) dist[i] = INF;
   const sx = Math.max(0, Math.min(w - 1, Math.floor(player.x / TILE)));
   const sy = Math.max(0, Math.min(h - 1, Math.floor(player.y / TILE)));
   const si = sy * w + sx;
   if (blocked[si]) return dist; // player tile blocked — leave INF (shouldn't happen)
-  const qx = new Int16Array(w * h);
-  const qy = new Int16Array(w * h);
-  let head = 0, tail = 0;
-  qx[tail] = sx; qy[tail] = sy; tail++;
   dist[si] = 0;
-  // 8 neighbors; prevent diagonal corner cutting
+  // Min-priority queue (array-based; acceptable at 6k tiles)
+  const open = [ { x: sx, y: sy, f: 0 } ];
   const dirs = [
-    [-1, 0], [1, 0], [0, -1], [0, 1],
-    [-1,-1], [1,-1], [-1,1], [1,1]
+    [-1, 0, 10], [1, 0, 10], [0, -1, 10], [0, 1, 10],
+    [-1,-1, 14], [1,-1, 14], [-1,1, 14], [1,1, 14]
   ];
-  while (head !== tail) {
-    const x = qx[head], y = qy[head]; head++;
-    const d = dist[y * w + x] + 1;
+  while (open.length) {
+    // pop min
+    let mi = 0; let mf = open[0].f;
+    for (let i = 1; i < open.length; i++) { if (open[i].f < mf) { mf = open[i].f; mi = i; } }
+    const node = open.splice(mi, 1)[0];
+    const x = node.x, y = node.y;
+    const base = dist[y * w + x];
     for (let k = 0; k < dirs.length; k++) {
       const nx = x + dirs[k][0];
       const ny = y + dirs[k][1];
@@ -65,9 +76,15 @@ function bfsFromPlayer(blocked) {
         if (bx < 0 || by < 0 || bx >= w || by >= h) continue;
         if (blocked[ay * w + ax] && blocked[by * w + bx]) continue;
       }
-      if (dist[ni] !== INF) continue;
-      dist[ni] = d;
-      qx[tail] = nx; qy[tail] = ny; tail++;
+      const step = dirs[k][2];
+      const haz = hazard[ni] || 0;
+      // hazard cost multipliers: mud×2, fire×4, lava×8 (encoded 1,2,3)
+      const mult = haz === 1 ? 2 : haz === 2 ? 4 : haz === 3 ? 8 : 1;
+      const nd = base + step * mult;
+      if (nd < dist[ni]) {
+        dist[ni] = nd;
+        open.push({ x: nx, y: ny, f: nd });
+      }
     }
   }
   return dist;
@@ -82,8 +99,8 @@ export function rebuildFlowField(throttleMs = 200) {
     const pty = Math.max(0, Math.min(h - 1, Math.floor(player.y / TILE)));
     const movedTile = (ptx !== flow.lastPlayerTx || pty !== flow.lastPlayerTy);
     if (!flow.dirty && !movedTile && (now - (flow.lastBuildAt || 0)) < throttleMs) return;
-    const blocked = buildBlockedGrid();
-    const dist = bfsFromPlayer(blocked);
+    const { blocked, hazard } = buildBlockedAndHazardGrids();
+    const dist = dijkstraFromPlayer(blocked, hazard);
     flow.dist = dist; flow.w = w; flow.h = h; flow.lastBuildAt = now; flow.lastPlayerTx = ptx; flow.lastPlayerTy = pty; flow.dirty = false;
   } catch {}
 }
@@ -96,7 +113,7 @@ export function sampleFlowDirAt(px, py) {
     const ty = Math.max(0, Math.min(h - 1, Math.floor(py / TILE)));
     const di = ty * w + tx;
     const d = flow.dist[di];
-    if (d === INF || d === 0) return null; // unreachable or already at player tile
+    if (!isFinite(d) || d === INF || d === 0) return null; // unreachable or already at player tile
     let best = { d: d, nx: tx, ny: ty };
     for (let oy = -1; oy <= 1; oy++) {
       for (let ox = -1; ox <= 1; ox++) {
@@ -117,4 +134,3 @@ export function sampleFlowDirAt(px, py) {
 export function markFlowDirty() {
   try { ensureFlowStruct().dirty = true; } catch {}
 }
-

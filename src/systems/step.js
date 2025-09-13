@@ -309,6 +309,7 @@ export function step(dt) {
               const idx = obstacles.indexOf(o);
               if (idx !== -1) obstacles.splice(idx, 1);
               try { playSfx('break'); } catch {}
+              try { import('../engine/pathfinding.js').then(m => m.markFlowDirty && m.markFlowDirty()).catch(()=>{}); } catch {}
             }
             // Consume the projectile unless it pierces
             if (p.pierce > 0) { p.pierce--; }
