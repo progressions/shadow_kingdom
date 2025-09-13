@@ -35,8 +35,8 @@ export const introTexts = {
     "\nTwil: \"Tracks say trouble—but it\'s slow. Try to keep up, yeah?\"",
 
   aarg:
-    "A sinuous shape coils along the ruin wall—scales the color of deep water, eyes like cracked ice. The air cools in his wake as he lifts a cerulean crest.\n" +
-    "\nAarg: \"Vast fell? Then your path bends to me. The gate won\'t open without my key. Take it—if you can.\"",
+    "Blue scales glint along the ruin wall; the air chills in his wake as he lifts a cerulean crest.\n" +
+    "\nAarg: \"The gate stays shut without my key. Take it if you can.\"",
 
   luula:
     "The marsh hushes. At the island's heart, a figure raises a reed crown and the water stills. Her voice is moon‑thin over the bog.\n" +

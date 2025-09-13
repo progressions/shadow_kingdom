@@ -1,6 +1,6 @@
 import { runtime, world } from './state.js';
 import { canvas, exitChat, moveChoiceFocus, activateFocusedChoice, showBanner, cycleMinimapMode, beginMinimapPeek, endMinimapPeek } from './ui.js';
-import { startAttack, tryInteract, willAttackHitEnemy } from '../systems/combat.js';
+import { startAttack, tryInteract, willAttackHitEnemy, startRangedAttack } from '../systems/combat.js';
 import { selectChoice, startCompanionSelector, startSaveMenu, startInventoryMenu, startPrompt } from '../engine/dialog.js';
 import { initAudioUnlock, toggleMute, toggleMusic, stopMusic } from './audio.js';
 import { saveGame, loadGame } from './save.js';
@@ -63,6 +63,11 @@ export function initInput() {
       }
     } else if (e.key.toLowerCase() === 'j') {
       startAttack();
+    } else if (e.key.toLowerCase() === 'k') {
+      // Mark K held time and fire once immediately
+      runtime._kDownAtSec = runtime._timeSec || 0;
+      runtime._kReleasePending = false;
+      startRangedAttack();
     } else if (e.key.toLowerCase() === 'c') {
       // Open companion selection overlay
       startCompanionSelector();
@@ -72,6 +77,30 @@ export function initInput() {
     } else if (e.key.toLowerCase() === 'i') {
       // Open Player inventory directly
       startInventoryMenu();
+    } else if (e.key.toLowerCase() === 'l') {
+      // Toggle torch bearer: assign to nearest companion or clear
+      try {
+        import('./state.js').then(async (m) => {
+          const { companions, player, runtime, setTorchBearer, clearTorchBearer } = await m;
+          if (runtime._torchBearerRef) {
+            clearTorchBearer();
+            showBanner('Torch bearer dismissed');
+            import('./ui.js').then(u => u.updatePartyUI && u.updatePartyUI(companions)).catch(()=>{});
+          } else if (companions && companions.length) {
+            const c = m.nearestCompanionTo(player.x + player.w/2, player.y + player.h/2);
+            if (!c) { showBanner('No companion nearby'); return; }
+            const ok = setTorchBearer(c);
+            if (ok) {
+              showBanner(`${c.name || 'Companion'} is carrying the torch`);
+              import('./ui.js').then(u => u.updatePartyUI && u.updatePartyUI(companions)).catch(()=>{});
+            } else {
+              showBanner('No torches available');
+            }
+          } else {
+            showBanner('No companion to carry a torch');
+          }
+        });
+      } catch {}
     } else if (e.key.toLowerCase() === 'm') {
       toggleMute();
     } else if (e.key.toLowerCase() === 'b') {
@@ -99,6 +128,11 @@ export function initInput() {
       endMinimapPeek();
       // Cycle mode on key release for a clean single transition
       cycleMinimapMode();
+    }
+    if (e.key.toLowerCase() === 'k') {
+      // Clear hold-toggle state on release
+      runtime._kDownAtSec = null;
+      runtime._kToggledThisHold = false;
     }
   });
   canvas.addEventListener('mousedown', () => { /* handled in ui for chat exit */ });

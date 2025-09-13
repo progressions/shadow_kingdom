@@ -1,4 +1,6 @@
 import { runtime, npcs, companions, spawnCompanion, removeCompanion, spawnNpc, obstacles, world, player } from './state.js';
+import { setTorchBearer, nearestCompanionTo } from './state.js';
+import { sampleLightAtPx } from './lighting.js';
 import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner, showMusicTheme, hideBanner, showPersistentBanner } from './ui.js';
 import { companionDialogs } from '../data/companion_dialogs.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
@@ -58,11 +60,39 @@ export function startCompanionSelector() {
 
 export function startCompanionAction(comp) {
   if (!comp) { startCompanionSelector(); return; }
+  const torchOn = (runtime._torchBearerRef === comp);
+  const torchLabel = torchOn ? 'Stop carrying torch' : 'Carry a torch (hold the light)';
+  const torchAction = torchOn ? 'companion_torch_stop' : 'companion_torch_start';
   startPrompt(comp, `What do you want to do with ${comp.name || 'this companion'}?`, [
     { label: 'Talk', action: 'companion_talk', data: comp },
+    { label: torchLabel, action: torchAction, data: comp },
     { label: 'Dismiss', action: 'dismiss_companion', data: comp },
     { label: 'Back', action: 'companion_back' },
   ]);
+}
+
+function torchBark(comp) {
+  const name = (comp?.name || '').toLowerCase();
+  const aff = (typeof comp?.affinity === 'number') ? comp.affinity : 5;
+  const tier = aff >= 8 ? 'high' : aff >= 4 ? 'mid' : 'low';
+  const pick = (lines) => lines[Math.floor(Math.random() * lines.length)];
+  if (name.includes('twil')) {
+    if (tier === 'high') return pick(["I'll carry this one while you carry me later.", "Fire looks better on us."]); 
+    if (tier === 'mid') return pick(["I've been carrying a torch for you anyway.", "High or close? I’ll set your angles."]); 
+    return pick(["I—uh—yes! The light. I’ll hold the light.", "Got it. Keep aiming."]); 
+  }
+  if (name.includes('oyin')) {
+    if (tier === 'high') return pick(["Torch for you. Courage for me.", "If you lead, I can keep pace."]); 
+    if (tier === 'mid') return pick(["I can carry it—if you call the count.", "I’ll match your steps."]); 
+    return pick(["I can carry it.", "I’ll hold the light."]); 
+  }
+  if (name.includes('hola')) {
+    if (tier === 'high') return pick(["If you hold the bow, I’ll hold the light.", "Stand close; I’ll speak louder."]); 
+    if (tier === 'mid') return pick(["I can hold the light.", "I’ll keep it steady."]); 
+    return pick(["Okay. I’ll carry it."]); 
+  }
+  // Generic
+  return "I’ll carry the torch.";
 }
 
 // Save/Load menu
@@ -187,6 +217,47 @@ export function selectChoice(index) {
     endDialog();
     exitChat(runtime);
     return;
+  }
+  if (choice.action === 'companion_torch_start') {
+    const comp = choice.data || null;
+    try {
+      const ok = setTorchBearer(comp);
+      if (ok) {
+        const line = torchBark(comp);
+        showBanner(`${comp?.name || 'Companion'}: ${line}`);
+      } else {
+        showBanner('No torches available');
+      }
+      updatePartyUI(companions);
+    } catch {}
+    endDialog(); exitChat(runtime); return;
+  }
+  if (choice.action === 'companion_torch_stop') {
+    try {
+      runtime._torchBearerRef = null;
+      if (runtime._torchLightNode) runtime._torchLightNode.enabled = false;
+      runtime._torchLightNode = null;
+      runtime._torchBurnMs = 0;
+      showBanner('Torch bearer dismissed');
+      updatePartyUI(companions);
+    } catch {}
+    endDialog(); exitChat(runtime); return;
+  }
+  if (choice.action === 'assign_torch_bearer') {
+    try {
+      const idx = (typeof choice.data?.index === 'number') ? choice.data.index : -1;
+      const comp = (idx >= 0 && idx < companions.length) ? companions[idx] : nearestCompanionTo(player.x + player.w/2, player.y + player.h/2);
+      if (comp) {
+        const ok = setTorchBearer(comp);
+        if (ok) {
+          const line = torchBark(comp);
+          showBanner(`${comp.name || 'Companion'}: ${line}`);
+        } else {
+          showBanner('No torches available');
+        }
+      }
+    } catch {}
+    endDialog(); exitChat(runtime); return;
   }
   if (choice.action === 'replace_companion') {
     const npc = runtime.activeNpc;
@@ -616,10 +687,9 @@ function handleStartQuest(data) {
   } else if (id === 'hola_practice') {
       runtime.questCounters['hola_practice_uses'] = 0;
       try { showBanner('Quest started: Find Her Voice — Use Gust twice'); } catch {}
-    } else if (id === 'oyin_fuse') {
-      runtime.questCounters['oyin_fuse_kindled'] = 0;
-      runtime.questFlags['oyin_fuse_rally'] = false;
-      try { showBanner('Quest started: Light the Fuse — Kindle 3 + Rally once'); } catch {}
+    } else if (id === 'twil_fuse') {
+      runtime.questCounters['twil_fuse_kindled'] = 0;
+      try { showBanner('Quest started: Light the Fuse — Kindle 3'); } catch {}
     } else if (id === 'twil_trace') {
       import('./state.js').then(m => {
         const { player, spawnEnemy } = m;
@@ -696,16 +766,16 @@ function handleStartQuest(data) {
       }).catch(()=>{});
       runtime.questCounters['hola_breath_bog_remaining'] = 3;
       try { showBanner('Quest started: Breath Over Bog — 3 whisperers'); } catch {}
-    } else if (id === 'oyin_ember') {
+    } else if (id === 'twil_ember') {
       // Level 3 Oyin quest: defeat three Lantern Bearers (featured foes)
       import('./state.js').then(m => {
         const { player, spawnEnemy } = m;
         const dx = 160, dy = 120;
-        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Lantern Bearer', questId: 'oyin_ember', hp: 8, dmg: 4 });
-        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'oyin_ember', hp: 8, dmg: 4 });
-        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'oyin_ember', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y - dy, 'featured', { name: 'Lantern Bearer', questId: 'twil_ember', hp: 8, dmg: 4 });
+        spawnEnemy(player.x - dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'twil_ember', hp: 8, dmg: 4 });
+        spawnEnemy(player.x + dx, player.y + dy, 'featured', { name: 'Lantern Bearer', questId: 'twil_ember', hp: 8, dmg: 4 });
       }).catch(()=>{});
-      runtime.questCounters['oyin_ember_remaining'] = 3;
+      runtime.questCounters['twil_ember_remaining'] = 3;
       try { showBanner('Quest started: Carry the Ember — 3 targets'); } catch {}
     } else if (id === 'twil_wake') {
       // Level 3 Twil quest: defeat three Skimmers (tough mooks)
@@ -1129,6 +1199,13 @@ function doEquip(actorTag, slot, index, itemId) {
   }
   if (!it || it.slot !== slot) return;
   const eq = actor.inventory.equipped;
+  // Two-handed constraint: block equipping left-hand if right-hand is 2H
+  try {
+    if (slot === 'leftHand' && eq.rightHand && eq.rightHand.twoHanded) {
+      showBanner('Cannot equip left hand with two-handed weapon');
+      return;
+    }
+  } catch {}
   // Special-case: Torch behavior (stackable) — equipping consumes 1 from stack and creates a single-use equipped torch
   const isTorch = (it && it.id === 'torch' && it.stackable && slot === 'leftHand');
   // Swap: if something already equipped in this slot
@@ -1164,11 +1241,40 @@ function doEquip(actorTag, slot, index, itemId) {
     } catch {}
   } else {
     // Normal equip flow: equip selected and remove from items
+    // Two-handed handling for right-hand
+    if (slot === 'rightHand' && it && it.twoHanded) {
+      // Free left hand (consume torch; store shields/tools)
+      if (eq.leftHand) {
+        const curLH = eq.leftHand;
+        if (curLH.id === 'torch') { eq.leftHand = null; try { showBanner('Torch consumed'); } catch {} }
+        else { items.push(curLH); eq.leftHand = null; try { showBanner('Left hand freed for two-handed weapon'); } catch {} }
+      }
+    }
     eq[slot] = it;
     items.splice(idx, 1);
   }
   // Refresh equipment panel
   updatePartyUI(companions);
+
+  // If a two-handed right-hand was equipped in darkness, offer to assign a torch bearer (one-time per ask session)
+  try {
+    if (slot === 'rightHand' && eq.rightHand && eq.rightHand.twoHanded) {
+      const lv = sampleLightAtPx(player.x + player.w/2, player.y + player.h/2);
+      const dark = lv <= 1;
+      const hasLight = !!(eq.leftHand && eq.leftHand.id === 'torch') || !!runtime._torchBearerRef;
+      const canAsk = (!runtime._suppressTorchAsk) && (companions && companions.length > 0);
+      if (dark && !hasLight && canAsk) {
+        const c = nearestCompanionTo(player.x + player.w/2, player.y + player.h/2) || companions[0];
+        const name = c?.name || 'Companion';
+        const choices = [
+          { label: `Ask ${name} to carry a torch`, action: 'assign_torch_bearer', data: { index: companions.indexOf(c) } },
+          { label: 'Not now', action: 'end' },
+          { label: "Don't ask again", action: 'set_flag', data: { key: '_suppressTorchAsk' } },
+        ];
+        startPrompt(null, 'It\'s dark. Your hands are full.', choices);
+      }
+    }
+  } catch {}
 }
 
 function doUnequip(actorTag, slot) {

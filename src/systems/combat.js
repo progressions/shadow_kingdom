@@ -6,6 +6,7 @@ import { playSfx } from '../engine/audio.js';
 import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
 import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, CHEST_LOOT_L3, rollFromTable, itemById } from '../data/loot.js';
+import { spawnProjectile } from '../engine/state.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -119,8 +120,8 @@ export function handleAttacks(dt) {
         const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
         const dmg = Math.max(1, (player.damage || 1) + add);
         let finalDmg = dmg;
-        // Twil: mark weakness (+1 dmg) when close
-        if (hasTwil) {
+        // Oyin (swapped): mark weakness (+1 dmg) when close
+        if (hasOyin) {
           const dxm = ex - px, dym = ey - py;
           if ((dxm*dxm + dym*dym) <= (48*48)) finalDmg += 1;
         }
@@ -163,19 +164,18 @@ export function handleAttacks(dt) {
           import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Crit! ${dmgTxt}`, { color: '#ffd166', life: 0.8 }));
           try { playSfx('pierce'); } catch {}
         }
-        // Oyin: Kindle DoT
-        if (hasOyin) {
+        // Twil (swapped): Kindle DoT (fiery strikes) and quest tracking
+        if (hasTwil) {
           e._burnTimer = Math.max(e._burnTimer || 0, 1.5);
           e._burnDps = Math.max(e._burnDps || 0, 0.4);
-          // Quest tracking: Oyin fuse — count unique kindled enemies after start
           try {
-            if (runtime.questFlags && runtime.questFlags['oyin_fuse_started'] && !runtime.questFlags['oyin_fuse_cleared']) {
+            if (runtime.questFlags && runtime.questFlags['twil_fuse_started'] && !runtime.questFlags['twil_fuse_cleared']) {
               if (!e._questKindled) {
                 e._questKindled = true;
                 if (!runtime.questCounters) runtime.questCounters = {};
-                const n = (runtime.questCounters['oyin_fuse_kindled'] || 0) + 1;
-                runtime.questCounters['oyin_fuse_kindled'] = n;
-                if (n >= 3 && runtime.questFlags['oyin_fuse_rally']) { runtime.questFlags['oyin_fuse_cleared'] = true; showBanner('Quest updated: Light the Fuse — cleared'); }
+                const n = (runtime.questCounters['twil_fuse_kindled'] || 0) + 1;
+                runtime.questCounters['twil_fuse_kindled'] = n;
+                if (n >= 3) { runtime.questFlags['twil_fuse_cleared'] = true; showBanner('Quest updated: Light the Fuse — cleared'); }
               }
             }
           } catch {}
@@ -252,6 +252,75 @@ export function handleAttacks(dt) {
     player.attacking = false;
     player._didHit = false;
   }
+}
+
+export function startRangedAttack() {
+  const now = performance.now() / 1000;
+  // Require a ranged weapon in right hand
+  const eq = player?.inventory?.equipped || {};
+  const RH = eq.rightHand || null;
+  const meta = RH && RH.ranged ? RH.ranged : null;
+  if (!meta) { return; }
+  const baseCd = (typeof meta.cooldownSec === 'number') ? Math.max(0.1, meta.cooldownSec) : Math.max(0.1, player.rangedAttackCooldown || 0.6);
+  // Attack speed buffs reduce cooldown a bit
+  const aspd = (runtime?.combatBuffs?.aspd || 0) + (runtime?.tempAspdBonus || 0);
+  const effCd = Math.max(0.08, baseCd / Math.max(1e-6, (1 + aspd)));
+  if (now - (player.lastRanged || -999) < effCd) return;
+
+  // Ammo requirement
+  const ammoId = String(meta.consumes || 'arrow_basic');
+  let ammoStack = null, ammoIdx = -1;
+  try {
+    const inv = player?.inventory?.items || [];
+    for (let i = 0; i < inv.length; i++) {
+      const it = inv[i];
+      if (it && it.stackable && it.id === ammoId && (it.qty || 0) > 0) { ammoStack = it; ammoIdx = i; break; }
+    }
+  } catch {}
+  if (!ammoStack) {
+    // Rate-limit the warning banner
+    const t = runtime._timeSec || 0;
+    if ((runtime._ammoWarnUntil || 0) <= t) {
+      try { import('../engine/ui.js').then(u => u.showBanner && u.showBanner('Out of arrows!')); } catch {}
+      runtime._ammoWarnUntil = t + 1.2;
+      try { playSfx('block'); } catch {}
+    }
+    return;
+  }
+
+  // Fire: compute direction from player.dir
+  const px = player.x + player.w/2;
+  const py = player.y + player.h/2;
+  const speed = (typeof meta.projectileSpeed === 'number') ? Math.max(60, meta.projectileSpeed) : 180;
+  let dx = 0, dy = 0;
+  if (player.dir === 'left') dx = -1; else if (player.dir === 'right') dx = 1; else if (player.dir === 'up') dy = -1; else dy = 1;
+  const vx = dx * speed;
+  const vy = dy * speed;
+  // Damage base from player damage + gear/buffs
+  const mods = getEquipStats(player);
+  const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
+  const base = Math.max(1, (player.damage || 1) + add);
+  const pierce = Math.max(0, Number(meta.pierce || 0));
+  spawnProjectile(px, py, {
+    team: 'player',
+    vx, vy,
+    damage: base,
+    pierce,
+    life: 1.8,
+    knockback: 80,
+    sourceId: 'player',
+    color: '#9ae6ff',
+  });
+  // Consume ammo (1)
+  try {
+    ammoStack.qty = Math.max(0, (ammoStack.qty || 0) - 1);
+    if (ammoStack.qty <= 0 && ammoIdx !== -1) {
+      const inv = player?.inventory?.items || [];
+      if (inv[ammoIdx] === ammoStack) inv.splice(ammoIdx, 1);
+    }
+  } catch {}
+  player.lastRanged = now;
+  try { playSfx('attack'); } catch {}
 }
 
 function tryUnlockGate(hb) {

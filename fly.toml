@@ -1,0 +1,31 @@
+# Fly.io app config for Shadow Kingdom
+# Change the `app` name to your unique app name before deploying.
+
+app = "shadow-kingdom"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  PUBLIC_DIR = "/app"
+  DATA_PATH = "/data/saves.json"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "5s"
+    method = "GET"
+    path = "/healthz"
+
+[[mounts]]
+  source = "shadow_kingdom_data"
+  destination = "/data"

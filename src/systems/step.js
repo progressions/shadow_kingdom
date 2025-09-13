@@ -6,14 +6,16 @@ import { playSfx, setMusicMode } from '../engine/audio.js';
 import { autoTurnInIfCleared } from '../engine/quests.js';
 import { clearFadeOverlay } from '../engine/ui.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
-import { rectsIntersect, getEquipStats } from '../engine/utils.js';
-import { handleAttacks } from './combat.js';
+import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
+import { sampleLightAtPx } from '../engine/lighting.js';
+import { handleAttacks, startRangedAttack as startRangedAttackFn } from './combat.js';
 import { startGameOver, startPrompt } from '../engine/dialog.js';
 import { completionXpForLevel, grantPartyXp } from '../engine/state.js';
+import { projectiles, spawnProjectile } from '../engine/state.js';
 import { exitChat } from '../engine/ui.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges, showMusicTheme } from '../engine/ui.js';
-import { ENEMY_LOOT, ENEMY_LOOT_L2, ENEMY_LOOT_L3, rollFromTable, itemById } from '../data/loot.js';
+import { ENEMY_LOOT, ENEMY_LOOT_L2, ENEMY_LOOT_L3, rollFromTable, itemById, BREAKABLE_LOOT } from '../data/loot.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -215,8 +217,247 @@ export function step(dt) {
 
   // (Torch timer HUD now drawn in render overlay; no DOM updates needed)
 
+  // Torch bearer: tick burn and update light node position
+  try {
+    const comp = runtime._torchBearerRef || null;
+    const node = runtime._torchLightNode || null;
+    if (comp && node) {
+      // Follow companion position
+      node.x = comp.x + comp.w/2; node.y = comp.y + comp.h/2; node.enabled = true;
+      // Tick burn (ms)
+      runtime._torchBurnMs = Math.max(0, (runtime._torchBurnMs || 0) - dt * 1000);
+      if (runtime._torchBurnMs <= 0) {
+        node.enabled = false;
+        runtime._torchLightNode = null;
+        runtime._torchBearerRef = null;
+        showBanner('Torch burned out');
+      }
+    }
+  } catch {}
+
   // Rebuild lighting grid (coarse, tile-based). Throttle lightly (~60ms) to reduce cost.
   try { rebuildLighting(60); } catch {}
+
+  // --- Projectiles tick ---
+  if (Array.isArray(projectiles) && projectiles.length) {
+    const removeIdx = [];
+    const worldW = world.w, worldH = world.h;
+    for (let i = 0; i < projectiles.length; i++) {
+      const p = projectiles[i];
+      const ox = p.x + p.w/2, oy = p.y + p.h/2;
+      const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
+      const nxC = nx + p.w/2, nyC = ny + p.h/2;
+      let hitSomething = false;
+      // Hola wind deflection: attempt when entering aura radius (one-time)
+      try {
+        const def = runtime.projectileDeflect || { chance: 0, radius: 0 };
+        if (p.team === 'enemy' && (def.chance || 0) > 0 && (def.radius || 0) > 0 && !p._deflectTried) {
+          const pxp = player.x + player.w/2, pyp = player.y + player.h/2;
+          const r2 = (def.radius || 0) * (def.radius || 0);
+          const odx = ox - pxp, ody = oy - pyp;
+          const ndx = nxC - pxp, ndy = nyC - pyp;
+          const wasOutside = (odx*odx + ody*ody) > r2;
+          const isInside = (ndx*ndx + ndy*ndy) <= r2;
+          if ((wasOutside && isInside) || isInside) {
+            p._deflectTried = true; // only attempt once
+            if (Math.random() < Math.max(0, Math.min(1, def.chance))) {
+              // Redirect projectile outward from player with slight random spread
+              const baseAng = Math.atan2(nyC - pyp, nxC - pxp);
+              const jitter = (Math.random() * 0.6 - 0.3); // +/- ~17 degrees
+              const ang = baseAng + jitter;
+              const spd = Math.max(20, Math.hypot(p.vx, p.vy) * 0.85);
+              p.vx = Math.cos(ang) * spd;
+              p.vy = Math.sin(ang) * spd;
+              p.color = '#a1e3ff'; // visually hint wind deflect
+              p._deflected = true;
+              // Reduce damage slightly on deflect
+              p.damage = Math.max(0, Math.floor((p.damage || 1) * 0.7));
+              try { spawnSparkle(nxC, nyC); } catch {}
+            }
+          }
+        }
+      } catch {}
+
+      // Obstacles that block attacks (respect unlocked gates)
+      for (const o of obstacles) {
+        if (!o || !o.blocksAttacks) continue;
+        if (o.type === 'gate' && o.locked === false) continue;
+        if (segmentIntersectsRect(ox, oy, nxC, nyC, o)) { hitSomething = true; break; }
+      }
+      if (hitSomething) { removeIdx.push(i); continue; }
+      // Move
+      p.x = nx; p.y = ny; p.life -= dt;
+      // Out of world / expired
+      if (p.life <= 0 || p.x < -8 || p.y < -8 || p.x > worldW + 8 || p.y > worldH + 8) { removeIdx.push(i); continue; }
+      // Breakables: allow player shots to damage barrels/crates
+      if (p.team === 'player') {
+        for (let j = obstacles.length - 1; j >= 0; j--) {
+          const o = obstacles[j];
+          if (!o || (o.type !== 'barrel' && o.type !== 'crate')) continue;
+          if (segmentIntersectsRect(ox, oy, nxC, nyC, o)) {
+            o.hp = (typeof o.hp === 'number') ? o.hp - 1 : -1;
+            if (o.hp <= 0) {
+              try {
+                const table = BREAKABLE_LOOT[o.type] || [];
+                const drop = rollFromTable(table);
+                if (drop) spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, drop);
+              } catch {}
+              const idx = obstacles.indexOf(o);
+              if (idx !== -1) obstacles.splice(idx, 1);
+              try { playSfx('break'); } catch {}
+            }
+            // Consume the projectile unless it pierces
+            if (p.pierce > 0) { p.pierce--; }
+            else { hitSomething = true; removeIdx.push(i); }
+            break;
+          }
+        }
+        if (hitSomething) continue;
+      }
+      // Target hits
+      if (p.team === 'player') {
+        // Hit enemies
+        for (const e of enemies) {
+          if (!e || e.hp <= 0) continue;
+          if (segmentIntersectsRect(ox, oy, nxC, nyC, e)) {
+            // Player crits and enemy DR
+            const toggles = runtime?.combatToggles || { playerCrits: true };
+            // Base damage comes precomputed in projectile.damage; allow small boost from temp bonus already baked in
+            let finalDmg = Math.max(1, p.damage || 1);
+            let isCrit = false;
+            if (toggles.playerCrits) {
+              let critChance = 0.08 + (runtime?.combatBuffs?.crit || 0);
+              if (Math.random() < critChance) { isCrit = true; finalDmg = Math.ceil(finalDmg * 1.5); }
+            }
+            const before = e.hp;
+            e.hp -= finalDmg;
+            try {
+              let enemyDr = Math.max(0, (e._baseDr || 0) + (e._tempDr || 0));
+              if (isCrit) enemyDr = Math.max(0, enemyDr * 0.5);
+              if (enemyDr > 0) {
+                const reduce = Math.min(enemyDr, finalDmg);
+                e.hp += reduce;
+              }
+              e._recentHitTimer = Math.max(e._recentHitTimer || 0, 0.9);
+            } catch {}
+            try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`${e.name || 'Enemy'}`)); } catch {}
+            if (isCrit) {
+              import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Crit! ${Number(Math.max(1, finalDmg)).toFixed(2)}`, { color: '#ffd166', life: 0.8 }));
+              try { playSfx('pierce'); } catch {}
+            } else {
+              import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 10, `${Number(Math.max(1, finalDmg)).toFixed(2)}`, { color: '#eaeaea', life: 0.6 }));
+              try { playSfx('hit'); } catch {}
+            }
+            // Twil (swapped): fire arrows kindle quest progress for Light the Fuse
+            try {
+              const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
+              if (hasTwil) {
+                if (runtime.questFlags && runtime.questFlags['twil_fuse_started'] && !runtime.questFlags['twil_fuse_cleared']) {
+                  if (!e._questKindled) {
+                    e._questKindled = true;
+                    if (!runtime.questCounters) runtime.questCounters = {};
+                    const n = (runtime.questCounters['twil_fuse_kindled'] || 0) + 1;
+                    runtime.questCounters['twil_fuse_kindled'] = n;
+                    if (n >= 3) { runtime.questFlags['twil_fuse_cleared'] = true; showBanner('Quest updated: Light the Fuse — cleared'); }
+                  }
+                }
+              }
+            } catch {}
+            // Twil (swapped): fire arrows add a brief burn DoT
+            try {
+              const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
+              if (hasTwil) {
+                e._burnTimer = Math.max(e._burnTimer || 0, 1.2);
+                e._burnDps = Math.max(e._burnDps || 0, 0.35);
+              }
+            } catch {}
+            // Knockback from projectile dir
+            const dvx = p.vx, dvy = p.vy; const mag = Math.hypot(dvx, dvy) || 1;
+            e.knockbackX = (dvx / mag) * (p.knockback || 60);
+            e.knockbackY = (dvy / mag) * (p.knockback || 60);
+            // Consume or pierce
+            if (p.pierce > 0) { p.pierce--; }
+            else { removeIdx.push(i); }
+            break;
+          }
+        }
+      } else if (p.team === 'enemy') {
+        // Hit player (respect invuln briefly)
+        if (player.invulnTimer <= 0) {
+          const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+          if (segmentIntersectsRect(ox, oy, nxC, nyC, pr)) {
+            // Find source enemy for tuning
+            let src = null;
+            if (p.sourceId) { src = enemies.find(e => e && e.id === p.sourceId); }
+            // Pull defaults by class
+            const kind = (src?.kind || 'mook').toLowerCase();
+            const def = (kind === 'boss') ? { cc: 0.12, ignore: 0.7, bonus: 3, chipMin: 0, chipMax: 0 }
+                        : (kind === 'featured') ? { cc: 0.10, ignore: 0.6, bonus: 2, chipMin: 1, chipMax: 2 }
+                        : { cc: 0.06, ignore: 0.5, bonus: 1, chipMin: 1, chipMax: 1 };
+            const toggles = runtime?.combatToggles || { chip: true, enemyCrits: true, ap: true };
+            const raw = Math.max(0, p.damage || 1);
+            // Ranged: use rangedDR instead of touchDR; include shield mitigation if a shield is equipped in left hand
+            let baseDr = (getEquipStats(player).dr || 0) + (runtime?.combatBuffs?.dr || 0) + (runtime?.combatBuffs?.rangedDR || 0);
+            try {
+              const LH = player?.inventory?.equipped?.leftHand || null;
+              if (LH && (LH.isShield || /shield|buckler/i.test(LH.name || LH.id || ''))) {
+                const sdr = Math.max(0, Number(LH.dr || 0));
+                // Significant mitigation vs ranged: double shield DR + small flat
+                baseDr += Math.max(0, sdr * 2 + 1);
+              }
+            } catch {}
+            const dr = baseDr + (player.levelDrBonus || 0);
+            const cc = (typeof src?.critChance === 'number') ? src.critChance : def.cc;
+            const cIgnore = (typeof src?.critDrIgnore === 'number') ? src.critDrIgnore : def.ignore;
+            const cBonus = (typeof src?.critBonus === 'number') ? src.critBonus : def.bonus;
+            const ap = toggles.ap ? Math.max(0, (typeof src?.ap === 'number') ? src.ap : 0) : 0;
+            const tDmg = toggles.ap ? Math.max(0, (typeof src?.trueDamage === 'number') ? src.trueDamage : 0) : 0;
+
+            const isCrit = (toggles.enemyCrits && Math.random() < cc);
+            let effDr = dr;
+            if (isCrit) effDr = Math.max(0, effDr * (1 - cIgnore));
+            if (ap > 0) effDr = Math.max(0, effDr - ap);
+            let taken = Math.max(0, raw - effDr);
+            if (isCrit) taken += Math.max(0, cBonus);
+            if (tDmg > 0) taken += tDmg;
+            if (toggles.chip && kind !== 'boss') {
+              const chipBase = Math.round(raw * 0.10);
+              const chip = Math.max(def.chipMin, Math.min(def.chipMax, chipBase));
+              if (taken > 0 && taken < chip) taken = chip;
+              if (taken === 0 && chip > 0) taken = chip;
+            }
+            if (runtime.godMode) taken = 0;
+            if (runtime.shieldActive && taken > 0) { taken = 0; runtime.shieldActive = false; }
+            if (taken > 0) {
+              player.hp = Math.max(0, player.hp - taken);
+              player.knockbackX = 0; player.knockbackY = 0;
+              player.invulnTimer = 0.6;
+              runtime.interactLock = Math.max(runtime.interactLock, 0.2);
+              runtime._recentPlayerHitTimer = 0.25;
+              let label = null; let color = '#ff7a7a'; let sfx = 'hit';
+              const fmt = (n) => Number.isFinite(n) ? Number(n).toFixed(2) : String(n);
+              if (isCrit) { label = `Crit ${fmt(taken)}`; color = '#ffd166'; sfx = 'pierce'; }
+              else if ((ap > 0 || tDmg > 0) && (taken >= raw - dr)) { label = `Pierce! ${fmt(taken)}`; color = '#ffd166'; sfx = 'pierce'; }
+              import('../engine/state.js').then(m => m.spawnFloatText(player.x + player.w/2, player.y - 6, label || `-${fmt(taken)}`, { color, life: 0.7 }));
+              try { playSfx(sfx); } catch {}
+            } else {
+              import('../engine/state.js').then(m => m.spawnFloatText(player.x + player.w/2, player.y - 6, 'Blocked', { color: '#a8c6ff', life: 0.7 }));
+              try { playSfx('block'); } catch {}
+            }
+            // Consume projectile
+            removeIdx.push(i);
+          }
+        }
+      }
+    }
+    // Remove in reverse order
+    if (removeIdx.length) {
+      removeIdx.sort((a,b)=>b-a).forEach(idx => { projectiles.splice(idx, 1); });
+    }
+    // Hard cap to avoid spam
+    const cap = 128;
+    if (projectiles.length > cap) projectiles.splice(0, projectiles.length - cap);
+  }
 
   // --- Spawner tick ---
   try {
@@ -442,6 +683,78 @@ export function step(dt) {
   // Attacks
   handleAttacks(dt);
 
+  // Hold-to-toggle K: after a short hold, toggle equip between best ranged (bow) and best melee weapon.
+  try {
+    const kHeld = runtime.keys && runtime.keys.has('k');
+    if (kHeld) {
+      if (typeof runtime._kDownAtSec !== 'number') runtime._kDownAtSec = runtime._timeSec || 0;
+      const heldFor = (runtime._timeSec || 0) - (runtime._kDownAtSec || 0);
+      const eq = player?.inventory?.equipped || {};
+      const inv = player?.inventory?.items || [];
+      if ((heldFor >= 0.25) && !runtime._kToggledThisHold) {
+        const hasRangedEquipped = !!(eq.rightHand && eq.rightHand.ranged);
+        if (hasRangedEquipped) {
+          // Switch to best melee (rightHand, non-ranged)
+          const melee = inv.filter(it => it && it.slot === 'rightHand' && !it.stackable && !it.ranged);
+          if (melee.length) {
+            melee.sort((a,b)=> (b.atk||0) - (a.atk||0));
+            const pick = melee[0];
+            // Move current right-hand to inventory and equip melee
+            if (eq.rightHand) inv.push(eq.rightHand);
+            eq.rightHand = pick;
+            const idx = inv.indexOf(pick); if (idx !== -1) inv.splice(idx, 1);
+            try { showBanner(`Equipped ${pick.name}`); } catch {}
+          } else {
+            try { showBanner('No melee weapon'); } catch {}
+          }
+        } else {
+          // Switch to best ranged (bow)
+          const bows = inv.filter(it => it && it.ranged === Object(it.ranged));
+          if (bows.length) {
+            bows.sort((a,b)=> (b.atk||0) - (a.atk||0));
+            const pick = bows[0];
+            if (eq.rightHand) inv.push(eq.rightHand);
+            // Enforce two-handed: free left hand
+            if (pick.twoHanded && eq.leftHand) {
+              if (eq.leftHand.id === 'torch') { eq.leftHand = null; try { showBanner('Torch consumed'); } catch {} }
+              else { inv.push(eq.leftHand); eq.leftHand = null; }
+            }
+            eq.rightHand = pick;
+            const idx = inv.indexOf(pick); if (idx !== -1) inv.splice(idx, 1);
+            // Ammo check for heads-up
+            try {
+              const arrows = (player?.inventory?.items || []).filter(x => x && x.stackable && x.id === 'arrow_basic').reduce((s,x)=>s+(x.qty||0),0);
+              showBanner(arrows > 0 ? `Equipped ${pick.name}` : `Equipped ${pick.name} — No arrows`);
+            } catch { try { showBanner(`Equipped ${pick.name}`); } catch {} }
+            // If dark and no light, offer to assign torch bearer
+            try {
+              const lv = sampleLightAtPx(player.x + player.w/2, player.y + player.h/2);
+              const dark = lv <= 1;
+              const hasLight = !!(player?.inventory?.equipped?.leftHand && player.inventory.equipped.leftHand.id === 'torch') || !!runtime._torchBearerRef;
+              if (dark && !hasLight && companions && companions.length && !runtime._suppressTorchAsk) {
+                const nearest = companions.reduce((best, c) => {
+                  const d2 = Math.pow((c.x - player.x),2)+Math.pow((c.y - player.y),2);
+                  return (!best || d2 < best.d2) ? { c, d2 } : best;
+                }, null)?.c || companions[0];
+                const name = nearest?.name || 'Companion';
+                startPrompt(null, 'It\'s dark. Your hands are full.', [
+                  { label: `Ask ${name} to carry a torch`, action: 'assign_torch_bearer', data: { index: companions.indexOf(nearest) } },
+                  { label: 'Not now', action: 'end' },
+                  { label: "Don\'t ask again", action: 'set_flag', data: { key: '_suppressTorchAsk' } },
+                ]);
+              }
+            } catch {}
+          } else {
+            try { showBanner('No bow'); } catch {}
+          }
+        }
+        runtime._kToggledThisHold = true;
+      }
+      // Auto-fire while held (if ranged equipped)
+      try { startRangedAttackFn(); } catch {}
+    }
+  } catch {}
+
   // Player damage over time (burn)
   if (player._burnTimer && player._burnTimer > 0 && !runtime.godMode) {
     player._burnTimer = Math.max(0, player._burnTimer - dt);
@@ -608,6 +921,38 @@ export function step(dt) {
       // Flip avoidance side if stuck for too long
       if (moved < 0.1) { e.stuckTime += dt; if (e.stuckTime > 0.6) { e.avoidSign *= -1; e.stuckTime = 0; } }
       else e.stuckTime = 0;
+
+      // Enemy ranged attack (MVP)
+      if (e.ranged) {
+        e._shootCd = Math.max(0, (e._shootCd || 0) - dt);
+        // Check LOS and range
+        const ex = e.x + e.w/2, ey = e.y + e.h/2;
+        const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+        const dxs = px2 - ex, dys = py2 - ey; const dist2s = dxs*dxs + dys*dys;
+        const r = Math.max(12, e.shootRange || 120); if (dist2s <= r*r && (e._shootCd || 0) <= 0) {
+          let losClear = false;
+          const samples = [ [px2, py2], [player.x, player.y], [player.x + player.w, player.y], [player.x, player.y + player.h], [player.x + player.w, player.y + player.h] ];
+          for (const [sx, sy] of samples) {
+            let blocked = false;
+            for (const o of obstacles) {
+              if (!o || !o.blocksAttacks) continue;
+              if (o.type === 'gate' && o.locked === false) continue;
+              if (segmentIntersectsRect(ex, ey, sx, sy, o)) { blocked = true; break; }
+            }
+            if (!blocked) { losClear = true; break; }
+          }
+          if (losClear) {
+            const ang = Math.atan2(py2 - ey, px2 - ex) + (e.aimError || 0) * (Math.random()*2 - 1);
+            const spd = Math.max(60, e.projectileSpeed || 160);
+            const vx = Math.cos(ang) * spd;
+            const vy = Math.sin(ang) * spd;
+            const dmg = Math.max(1, e.projectileDamage || Math.max(1, (e.touchDamage||1) - 1));
+            spawnProjectile(ex, ey, { team: 'enemy', vx, vy, damage: dmg, life: 1.8, sourceId: e.id, color: '#ff9a3d' });
+            e._shootCd = Math.max(0.2, e.shootCooldown || 1.2);
+            try { playSfx('attack'); } catch {}
+          }
+        }
+      }
     }
     e.x = Math.max(0, Math.min(world.w - e.w, e.x));
     e.y = Math.max(0, Math.min(world.h - e.h, e.y));
@@ -932,12 +1277,12 @@ export function step(dt) {
           if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['hola_breath_bog_cleared'] = true; showBanner('Quest updated: Breath Over Bog — cleared'); try { autoTurnInIfCleared('hola_breath_bog'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
-        if (e.questId === 'oyin_ember') {
+        if (e.questId === 'twil_ember') {
           if (!runtime.questCounters) runtime.questCounters = {};
-          const key = 'oyin_ember_remaining';
+          const key = 'twil_ember_remaining';
           const left = Math.max(0, (runtime.questCounters[key] || 0) - 1);
           runtime.questCounters[key] = left;
-          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['oyin_ember_cleared'] = true; showBanner('Quest updated: Carry the Ember — cleared'); try { autoTurnInIfCleared('oyin_ember'); } catch {} }
+          if (left === 0) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['twil_ember_cleared'] = true; showBanner('Quest updated: Carry the Ember — cleared'); try { autoTurnInIfCleared('twil_ember'); } catch {} }
           else showBanner(`Quest: ${left} target${left===1?'':'s'} left`);
         }
         if (e.questId === 'twil_wake') {
@@ -1459,7 +1804,11 @@ export function step(dt) {
 function applyCompanionAuras(dt) {
   // Reset buffs
   const buffs = runtime.combatBuffs;
-  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0; buffs.aspd = 0; buffs.crit = 0;
+  buffs.atk = 0; buffs.dr = 0; buffs.regen = 0; buffs.range = 0; buffs.touchDR = 0; buffs.rangedDR = 0; buffs.aspd = 0; buffs.crit = 0;
+  // Reset wind deflection
+  if (!runtime.projectileDeflect) runtime.projectileDeflect = { chance: 0, radius: 0 };
+  runtime.projectileDeflect.chance = 0;
+  runtime.projectileDeflect.radius = 0;
   // Prepare per-enemy slow accumulation
   const slowAccum = new Array(enemies.length).fill(0);
   // Synergy: Urn + Varabella small boost when both are present
@@ -1485,6 +1834,7 @@ function applyCompanionAuras(dt) {
         case 'range': buffs.range += (a.value || 0) * mult; break;
         case 'touchDR': buffs.touchDR += (a.value || 0) * mult; break;
         case 'aspd': buffs.aspd += (a.value || 0) * mult; break; // attack speed bonus (fractional)
+        case 'rangedDR': buffs.rangedDR += (a.value || 0) * mult; break; // resistance vs ranged/projectile damage
         case 'crit': buffs.crit += (a.value || 0) * mult; break; // absolute crit chance add
         case 'slow': {
           const rad = a.radius || 0;
@@ -1498,6 +1848,13 @@ function applyCompanionAuras(dt) {
               if ((dx*dx + dy*dy) <= rad*rad) slowAccum[ei] = Math.max(slowAccum[ei], (a.value || 0) * mult);
             }
           }
+          break;
+        }
+        case 'deflect': {
+          // Aggregate chance and take the max radius among sources
+          const rad = a.radius || 0;
+          runtime.projectileDeflect.chance += Math.max(0, (a.value || 0) * mult);
+          if (rad > 0) runtime.projectileDeflect.radius = Math.max(runtime.projectileDeflect.radius || 0, rad);
           break;
         }
       }
@@ -1516,6 +1873,10 @@ function applyCompanionAuras(dt) {
   buffs.aspd += (runtime.tempAspdBonus || 0);
   buffs.aspd = Math.min(buffs.aspd, COMPANION_BUFF_CAPS.aspd);
   buffs.crit = Math.min(buffs.crit, COMPANION_BUFF_CAPS.crit || buffs.crit);
+  buffs.rangedDR = Math.min(buffs.rangedDR, COMPANION_BUFF_CAPS.rangedDR || buffs.rangedDR);
+  // Cap deflect chance
+  if (!runtime.projectileDeflect) runtime.projectileDeflect = { chance: 0, radius: 0 };
+  runtime.projectileDeflect.chance = Math.min(runtime.projectileDeflect.chance || 0, COMPANION_BUFF_CAPS.deflect || (runtime.projectileDeflect.chance || 0));
   // Regen
   if (buffs.regen > 0 && player.hp > 0) {
     player.hp = Math.min(player.maxHp, player.hp + buffs.regen * dt);
@@ -1690,8 +2051,8 @@ function handleCompanionTriggers(dt) {
       cds.oyinRally = cd;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Rally!', { color: '#ffd166', life: 0.9 });
       try { playSfx('rally'); } catch {}
-      // Quest tracking: Oyin fuse — mark rally done
-      try { if (runtime.questFlags && runtime.questFlags['oyin_fuse_started']) runtime.questFlags['oyin_fuse_rally'] = true; } catch {}
+      // Quest tracking (legacy): mark rally done if Twil fuse is active (not required for completion)
+      try { if (runtime.questFlags && runtime.questFlags['twil_fuse_started']) runtime.questFlags['twil_fuse_rally'] = true; } catch {}
     }
   }
 
@@ -1876,8 +2237,8 @@ function handleCompanionTriggers(dt) {
       try { playSfx('keepLine'); } catch {}
     }
   }
-  // Twil Dust Veil: if 2+ enemies are close, apply heavy slow briefly
-  if (has('twil')) {
+  // Oyin (swapped) Dust Veil: if 2+ enemies are close, apply heavy slow briefly
+  if (has('oyin')) {
     let nearby = 0;
     for (const e of enemies) {
       if (e.hp <= 0) continue;
@@ -1885,7 +2246,7 @@ function handleCompanionTriggers(dt) {
       if ((dx*dx + dy*dy) <= (40*40)) nearby++;
       if (nearby >= 2) break;
     }
-    const m = multFor('twil');
+    const m = multFor('oyin');
     const r = 40 * (1 + (m - 1) * 0.5);
     const dur = 0.4 * m;
     const slow = Math.min(0.6, 0.5 * m);

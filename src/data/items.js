@@ -17,8 +17,12 @@ export const sampleItems = [
   { id: 'dagger',        name: 'Rusty Dagger',  slot: 'rightHand',  atk: 2 },
   { id: 'sword_fine',    name: 'Fine Sword',    slot: 'rightHand',  atk: 4 },
   { id: 'master_sword',  name: 'Master Sword',  slot: 'rightHand',  atk: 6 },
-  { id: 'buckler',       name: 'Small Buckler', slot: 'leftHand',   dr: 1 },
-  { id: 'heavy_shield',  name: 'Heavy Shield',  slot: 'leftHand',   dr: 3 },
+  { id: 'bow_wood',      name: 'Wooden Bow',    slot: 'rightHand',  atk: 2, twoHanded: true, ranged: { cooldownSec: 0.6, projectileSpeed: 200, pierce: 0, consumes: 'arrow_basic' } },
+  { id: 'greatsword',    name: 'Greatsword',    slot: 'rightHand',  atk: 8, twoHanded: true },
+  // Ammo (stackable)
+  { id: 'arrow_basic',   name: 'Arrows',        slot: 'misc',       stackable: true, maxQty: 25 },
+  { id: 'buckler',       name: 'Small Buckler', slot: 'leftHand',   dr: 1, isShield: true },
+  { id: 'heavy_shield',  name: 'Heavy Shield',  slot: 'leftHand',   dr: 3, isShield: true },
   { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0, stackable: true, maxQty: 99 },
   // Health potions (auto-consume on pickup; not stored)
   { id: 'potion_light',  name: 'Light Health Potion',  slot: 'misc' },
@@ -41,6 +45,9 @@ export function cloneItem(item) {
   if (typeof item.atk === 'number') it.atk = item.atk;
   if (typeof item.dr === 'number') it.dr = item.dr;
   if (item.keyId) it.keyId = item.keyId;
+  if (item.isShield) it.isShield = true;
+  if (item.ranged) it.ranged = JSON.parse(JSON.stringify(item.ranged));
+  if (item.twoHanded) it.twoHanded = true;
   if (item.stackable) { it.stackable = true; it.maxQty = item.maxQty || 99; it.qty = typeof item.qty === 'number' ? item.qty : 1; }
   return it;
 }

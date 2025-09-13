@@ -1,0 +1,18 @@
+# Node / build junk
+node_modules
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Local data
+server/data/
+
+# Videos and other large generated artifacts if any (kept by default)
+# Uncomment to speed up build if hosting assets elsewhere
+# assets/**/*.mp4
+

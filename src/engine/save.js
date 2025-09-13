@@ -7,8 +7,13 @@ function getLocalKey(slot = 1) {
   return `shadow_kingdom_save_${slot}`;
 }
 
-const API_URL = window.SAVE_API_URL || null; // e.g., 'https://your-app.fly.dev'
-const API_KEY = window.SAVE_API_KEY || null; // optional shared secret
+// Remote save configuration:
+// - If window.SAVE_API_URL is undefined → use localStorage only
+// - If window.SAVE_API_URL is '' (empty string) → use same-origin '/api/save'
+// - If window.SAVE_API_URL is a URL → use that origin for the API
+const USE_REMOTE = (typeof window.SAVE_API_URL !== 'undefined');
+const API_BASE = USE_REMOTE ? (window.SAVE_API_URL || '') : null; // '' means same-origin
+const API_KEY = window.SAVE_API_KEY || null; // optional shared secret (avoid embedding in client)
 
 function getUserId() {
   let id = localStorage.getItem('shadow_user_id');
@@ -29,7 +34,8 @@ function cryptoRandomId() {
 async function remote(method, path, body) {
   const headers = { 'content-type': 'application/json', 'x-user-id': getUserId() };
   if (API_KEY) headers['x-api-key'] = API_KEY;
-  const res = await fetch(`${API_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const url = `${API_BASE}${path}`; // API_BASE may be '' for same-origin
+  const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const json = await res.json().catch(()=>({ ok:false,error:'bad json' }));
   if (!res.ok || json.ok === false) throw new Error(json.error || ('http '+res.status));
   return json;
@@ -64,7 +70,7 @@ function readSaveAtomic(slot){
 }
 
 export async function getSaveMeta(slot = 1) {
-  if (API_URL) {
+  if (USE_REMOTE) {
     try {
       const json = await remote('GET', `/api/save?slot=${encodeURIComponent(slot)}`);
       return { exists: true, at: json.at || null };
@@ -77,36 +83,47 @@ export async function getSaveMeta(slot = 1) {
 }
 
 export function saveGame(slot = 1) {
-  try {
-    const payload = serializeSave();
-    writeSaveAtomic(getLocalKey(slot), payload);
-    showBanner('Game saved');
-  } catch (e) {
-    console.error('Save failed', e);
-    showBanner('Save failed');
+  const payload = serializeSave();
+  // Attempt remote first if configured; fall back to local
+  if (USE_REMOTE) {
+    remote('POST', `/api/save?slot=${encodeURIComponent(slot)}`, { payload })
+      .then(() => { try { writeSaveAtomic(getLocalKey(slot), payload); } catch {} showBanner('Game saved'); })
+      .catch((e) => { console.warn('Remote save failed, falling back to local', e); try { writeSaveAtomic(getLocalKey(slot), payload); showBanner('Game saved (local)'); } catch (err) { console.error('Local save failed', err); showBanner('Save failed'); } });
+    return;
   }
+  try { writeSaveAtomic(getLocalKey(slot), payload); showBanner('Game saved'); }
+  catch (e) { console.error('Save failed', e); showBanner('Save failed'); }
 }
 
 export function loadGame(slot = 1) {
-  try {
-    const data = readSaveAtomic(getLocalKey(slot));
-    if (!data || data.schema !== 'save') { showBanner('Save schema mismatch'); return; }
-    loadDataPayload(data);
-  } catch (e) {
-    console.error('Load failed', e);
-    showBanner('Load failed');
+  if (USE_REMOTE) {
+    remote('GET', `/api/save?slot=${encodeURIComponent(slot)}`)
+      .then(json => { const data = json?.payload; if (!data || data.schema !== 'save') { showBanner('Save schema mismatch'); return; } loadDataPayload(data); })
+      .catch(e => { console.warn('Remote load failed, trying local', e); try { const data = readSaveAtomic(getLocalKey(slot)); if (!data || data.schema !== 'save') { showBanner('Save schema mismatch'); return; } loadDataPayload(data); } catch (err) { console.error('Load failed', err); showBanner('Load failed'); } });
+    return;
   }
+  try { const data = readSaveAtomic(getLocalKey(slot)); if (!data || data.schema !== 'save') { showBanner('Save schema mismatch'); return; } loadDataPayload(data); }
+  catch (e) { console.error('Load failed', e); showBanner('Load failed'); }
 }
 
 export function clearSave(slot = 1) {
-  try {
-    const pref = slotPrefix(getLocalKey(slot));
-    localStorage.removeItem(`${pref}_A`);
-    localStorage.removeItem(`${pref}_B`);
-    localStorage.removeItem(`${pref}_ptr`);
-    showBanner('Save cleared');
-  } catch (e) {
-    console.error('Clear save failed', e);
-    showBanner('Clear save failed');
+  const clearLocal = () => {
+    try {
+      const pref = slotPrefix(getLocalKey(slot));
+      localStorage.removeItem(`${pref}_A`);
+      localStorage.removeItem(`${pref}_B`);
+      localStorage.removeItem(`${pref}_ptr`);
+      showBanner('Save cleared');
+    } catch (e) {
+      console.error('Clear save failed', e);
+      showBanner('Clear save failed');
+    }
+  };
+  if (USE_REMOTE) {
+    remote('DELETE', `/api/save?slot=${encodeURIComponent(slot)}`)
+      .then(() => { clearLocal(); })
+      .catch((e) => { console.warn('Remote clear failed, clearing local only', e); clearLocal(); });
+    return;
   }
+  clearLocal();
 }

@@ -5,7 +5,7 @@ import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.j
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_WALLS, LEVEL5_TEMPLE_FEATURES, findSafeSpawn } from '../data/level5_temple_layout.js';
 import { makeSpriteSheet, sheetForName, makeSnakeSpriteSheet } from './sprites.js';
 import { setMusicLocation } from './audio.js';
-import { spawnEnemy, spawnNpc, addItemToInventory } from './state.js';
+import { spawnEnemy, spawnNpc, addItemToInventory, spawnPickup } from './state.js';
 import { TILE } from './constants.js';
 import { setNpcDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
@@ -38,6 +38,54 @@ export function loadLevel1() {
   // Place some chests and breakables similar to start
   obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_weapon', fixedItemId: 'dagger', opened: false, locked: false });
   obstacles.push({ x: Math.round(player.x - TILE * 8), y: Math.round(player.y + TILE * 6), w: 12, h: 10, type: 'chest', id: 'chest_l1_extra', lootTier: 'rare', opened: false, locked: false });
+  // Fixed bow chest for early ranged access (normal gameplay)
+  // Place it near the player, but ensure it does not overlap blocking obstacles.
+  (function placeBowChestL1() {
+    const candidates = [
+      { dx: TILE * 6, dy: TILE * 4 },
+      { dx: TILE * 4, dy: TILE * 4 },
+      { dx: TILE * 6, dy: TILE * 2 },
+      { dx: TILE * 2, dy: TILE * 4 },
+      { dx: -TILE * 4, dy: TILE * 4 },
+      { dx: TILE * 4, dy: -TILE * 2 },
+      { dx: -TILE * 2, dy: TILE * 2 },
+      { dx: TILE * 2, dy: TILE * 2 },
+      { dx: 24, dy: 24 },
+      { dx: -24, dy: 24 },
+    ];
+    const chestW = 12, chestH = 10;
+    function overlapsBlocking(r) {
+      for (const o of obstacles) {
+        if (!o) continue;
+        const blocks = (o.blocksAttacks === true) || (o.type === 'wall') || (o.type === 'water') || (o.type === 'gate');
+        if (!blocks) continue;
+        const ix = Math.max(0, Math.min(r.x + r.w, o.x + o.w) - Math.max(r.x, o.x));
+        const iy = Math.max(0, Math.min(r.y + r.h, o.y + o.h) - Math.max(r.y, o.y));
+        if (ix * iy > 0) return true;
+      }
+      return false;
+    }
+    for (const c of candidates) {
+      let x = Math.round(player.x + c.dx), y = Math.round(player.y + c.dy);
+      // Clamp to world
+      x = Math.max(0, Math.min(world.w - chestW, x));
+      y = Math.max(0, Math.min(world.h - chestH, y));
+      const rect = { x, y, w: chestW, h: chestH };
+      if (!overlapsBlocking(rect)) {
+        obstacles.push({ x, y, w: chestW, h: chestH, type: 'chest', id: 'chest_l1_bow', fixedItemId: 'bow_wood', opened: false, locked: false });
+        // Guaranteed arrow cache near the bow chest
+        try {
+          const stash = { id: 'arrow_basic', name: 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: 15 };
+          spawnPickup(x + 10, y + 8, stash);
+        } catch {}
+        return;
+      }
+    }
+    // Fallback: place at player offset with no check (unlikely to hit)
+    const fx = Math.round(player.x + TILE * 2), fy = Math.round(player.y + TILE * 2);
+    obstacles.push({ x: fx, y: fy, w: chestW, h: chestH, type: 'chest', id: 'chest_l1_bow', fixedItemId: 'bow_wood', opened: false, locked: false });
+    try { spawnPickup(fx + 10, fy + 8, { id: 'arrow_basic', name: 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: 15 }); } catch {}
+  })();
   const brk = [
     { x: Math.round(player.x + TILE * 10), y: Math.round(player.y + TILE * 6) },
     { x: Math.round(player.x - TILE * 12), y: Math.round(player.y - TILE * 8) },
@@ -51,7 +99,8 @@ export function loadLevel1() {
 
   // Initial enemies around NPCs
   // Canopy: three nearby mooks to hint at immediate pressure
-  spawnEnemy(canopyPos.x + 28, canopyPos.y + 8,  'mook', { name: 'Greenwood Bandit' });
+  // Weaker early archer: slower, less accurate, lower damage
+  // Removed early archer near spawn to reduce early spike difficulty
   spawnEnemy(canopyPos.x - 22, canopyPos.y - 14, 'mook', { name: 'Greenwood Bandit' });
   spawnEnemy(canopyPos.x + 6,  canopyPos.y - 24, 'mook', { name: 'Greenwood Bandit' });
   spawnEnemy(holaPos.x - 42, holaPos.y - 20,     'mook', { name: 'Greenwood Bandit' });
@@ -346,10 +395,10 @@ export function loadLevel1() {
     ap: 1, // light armor piercing
   });
   // Boss arena adds: 3 mooks + 1 featured foe around the boss
-  spawnEnemy(boss1x - 24, boss1y,      'mook', { name: 'Greenwood Bandit' });
+  spawnEnemy(boss1x - 24, boss1y,      'mook', { name: 'Greenwood Bandit (Archer)', ranged: true, shootRange: 140, shootCooldown: 1.7, projectileSpeed: 170, projectileDamage: 1, aimError: 0.06 });
   spawnEnemy(boss1x + 24, boss1y,      'mook', { name: 'Greenwood Bandit' });
   spawnEnemy(boss1x,      boss1y + 24, 'mook', { name: 'Greenwood Bandit' });
-  spawnEnemy(boss1x,      boss1y - 28, 'featured', { name: 'Bandit Lieutenant', hp: 12, dmg: 6 });
+  spawnEnemy(boss1x,      boss1y - 28, 'featured', { name: 'Bandit Lieutenant', hp: 12, dmg: 6, ranged: true, shootRange: 160, shootCooldown: 1.0, projectileSpeed: 200, projectileDamage: 3, aimError: 0.03 });
 
   // Add an ambient light source inside the boss arena to soften darkness
   try {
@@ -451,6 +500,8 @@ export function loadLevel2() {
 
   // Chests and breakables (desert) — spaced around player
   obstacles.push({ x: Math.round(player.x + TILE * 14), y: Math.round(player.y - TILE * 10), w: 12, h: 10, type: 'chest', id: 'chest_l2_armor', fixedItemId: 'armor_chain', opened: false, locked: false });
+  // Guaranteed arrow cache near an early chest in Level 2
+  try { spawnPickup(Math.round(player.x + TILE * 14 + 14), Math.round(player.y - TILE * 10 + 8), { id: 'arrow_basic', name: 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: 12 }); } catch {}
   obstacles.push({ x: Math.round(player.x - TILE * 18), y: Math.round(player.y + TILE * 8), w: 12, h: 12, type: 'barrel', id: 'brk_l2_a', hp: 2 });
   obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y + TILE * 12), w: 12, h: 12, type: 'crate', id: 'brk_l2_b', hp: 2 });
   // Fetch/Delivery quest pedestal: keyed to Sister's Ribbon (relic_canopy)
@@ -492,7 +543,8 @@ export function loadLevel2() {
     ap: 2,
   });
   // Boss arena adds: 4 mooks + 2 featured foes inside the arena
-  spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
+  // Weaker mook archer in L2: slower shots, longer cooldown, moderate damage
+  spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Scout (Archer)', hp: 5, dmg: 4, ranged: true, shootRange: 150, shootCooldown: 1.8, projectileSpeed: 180, projectileDamage: 2, aimError: 0.07 });
   spawnEnemy(cx + 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
   spawnEnemy(cx, cy - 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
   spawnEnemy(cx, cy + 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });

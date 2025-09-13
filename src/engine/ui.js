@@ -487,6 +487,16 @@ export function updatePartyUI(companions) {
         b.textContent = r.label;
         badges.appendChild(b);
       }
+      // Torch bearer badge
+      try {
+        if (runtime._torchBearerRef === c) {
+          const tb = document.createElement('span');
+          tb.className = 'role-badge';
+          tb.title = 'Torch Bearer';
+          tb.textContent = 'To';
+          badges.appendChild(tb);
+        }
+      } catch {}
       chip.appendChild(badges);
     }
     // XP bar (small)
@@ -527,7 +537,7 @@ export function updatePartyUI(companions) {
   box.innerHTML = lines.join('');
   partyUI.appendChild(box);
   // Buff badges from companions
-  const buffs = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const buffs = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0, rangedDR:0 };
   const f2 = (v) => Number(v || 0).toFixed(2);
   const bb = document.createElement('div');
   bb.className = 'buffs-box';
@@ -543,6 +553,7 @@ export function updatePartyUI(companions) {
   bb.appendChild(mk('Regen', f2(buffs.regen), '/s'));
   bb.appendChild(mk('Range', `+${f2(buffs.range)}`, 'px'));
   bb.appendChild(mk('tDR', `+${f2(buffs.touchDR)}`));
+  bb.appendChild(mk('rDR', `+${f2(buffs.rangedDR)}`));
   if (typeof buffs.aspd === 'number') {
     const pct = (Number(buffs.aspd || 0) * 100).toFixed(0);
     bb.appendChild(mk('ASpd', `+${pct}`, '%'));
@@ -565,7 +576,7 @@ export function updateBuffBadges() {
   if (!container) return;
   const bb = container.querySelector('.buffs-box');
   if (!bb) return;
-  const b = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0 };
+  const b = runtime?.combatBuffs || { atk:0, dr:0, regen:0, range:0, touchDR:0, rangedDR:0 };
   const f2 = (v) => Number(v || 0).toFixed(2);
   const texts = [
     `ATK: +${f2(b.atk)}`,
@@ -573,9 +584,10 @@ export function updateBuffBadges() {
     `Regen: ${f2(b.regen)}/s`,
     `Range: +${f2(b.range)}px`,
     `tDR: +${f2(b.touchDR)}`,
+    `rDR: +${f2(b.rangedDR)}`,
   ];
   // Ensure we have 5 children; if not, rebuild
-  const need = 5;
+  const need = 6;
   if (bb.children.length !== need) {
     bb.innerHTML = '';
     texts.forEach(t => { const d = document.createElement('div'); d.className = 'buff'; d.textContent = t; bb.appendChild(d); });
@@ -872,9 +884,9 @@ export function updateQuestHint() {
     } else if (f['hola_practice_started'] && !f['hola_practice_cleared']) {
       const used = c['hola_practice_uses'] ?? 0;
       msg = `Quest — Find Her Voice: Gust ${used}/2`;
-    } else if (f['oyin_fuse_started'] && !f['oyin_fuse_cleared']) {
-      const k = c['oyin_fuse_kindled'] ?? 0; const r = f['oyin_fuse_rally'] ? '1/1' : '0/1';
-      msg = `Quest — Light the Fuse: Kindle ${k}/3, Rally ${r}`;
+    } else if (f['twil_fuse_started'] && !f['twil_fuse_cleared']) {
+      const k = c['twil_fuse_kindled'] ?? 0;
+      msg = `Quest — Light the Fuse: Kindle ${k}/3`;
     } else if (f['twil_trace_started'] && !f['twil_trace_cleared']) {
       const left = c['twil_trace_remaining'] ?? 3;
       msg = `Quest — Trace the Footprints: ${left} left`;
@@ -890,8 +902,8 @@ export function updateQuestHint() {
     } else if (f['hola_breath_bog_started'] && !f['hola_breath_bog_cleared']) {
       const left = c['hola_breath_bog_remaining'] ?? 3;
       msg = `Quest — Breath Over Bog: ${left} left`;
-    } else if (f['oyin_ember_started'] && !f['oyin_ember_cleared']) {
-      const left = c['oyin_ember_remaining'] ?? 3;
+    } else if (f['twil_ember_started'] && !f['twil_ember_cleared']) {
+      const left = c['twil_ember_remaining'] ?? 3;
       msg = `Quest — Carry the Ember: ${left} left`;
     } else if (f['twil_wake_started'] && !f['twil_wake_cleared']) {
       const left = c['twil_wake_remaining'] ?? 3;

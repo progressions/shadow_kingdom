@@ -34,6 +34,9 @@ export const player = {
   attackTimer: 0,
   attackDuration: 0.18,
   damage: 1,
+  // Ranged combat
+  rangedAttackCooldown: 0.6,
+  lastRanged: -999,
   // Hit response
   invulnTimer: 0, // seconds of invincibility after being hit
   knockbackX: 0,
@@ -49,6 +52,8 @@ export const corpses = [];
 export const stains = [];
 export const sparkles = [];
 export const itemsOnGround = [];
+// Transient projectiles (not persisted)
+export const projectiles = [];
 // Enemy spawners (runtime)
 export const spawners = [];
 
@@ -290,6 +295,13 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     spriteScale: (typeof opts.spriteScale === 'number') ? Math.max(0.5, Math.min(4, opts.spriteScale)) : 1,
     source: opts.source || null,
     createdAt: typeof opts.createdAt === 'number' ? opts.createdAt : (performance && performance.now ? performance.now() : Date.now()),
+    // Ranged (optional)
+    ranged: !!opts.ranged,
+    shootRange: (typeof opts.shootRange === 'number') ? Math.max(12, opts.shootRange) : 120,
+    shootCooldown: (typeof opts.shootCooldown === 'number') ? Math.max(0.2, opts.shootCooldown) : 1.2,
+    projectileSpeed: (typeof opts.projectileSpeed === 'number') ? Math.max(40, opts.projectileSpeed) : 160,
+    projectileDamage: (typeof opts.projectileDamage === 'number') ? Math.max(1, opts.projectileDamage) : 2,
+    aimError: (typeof opts.aimError === 'number') ? Math.max(0, opts.aimError) : 0,
   };
   // Apply vnId-specific default palette automatically if provided in registry and not explicitly set
   try {
@@ -371,6 +383,35 @@ export function spawnSparkle(x, y, opts = {}) {
     color: opts.color || '#8effc1',
     r: opts.r || (1 + Math.random()*1.5),
   });
+}
+
+// Lightweight projectile spawner (transient)
+export function spawnProjectile(x, y, opts = {}) {
+  const p = {
+    id: `pr_${Math.floor(Math.random() * 1e9).toString(36)}`,
+    x: Math.round(x),
+    y: Math.round(y),
+    w: Math.max(2, Math.floor(opts.w || 4)),
+    h: Math.max(2, Math.floor(opts.h || 4)),
+    vx: Number(opts.vx || 0),
+    vy: Number(opts.vy || 0),
+    life: Math.max(0.05, Number(opts.life || 2.0)),
+    team: (opts.team === 'enemy') ? 'enemy' : ((opts.team === 'ally') ? 'ally' : 'player'),
+    damage: Math.max(1, Math.floor(Number(opts.damage || 1))),
+    pierce: Math.max(0, Math.floor(Number(opts.pierce || 0))),
+    knockback: Math.max(0, Number(opts.knockback || 0)),
+    // Optional damage tuning
+    critChance: (typeof opts.critChance === 'number') ? Math.max(0, Math.min(1, opts.critChance)) : undefined,
+    critDrIgnore: (typeof opts.critDrIgnore === 'number') ? Math.max(0, Math.min(1, opts.critDrIgnore)) : undefined,
+    critBonus: (typeof opts.critBonus === 'number') ? Math.max(0, Math.floor(opts.critBonus)) : undefined,
+    ap: (typeof opts.ap === 'number') ? Math.max(0, Math.floor(opts.ap)) : undefined,
+    trueDamage: (typeof opts.trueDamage === 'number') ? Math.max(0, Math.floor(opts.trueDamage)) : undefined,
+    color: typeof opts.color === 'string' ? opts.color : undefined,
+    spriteId: opts.spriteId || null,
+    sourceId: opts.sourceId || null,
+  };
+  projectiles.push(p);
+  return p;
 }
 
 export function spawnCompanion(x, y, sheet, opts = {}) {
@@ -460,7 +501,9 @@ export const runtime = {
   introCooldown: 0,
   
   // Aggregated companion buffs (recomputed each frame)
-  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, aspd: 0, crit: 0 },
+  combatBuffs: { atk: 0, dr: 0, regen: 0, range: 0, touchDR: 0, rangedDR: 0, aspd: 0, crit: 0 },
+  // Wind deflection aura (derived each frame from companions)
+  projectileDeflect: { chance: 0, radius: 0 },
   // Companion ability cooldowns and shield state (Phase 2)
   companionCDs: { yornaEcho: 0, canopyShield: 0, holaGust: 0 },
   shieldActive: false,
@@ -510,7 +553,7 @@ export const runtime = {
   // Combat tuning toggles
   combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
   // Feature toggles
-  snakeMode: true,
+  snakeMode: false,
   // Scene helpers
   _suppressInputTimer: 0, // seconds to ignore input (e.g., immediately after death)
   _deathDelay: 0,         // delay before accepting Game Over key
@@ -588,4 +631,47 @@ export function grantPartyXp(amount) {
 export function completionXpForLevel(level) {
   // 5 + 10*level → L1=15, L2=25, L3=35, ...
   return Math.max(0, Math.floor(5 + 10 * Math.max(1, level|0)));
+}
+
+// ---- Torch Bearer Helpers ----
+export function nearestCompanionTo(x, y) {
+  let best = null, bd2 = Infinity;
+  for (const c of companions) {
+    if (!c) continue;
+    const cx = c.x + c.w/2, cy = c.y + c.h/2;
+    const d2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+    if (d2 < bd2) { bd2 = d2; best = c; }
+  }
+  return best;
+}
+
+export function clearTorchBearer() {
+  try { if (runtime._torchLightNode) runtime._torchLightNode.enabled = false; } catch {}
+  runtime._torchLightNode = null;
+  runtime._torchBearerRef = null;
+  runtime._torchBurnMs = 0;
+}
+
+export function setTorchBearer(companion) {
+  try {
+    // Clear any prior bearer
+    clearTorchBearer();
+    if (!companion) return false;
+    // Consume one torch from player inventory
+    const inv = player?.inventory?.items || [];
+    const idx = inv.findIndex(it => it && it.stackable && it.id === 'torch' && (it.qty||0) > 0);
+    if (idx === -1) return false;
+    inv[idx].qty = Math.max(0, (inv[idx].qty || 0) - 1);
+    if (inv[idx].qty <= 0) inv.splice(idx, 1);
+    // Activate
+    runtime._torchBearerRef = companion;
+    runtime._torchBurnMs = 180000; // 3 minutes
+    import('./lighting.js').then(m => {
+      try {
+        const node = m.addLightNode({ x: companion.x + companion.w/2, y: companion.y + companion.h/2, level: m.MAX_LIGHT_LEVEL, radius: 6, enabled: true });
+        runtime._torchLightNode = node;
+      } catch {}
+    }).catch(()=>{});
+    return true;
+  } catch { return false; }
 }

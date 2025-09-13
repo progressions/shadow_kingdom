@@ -242,6 +242,23 @@
         z-index: 5; /* below VN and title overlays */
       }
 
+      /* HUD: top-left sharp labels */
+      #hud-top-left { position: absolute; left: 6px; top: 24px; display: grid; gap: 2px; z-index: 6; pointer-events: none; }
+      #hud-top-left .hud-label { font: 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; color: #eaeaea; opacity: 0.95; text-shadow: 0 1px 0 #000; }
+      #hud-top-left .muted { color: #a8c6ff; }
+      #hud-level-chip {
+        position: absolute; left: 70px; top: 6px;
+        background: rgba(15,15,15,0.75);
+        color: #eaeaea;
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 2px 6px;
+        font: 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        letter-spacing: 0.2px;
+        z-index: 6;
+        pointer-events: none;
+      }
+
       /* Level title overlay */
       #level-title {
         position: absolute;
@@ -289,6 +306,14 @@
       <div class="main-panel">
         <div id="game-wrapper">
           <canvas id="game" width="320" height="180" aria-label="Sprite game canvas"></canvas>
+          <!-- Chip label near XP meter for clarity -->
+          <div id="hud-level-chip"></div>
+          <!-- Sharp HUD labels (DOM text) -->
+          <div id="hud-top-left">
+            <div id="hud-level" class="hud-label" aria-live="polite"></div>
+            <div id="hud-ammo" class="hud-label" aria-live="polite"></div>
+            <div id="hud-torch" class="hud-label" aria-live="polite"></div>
+          </div>
           <div class="hint">Move: <kbd>WASD</kbd>/<kbd>Arrows</kbd> · Attack: <kbd>Space</kbd>/<kbd>J</kbd> · Grid: <kbd>G</kbd> · Companions: <kbd>C</kbd> · Save/Load: <kbd>P</kbd> · Mute: <kbd>M</kbd> · Music: <kbd>B</kbd> · <span id="coords" style="font-size: 9px; opacity: 0.7;"></span></div>
         </div>
         <div id="party-ui" aria-label="Party"></div>
@@ -328,6 +353,16 @@
       <!-- Sidebar removed: VN overlay handles dialog -->
     </div>
     <script>window.ASSET_VERSION = '2025-09-10';</script>
+    <script>
+      // Enable remote saves when hosted (same-origin API). No secret in client.
+      // When served from Fly/Node (http/https), use same-origin '/api/save';
+      // When opened from file://, leave undefined to keep localStorage saves.
+      try {
+        if (location.protocol === 'http:' || location.protocol === 'https:') {
+          window.SAVE_API_URL = '';
+        }
+      } catch {}
+    </script>
     <script type="module" src="src/main.js"></script>
   </body>
   </html>

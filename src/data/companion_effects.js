@@ -23,6 +23,10 @@ export const companionEffectsByKey = {
     auras: [
       { type: 'slow', value: 0.2, radius: 48, anchor: 'player' },
       { type: 'touchDR', value: 1 },
+      // Wind ward: strong resistance to ranged/projectile damage
+      { type: 'rangedDR', value: 3 },
+      // Wind deflection: chance to deflect incoming projectiles near the player
+      { type: 'deflect', value: 0.35, radius: 56, anchor: 'player' },
     ],
     triggers: {
       gust: { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 },
@@ -30,20 +34,20 @@ export const companionEffectsByKey = {
   },
   oyin: {
     auras: [
-      { type: 'range', value: 1 },
-      // Keen timing: small crit chance aura for the player
+      // Adopt Twil's former role: control + sturdiness
+      { type: 'slow', value: 0.15, radius: 42, anchor: 'player' },
+      { type: 'dr', value: 1 },
       { type: 'crit', value: 0.05 },
     ],
-    // rally trigger handled in code
+    // (Veil trigger handled in code under Oyin after swap)
   },
   twil: {
     auras: [
-      { type: 'slow', value: 0.15, radius: 42, anchor: 'player' },
-      { type: 'dr', value: 1 },
-      // Sharpened reads: small crit chance to spot weak points
+      // Adopt Oyin's prior role: precision + reach (and fire synergy handled in code)
+      { type: 'range', value: 1 },
       { type: 'crit', value: 0.05 },
     ],
-    // dust veil trigger handled in code
+    // Fire-on-arrow handled in projectile impact code
   },
   tin: {
     auras: [
@@ -114,6 +118,8 @@ export const COMPANION_BUFF_CAPS = {
   regen: 0.6,  // HP per second (increased sustain ceiling)
   range: 4,    // pixels (slightly longer reach stacking)
   touchDR: 2,  // stronger mitigation vs touch/contact damage
+  rangedDR: 4, // strong mitigation vs ranged/projectile damage
+  deflect: 0.6, // up to 60% chance to deflect a projectile entering the wind aura
   slow: 0.35,  // 35% max slow from stacked auras/triggers
   aspd: 0.75,  // up to +75% attack speed from stacked sources
   crit: 0.25,  // up to +25% absolute crit chance from auras

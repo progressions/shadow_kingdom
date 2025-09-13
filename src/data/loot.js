@@ -7,8 +7,10 @@ export const ENEMY_LOOT = {
   mook: [
     { id: 'stick', w: 20 },
     { id: 'torch', w: 15 },
+    { id: 'arrow_basic', w: 12 },
     { id: 'cap_leather', w: 10 },
     { id: 'potion_light', w: 8 },
+    { id: 'bow_wood', w: 2 },
   ],
   featured: [
     { id: 'dagger', w: 25 },
@@ -16,6 +18,8 @@ export const ENEMY_LOOT = {
     { id: 'armor_leather', w: 15 },
     { id: 'sword_fine', w: 10 },
     { id: 'potion_light', w: 10 },
+    { id: 'arrow_basic', w: 16 },
+    { id: 'bow_wood', w: 6 },
   ],
   boss: [
     // Boss no longer drops the castle key; use featured foe key-bearer instead
@@ -28,6 +32,8 @@ export const CHEST_LOOT = {
     { id: 'cap_leather', w: 25 },
     { id: 'shirt_cloth', w: 20 },
     { id: 'potion_light', w: 15 },
+    { id: 'arrow_basic', w: 30 },
+    { id: 'bow_wood', w: 10 },
   ],
   rare: [
     { id: 'helm_bronze', w: 35 },
@@ -40,6 +46,7 @@ export const CHEST_LOOT = {
 export const BREAKABLE_LOOT = {
   barrel: [
     { id: 'torch', w: 25 },
+    { id: 'arrow_basic', w: 15 },
     { id: 'stick', w: 20 },
     { id: 'cap_leather', w: 10 },
     { id: 'potion_light', w: 12 },
@@ -50,6 +57,7 @@ export const BREAKABLE_LOOT = {
     { id: 'shirt_cloth', w: 18 },
     { id: 'sword_fine', w: 5 },
     { id: 'potion_light', w: 8 },
+    { id: 'arrow_basic', w: 12 },
   ],
 };
 
@@ -75,12 +83,16 @@ export const ENEMY_LOOT_L2 = {
     { id: 'stick', w: 15 },
     { id: 'potion_light', w: 10 },
     { id: 'potion_medium', w: 8 },
+    { id: 'arrow_basic', w: 14 },
+    { id: 'bow_wood', w: 3 },
   ],
   featured: [
     { id: 'dagger', w: 20 },
     { id: 'buckler', w: 15 },
     { id: 'armor_scaled', w: 12 },
     { id: 'potion_medium', w: 10 },
+    { id: 'arrow_basic', w: 18 },
+    { id: 'bow_wood', w: 6 },
   ],
   boss: [
     // Level 2 bosses generally have scripted/guaranteed drops; leave empty
@@ -92,6 +104,8 @@ export const CHEST_LOOT_L2 = {
     { id: 'torch', w: 35 },
     { id: 'shirt_cloth', w: 25 },
     { id: 'potion_light', w: 12 },
+    { id: 'arrow_basic', w: 28 },
+    { id: 'bow_wood', w: 10 },
   ],
   rare: [
     { id: 'armor_scaled', w: 28 },
@@ -108,6 +122,8 @@ export const ENEMY_LOOT_L3 = {
     { id: 'stick', w: 10 },
     { id: 'potion_light', w: 10 },
     { id: 'potion_medium', w: 10 },
+    { id: 'arrow_basic', w: 12 },
+    { id: 'bow_wood', w: 2 },
   ],
   featured: [
     { id: 'dagger', w: 15 },
@@ -116,6 +132,8 @@ export const ENEMY_LOOT_L3 = {
     { id: 'sword_fine', w: 12 },
     { id: 'potion_medium', w: 12 },
     { id: 'potion_strong', w: 8 },
+    { id: 'arrow_basic', w: 18 },
+    { id: 'bow_wood', w: 4 },
   ],
   boss: [
     // Bosses usually have scripted drops; leave empty unless needed
@@ -128,6 +146,8 @@ export const CHEST_LOOT_L3 = {
     { id: 'shirt_cloth', w: 20 },
     { id: 'potion_light', w: 16 },
     { id: 'potion_medium', w: 12 },
+    { id: 'arrow_basic', w: 24 },
+    { id: 'bow_wood', w: 8 },
   ],
   rare: [
     { id: 'armor_chain', w: 24 },

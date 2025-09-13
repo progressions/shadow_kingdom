@@ -129,7 +129,7 @@ export const companionDialogs = {
 
       // Level 2: Sister clue — defeat scouts
       sister_l2_intro: {
-        text: "Canopy: In the desert, Urathar's scouts wear reed-stitched cords. Ell stitched like that. If we thin three patrols, maybe we find a ribbon." ,
+        text: "Canopy: Scouts here wear reed-stitched cords—Ell stitched like that. Drop three patrols; watch for a ribbon.",
         choices: [
           { label: 'We cut their line.', action: 'start_quest', data: { id: 'canopy_sister2' }, next: 'sister_l2_started' },
           { label: 'Later.', next: 'root' },
@@ -363,7 +363,7 @@ export const companionDialogs = {
 
       // L2: Shatter the Ring
       ring_intro: {
-        text: "Yorna: Three captains pin the lanes around these ruins. We cave the ring, we move.",
+        text: "Yorna: Three captains hold these ruins. We take them out and the road opens.",
         choices: [
           { label: "Crack it.", action: 'start_quest', data: { id: 'yorna_ring' }, next: 'ring_started' },
           { label: 'Later.', action: 'companion_back' },
@@ -583,7 +583,7 @@ export const companionDialogs = {
 
       // L2: Break the Silence (defeat Silencers)
       silence_intro: {
-        text: "Hola: Silencers feel like rooms that breathe in. If we break three, maybe I won't have to whisper all the time.",
+        text: "Hola: Silencers make the air heavy. Break three so we can speak and fight clean.",
         choices: [
           { label: "Let's break them.", action: 'start_quest', data: { id: 'hola_silence' }, next: 'silence_started' },
           { label: 'Later.', action: 'companion_back' },
@@ -634,11 +634,11 @@ export const companionDialogs = {
           { label: 'A spark (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
           { label: 'Tinder and air (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Firelight (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
-          // Quest entries
-          { label: 'Light the Fuse', requires: { flag: 'oyin_fuse_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared', missingFlag: 'oyin_fuse_done' }, next: 'quest_turnin' },
-          { label: 'Carry the Ember (L3)', requires: { hasFlag: 'level3_reached', flag: 'oyin_ember_started', not: true }, next: 'ember_intro' },
-          { label: 'Turn in: Carry the Ember', requires: { flag: 'oyin_ember_cleared', missingFlag: 'oyin_ember_done' }, next: 'ember_turnin' },
+          // Quest entries (movement/control now)
+          { label: 'Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'twil_trace_intro_oyin' },
+          { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared', missingFlag: 'twil_trace_done' }, next: 'twil_trace_turnin_oyin' },
+          { label: 'Cut the Wake (L3)', requires: { hasFlag: 'level3_reached', flag: 'twil_wake_started', not: true }, next: 'twil_wake_intro_oyin' },
+          { label: 'Turn in: Cut the Wake', requires: { flag: 'twil_wake_cleared', missingFlag: 'twil_wake_done' }, next: 'twil_wake_turnin_oyin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
       },
@@ -698,49 +698,38 @@ export const companionDialogs = {
         text: 'Oyin: My Lord, call. Echo. Move. I can do that.',
         choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
-      quests: {
-        text: 'Oyin: My Lord, I can try the spark tactics.',
-        choices: [
-          { label: 'Light the Fuse', requires: { flag: 'oyin_fuse_started', not: true }, next: 'quest_intro' },
-          { label: 'Turn in: Light the Fuse', requires: { flag: 'oyin_fuse_cleared', missingFlag: 'oyin_fuse_done' }, next: 'quest_turnin' },
-          { label: 'Carry the Ember (L3)', requires: { hasFlag: 'level3_reached', flag: 'oyin_ember_started', not: true }, next: 'ember_intro' },
-          { label: 'Turn in: Carry the Ember', requires: { flag: 'oyin_ember_cleared', missingFlag: 'oyin_ember_done' }, next: 'ember_turnin' },
-          { label: 'Back', next: 'root' },
-        ],
+      // Oyin offering movement quests (shares flags with Twil's movement chain)
+      twil_trace_intro_oyin: {
+        text: 'Oyin: If we follow carefully, we can catch three. I’ll stay with your pace.',
+        choices: [ { label: 'Let\'s follow.', action: 'start_quest', data: { id: 'twil_trace' }, next: 'twil_trace_started_oyin' }, { label: 'Later.', action: 'companion_back' } ],
       },
-      quest_intro: {
-        text: 'Oyin: My Lord, ignite three of them and… if I can, rally you when it matters.',
-        choices: [ { label: 'Let\'s try.', action: 'start_quest', data: { id: 'oyin_fuse' }, next: 'quest_started' }, { label: 'Later.', action: 'companion_back' } ],
-      },
-      quest_started: {
-        text: 'Oyin: My Lord, I\'ll watch you and keep the tinder ready.',
+      twil_trace_started_oyin: {
+        text: 'Oyin: I’ll count, you call. We’ll meet on three.',
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
-      quest_turnin: {
-        text: 'Oyin: My Lord, it worked! I can do it again next time.',
-        choices: [ { label: 'Well done.', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'oyin_fuse_reward' }, next: 'quest_done' } ],
+      twil_trace_turnin_oyin: {
+        text: 'Oyin: We matched. I can do that again.',
+        choices: [ { label: 'Well done.', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'twil_trace_reward' }, next: 'twil_trace_done_oyin' } ],
       },
-      quest_done: {
-        text: 'Oyin: My Lord, thank you for trusting me.',
-        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'oyin_fuse_done' }, next: 'root' } ],
+      twil_trace_done_oyin: {
+        text: 'Oyin: I’ll keep pace.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'twil_trace_done' }, next: 'root' } ],
       },
-
-      // L3: Carry the Ember (defeat Lantern Bearers)
-      ember_intro: {
-        text: 'Oyin: My Lord, marsh air eats sparks. If we keep three burning, others will see the way.',
-        choices: [ { label: 'Let\'s carry it.', action: 'start_quest', data: { id: 'oyin_ember' }, next: 'ember_started' }, { label: 'Later.', action: 'companion_back' } ],
+      twil_wake_intro_oyin: {
+        text: 'Oyin: The water moves too fast. If we still three wakes, I can keep up.',
+        choices: [ { label: 'Let\'s do it.', action: 'start_quest', data: { id: 'twil_wake' }, next: 'twil_wake_started_oyin' }, { label: 'Later.', action: 'companion_back' } ],
       },
-      ember_started: {
-        text: 'Oyin: My Lord, I\'ll watch the flame. You take what reaches for it.',
+      twil_wake_started_oyin: {
+        text: 'Oyin: I’ll watch your step. Call the count.',
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
-      ember_turnin: {
-        text: 'Oyin: My Lord, we kept them lit. Someone will see this.',
-        choices: [ { label: 'Well done.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'oyin_ember_reward' }, next: 'ember_done' } ],
+      twil_wake_turnin_oyin: {
+        text: 'Oyin: Path’s clean enough now. I can match you.',
+        choices: [ { label: 'Good.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'twil_wake_reward' }, next: 'twil_wake_done_oyin' } ],
       },
-      ember_done: {
-        text: 'Oyin: My Lord, I can keep pace a little longer.',
-        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'oyin_ember_done' }, next: 'root' } ],
+      twil_wake_done_oyin: {
+        text: 'Oyin: Count and go. I’m with you.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'twil_wake_done' }, next: 'root' } ],
       },
     },
   },
@@ -802,8 +791,45 @@ export const companionDialogs = {
           { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared', missingFlag: 'twil_trace_done' }, next: 'quest_turnin' },
           { label: 'Cut the Wake (L3)', requires: { hasFlag: 'level3_reached', flag: 'twil_wake_started', not: true }, next: 'wake_intro' },
           { label: 'Turn in: Cut the Wake', requires: { flag: 'twil_wake_cleared', missingFlag: 'twil_wake_done' }, next: 'wake_turnin' },
+          { label: 'Light the Fuse', requires: { flag: 'twil_fuse_started', not: true }, next: 'fuse_intro' },
+          { label: 'Turn in: Light the Fuse', requires: { flag: 'twil_fuse_cleared', missingFlag: 'twil_fuse_done' }, next: 'fuse_turnin' },
+          { label: 'Carry the Ember (L3)', requires: { hasFlag: 'level3_reached', flag: 'twil_ember_started', not: true }, next: 'ember_intro' },
+          { label: 'Turn in: Carry the Ember', requires: { flag: 'twil_ember_cleared', missingFlag: 'twil_ember_done' }, next: 'ember_turnin' },
           { label: 'Back', next: 'root' },
         ],
+      },
+      fuse_intro: {
+        text: 'Twil: Master, let’s light three and race their smoke.',
+        choices: [ { label: 'Let\'s light it.', action: 'start_quest', data: { id: 'twil_fuse' }, next: 'fuse_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      fuse_started: {
+        text: 'Twil: Watch the wind. I’ll point the gap and the spark.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      fuse_turnin: {
+        text: 'Twil: Lit and gone. Faster now.',
+        choices: [ { label: 'Nice work.', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'twil_fuse_reward' }, next: 'fuse_done' } ],
+      },
+      fuse_done: {
+        text: 'Twil: Master, we can do that again.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'twil_fuse_done' }, next: 'root' } ],
+      },
+      // L3: Carry the Ember (defeat Lantern Bearers) — Twil flavor
+      ember_intro: {
+        text: 'Twil: Master, three lanterns. We carry fire across the marsh.',
+        choices: [ { label: 'Carry it.', action: 'start_quest', data: { id: 'twil_ember' }, next: 'ember_started' }, { label: 'Later.', action: 'companion_back' } ],
+      },
+      ember_started: {
+        text: 'Twil: Keep up. Don’t let the wind take it.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
+      },
+      ember_turnin: {
+        text: 'Twil: Fire’s alive. We made it.',
+        choices: [ { label: 'Nice work.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'twil_ember_reward' }, next: 'ember_done' } ],
+      },
+      ember_done: {
+        text: 'Twil: Next light, next run.',
+        choices: [ { label: 'Back', action: 'set_flag', data: { key: 'twil_ember_done' }, next: 'root' } ],
       },
       quest_intro: {
         text: 'Twil: Master, three shadows ahead. Catch them, and we\'ll be faster than they are.',

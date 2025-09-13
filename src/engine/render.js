@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext, spawners } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext, spawners, projectiles } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE, TILE } from './constants.js';
 import { MAX_LIGHT_LEVEL } from './lighting.js';
 import { drawGrid, drawObstacles } from './terrain.js';
@@ -80,6 +80,43 @@ export function render(terrainBitmap, obstacles) {
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
+  // Projectiles (simple circles with low-noise tracer)
+  try {
+    if (Array.isArray(projectiles) && projectiles.length) {
+      ctx.save();
+      for (const p of projectiles) {
+        const cx = Math.round(p.x + p.w/2 - camera.x);
+        const cy = Math.round(p.y + p.h/2 - camera.y);
+        const inView = cx >= -8 && cx <= camera.w + 8 && cy >= -8 && cy <= camera.h + 8;
+        if (!inView) continue;
+        const color = p.color || (p.team === 'enemy' ? '#ff9a3d' : '#9ae6ff');
+        // Tracer: short line opposite velocity
+        try {
+          const spd = Math.hypot(p.vx || 0, p.vy || 0);
+          if (spd > 1) {
+            const ux = (p.vx || 0) / spd;
+            const uy = (p.vy || 0) / spd;
+            const len = Math.max(4, Math.min(16, spd * 0.05));
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = 0.45;
+            ctx.lineWidth = 1;
+            ctx.moveTo(cx - ux * len, cy - uy * len);
+            ctx.lineTo(cx, cy);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+          }
+        } catch {}
+        // Core projectile
+        ctx.beginPath();
+        const r = Math.max(2, Math.floor(Math.max(p.w, p.h) / 2));
+        ctx.fillStyle = color;
+        ctx.arc(cx, cy, r, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  } catch {}
   // Visible spawners (glyph with subtle pulse)
   try {
     if (Array.isArray(spawners) && spawners.length) {
@@ -464,20 +501,50 @@ export function render(terrainBitmap, obstacles) {
       drawBar(6, 18, 36, 2, pctT, '#ffd166');
     }
   } catch {}
-  // Player Level label
+  // DOM HUD (sharp text): update Lv and Arrows labels
   try {
-    const label = `Lv ${Math.max(1, player.level || 1)}`;
-    ctx.save();
-    ctx.font = 'bold 10px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 3;
-    ctx.fillStyle = '#eaeaea';
-    const lx = 70; const ly = 6; // to the right of bars
-    ctx.strokeText(label, lx, ly);
-    ctx.fillText(label, lx, ly);
-    ctx.restore();
+    const lvlEl = document.getElementById('hud-level');
+    if (lvlEl) {
+      const lv = Math.max(1, player.level || 1);
+      const want = `Lv ${lv}`;
+      if (lvlEl.textContent !== want) lvlEl.textContent = want;
+    }
+    const lvlChip = document.getElementById('hud-level-chip');
+    if (lvlChip) {
+      const lv = Math.max(1, player.level || 1);
+      const want = `Lv ${lv}`;
+      if (lvlChip.textContent !== want) lvlChip.textContent = want;
+    }
+    const ammoEl = document.getElementById('hud-ammo');
+    if (ammoEl) {
+      const inv = player?.inventory?.items || [];
+      let arrows = 0;
+      for (const it of inv) { if (it && it.stackable && it.id === 'arrow_basic') arrows += (it.qty || 0); }
+      const want = `Arrows: ${arrows}`;
+      if (ammoEl.textContent !== want) ammoEl.textContent = want;
+      ammoEl.classList.toggle('muted', arrows === 0);
+    }
+    const torchEl = document.getElementById('hud-torch');
+    if (torchEl) {
+      // Show bearer torch if present, else show player torch if equipped
+      let label = '';
+      try {
+        if (runtime._torchBearerRef && (runtime._torchBurnMs || 0) > 0) {
+          const ms = Math.max(0, Math.floor(runtime._torchBurnMs));
+          const mm = Math.floor(ms / 60000); const ss = Math.floor((ms % 60000) / 1000);
+          const name = runtime._torchBearerRef.name || 'Companion';
+          label = `Torch: ${name} ${mm}:${ss.toString().padStart(2,'0')}`;
+        } else if (player?.inventory?.equipped?.leftHand && player.inventory.equipped.leftHand.id === 'torch') {
+          const left = Math.max(0, Number(player.inventory.equipped.leftHand.burnMsRemaining || 0));
+          const mm = Math.floor(left / 60000); const ss = Math.floor((left % 60000) / 1000);
+          label = `Torch: You ${mm}:${ss.toString().padStart(2,'0')}`;
+        } else {
+          label = '';
+        }
+      } catch { label = ''; }
+      torchEl.textContent = label;
+      torchEl.style.display = label ? '' : 'none';
+    }
   } catch {}
 
   // NPC markers
@@ -637,7 +704,7 @@ function drawQuestMarkers() {
       case 'yorna_knot': return '#ff8a3d';
       case 'canopy_triage': return '#8effc1';
       case 'twil_trace': return '#e0b3ff';
-      case 'oyin_fuse': return '#ffd166';
+      case 'twil_fuse': return '#ffd166';
       default: return '#9ae6ff';
     }
   };

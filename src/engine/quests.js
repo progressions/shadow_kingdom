@@ -16,8 +16,8 @@ export const QUEST_REWARDS = {
   hola_silence:            { companion: 'hola',     amount: 1.0, rewardFlag: 'hola_silence_reward',       doneFlag: 'hola_silence_done' },
   hola_breath_bog:         { companion: 'hola',     amount: 1.2, rewardFlag: 'hola_breath_bog_reward',    doneFlag: 'hola_breath_bog_done' },
 
-  oyin_fuse:               { companion: 'oyin',     amount: 0.8, rewardFlag: 'oyin_fuse_reward',          doneFlag: 'oyin_fuse_done' },
-  oyin_ember:              { companion: 'oyin',     amount: 1.2, rewardFlag: 'oyin_ember_reward',         doneFlag: 'oyin_ember_done' },
+  twil_fuse:               { companion: 'twil',     amount: 0.8, rewardFlag: 'twil_fuse_reward',          doneFlag: 'twil_fuse_done' },
+  twil_ember:              { companion: 'twil',     amount: 1.2, rewardFlag: 'twil_ember_reward',         doneFlag: 'twil_ember_done' },
 
   twil_trace:              { companion: 'twil',     amount: 0.8, rewardFlag: 'twil_trace_reward',         doneFlag: 'twil_trace_done' },
   twil_wake:               { companion: 'twil',     amount: 1.0, rewardFlag: 'twil_wake_reward',          doneFlag: 'twil_wake_done' },
@@ -67,4 +67,3 @@ export function autoTurnInIfCleared(questId) {
     runtime.questFlags[cfg.doneFlag] = true;
   } catch {}
 }
-
