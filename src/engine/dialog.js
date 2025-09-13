@@ -4,6 +4,7 @@ import { sampleLightAtPx } from './lighting.js';
 import { enterChat, setOverlayDialog, exitChat, updatePartyUI, showBanner, showMusicTheme, hideBanner, showPersistentBanner } from './ui.js';
 import { companionDialogs } from '../data/companion_dialogs.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
+import { introTriads, companionTemperaments, temperamentProfiles } from '../data/companion_meta.js';
 import { saveGame, loadGame, clearSave, getSaveMeta } from './save.js';
 import { TILE } from './constants.js';
 import { rectsIntersect } from './utils.js';
@@ -155,6 +156,28 @@ export function renderCurrentNode() {
   const { tree, nodeId } = runtime.activeDialog;
   const node = tree.nodes[nodeId];
   if (!node) { setOverlayDialog('...', []); return; }
+  // Override: for companion talk intros, present temperament-based triads (Match/Clash/Defer)
+  try {
+    const nameKey = String(runtime?.activeNpc?.name || '').toLowerCase();
+    const triad = (nodeId === 'intro' && nameKey) ? (introTriads[nameKey] || null) : null;
+    if (triad) {
+      const deferFlag = `${nameKey}_intro_deferred`;
+      // Resolve deltas with temperament fallbacks
+      const tempKey = companionTemperaments[nameKey] || null;
+      const profile = tempKey ? temperamentProfiles[tempKey] : null;
+      let matchDelta = (typeof triad.match?.delta === 'number') ? triad.match.delta : (profile ? (profile.introMatch ?? 0.3) : 0.3);
+      if (!(matchDelta > 0)) matchDelta = Math.max(0.2, (profile ? (profile.introMatch ?? 0.3) : 0.3));
+      let clashDelta = (typeof triad.clash?.delta === 'number') ? triad.clash.delta : (profile ? (profile.introClash ?? 0) : 0);
+      const matchFlag = triad.match?.flag || null;
+      const matchChoice = { label: String(triad.match?.label || 'Join me.'), action: 'vn_intro_recruit', data: { affinityDelta: matchDelta, flag: matchFlag } };
+      const clashChoice = { label: String(triad.clash?.label || 'Join the party.'), action: 'vn_intro_recruit', data: { affinityDelta: clashDelta } };
+      const deferChoice = { label: String(triad.defer?.label || 'Not right now.'), action: 'vn_intro_defer', data: { flag: deferFlag } };
+      const matchFirst = (typeof triad.matchFirst === 'boolean') ? triad.matchFirst : true;
+      const choices = matchFirst ? [ matchChoice, clashChoice, deferChoice ] : [ clashChoice, matchChoice, deferChoice ];
+      setOverlayDialog(node.text || '', choices);
+      return;
+    }
+  } catch {}
   // Filter choices by optional requirements (affinity and/or flags)
   const rawChoices = node.choices || [];
   const filtered = [];
@@ -171,6 +194,75 @@ export function selectChoice(index) {
   const { tree } = runtime.activeDialog;
   const node = tree.nodes[runtime.activeDialog.nodeId];
   if (!node || !node.choices) return;
+  // Special handling: if this is a companion intro node with a temperament triad,
+  // rebuild the same triad choices used in renderCurrentNode so indices match.
+  try {
+    const nameKey = String(runtime?.activeNpc?.name || '').toLowerCase();
+    const isIntro = (runtime.activeDialog.nodeId === 'intro');
+    const triad = (isIntro && nameKey) ? (introTriads[nameKey] || null) : null;
+    if (triad) {
+      const deferFlag = `${nameKey}_intro_deferred`;
+      // Resolve deltas with temperament fallbacks
+      const tempKey = companionTemperaments[nameKey] || null;
+      const profile = tempKey ? temperamentProfiles[tempKey] : null;
+      let matchDelta = (typeof triad.match?.delta === 'number') ? triad.match.delta : (profile ? (profile.introMatch ?? 0.3) : 0.3);
+      if (!(matchDelta > 0)) matchDelta = Math.max(0.2, (profile ? (profile.introMatch ?? 0.3) : 0.3));
+      let clashDelta = (typeof triad.clash?.delta === 'number') ? triad.clash.delta : (profile ? (profile.introClash ?? 0) : 0);
+      const matchFlag = triad.match?.flag || null;
+      const matchChoice = { label: String(triad.match?.label || 'Join me.'), action: 'vn_intro_recruit', data: { affinityDelta: matchDelta, flag: matchFlag } };
+      const clashChoice = { label: String(triad.clash?.label || 'Join the party.'), action: 'vn_intro_recruit', data: { affinityDelta: clashDelta } };
+      const deferChoice = { label: String(triad.defer?.label || 'Not right now.'), action: 'vn_intro_defer', data: { flag: deferFlag } };
+      const matchFirst = (typeof triad.matchFirst === 'boolean') ? triad.matchFirst : true;
+      const triadChoices = matchFirst ? [ matchChoice, clashChoice, deferChoice ] : [ clashChoice, matchChoice, deferChoice ];
+      const choice = triadChoices[index];
+      if (choice) {
+        // Manually handle as if it were a standard choice
+        if (choice.action === 'vn_intro_recruit') {
+          // Reuse the handler below
+          const delta = (typeof choice?.data?.affinityDelta === 'number') ? choice.data.affinityDelta : 0;
+          const flag = (choice?.data?.flag) ? String(choice.data.flag) : '';
+          if (delta !== 0 || flag) {
+            handleAffinityAdd({ target: 'active', amount: delta, flag: flag || undefined });
+          }
+          const npc = runtime.activeNpc;
+          if (npc) {
+            if (companions.length >= 3) {
+              const choices = companions.map((c, i) => ({ label: `Replace ${c.name || ('Companion ' + (i+1))}`, action: 'replace_companion', data: i }));
+              choices.push({ label: 'I changed my mine, wait here.', action: 'end' });
+              startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
+              return;
+            }
+            spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+            const idx = npcs.indexOf(npc);
+            if (idx !== -1) npcs.splice(idx, 1);
+            updatePartyUI(companions);
+            const joinMsg = `${npc.name || 'Companion'} joined your party!`;
+            const delay = (delta !== 0) ? 900 : 0;
+            if (delay > 0) setTimeout(() => { try { showBanner(joinMsg); } catch {} }, delay);
+            else showBanner(joinMsg);
+            try {
+              const nm = String(npc.name || '').toLowerCase();
+              const id = String(npc.dialogId || '').toLowerCase();
+              if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
+              playSfx('partyJoin');
+              if (!runtime.questFlags) runtime.questFlags = {};
+              if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
+                runtime.questFlags['tutorial_save_canopy_done'] = true;
+                runtime.questFlags['tutorial_save_canopy'] = false;
+                hideBanner();
+              }
+            } catch {}
+          }
+          endDialog(); exitChat(runtime); return;
+        }
+        if (choice.action === 'vn_intro_defer') {
+          try { if (choice?.data?.flag) handleSetFlag({ key: String(choice.data.flag) }); } catch {}
+          endDialog(); exitChat(runtime); return;
+        }
+      }
+      // If out-of-range or unrecognized, fall through to normal flow
+    }
+  } catch {}
   // Apply the same filter as render to maintain index mapping
   const rawChoices = node.choices || [];
   const choices = [];
@@ -183,6 +275,52 @@ export function selectChoice(index) {
   if (choice.action === 'affinity_add') { handleAffinityAdd(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
   if (choice.action === 'start_quest') { handleStartQuest(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
   if (choice.action === 'set_flag') { handleSetFlag(choice.data); if (!choice.next) { endDialog(); exitChat(runtime); } else { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); } return; }
+  // VN intro helper: apply optional affinity, then recruit the active NPC
+  if (choice.action === 'vn_intro_recruit') {
+    try {
+      const delta = (typeof choice?.data?.affinityDelta === 'number') ? choice.data.affinityDelta : 0;
+      const flag = (choice?.data?.flag) ? String(choice.data.flag) : '';
+      if (delta !== 0 || flag) {
+        handleAffinityAdd({ target: 'active', amount: delta, flag: flag || undefined });
+      }
+    } catch {}
+    // Fall through to recruitment logic mirroring 'join_party'
+    const npc = runtime.activeNpc;
+    if (npc) {
+      if (companions.length >= 3) {
+        const choices = companions.map((c, i) => ({ label: `Replace ${c.name || ('Companion ' + (i+1))}`, action: 'replace_companion', data: i }));
+        choices.push({ label: 'I changed my mine, wait here.', action: 'end' });
+        startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
+        return;
+      }
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+      const idx = npcs.indexOf(npc);
+      if (idx !== -1) npcs.splice(idx, 1);
+      updatePartyUI(companions);
+      const delta = (typeof choice?.data?.affinityDelta === 'number') ? choice.data.affinityDelta : 0;
+      const joinMsg = `${npc.name || 'Companion'} joined your party!`;
+      const delay = (delta !== 0) ? 900 : 0;
+      if (delay > 0) setTimeout(() => { try { showBanner(joinMsg); } catch {} }, delay);
+      else showBanner(joinMsg);
+      try {
+        const nm = String(npc.name || '').toLowerCase();
+        const id = String(npc.dialogId || '').toLowerCase();
+        if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
+        playSfx('partyJoin');
+        if (!runtime.questFlags) runtime.questFlags = {};
+        if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
+          runtime.questFlags['tutorial_save_canopy_done'] = true;
+          runtime.questFlags['tutorial_save_canopy'] = false;
+          hideBanner();
+        }
+      } catch {}
+    }
+    endDialog(); exitChat(runtime); return;
+  }
+  if (choice.action === 'vn_intro_defer') {
+    try { if (choice?.data?.flag) handleSetFlag({ key: String(choice.data.flag) }); } catch {}
+    endDialog(); exitChat(runtime); return;
+  }
   if (choice.action === 'join_party') {
     const npc = runtime.activeNpc;
     if (npc) {
@@ -895,10 +1033,6 @@ function handleStartQuest(data) {
 
 // Inventory menus
 export function startInventoryMenu() {
-  try {
-    if (runtime?.questFlags) runtime.questFlags['tutorial_inv_equip_torch'] = false;
-    hideBanner();
-  } catch {}
   // Open Player inventory directly
   openInventoryMenu('player');
 }
@@ -1247,9 +1381,16 @@ function doEquip(actorTag, slot, index, itemId) {
     // Tutorial: after equipping a torch, prompt to find a weapon and mark the sword chest
     try {
       if (!runtime.questFlags) runtime.questFlags = {};
+      // Clear the torch equip tutorial banner now that a torch is equipped
+      if (runtime.questFlags['tutorial_inv_equip_torch']) {
+        runtime.questFlags['tutorial_inv_equip_torch'] = false;
+        try { hideBanner(); } catch {}
+      }
       if (!runtime.questFlags['tutorial_find_sword_done'] && !runtime.questFlags['tutorial_find_sword']) {
-        // Enable the top-of-screen quest hint and minimap marker; no extra persistent banner needed
+        // Enable the top-of-screen quest hint and minimap marker
         runtime.questFlags['tutorial_find_sword'] = true;
+        // Persistent banner: prompt to find a weapon chest
+        try { showPersistentBanner('You need a weapon! Find a nearby chest'); } catch {}
       }
     } catch {}
   } else {

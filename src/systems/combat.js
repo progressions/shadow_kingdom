@@ -124,6 +124,7 @@ export function handleAttacks(dt) {
         let finalDmg = dmg;
         // Oyin (swapped): mark weakness (+1 dmg) when close
         if (hasOyin) {
+          const px = player.x + player.w/2, py = player.y + player.h/2;
           const dxm = ex - px, dym = ey - py;
           if ((dxm*dxm + dym*dym) <= (48*48)) finalDmg += 1;
         }

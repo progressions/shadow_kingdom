@@ -37,12 +37,12 @@ function startIntroScene() {
       runtime.questFlags['intro_scene_done'] = true;
       const canopy = npcs.find(n => (n?.name || '').toLowerCase().includes('canopy')) || null;
       const canopyIntroActor = canopy
-        ? { name: 'Canopy', x: canopy.x, y: canopy.y, w: canopy.w, h: canopy.h, portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' }
-        : { name: 'Canopy', portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4' };
+        ? { name: 'Canopy', x: canopy.x, y: canopy.y, w: canopy.w, h: canopy.h, portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4', vnOnSight: { lock: true } }
+        : { name: 'Canopy', portraitSrc: 'assets/portraits/level01/Canopy/Canopy scared.mp4', vnOnSight: { lock: true } };
       const lines = [
         { actor: null, text: 'You jolt awake. The desk is gone. The classroom is gone. Your cheek still remembers wood grain, but the air smells like pine and iron. It\'s dark between the trees—and your hand is wrapped around a torch, cold and unlit.' },
         { actor: null, text: 'The grove around you is torn—scuffed earth, snapped reeds, a smear of blood. You look down: your clothes aren\'t yours. Native garb. Sturdy boots. A knife scar on the belt.' },
-        { actor: canopyIntroActor, text: 'Off in the distance, a blonde girl struggles against a soldier.', pan: true },
+        { actor: canopyIntroActor, text: 'Off in the distance, a blonde girl struggles against bandits.', pan: true },
       ];
       // Show a persistent top banner hint to open inventory and equip a torch until the player opens it
       try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['tutorial_inv_equip_torch'] = true; showPersistentBanner('Press I to open Inventory and equip a torch'); } catch {}

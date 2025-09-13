@@ -603,8 +603,16 @@ export function showBanner(text, durationMs = 1800) {
   if (!bannerEl) return;
   bannerEl.textContent = text;
   bannerEl.classList.add('show');
+  // Overlay temporary banner, then restore persistent banner if one is active
+  const hadPersistent = !!(runtime && runtime._persistentBannerActive && runtime._persistentBannerText);
   window.clearTimeout(showBanner._t);
   showBanner._t = window.setTimeout(() => {
+    if (hadPersistent && runtime && runtime._persistentBannerActive && runtime._persistentBannerText) {
+      // Restore the persistent banner text and keep it visible
+      try { bannerEl.textContent = runtime._persistentBannerText; } catch {}
+      showBanner._t = null;
+      return;
+    }
     bannerEl.classList.remove('show');
   }, durationMs);
 }
@@ -612,6 +620,10 @@ export function showBanner(text, durationMs = 1800) {
 // Persistent banner helpers (stay until explicitly hidden)
 export function showPersistentBanner(text) {
   if (!bannerEl) return;
+  if (runtime) {
+    runtime._persistentBannerActive = true;
+    runtime._persistentBannerText = text || '';
+  }
   bannerEl.textContent = text;
   bannerEl.classList.add('show');
   window.clearTimeout(showBanner._t);
@@ -620,6 +632,7 @@ export function showPersistentBanner(text) {
 export function hideBanner() {
   if (!bannerEl) return;
   bannerEl.classList.remove('show');
+  if (runtime) { runtime._persistentBannerActive = false; runtime._persistentBannerText = ''; }
   window.clearTimeout(showBanner._t);
   showBanner._t = null;
 }

@@ -10,7 +10,23 @@ import { sampleFlowDirAt } from './pathfinding.js';
 // Cached offscreen for sprite outlines
 let _olCan = null, _olCtx = null, _olW = 0, _olH = 0;
 
+// Defensive: ensure a value is a valid CanvasImageSource for drawImage
+function canDrawImage(img) {
+  if (!img) return false;
+  try {
+    const tag = (img.tagName || '').toLowerCase();
+    if (tag === 'img' || tag === 'canvas' || tag === 'video' || tag === 'svgimageelement') return true;
+  } catch {}
+  try { if (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) return true; } catch {}
+  try { if (typeof OffscreenCanvas !== 'undefined' && img instanceof OffscreenCanvas) return true; } catch {}
+  try { if (typeof SVGImageElement !== 'undefined' && img instanceof SVGImageElement) return true; } catch {}
+  // Fallback heuristic: looks like a canvas-like object
+  if (typeof img.width === 'number' && typeof img.height === 'number') return true;
+  return false;
+}
+
 function drawBossOutline(img, sx, sy, sw, sh, dx, dy, dw, dh, color = '#ffd166') {
+  if (!canDrawImage(img)) return;
   // Ensure offscreen of correct size
   if (!_olCan || _olW !== dw || _olH !== dh) {
     _olCan = document.createElement('canvas');
@@ -257,7 +273,7 @@ export function render(terrainBitmap, obstacles) {
   });
   for (const c of companions) drawables.push({
     x: c.x, y: c.y, w: c.w, h: c.h,
-    dir: c.dir, frame: c.animFrame, sheet: c.sheet,
+    dir: c.dir, frame: c.animFrame, sheet: c.sheet || npcSheet,
     spriteId: c.spriteId || null, spriteRef: c, spriteScale: c.spriteScale || 1,
   });
   for (const e of enemies) if (e.hp > 0) drawables.push({
@@ -359,9 +375,11 @@ export function render(terrainBitmap, obstacles) {
       const destH = SPRITE_SIZE * scale;
       let dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
       let dy = Math.round(d.y - (destH - d.h) - camera.y);
+      // Choose a safe source image if the provided sheet is missing/invalid
+      const srcSheet = canDrawImage(d.sheet) ? d.sheet : (d.isPlayer ? playerSheet : enemySheet || npcSheet);
       // Boss outline (gold) around sprite
-      if (d.spriteRef && String(d.spriteRef.kind).toLowerCase() === 'boss') {
-        drawBossOutline(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH, '#ffd166');
+      if (d.spriteRef && String(d.spriteRef.kind).toLowerCase() === 'boss' && canDrawImage(srcSheet)) {
+        drawBossOutline(srcSheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH, '#ffd166');
       }
       // Boss telegraph wiggle (legacy sheet path)
       try {
@@ -374,9 +392,9 @@ export function render(terrainBitmap, obstacles) {
       } catch {}
       if (d.isPlayer && player.invulnTimer > 0) {
         const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
-        if (!flicker) ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+        if (!flicker && canDrawImage(srcSheet)) ctx.drawImage(srcSheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
       } else {
-        ctx.drawImage(d.sheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+        if (canDrawImage(srcSheet)) ctx.drawImage(srcSheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
       }
     }
   }

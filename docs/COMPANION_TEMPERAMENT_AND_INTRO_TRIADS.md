@@ -33,11 +33,20 @@ Notes
 - Practical: Varabella
 - Exacting: Yorna, Fana
 
-## First‑Meet VN “Triads” (per companion)
-Each first‑sight VN presents three choices:
+## Talk Intro “Triads” (per companion)
+When you explicitly talk to a companion, their intro node presents exactly three choices:
 - Match (aligned with intro; recruits; grants affinity by temperament/override)
 - Clash (respectful but off‑tone; recruits; grants 0 or negative by temperament/override)
-- Defer (short denial; no affinity change; marks intro seen; recruitment remains via normal talk)
+- Defer (short denial; no affinity change; closes conversation)
+
+VN-on-sight behavior
+- First‑sight VN intros are narrative only and never recruit; they show a single “Continue”.
+- This includes the opening Canopy scene and any other vnOnSight sequences.
+
+Ordering
+- Denial is always last.
+- The position of Match/Clash is hard‑coded per companion (no runtime shuffling).
+- Use `matchFirst: true|false` in `introTriads[<key>]` to control whether Match appears before Clash for that companion.
 
 Implementation notes
 - Use `introTexts[<key>]` for VN text body.
@@ -46,61 +55,73 @@ Implementation notes
 
 ### Per‑Character Triads (lines + deltas)
 - Canopy (Nurturing) — +0.3 / 0
+  - Order: Match, Clash, Defer
   - Match: “Let’s find your sister—walk with me.”
   - Clash: “I could use another pair of fighting hands—join up.”
   - Defer: “We’ll talk later, Canopy.”
 
 - Yorna (Exacting) — +0.2 / −0.15
+  - Order: Clash, Match, Defer
   - Match: “We take the key, drop Vast—fall in.”
   - Clash: “Hang back and patch me up, alright?”
   - Defer: “Not now, Yorna.”
 
 - Hola (Nurturing) — +0.3 / 0
+  - Order: Match, Clash, Defer
   - Match: “Stay close; call the breeze—we’ll get the key.”
   - Clash: “Frontline with me—we need a brawler.”
   - Defer: “Another time, Hola.”
 
 - Oyin (Steady) — +0.3 / −0.05
+  - Order: Match, Clash, Defer
   - Match: “Walk with me—learn as we go.”
   - Clash: “I need a seasoned striker right now.”
   - Defer: “Let’s talk later, Oyin.”
 
 - Twil (Playful) — +0.3 / −0.1
+  - Order: Clash, Match, Defer
   - Match: “Read the ground and call the lanes—join me.”
   - Clash: “Skip the scouting—we just need brute force.”
   - Defer: “Not now, Twil.”
 
-- Tin (Playful) — +0.3 / 0
+- Tin (Playful) — +0.3 / −0.1
+  - Order: Match, Clash, Defer
   - Match: “Set the beat—keep our hands moving.”
   - Clash: “We need slow and steady, not fast.”
   - Defer: “Later, Tin.”
 
 - Nellis (Steady) — +0.3 / −0.1
+  - Order: Clash, Match, Defer
   - Match: “Keep the line; I’ll lead—you hold.”
   - Clash: “I’m chasing speed and chaos today.”
   - Defer: “Hold that thought, Nellis.”
 
 - Urn (Nurturing) — +0.4 / 0
+  - Order: Match, Clash, Defer
   - Match: “Let’s lift the streets—walk with me.”
   - Clash: “I need a hard hitter, not a cheer.”
   - Defer: “We’ll come back to this, Urn.”
 
 - Varabella (Practical) — +0.4 (override) / −0.15
+  - Order: Clash, Match, Defer
   - Match: “I want sharp eyes—call angles and cover.”
   - Clash: “Save the angles; just swing hard.”
   - Defer: “Later, Varabella.”
 
 - Cowsill (Playful/Steady lean) — +0.3 / −0.05
+  - Order: Match, Clash, Defer
   - Match: “Be my strike partner—let’s double every hit.”
   - Clash: “We actually need a healer more than damage.”
   - Defer: “Another time, Cowsill.”
 
 - Fana (Exacting) — +0.6 / −0.1
+  - Order: Clash, Match, Defer
   - Match: “You’re free—burn what clings. Walk with me.”
   - Clash: “We need cold precision, not heat.”
   - Defer: “Rest first, Fana.”
 
 - Snek (Nurturing lite) — +0.2 / 0
+  - Order: Match, Clash, Defer
   - Match: “Coil close and slow our foes.”
   - Clash: “I was hoping for… thumbs.”
   - Defer: “Curl up for now, Snek.”
@@ -164,4 +185,3 @@ Implementation notes
 - Keep Varabella’s +0.4 override under Practical, or normalize to +0.3?
 - Apply bond gate shifts globally by temperament, or only for specific bond nodes?
 - Localizations: confirm brevity targets for triad labels (< ~60 chars) across languages.
-

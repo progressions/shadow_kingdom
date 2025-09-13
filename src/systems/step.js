@@ -582,24 +582,30 @@ export function step(dt) {
     camera.y = Math.round(ny);
     camera.x = Math.max(0, Math.min(world.w - camera.w, camera.x));
     camera.y = Math.max(0, Math.min(world.h - camera.h, camera.y));
-    if (p.t >= p.dur) {
-      runtime.cameraPan = null;
-      if (runtime.pendingIntro) {
-        const { actor, text } = runtime.pendingIntro;
-        runtime.pendingIntro = null;
-        try {
-          // Ensure any full-screen fade is cleared before opening VN
-          try { clearFadeOverlay(); } catch {}
-          const isEnemy = (typeof actor?.touchDamage === 'number');
-          playSfx(isEnemy ? 'vnIntroEnemy' : 'vnIntroNpc');
-        } catch {}
-        // Use Continue choice if there are more queued VN entries
+      if (p.t >= p.dur) {
+        runtime.cameraPan = null;
+        if (runtime.pendingIntro) {
+          const { actor, text } = runtime.pendingIntro;
+          runtime.pendingIntro = null;
+          try {
+            // Ensure any full-screen fade is cleared before opening VN
+            try { clearFadeOverlay(); } catch {}
+            const isEnemy = (typeof actor?.touchDamage === 'number');
+            playSfx(isEnemy ? 'vnIntroEnemy' : 'vnIntroNpc');
+          } catch {}
+        // Build choices: for companions with intro triads, show Match/Clash/Defer; else default to Continue (if queued)
+        let choices = [];
+        const isEnemy = (typeof actor?.touchDamage === 'number');
         const more = Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0;
-        const choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
+        choices = more ? [ { label: 'Continue', action: 'vn_continue' } ] : [];
+        // Narrative-only or any companion VN intros should not recruit; always show Continue
+        if (!isEnemy) {
+          choices = [ { label: 'Continue', action: 'vn_continue' } ];
+        }
         startPrompt(actor, text, choices);
       }
-    }
-    return; // halt simulation during pan
+      }
+      return; // halt simulation during pan
   }
   // Cinematic pause (e.g., boss phase transition): hold simulation; after pause, pan then show VN
   if ((runtime.scenePauseTimer || 0) > 0) {
@@ -1363,17 +1369,22 @@ export function step(dt) {
         // Boss melee telegraph: brief wind-up before the hit
         const isBoss = String(e.kind||'').toLowerCase() === 'boss';
         if (isBoss) {
+          // Count down active telegraph
           e._meleeTele = Math.max(0, (e._meleeTele || 0) - dt);
-          if ((e._meleeTele || 0) <= 0 && player.invulnTimer <= 0) {
-            e._meleeTele = (AI_TUNING.boss?.melee?.telegraphSec) || 0.18;
-            try { playSfx('bossTelegraph'); } catch {}
-            // Delay actual damage until telegraph expires
-            continue;
-          }
           if ((e._meleeTele || 0) > 0) {
-            // Still telegraphing; skip applying damage this frame
+            // Still telegraphing; wait until timer elapses
             continue;
           }
+          // If not currently telegraphing and not armed, start a new telegraph
+          if (!e._meleeArmed) {
+            // Start telegraph; damage will be applied when this elapses
+            e._meleeTele = (AI_TUNING.boss?.melee?.telegraphSec) || 0.18;
+            e._meleeArmed = true;
+            try { playSfx('bossTelegraph'); } catch {}
+            continue;
+          }
+          // Telegraph finished and attack is armed — proceed to damage this frame
+          e._meleeArmed = false;
         }
         // Overworld realtime damage on contact; apply armor DR with chip/crit/AP
         if (player.invulnTimer <= 0) {
@@ -1412,6 +1423,10 @@ export function step(dt) {
             const chip = Math.max(def.chipMin, Math.min(def.chipMax, chipBase));
             if (taken > 0 && taken < chip) taken = chip;
             if (taken === 0 && chip > 0) taken = chip; // allow chip even if DR fully blocked
+          }
+          // Bosses: ensure a tiny floor so they don't hard-zero against early armor
+          if (kind === 'boss' && taken === 0) {
+            taken = 1; // minimal chip for bosses on contact
           }
           if (runtime.godMode) taken = 0;
           if (runtime.shieldActive && taken > 0) {
