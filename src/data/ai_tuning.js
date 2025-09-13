@@ -24,6 +24,7 @@ export const AI_TUNING = {
     // Pursuit/steering
     engageDistPx: 240, // clamp pursuit steering within this distance
     steering: { hazardWeightMul: 0.6, obstaclePenaltyMul: 0.6 },
+    baseSpeedMul: 1.20,
     // Telegraph timings (visual wind-up before the attack fires)
     melee: { telegraphSec: 0.18 },
     ranged: { telegraphSec: 0.16 },
@@ -37,6 +38,7 @@ export const AI_TUNING = {
     advance:{ triggerHits: 2, windowSec: 0.8, durationSec: 0.6, speedMul: 1.35, kbMul: 0.20, dashCooldownCapSec: 5.0 },
     engageDistPx: 200,
     steering: { hazardWeightMul: 0.8, obstaclePenaltyMul: 0.85 },
+    baseSpeedMul: 1.15,
   },
   mook: {
     zigzag: { weight: 0.0, commitSec: 0.0 },

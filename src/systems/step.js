@@ -1199,7 +1199,10 @@ export function step(dt) {
       const dashTeleMul = (e._dashTelegraph && e._dashTelegraph > 0) ? 0.4 : 1; // slow slightly during telegraph
       const dashMult = ((e._dashTimer && e._dashTimer > 0) && (!e._dashTelegraph || e._dashTelegraph <= 0)) ? (e._dashSpeedMult || 1) : 1;
       const advMult = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceSpeedMul || 1) : 1;
-      const spdMul = spdBoost * Math.max(jukeMult, dashMult) * dashTeleMul * advMult;
+      // Base class speed multiplier (tunable via AI_TUNING)
+      const role = String(e.kind||'mook').toLowerCase();
+      const baseClassMul = (AI_TUNING[role]?.baseSpeedMul) || 1;
+      const spdMul = spdBoost * Math.max(jukeMult, dashMult) * dashTeleMul * advMult * baseClassMul;
       moveWithCollision(e, best.x * e.speed * spdMul * mul * dt, best.y * e.speed * spdMul * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
