@@ -7,6 +7,7 @@ import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
 import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, CHEST_LOOT_L3, rollFromTable, itemById } from '../data/loot.js';
 import { spawnProjectile } from '../engine/state.js';
+import { markFlowDirty } from '../engine/pathfinding.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -365,6 +366,7 @@ function tryUnlockGate(hb) {
       const baseMsg = `Used ${itm.name || 'Key'} to open ${gateName}`;
       const msg = matched ? (clearSuffix ? `${baseMsg} — ${clearSuffix}` : `${baseMsg} — Quest updated`) : baseMsg;
       showBanner(msg);
+      try { markFlowDirty(); } catch {}
       // Consume the item if configured
       if (shouldConsume) {
         try {

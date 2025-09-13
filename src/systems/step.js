@@ -1,5 +1,6 @@
 import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy, addItemToInventory, autoEquipIfBetter, normalizeInventory } from '../engine/state.js';
 import { rebuildLighting } from '../engine/lighting.js';
+import { rebuildFlowField, sampleFlowDirAt } from '../engine/pathfinding.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
@@ -16,6 +17,7 @@ import { exitChat } from '../engine/ui.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges, showMusicTheme } from '../engine/ui.js';
 import { ENEMY_LOOT, ENEMY_LOOT_L2, ENEMY_LOOT_L3, rollFromTable, itemById, BREAKABLE_LOOT } from '../data/loot.js';
+import { AI_TUNING } from '../data/ai_tuning.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -237,6 +239,8 @@ export function step(dt) {
 
   // Rebuild lighting grid (coarse, tile-based). Throttle lightly (~60ms) to reduce cost.
   try { rebuildLighting(60); } catch {}
+  // Rebuild pathfinding flow field on a throttle; dirty on player tile change or gate toggles
+  try { rebuildFlowField(200); } catch {}
 
   // --- Projectiles tick ---
   if (Array.isArray(projectiles) && projectiles.length) {
@@ -348,6 +352,20 @@ export function step(dt) {
               import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 10, `${Number(Math.max(1, finalDmg)).toFixed(2)}`, { color: '#eaeaea', life: 0.6 }));
               try { playSfx('hit'); } catch {}
             }
+            // Phase 1: Brace on projectile hit for bosses/featured (knockback reduction + temp projectile DR + slight slow)
+            try {
+              const kind = String(e.kind || 'mook').toLowerCase();
+              if (kind === 'boss' || kind === 'featured') {
+                const TT = AI_TUNING[kind];
+                const dur = TT.brace.durationSec;
+                const addDr = TT.brace.projDr;
+                e._braceTimer = Math.max(e._braceTimer || 0, dur);
+                e._braceKbMul = TT.brace.kbMul;
+                e._braceSpeedMul = TT.brace.speedMul;
+                e._tempDr = Math.max(e._tempDr || 0, addDr);
+                e._tempDrTimer = Math.max(e._tempDrTimer || 0, dur);
+              }
+            } catch {}
             // Twil (swapped): fire arrows kindle quest progress for Light the Fuse
             try {
               const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
@@ -806,8 +824,12 @@ export function step(dt) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
-      moveWithCollision(e, e.knockbackX * dt * mul, e.knockbackY * dt * mul, solidsForEnemy);
+      const braceMul = (e._braceTimer && e._braceTimer > 0) ? (e._braceSpeedMul || 1) : 1;
+      const kbBrace = (e._braceTimer && e._braceTimer > 0) ? (e._braceKbMul || 1) : 1;
+      const kbDash = (e._dashTimer && e._dashTimer > 0 && (!e._dashTelegraph || e._dashTelegraph <= 0)) ? (e._dashKbMul || 1) : 1;
+      const kbMul = Math.min(kbBrace, kbDash);
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul;
+      moveWithCollision(e, e.knockbackX * dt * mul * kbMul, e.knockbackY * dt * mul * kbMul, solidsForEnemy);
       e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
     } else {
       e.knockbackX = 0; e.knockbackY = 0;
@@ -821,8 +843,190 @@ export function step(dt) {
       const aggroR2 = aggroR * aggroR;
       let dx, dy;
       if (dist2 <= aggroR2) {
-        // Chase player
+        // Chase player (base heading)
         const d = Math.hypot(ddx, ddy) || 1; dx = ddx / d; dy = ddy / d;
+        // Flow-field base guidance (prefer downhill neighbor when available)
+        try {
+          const dir = sampleFlowDirAt(ex, ey);
+          if (dir && (dir.x !== 0 || dir.y !== 0)) { dx = dir.x; dy = dir.y; }
+        } catch {}
+        const kind = String(e.kind || 'mook').toLowerCase();
+        const elite = (kind === 'boss' || kind === 'featured');
+        // Ranged awareness helpers
+        const nowSec = ((performance && performance.now) ? performance.now() : Date.now()) / 1000;
+        const eq = (player && player.inventory && player.inventory.equipped) ? player.inventory.equipped : {};
+        const hasRanged = !!(eq && eq.rightHand && eq.rightHand.ranged);
+        const firedRecently = (typeof player.lastRanged === 'number') && ((nowSec - player.lastRanged) <= (AI_TUNING.global.rangedAwareRecentSec || 0.8));
+        const rangedAware = hasRanged || firedRecently;
+
+        // Phase 3: Gap-closer dash with telegraph (elite only)
+        try {
+          if (elite) {
+            e._dashCd = Math.max(0, (e._dashCd || 0) - dt);
+            if ((e._dashTelegraph || 0) > 0) {
+              e._dashTelegraph = Math.max(0, (e._dashTelegraph || 0) - dt);
+              // Slight slow during telegraph (hold heading but reduced speed via mul below)
+            } else if ((e._dashTimer || 0) > 0) {
+              e._dashTimer = Math.max(0, (e._dashTimer || 0) - dt);
+              // Lock heading to dash direction
+              if (typeof e._dashDirX === 'number' && typeof e._dashDirY === 'number') { dx = e._dashDirX; dy = e._dashDirY; }
+            } else if ((e._dashCd || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0 && (e._braceTimer || 0) <= 0) {
+              // Conditions to start dash: mid-range and LOS clear
+              const distPx = d;
+              const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+              const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+              let losClear = true;
+              for (const o of obstacles) {
+                if (!o || !o.blocksAttacks) continue;
+                if (o.type === 'gate' && o.locked === false) continue;
+                if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losClear = false; break; }
+              }
+              if (losClear && distPx >= (AI_TUNING.global.dash.minDist || 90) && distPx <= (AI_TUNING.global.dash.maxDist || 180)) {
+                // Start telegraph → dash
+                e._dashTelegraph = AI_TUNING[kind].dash.telegraphSec;
+                e._dashTimer = AI_TUNING[kind].dash.durationSec; // will count down after telegraph finishes
+                e._dashDirX = dx; e._dashDirY = dy;
+                const cdBase = AI_TUNING[kind].dash.cooldownBaseSec;
+                const amp = (AI_TUNING[kind].dash.cooldownJitterSec || 0);
+                const jitter = (Math.random()*2*amp - amp);
+                e._dashCd = Math.max(2.0, cdBase + jitter);
+                // Knockback resistance during dash
+                e._dashKbMul = AI_TUNING[kind].dash.kbMul;
+                // Temporary speed multiplier applied below via jukeMult pipeline
+                e._dashSpeedMult = AI_TUNING[kind].dash.speedMul;
+              }
+            }
+            // If actively dashing, override movement blend multiplier
+            if ((e._dashTimer || 0) > 0 && (e._dashTelegraph || 0) <= 0) {
+              e._jukeMult = e._dashSpeedMult || e._jukeMult || 1;
+            }
+          }
+        } catch {}
+
+        // Phase 2: Juke on incoming player projectile (elite only)
+        try {
+          if (elite) {
+            e._jukeCd = Math.max(0, (e._jukeCd || 0) - dt);
+            e._jukeTimer = Math.max(0, (e._jukeTimer || 0) - dt);
+            if ((e._jukeTimer || 0) <= 0 && (e._jukeCd || 0) <= 0) {
+              // Scan a few player projectiles and detect near path intersection
+              let trigger = null;
+              const exC = e.x + e.w/2, eyC = e.y + e.h/2;
+              for (let i = 0, seen = 0; i < projectiles.length && seen < (AI_TUNING.global.juke.scanMax || 24); i++) {
+                const p = projectiles[i]; if (!p || p.team !== 'player') continue; seen++;
+                const vx = p.vx, vy = p.vy; const sp = Math.hypot(vx, vy) || 1;
+                const nvx = vx / sp, nvy = vy / sp;
+                const rx = exC - (p.x + p.w/2), ry = eyC - (p.y + p.h/2);
+                const ahead = rx*nvx + ry*nvy; // distance along projectile dir (px)
+                if (ahead < 0 || ahead > (AI_TUNING.global.juke.nearAheadPx || 120)) continue; // only if enemy is in front within range
+                const lateral = Math.abs(rx*nvy - ry*nvx); // perpendicular distance (px)
+                const rad = Math.max(8, Math.min(14, Math.max(e.w, e.h)/2));
+                if (lateral <= rad + (AI_TUNING.global.juke.lateralPadPx || 6)) { trigger = { nvx, nvy, rx, ry }; break; }
+              }
+              if (trigger) {
+                const TT = AI_TUNING[kind];
+                const chance = TT.juke.chance;
+                if (Math.random() < chance) {
+                  const dur = TT.juke.durationSec;
+                  const mult = TT.juke.speedMul;
+                  // Choose perpendicular direction away from the projectile path
+                  const cross = trigger.rx*trigger.nvy - trigger.ry*trigger.nvx;
+                  const sign = (cross >= 0) ? 1 : -1;
+                  e._jukeDirX = (-trigger.nvy) * sign;
+                  e._jukeDirY = ( trigger.nvx) * sign;
+                  const nrm = Math.hypot(e._jukeDirX, e._jukeDirY) || 1;
+                  e._jukeDirX /= nrm; e._jukeDirY /= nrm;
+                  e._jukeTimer = dur;
+                  e._jukeMult = mult;
+                  e._jukeCd = TT.juke.cooldownSec;
+                }
+              }
+            }
+            if ((e._jukeTimer || 0) > 0) {
+              dx = e._jukeDirX || dx; dy = e._jukeDirY || dy;
+            }
+          }
+        } catch {}
+
+        // Phase 2: Use Cover — pick a cover corner and commit briefly (elite only)
+        try {
+          if (elite) {
+            e._coverTimer = Math.max(0, (e._coverTimer || 0) - dt);
+            e._coverCd = Math.max(0, (e._coverCd || 0) - dt);
+            const dist = d;
+            // Minimal LOS check helper (center-to-center)
+            const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+            const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+            const losBlocked = (() => {
+              for (const o of obstacles) {
+                if (!o || !o.blocksAttacks) continue;
+                if (o.type === 'gate' && o.locked === false) continue;
+                if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) return true;
+              }
+              return false;
+            })();
+            // Choose new cover target when LOS is clear and player is at range
+            if ((e._coverTimer || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverCd || 0) <= 0 && rangedAware && !losBlocked && dist > (AI_TUNING.global.cover.minDist || 80) && dist < (AI_TUNING.global.cover.maxDist || 260)) {
+              let best = null; let bestScore = Infinity;
+              for (const o of obstacles) {
+                if (!o || !o.blocksAttacks) continue;
+                if (o.type === 'gate' && o.locked === false) continue;
+                // Quick reject by distance to obstacle center
+                const ox = (o.x + o.w/2) - ex2, oy = (o.y + o.h/2) - ey2;
+                const r = (AI_TUNING.global.cover.searchRadius || 160); if ((ox*ox + oy*oy) > (r*r)) continue;
+                // Candidate corners (slightly nudged away from player)
+                const corners = [ [o.x, o.y], [o.x+o.w, o.y], [o.x, o.y+o.h], [o.x+o.w, o.y+o.h] ];
+                for (const c of corners) {
+                  const cx = c[0], cy = c[1];
+                  const dirx = cx - px2, diry = cy - py2;
+                  const len = Math.hypot(dirx, diry) || 1; // push a bit further behind cover
+                  const adjx = cx + (dirx/len) * 6; const adjy = cy + (diry/len) * 6;
+                  // Does this point have cover (segment to player intersects obstacle)?
+                  let covered = false;
+                  if (segmentIntersectsRect(adjx, adjy, px2, py2, o)) covered = true;
+                  if (!covered) continue;
+                  const dxp = adjx - ex2, dyp = adjy - ey2; const dd = Math.hypot(dxp, dyp);
+                  const score = dd + Math.random()*2; // prefer nearer cover; add tiny noise
+                  if (score < bestScore) { bestScore = score; best = { x: adjx, y: adjy }; }
+                }
+              }
+              if (best) {
+                const TT = AI_TUNING[kind];
+                e._coverTarget = best; e._coverTimer = TT.cover.commitSec; e._coverCd = (AI_TUNING.global.cover.cooldown || 0.6); // brief commitment + small cooldown
+              }
+            }
+            if ((e._coverTimer || 0) > 0 && e._coverTarget) {
+              const tx = e._coverTarget.x - ex2, ty = e._coverTarget.y - ey2;
+              const n = Math.hypot(tx, ty) || 1; dx = tx / n; dy = ty / n;
+              // Release early if reached
+              if (Math.hypot(tx, ty) < 8) { e._coverTimer = 0; e._coverTarget = null; }
+            }
+          }
+        } catch {}
+
+        // Phase 1: Zig-zag advance for bosses/featured when player is using ranged
+        try {
+          if (elite) {
+            const dist = d;
+            if (rangedAware && dist >= (AI_TUNING.global.zigzag.minDist || 60) && dist <= (AI_TUNING.global.zigzag.maxDist || 220) && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0) {
+              e._strafeTimer = Math.max(0, (e._strafeTimer || 0) - dt);
+              if ((e._strafeTimer || 0) <= 0) {
+                e._strafeSign = (typeof e._strafeSign === 'number') ? e._strafeSign : (e.avoidSign || 1);
+                e._strafeTimer = AI_TUNING[kind].zigzag.commitSec;
+              }
+              const w = AI_TUNING[kind].zigzag.weight;
+              const tx = -dy * (e._strafeSign || 1);
+              const ty = dx * (e._strafeSign || 1);
+              const nx = dx * (1 - w) + tx * w;
+              const ny = dy * (1 - w) + ty * w;
+              const nm = Math.hypot(nx, ny) || 1;
+              dx = nx / nm; dy = ny / nm;
+            } else {
+              e._strafeTimer = Math.max(0, (e._strafeTimer || 0) - dt);
+            }
+          }
+        } catch {}
+
         e._aggro = true;
       } else {
         // Wander: pick a direction for a short duration, sometimes pause
@@ -844,7 +1048,8 @@ export function step(dt) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
+      const braceMul = (e._braceTimer && e._braceTimer > 0) ? (e._braceSpeedMul || 1) : 1;
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul;
 
       // Hazard avoidance steering: pick a nearby direction with lower hazard exposure
       const baseDir = { x: dx, y: dy };
@@ -891,7 +1096,11 @@ export function step(dt) {
 
       // Temporary enemy speed boost from triggers
       const spdBoost = (e._speedBoostTimer && e._speedBoostTimer > 0) ? (e._speedBoostFactor || 1) : 1;
-      moveWithCollision(e, best.x * e.speed * spdBoost * mul * dt, best.y * e.speed * spdBoost * mul * dt, solidsForEnemy);
+      const jukeMult = (e._jukeTimer && e._jukeTimer > 0) ? (e._jukeMult || 1) : 1;
+      const dashTeleMul = (e._dashTelegraph && e._dashTelegraph > 0) ? 0.4 : 1; // slow slightly during telegraph
+      const dashMult = ((e._dashTimer && e._dashTimer > 0) && (!e._dashTelegraph || e._dashTelegraph <= 0)) ? (e._dashSpeedMult || 1) : 1;
+      const spdMul = spdBoost * Math.max(jukeMult, dashMult) * dashTeleMul;
+      moveWithCollision(e, best.x * e.speed * spdMul * mul * dt, best.y * e.speed * spdMul * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
       if (moved < 0.05) {
@@ -959,6 +1168,9 @@ export function step(dt) {
     e.hitTimer -= dt; if (e.hitTimer < 0) e.hitTimer = 0;
     if (e._gustSlowTimer && e._gustSlowTimer > 0) e._gustSlowTimer = Math.max(0, e._gustSlowTimer - dt);
     if (e._veilSlowTimer && e._veilSlowTimer > 0) e._veilSlowTimer = Math.max(0, e._veilSlowTimer - dt);
+    if (e._braceTimer && e._braceTimer > 0) e._braceTimer = Math.max(0, e._braceTimer - dt);
+    if (e._coverCd && e._coverCd > 0) e._coverCd = Math.max(0, e._coverCd - dt);
+    if (e._dashCd && e._dashCd > 0) e._dashCd = Math.max(0, e._dashCd - dt);
     if (e._burnTimer && e._burnTimer > 0) {
       e._burnTimer = Math.max(0, e._burnTimer - dt);
       const dps = e._burnDps || 0;
@@ -1570,7 +1782,8 @@ export function step(dt) {
             const before = player.hp;
             player.hp = Math.min(player.maxHp, player.hp + healAmt);
             const gained = Math.max(0, player.hp - before);
-            showBanner(`Drank ${picked.name}: +${gained} HP`);
+            const gainedDisp = Math.max(1, Math.ceil(gained));
+            showBanner(`Drank ${picked.name}: +${gainedDisp} HP`);
             playSfx('pickup');
             // small sparkle burst
             for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));

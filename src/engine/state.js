@@ -566,6 +566,8 @@ export const runtime = {
     _h: 0,
     nodes: [], // invisible light nodes: { x, y, level?, radius?, enabled? }
   },
+  // Pathfinding flow field (coarse, tile-based)
+  _flow: { dist: null, w: 0, h: 0, lastBuildAt: 0, lastPlayerTx: -1, lastPlayerTy: -1, dirty: true },
 
 };
 
