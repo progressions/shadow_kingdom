@@ -188,6 +188,8 @@ export function step(dt) {
     else if ((runtime._lowHpTimer || 0) > 0) runtime._lowHpTimer = Math.max(0, runtime._lowHpTimer - dt);
     // Recent-hit timer for triggers that respond to damage taken
     if ((runtime._recentPlayerHitTimer || 0) > 0) runtime._recentPlayerHitTimer = Math.max(0, runtime._recentPlayerHitTimer - dt);
+    // Recent crit timer for crit-reactive triggers
+    if ((runtime._recentPlayerCritTimer || 0) > 0) runtime._recentPlayerCritTimer = Math.max(0, (runtime._recentPlayerCritTimer || 0) - dt);
     // Keep inventory consistent (recover keys accidentally put into equipped, etc.)
     normalizeInventory(player.inventory);
   } catch {}
@@ -2327,9 +2329,10 @@ function applyCompanionAuras(dt) {
   // Include temporary attack speed bonus from triggers (e.g., Urn Cheer)
   buffs.aspd += (runtime.tempAspdBonus || 0);
   buffs.aspd = Math.min(buffs.aspd, COMPANION_BUFF_CAPS.aspd);
-  buffs.crit = Math.min(buffs.crit, COMPANION_BUFF_CAPS.crit || buffs.crit);
+  // Include temporary crit and dash CDR bonuses from triggers, then cap
+  buffs.crit = Math.min(buffs.crit + (runtime.tempCritBonus || 0), COMPANION_BUFF_CAPS.crit || (buffs.crit + (runtime.tempCritBonus || 0)));
   buffs.rangedDR = Math.min(buffs.rangedDR, COMPANION_BUFF_CAPS.rangedDR || buffs.rangedDR);
-  buffs.dashCdr = Math.min(buffs.dashCdr, COMPANION_BUFF_CAPS.dashCdr || buffs.dashCdr);
+  buffs.dashCdr = Math.min(buffs.dashCdr + (runtime.tempDashCdr || 0), COMPANION_BUFF_CAPS.dashCdr || (buffs.dashCdr + (runtime.tempDashCdr || 0)));
   // Cap deflect chance
   if (!runtime.projectileDeflect) runtime.projectileDeflect = { chance: 0, radius: 0 };
   runtime.projectileDeflect.chance = Math.min(runtime.projectileDeflect.chance || 0, COMPANION_BUFF_CAPS.deflect || (runtime.projectileDeflect.chance || 0));
@@ -2361,10 +2364,25 @@ function applyCompanionAuras(dt) {
     runtime._tempAspdTimer = Math.max(0, (runtime._tempAspdTimer || 0) - dt);
     if (runtime._tempAspdTimer === 0) runtime.tempAspdBonus = 0;
   }
+  // Decay temporary crit bonus
+  if ((runtime._tempCritTimer || 0) > 0) {
+    runtime._tempCritTimer = Math.max(0, (runtime._tempCritTimer || 0) - dt);
+    if (runtime._tempCritTimer === 0) runtime.tempCritBonus = 0;
+  }
+  // Decay temporary dash cooldown reduction
+  if ((runtime._tempDashCdrTimer || 0) > 0) {
+    runtime._tempDashCdrTimer = Math.max(0, (runtime._tempDashCdrTimer || 0) - dt);
+    if (runtime._tempDashCdrTimer === 0) runtime.tempDashCdr = 0;
+  }
   // Decay temporary touch DR from triggers (e.g., Nellis Keep the Line)
   if ((runtime._tempTouchDrTimer || 0) > 0) {
     runtime._tempTouchDrTimer = Math.max(0, (runtime._tempTouchDrTimer || 0) - dt);
     if (runtime._tempTouchDrTimer === 0) runtime.tempTouchDr = 0;
+  }
+  // Decay temporary pierce bonus for projectiles
+  if ((runtime._tempPierceTimer || 0) > 0) {
+    runtime._tempPierceTimer = Math.max(0, (runtime._tempPierceTimer || 0) - dt);
+    if (runtime._tempPierceTimer === 0) runtime._tempPierceBonus = 0;
   }
   // Per-enemy slow multiplier for this frame
   for (let ei = 0; ei < enemies.length; ei++) {
@@ -2392,6 +2410,17 @@ function handleCompanionTriggers(dt) {
   cds.varaAngle = Math.max(0, (cds.varaAngle || 0) - dt);
   cds.cowsillStrike = Math.max(0, (cds.cowsillStrike || 0) - dt);
   cds.cowsillDouble = Math.max(0, (cds.cowsillDouble || 0) - dt);
+  // High-affinity new triggers
+  cds.tinOverclock = Math.max(0, (cds.tinOverclock || 0) - dt);
+  cds.tinSymphony = Math.max(0, (cds.tinSymphony || 0) - dt);
+  cds.holaSlipstream = Math.max(0, (cds.holaSlipstream || 0) - dt);
+  cds.holaMaelstrom = Math.max(0, (cds.holaMaelstrom || 0) - dt);
+  cds.urnBeaconSurge = Math.max(0, (cds.urnBeaconSurge || 0) - dt);
+  cds.varaTime = Math.max(0, (cds.varaTime || 0) - dt);
+  cds.nellisPhalanx = Math.max(0, (cds.nellisPhalanx || 0) - dt);
+  cds.twilFlare = Math.max(0, (cds.twilFlare || 0) - dt);
+  cds.snakeVenom = Math.max(0, (cds.snakeVenom || 0) - dt);
+  cds.synergy10 = Math.max(0, (cds.synergy10 || 0) - dt);
 
   // Shield countdown
   if (runtime.shieldActive) {
@@ -2417,6 +2446,7 @@ function handleCompanionTriggers(dt) {
     if ((key === 'urn' || key === 'varabella') && has('urn') && has('varabella')) m *= 1.1;
     return m;
   };
+  const hasAffinity = (key, min) => companions.some(c => (c.name || '').toLowerCase().includes(key) && (c.affinity || 0) >= min);
   // Canopy shield trigger
   if (has('canopy')) {
     const base = companionEffectsByKey.canopy?.triggers?.shield || { hpThresh: 0.4, cooldownSec: 12, durationSec: 6 };
@@ -2488,6 +2518,121 @@ function handleCompanionTriggers(dt) {
           }
         } catch {}
       }
+    }
+  }
+
+  // Tin L8 — Overclock: after Dash Combo, +ASPD and dash CDR for 3s
+  if (hasAffinity('tin', 8)) {
+    const m = multFor('tin');
+    if ((cds.tinOverclock || 0) <= 0 && (runtime._dashComboJustTriggered || false)) {
+      runtime._dashComboJustTriggered = false;
+      const dur = 3 * m;
+      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, 0.25);
+      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, dur);
+      runtime.tempDashCdr = Math.max(runtime.tempDashCdr || 0, 0.3);
+      runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, dur);
+      cds.tinOverclock = 16 / (1 + (m - 1) * 0.5);
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Overclock!', { color: '#9ae6ff', life: 0.8 });
+      try { playSfx('slipstream'); } catch {}
+    }
+  }
+
+  // Tin L10 — Symphony: on Dash Combo, hyper state for 4s (ASPD + crit), reset dash CD
+  if (hasAffinity('tin', 10)) {
+    const m = multFor('tin');
+    if ((cds.tinSymphony || 0) <= 0 && (runtime._dashComboJustTriggered || false)) {
+      runtime._dashComboJustTriggered = false;
+      const dur = 4 * m;
+      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, 0.5);
+      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, dur);
+      runtime.tempCritBonus = Math.max(runtime.tempCritBonus || 0, 0.10);
+      runtime._tempCritTimer = Math.max(runtime._tempCritTimer || 0, dur);
+      runtime._dashCooldown = 0;
+      cds.tinSymphony = 45;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Symphony!', { color: '#ffd166', life: 0.9 });
+      try { playSfx('tumbleUp'); } catch {}
+    }
+  }
+
+  // Hola L8 — Slipstream Field: on dash start, temporary dash CDR boost
+  if (hasAffinity('hola', 8)) {
+    if ((cds.holaSlipstream || 0) <= 0 && (runtime._dashJustStartedAtSec || 0) > 0 && Math.abs((runtime._timeSec||0) - runtime._dashJustStartedAtSec) < 0.05) {
+      runtime.tempDashCdr = Math.max(runtime.tempDashCdr || 0, 0.25);
+      runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, 2.0);
+      cds.holaSlipstream = 12;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Slipstream.', { color: '#9ae6ff', life: 0.7 });
+    }
+  }
+
+  // Nellis L8 — Phalanx: 2+ enemies near → +touchDR for 3s
+  if (hasAffinity('nellis', 8)) {
+    if ((cds.nellisPhalanx || 0) <= 0) {
+      let nearby = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(48*48)) { nearby++; if (nearby>=2) break; } } }
+      if (nearby >= 2) {
+        runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 2);
+        runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 3);
+        cds.nellisPhalanx = 20;
+        spawnFloatText(player.x + player.w/2, player.y - 12, 'Phalanx.', { color: '#8ab4ff', life: 0.8 });
+      }
+    }
+  }
+
+  // Urn L8 — Beacon Surge: low HP or recent hits → pulse heal + +ASPD
+  if (hasAffinity('urn', 8)) {
+    const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
+    let density = 0; for (const e of enemies) { if (e.hp > 0) { const dx = e.x - player.x, dy = e.y - player.y; if ((dx*dx + dy*dy) <= (80*80)) density++; } }
+    if ((cds.urnBeaconSurge || 0) <= 0 && (hpRatio < 0.35 || (runtime._recentPlayerHitTimer||0) > 0) && density >= 2) {
+      player.hp = Math.min(player.maxHp, player.hp + 4);
+      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, 0.10);
+      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, 3.0);
+      cds.urnBeaconSurge = 20;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Beacon Surge!', { color: '#9ae6ff', life: 0.8 });
+      try { playSfx('beacon'); } catch {}
+    }
+  }
+
+  // Varabella L10 — Time Dilation: on crit or Dash Combo + density → slow enemies; boost shots
+  if (hasAffinity('varabella', 10)) {
+    const density = enemies.reduce((n,e)=> n + (e.hp>0 && ((e.x-player.x)**2 + (e.y-player.y)**2) <= (120*120) ? 1 : 0), 0);
+    const critRecently = (runtime._recentPlayerCritTimer || 0) > 0;
+    const dashCombo = !!(runtime._dashComboJustTriggered);
+    if ((cds.varaTime || 0) <= 0 && density >= 3 && (critRecently || dashCombo)) {
+      for (const e of enemies) { if (e.hp>0) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 2.0); e._veilSlow = Math.max(e._veilSlow || 0, 0.25); } }
+      runtime.tempCritBonus = Math.max(runtime.tempCritBonus || 0, 0.20);
+      runtime._tempCritTimer = Math.max(runtime._tempCritTimer || 0, 2.0);
+      runtime._tempPierceBonus = Math.max(runtime._tempPierceBonus || 0, 1);
+      runtime._tempPierceTimer = Math.max(runtime._tempPierceTimer || 0, 2.0);
+      cds.varaTime = 40;
+      runtime._recentPlayerCritTimer = 0; runtime._dashComboJustTriggered = false;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Time Dilation!', { color: '#ffd166', life: 0.9 });
+    }
+  }
+
+  // Snake L8 — Venom Cloud: periodic slow+DoT around player when ready
+  if (hasAffinity('snake', 8)) {
+    if ((cds.snakeVenom || 0) <= 0) {
+      let any = false; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(52*52)) { any=true; break; } } }
+      if (any) {
+        for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(52*52)) { e._veilSlowTimer = Math.max(e._veilSlowTimer||0, 2.0); e._veilSlow = Math.max(e._veilSlow||0, 0.15); e._burnTimer = Math.max(e._burnTimer||0, 1.5); e._burnDps = Math.max(e._burnDps||0, 0.5); } } }
+        cds.snakeVenom = 18;
+        spawnFloatText(player.x + player.w/2, player.y - 12, 'Venom Cloud.', { color: '#9ae66f', life: 0.7 });
+      }
+    }
+  }
+
+  // Synergy (Urn + Varabella both at 10): Sanctuary Convergence (simple scaffolding)
+  const bothMax = hasAffinity('urn', 10) && hasAffinity('varabella', 10);
+  if (bothMax && (cds.synergy10 || 0) <= 0) {
+    const hpRatio = player.hp / Math.max(1, player.maxHp||10);
+    let density = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(100*100)) density++; } }
+    if (hpRatio < 0.35 && density >= 3) {
+      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 2);
+      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 2.5);
+      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, 0.10);
+      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, 2.5);
+      for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(100*100)) { e._veilSlowTimer = Math.max(e._veilSlowTimer||0, 2.5); e._veilSlow = Math.max(e._veilSlow||0, 0.30); } } }
+      cds.synergy10 = 58;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Sanctuary!', { color: '#9ae6ff', life: 1.0 });
     }
   }
 

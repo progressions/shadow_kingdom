@@ -10,6 +10,8 @@ export const companionEffectsByKey = {
     ],
     triggers: {
       shield: { hpThresh: 0.4, cooldownSec: 12, durationSec: 6 },
+      l8: { key: 'aegis', name: 'Aegis Surge', cooldownSec: 18, durationSec: 3, desc: 'Bubble: +DR, small regen, KB resist' },
+      l10: { key: 'veil', name: 'Guardian Veil', cooldownSec: 40, durationSec: 1.5, desc: 'Near-invuln (block one hit)' },
     },
   },
   yorna: {
@@ -18,6 +20,10 @@ export const companionEffectsByKey = {
       { type: 'range', value: 2 },
     ],
     onPlayerHit: { bonusPct: 0.5, cooldownSec: 1.2 },
+    triggers: {
+      l8: { key: 'expose', name: 'Expose Weakness', cooldownSec: 14, durationSec: 4, desc: 'Armor shred aura on Dash/Crit' },
+      l10: { key: 'execute', name: 'Execution Window', cooldownSec: 35, durationSec: 2, desc: 'AP+true vs low HP targets' },
+    },
   },
   hola: {
     auras: [
@@ -32,6 +38,8 @@ export const companionEffectsByKey = {
     ],
     triggers: {
       gust: { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 },
+      l8: { key: 'slipstream', name: 'Slipstream Field', cooldownSec: 12, durationSec: 2, desc: 'Dash triggers tailwind: dash CDR boost' },
+      l10: { key: 'maelstrom', name: 'Maelstrom', cooldownSec: 32, durationSec: 1.5, desc: 'Radial knockback + heavy slow' },
     },
   },
   oyin: {
@@ -42,6 +50,10 @@ export const companionEffectsByKey = {
       { type: 'crit', value: 0.05 },
     ],
     // (Veil trigger handled in code under Oyin after swap)
+    triggers: {
+      l8: { key: 'veilAnchor', name: 'Veil Anchor', cooldownSec: 16, durationSec: 3, desc: 'Ranged hit creates slow+DR zone' },
+      l10: { key: 'eclipse', name: 'Eclipse', cooldownSec: 45, durationSec: 2, desc: 'Global slow + minor DoT; player DR' },
+    },
   },
   twil: {
     auras: [
@@ -52,6 +64,10 @@ export const companionEffectsByKey = {
       { type: 'dashCdr', value: 0.10 },
     ],
     // Fire-on-arrow handled in projectile impact code
+    triggers: {
+      l8: { key: 'flare', name: 'Flare Chain', cooldownSec: 12, durationSec: 1.2, desc: 'On melee hit, ignite nearby enemies' },
+      l10: { key: 'detonate', name: 'Detonate Brand', cooldownSec: 40, durationSec: 0.1, desc: 'Detonate sustained burns in small AoE' },
+    },
   },
   tin: {
     auras: [
@@ -61,6 +77,10 @@ export const companionEffectsByKey = {
       { type: 'dashCdr', value: 0.20 },
     ],
     // Triggers can be added later (Slipstream, Tumble Up, etc.)
+    triggers: {
+      l8: { key: 'overclock', name: 'Overclock', cooldownSec: 16, durationSec: 3, desc: 'After Dash Combo: +ASPD & dash CDR' },
+      l10: { key: 'symphony', name: 'Symphony', cooldownSec: 45, durationSec: 4, desc: 'Hyper: +ASPD +crit; reset dash CD' },
+    },
   },
   urn: {
     auras: [
@@ -70,6 +90,8 @@ export const companionEffectsByKey = {
     triggers: {
       // Burst heal when HP dips low
       cheer: { hpThresh: 0.5, heal: 3, radius: 80, cooldownSec: 12 },
+      l8: { key: 'beaconSurge', name: 'Beacon Surge', cooldownSec: 20, durationSec: 3, desc: 'Low HP pulse heal + +ASPD' },
+      l10: { key: 'secondWind', name: 'Second Wind', cooldownSec: 999, durationSec: 1.2, desc: 'Per-level revive at 1 HP' },
     },
   },
   varabella: {
@@ -82,6 +104,8 @@ export const companionEffectsByKey = {
     triggers: {
       // Timing window: brief ATK + range buff when enemies are nearby
       angle: { atk: 1, range: 2, durationSec: 3, cooldownSec: 9, proximity: 140 },
+      l8: { key: 'perfectAngle', name: 'Perfect Angle', cooldownSec: 14, durationSec: 3, desc: 'Next attack pierces + AP on alignment' },
+      l10: { key: 'timeDilation', name: 'Time Dilation', cooldownSec: 40, durationSec: 2, desc: 'Enemy slow; your shots pierce + crit' },
     },
   },
   nellis: {
@@ -90,6 +114,10 @@ export const companionEffectsByKey = {
       { type: 'dr', value: 1 },
     ],
     // Triggers implemented in code: Mourner's Veil, Beacon, Keep the Line
+    triggers: {
+      l8: { key: 'phalanx', name: 'Phalanx', cooldownSec: 20, durationSec: 3, desc: '2+ enemies near → +touchDR & KB resist' },
+      l10: { key: 'bulwark', name: 'Bulwark', cooldownSec: 45, durationSec: 3, desc: 'Frontal barrier blocks projectiles' },
+    },
   },
   cowsill: {
     auras: [
@@ -103,6 +131,8 @@ export const companionEffectsByKey = {
     triggers: {
       // Double Strike: when player lands a hit, chance for instant follow-up
       doubleStrike: { chance: 0.2, dmgMult: 1.5, cooldownSec: 3 },
+      l8: { key: 'crescendo', name: 'Crescendo', cooldownSec: 18, durationSec: 0.1, desc: 'After 5 hits in 3s, next hit +100% dmg' },
+      l10: { key: 'encore', name: 'Encore', cooldownSec: 45, durationSec: 0.1, desc: 'Repeat last melee damage as ghost hits' },
     },
   },
   snake: {
@@ -114,6 +144,10 @@ export const companionEffectsByKey = {
       { type: 'atk', value: 1 },
     ],
     // Triggers could be added later (e.g., brief stronger slow on recent hit)
+    triggers: {
+      l8: { key: 'venomCloud', name: 'Venom Cloud', cooldownSec: 18, durationSec: 2, desc: '2s slow + poison DoT around player' },
+      l10: { key: 'constriction', name: 'Constriction', cooldownSec: 35, durationSec: 1, desc: 'Root elite or slow boss + heavy DoT' },
+    },
   },
 };
 

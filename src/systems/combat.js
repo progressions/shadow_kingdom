@@ -31,6 +31,7 @@ export function startAttack() {
       runtime._dashComboLockout = Math.max(runtime._dashComboLockout || 0, lock);
       const vuln = (typeof runtime._dashComboVulnDurSec === 'number') ? runtime._dashComboVulnDurSec : 0.6;
       runtime._dashComboVulnTimer = Math.max(runtime._dashComboVulnTimer || 0, vuln);
+      runtime._dashComboJustTriggered = true;
       try { import('../engine/state.js').then(m => m.spawnFloatText(player.x + player.w/2, player.y - 12, 'Dash Strike!', { color: '#9ae6ff', life: 0.8 })); } catch {}
       try { playSfx('tumbleUp'); } catch {}
     }
@@ -151,6 +152,8 @@ export function handleAttacks(dt) {
           if (Math.random() < critChance) {
             isCrit = true;
             finalDmg = Math.ceil(finalDmg * 1.5);
+            // Mark a recent player crit for high-affinity triggers
+            try { runtime._recentPlayerCritTimer = Math.max(runtime._recentPlayerCritTimer || 0, 0.8); } catch {}
           }
         }
         // Dash Combo damage bonus applies to first enemy hit this swing
@@ -273,6 +276,29 @@ export function handleAttacks(dt) {
         e.knockbackX = (dx / mag) * 80;
         e.knockbackY = (dy / mag) * 80;
         playSfx('hit');
+
+        // Twil L8 — Flare Chain: ignite nearby enemies on melee hit (CD)
+        try {
+          const cds = runtime.companionCDs || (runtime.companionCDs = {});
+          const hasTwilL8 = companions.some(c => (c.name||'').toLowerCase().includes('twil') && (c.affinity||0) >= 8);
+          if (hasTwilL8 && (cds.twilFlare || 0) <= 0) {
+            let ignited = 0;
+            for (const t of enemies) {
+              if (!t || t === e || t.hp <= 0) continue;
+              const dx2 = (t.x - e.x), dy2 = (t.y - e.y);
+              if ((dx2*dx2 + dy2*dy2) <= (64*64)) {
+                t._burnTimer = Math.max(t._burnTimer || 0, 1.2);
+                t._burnDps = Math.max(t._burnDps || 0, 0.5);
+                ignited++;
+                if (ignited >= 3) break;
+              }
+            }
+            if (ignited > 0) {
+              cds.twilFlare = 12;
+              import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 16, 'Flare!', { color: '#ff9a3d', life: 0.8 }));
+            }
+          }
+        } catch {}
       }
     }
   }
@@ -330,7 +356,7 @@ export function startRangedAttack() {
   const mods = getEquipStats(player);
   const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
   const base = Math.max(1, (player.damage || 1) + add);
-  const pierce = Math.max(0, Number(meta.pierce || 0));
+  const pierce = Math.max(0, Number(meta.pierce || 0) + Math.max(0, runtime._tempPierceBonus || 0));
   spawnProjectile(px, py, {
     team: 'player',
     vx, vy,

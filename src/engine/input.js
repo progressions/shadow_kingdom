@@ -65,6 +65,7 @@ export function initInput() {
             const nowT = runtime._timeSec || 0;
             const win = (typeof runtime._dashComboWindowSec === 'number') ? runtime._dashComboWindowSec : 0.25;
             runtime._dashComboReadyUntil = nowT + win;
+            runtime._dashJustStartedAtSec = nowT;
           } catch {}
           const cdBase = (typeof runtime._dashCooldownDefault === 'number') ? runtime._dashCooldownDefault : 0.35;
           const cdr = (runtime?.combatBuffs?.dashCdr || 0);
