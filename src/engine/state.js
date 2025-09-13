@@ -719,15 +719,28 @@ export function setTorchBearer(companion) {
     // Clear any prior bearer
     clearTorchBearer();
     if (!companion) return false;
-    // Consume one torch from player inventory
-    const inv = player?.inventory?.items || [];
-    const idx = inv.findIndex(it => it && it.stackable && it.id === 'torch' && (it.qty||0) > 0);
-    if (idx === -1) return false;
-    inv[idx].qty = Math.max(0, (inv[idx].qty || 0) - 1);
-    if (inv[idx].qty <= 0) inv.splice(idx, 1);
-    // Activate
+    // Source a torch: prefer an already-equipped lit torch in player's left hand; else consume one from inventory.
+    let burnMs = 180000; // default 3 minutes
+    try {
+      const eq = player?.inventory?.equipped || {};
+      const LH = eq.leftHand || null;
+      if (LH && LH.id === 'torch') {
+        // Use the equipped torch's remaining burn and consume it from the left hand
+        if (typeof LH.burnMsRemaining === 'number' && LH.burnMsRemaining > 0) burnMs = LH.burnMsRemaining;
+        eq.leftHand = null; // unequipping a torch consumes it
+        // Update lighting immediately to reflect player no longer holding a torch
+        try { import('./lighting.js').then(m => m.rebuildLighting && m.rebuildLighting(0)).catch(()=>{}); } catch {}
+      } else {
+        const inv = player?.inventory?.items || [];
+        const idx = inv.findIndex(it => it && it.stackable && it.id === 'torch' && (it.qty||0) > 0);
+        if (idx === -1) return false;
+        inv[idx].qty = Math.max(0, (inv[idx].qty || 0) - 1);
+        if (inv[idx].qty <= 0) inv.splice(idx, 1);
+      }
+    } catch {}
+    // Activate bearer with resolved burn time
     runtime._torchBearerRef = companion;
-    runtime._torchBurnMs = 180000; // 3 minutes
+    runtime._torchBurnMs = burnMs;
     import('./lighting.js').then(m => {
       try {
         const node = m.addLightNode({ x: companion.x + companion.w/2, y: companion.y + companion.h/2, level: m.MAX_LIGHT_LEVEL, radius: 6, enabled: true });
