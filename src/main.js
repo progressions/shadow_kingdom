@@ -200,6 +200,32 @@ try {
       return n;
     } catch (e) { try { console.warn('giveArrows failed:', e); } catch {} return 0; }
   };
+
+  // --- Affinity debug helpers ---
+  window.setAffinity = async (who, value) => {
+    try {
+      const v = Math.max(1, Math.min(10, Number(value || 1)));
+      let matched = 0;
+      if (typeof who === 'number') {
+        const idx = who|0;
+        if (companions[idx]) { companions[idx].affinity = v; matched++; }
+      } else if (typeof who === 'string') {
+        const key = who.toLowerCase();
+        for (const c of companions) { if ((c.name||'').toLowerCase().includes(key)) { c.affinity = v; matched++; } }
+      } else if (who && who.name) {
+        for (const c of companions) { if (c === who) { c.affinity = v; matched++; } }
+      }
+      if (matched > 0) { updatePartyUI(companions); console.log(`[Affinity] Set ${matched} companion(s) to`, v); }
+      return matched;
+    } catch (e) { console.warn('setAffinity failed', e); return 0; }
+  };
+  window.setAllAffinity = async (value = 10) => {
+    try { const v = Math.max(1, Math.min(10, Number(value||10))); for (const c of companions) if (c) c.affinity = v; updatePartyUI(companions); console.log('[Affinity] All companions set to', v); return v; } catch (e) { console.warn('setAllAffinity failed', e); return 0; }
+  };
+  window.maxAffinityAll = async () => window.setAllAffinity(10);
+  window.setUrnVara10 = async () => {
+    try { let n=0; for (const c of companions) { const nm=(c.name||'').toLowerCase(); if (nm.includes('urn')||nm.includes('varabella')) { c.affinity = 10; n++; } } updatePartyUI(companions); console.log('[Affinity] Set Urn/Varabella to 10 (matched:',n,')'); return n; } catch(e){ console.warn('setUrnVara10 failed', e); return 0; }
+  };
 } catch {}
 
 // Load lightweight debug tests (exposes window.testOpenedChestPersistence, window.testVnIntroCooldown)
