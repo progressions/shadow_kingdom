@@ -154,8 +154,13 @@ export function initInput() {
     } else if (e.key.toLowerCase() === 't') {
       // Quick-equip a torch to left hand from inventory (consumes one).
       try {
+        // Simple cooldown to prevent accidental rapid toggles
+        const nowSec = (runtime._timeSec || (typeof performance !== 'undefined' && performance.now ? performance.now()/1000 : Date.now()/1000));
+        const last = (typeof runtime._torchToggleLast === 'number') ? runtime._torchToggleLast : -999;
+        const cd = (typeof runtime._torchToggleCooldown === 'number') ? runtime._torchToggleCooldown : 0.3;
+        if ((nowSec - last) < cd) { e.preventDefault(); return; }
         import('./state.js').then(async (m) => {
-          const { player, companions, runtime } = await m;
+          const { player, companions } = await m;
           const eq = player?.inventory?.equipped || {};
           // Toggle off: if already holding a torch, unequip/consume it
           if (eq.leftHand && eq.leftHand.id === 'torch') {
@@ -165,6 +170,7 @@ export function initInput() {
               import('./ui.js').then(u => { u.updateOverlayDim && u.updateOverlayDim(); u.updatePartyUI && u.updatePartyUI(companions); }).catch(()=>{});
             } catch {}
             showBanner('Torch extinguished');
+            runtime._torchToggleLast = nowSec;
             return;
           }
           // Block if right hand is two-handed
@@ -200,6 +206,7 @@ export function initInput() {
             }
           } catch {}
           showBanner('Torch lit');
+          runtime._torchToggleLast = nowSec;
         });
       } catch {}
     } else if (e.key.toLowerCase() === 'm') {
