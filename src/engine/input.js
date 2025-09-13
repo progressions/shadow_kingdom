@@ -157,10 +157,18 @@ export function initInput() {
         import('./state.js').then(async (m) => {
           const { player, companions, runtime } = await m;
           const eq = player?.inventory?.equipped || {};
+          // Toggle off: if already holding a torch, unequip/consume it
+          if (eq.leftHand && eq.leftHand.id === 'torch') {
+            eq.leftHand = null;
+            try {
+              import('./lighting.js').then(L => L.rebuildLighting && L.rebuildLighting(0)).catch(()=>{});
+              import('./ui.js').then(u => { u.updateOverlayDim && u.updateOverlayDim(); u.updatePartyUI && u.updatePartyUI(companions); }).catch(()=>{});
+            } catch {}
+            showBanner('Torch extinguished');
+            return;
+          }
           // Block if right hand is two-handed
           if (eq.rightHand && eq.rightHand.twoHanded) { showBanner('Cannot equip with two-handed weapon'); return; }
-          // Already lit
-          if (eq.leftHand && eq.leftHand.id === 'torch') { showBanner('Torch already lit'); return; }
           const inv = player?.inventory?.items || [];
           const idx = inv.findIndex(s => s && s.stackable && s.id === 'torch' && (s.qty||0) > 0);
           if (idx === -1) { showBanner('No torches'); return; }
