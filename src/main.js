@@ -10,7 +10,7 @@ import { step } from './systems/step.js';
 import { setNpcDialog, startPrompt, startSaveMenu } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap, showPersistentBanner, hideBanner, updateOverlayDim } from './engine/ui.js';
+import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap, showPersistentBanner, hideBanner } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save_core.js';
 import { loadGame, getSaveMeta } from './engine/save.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
@@ -147,7 +147,7 @@ function loop(now) {
   if (!suspendRender) render(terrain, obstacles);
   try { updateMinimap(); } catch {}
   // Keep overlay dim in sync with lighting while inventory/dialog overlay is open
-  try { if (runtime.gameState === 'chat') updateOverlayDim(); } catch {}
+  try { if (runtime.gameState === 'chat') { import('./engine/ui.js').then(u => u.updateOverlayDim && u.updateOverlayDim()).catch(()=>{}); } } catch {}
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
