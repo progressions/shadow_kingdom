@@ -28,6 +28,8 @@ export const AI_TUNING = {
     // Telegraph timings (visual wind-up before the attack fires)
     melee: { telegraphSec: 0.18 },
     ranged: { telegraphSec: 0.16 },
+    // Flow/path blending
+    path: { flowWeight: 0.35, minDot: -0.1 },
   },
   featured: {
     zigzag: { weight: 0.40, commitSec: 0.6 },
@@ -39,6 +41,8 @@ export const AI_TUNING = {
     engageDistPx: 200,
     steering: { hazardWeightMul: 0.8, obstaclePenaltyMul: 0.85 },
     baseSpeedMul: 1.15,
+    // Flow/path blending
+    path: { flowWeight: 0.45, minDot: -0.2 },
   },
   mook: {
     zigzag: { weight: 0.0, commitSec: 0.0 },

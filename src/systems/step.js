@@ -865,17 +865,29 @@ export function step(dt) {
       const pxp = player.x + player.w/2, pyp = player.y + player.h/2;
       const ddx = (pxp - ex), ddy = (pyp - ey);
       const dist2 = ddx*ddx + ddy*ddy;
-      const baseAggro = (e.kind === 'boss') ? 280 : (e.kind === 'featured' ? 220 : 180);
+      const roleKind = String(e.kind || 'mook').toLowerCase();
+      const baseAggro = (roleKind === 'boss') ? 280 : (roleKind === 'featured' ? 220 : 180);
       const aggroR = (typeof e.aggroRadius === 'number') ? e.aggroRadius : baseAggro;
       const aggroR2 = aggroR * aggroR;
       let dx, dy;
       if (dist2 <= aggroR2) {
         // Chase player (base heading)
         const d = Math.hypot(ddx, ddy) || 1; dx = ddx / d; dy = ddy / d;
-        // Flow-field base guidance (prefer downhill neighbor when available)
+        // Flow-field base guidance (blend with direct heading; do not fully override)
         try {
           const dir = sampleFlowDirAt(ex, ey);
-          if (dir && (dir.x !== 0 || dir.y !== 0)) { dx = dir.x; dy = dir.y; }
+          if (dir && (dir.x !== 0 || dir.y !== 0)) {
+            const bx = dx, by = dy;
+            const fx = dir.x, fy = dir.y;
+            const dot = Math.max(-1, Math.min(1, bx * fx + by * fy));
+            const pathCfg = (AI_TUNING[roleKind]?.path) || { flowWeight: 0.35, minDot: -0.2 };
+            let w = pathCfg.flowWeight || 0.35;
+            if (dot < (pathCfg.minDot || -0.2)) w *= 0.2; // if flow points badly away, downweight it heavily
+            const nx = bx * (1 - w) + fx * w;
+            const ny = by * (1 - w) + fy * w;
+            const nn = Math.hypot(nx, ny) || 1;
+            dx = nx / nn; dy = ny / nn;
+          }
         } catch {}
         // If no flow direction (likely disconnected components) and LOS is blocked by a wall,
         // commit to a wall-follow (tangential) direction to search for an opening.
@@ -891,14 +903,14 @@ export function step(dt) {
             if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losBlockedWF = true; break; }
           }
           const flowDirNull = (() => { try { const d = sampleFlowDirAt(ex, ey); return !d || (d.x === 0 && d.y === 0); } catch { return true; } })();
-          if (flowDirNull && losBlockedWF) {
+          if (flowDirNull && losBlockedWF && ((e.stuckTime || 0) > 0.3)) {
             e._wallTimer = Math.max(0, (e._wallTimer || 0) - dt);
             if ((e._wallTimer || 0) <= 0) {
               const sign = (typeof e._strafeSign === 'number') ? e._strafeSign : (e.avoidSign || 1);
               // Tangent vector along the blocking surface (perpendicular to player heading)
               const tx = -dy * sign, ty = dx * sign; const nm = Math.hypot(tx, ty) || 1;
               e._wallDirX = tx / nm; e._wallDirY = ty / nm;
-              e._wallTimer = (String(e.kind).toLowerCase() === 'boss') ? 1.2 : 0.9;
+              e._wallTimer = (roleKind === 'boss') ? 1.0 : 0.8;
             }
             if ((e._wallTimer || 0) > 0 && typeof e._wallDirX === 'number') { dx = e._wallDirX; dy = e._wallDirY; }
           }
