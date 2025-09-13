@@ -11,6 +11,7 @@ import { setNpcDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
 import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
+import { rectsIntersect } from './utils.js';
 
 // Level 1: Greenwood — initial world (moved from main.js to support load route)
 export function loadLevel1() {
@@ -435,6 +436,24 @@ export function loadLevel1() {
       setNpcDialog(snake, snakeDialog);
     } catch {}
   }
+
+  // Ensure castle gate approach is clear: remove trees/rocks that may block the opening
+  (function clearGateApproachCorridor(){
+    try {
+      // Corridor just outside and across the gate opening
+      const padX = Math.round(gap * 2.2);
+      const padY = TILE * 5;
+      const rx = Math.round(gapX + gap/2 - padX/2);
+      const ry = Math.max(0, Math.round(cyw - padY));
+      const approach = { x: rx, y: ry, w: padX, h: padY + t + 4 };
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i]; if (!o) continue;
+        const typ = String(o.type||'');
+        if (typ !== 'tree' && typ !== 'rock' && typ !== 'barrel' && typ !== 'crate') continue;
+        if (rectsIntersect(approach, o)) { obstacles.splice(i, 1); }
+      }
+    } catch {}
+  })();
 
   return terrain;
 }
