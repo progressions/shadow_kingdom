@@ -166,6 +166,23 @@ export function handleAttacks(dt) {
             import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Dash +${Math.max(1, Math.ceil(finalDmg - dmg))}`, { color: '#9ae6ff', life: 0.7 }));
           }
         } catch {}
+        // Cowsill L8 — Crescendo: after 5 hits within 3s, this hit deals +100% bonus
+        try {
+          const cds = runtime.companionCDs || (runtime.companionCDs = {});
+          const nowT = runtime._timeSec || 0;
+          const hasCowsillL8 = companions.some(c => (c.name||'').toLowerCase().includes('cowsill') && (c.affinity||0) >= 8);
+          if (hasCowsillL8) {
+            const arr = Array.isArray(runtime._cowsillHits) ? runtime._cowsillHits : (runtime._cowsillHits = []);
+            // pre-count: push a marker for this impending hit
+            arr.push(nowT);
+            while (arr.length && (nowT - arr[0] > 3.0)) arr.shift();
+            if ((cds.cowsillCrescendo || 0) <= 0 && arr.length >= 5) {
+              finalDmg = Math.ceil(finalDmg * 2);
+              cds.cowsillCrescendo = 18;
+              import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 16, 'Crescendo!', { color: '#ff6b6b', life: 0.8 }));
+            }
+          }
+        } catch {}
         const before = e.hp;
         // Apply damage first, then heal back by effective DR (preserves existing trigger flow)
         e.hp -= finalDmg;
@@ -173,10 +190,22 @@ export function handleAttacks(dt) {
         try {
           let enemyDr = Math.max(0, (e._baseDr || 0) + (e._tempDr || 0));
           if (isCrit) enemyDr = Math.max(0, enemyDr * 0.5);
-          if (enemyDr > 0) {
-            const reduce = Math.min(enemyDr, finalDmg);
+          // Yorna L10 Execution Window: apply AP and true damage vs low-HP enemies
+          let effDr = enemyDr;
+          try {
+            const low = (e.maxHp ? (e.hp / e.maxHp) : 1) <= 0.25;
+            if (low && (runtime?.tempAPBonus || 0) > 0) effDr = Math.max(0, effDr - (runtime.tempAPBonus || 0));
+          } catch {}
+          if (effDr > 0) {
+            const reduce = Math.min(effDr, finalDmg);
             e.hp += reduce; // negate part of the applied damage
           }
+          try {
+            const low = (e.maxHp ? (e.hp / e.maxHp) : 1) <= 0.25;
+            if (low && (runtime?.tempTrueDamage || 0) > 0) {
+              e.hp -= Math.max(0, runtime.tempTrueDamage || 0);
+            }
+          } catch {}
           // Mark recent hit to drive enemy on-hit triggers
           e._recentHitTimer = Math.max(e._recentHitTimer || 0, 0.9);
         } catch {}
@@ -195,6 +224,26 @@ export function handleAttacks(dt) {
           import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Crit! ${dmgTxt}`, { color: '#ffd166', life: 0.8 }));
           try { playSfx('pierce'); } catch {}
         }
+        // Cowsill L10 — Encore: repeat damage as ghost hits on up to 2 nearby enemies (no on-hit procs)
+        try {
+          const cds = runtime.companionCDs || (runtime.companionCDs = {});
+          const hasCowsillL10 = companions.some(c => (c.name||'').toLowerCase().includes('cowsill') && (c.affinity||0) >= 10);
+          if (hasCowsillL10 && (cds.cowsillEncore || 0) <= 0) {
+            let echoed = 0;
+            for (const t of enemies) {
+              if (!t || t === e || t.hp <= 0) continue;
+              const dx2 = (t.x - e.x), dy2 = (t.y - e.y);
+              if ((dx2*dx2 + dy2*dy2) <= (72*72)) {
+                const ghost = Math.max(1, Math.round(finalDmg * 0.8));
+                t.hp -= ghost;
+                echoed++;
+                import('../engine/state.js').then(m => m.spawnFloatText(t.x + t.w/2, t.y - 12, `Encore ${ghost}`, { color: '#ffeb3b', life: 0.7 }));
+                if (echoed >= 2) break;
+              }
+            }
+            if (echoed > 0) { cds.cowsillEncore = 45; }
+          }
+        } catch {}
         // Twil (swapped): Kindle DoT (fiery strikes) and quest tracking
         if (hasTwil) {
           e._burnTimer = Math.max(e._burnTimer || 0, 1.5);

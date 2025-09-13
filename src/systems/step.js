@@ -351,10 +351,20 @@ export function step(dt) {
             try {
               let enemyDr = Math.max(0, (e._baseDr || 0) + (e._tempDr || 0));
               if (isCrit) enemyDr = Math.max(0, enemyDr * 0.5);
-              if (enemyDr > 0) {
-                const reduce = Math.min(enemyDr, finalDmg);
+              // Yorna L10: AP and true damage vs low-HP enemies
+              let effDr = enemyDr;
+              try {
+                const low = (e.maxHp ? (e.hp / e.maxHp) : 1) <= 0.25;
+                if (low && (runtime?.tempAPBonus || 0) > 0) effDr = Math.max(0, effDr - (runtime.tempAPBonus || 0));
+              } catch {}
+              if (effDr > 0) {
+                const reduce = Math.min(effDr, finalDmg);
                 e.hp += reduce;
               }
+              try {
+                const low = (e.maxHp ? (e.hp / e.maxHp) : 1) <= 0.25;
+                if (low && (runtime?.tempTrueDamage || 0) > 0) { e.hp -= Math.max(0, runtime.tempTrueDamage || 0); }
+              } catch {}
               e._recentHitTimer = Math.max(e._recentHitTimer || 0, 0.9);
             } catch {}
             try { import('../engine/ui.js').then(u => u.showTargetInfo && u.showTargetInfo(`${e.name || 'Enemy'}`)); } catch {}
@@ -484,6 +494,20 @@ export function step(dt) {
             if (runtime.godMode) taken = 0;
             if (runtime.shieldActive && taken > 0) { taken = 0; runtime.shieldActive = false; }
             if (taken > 0) {
+              // Urn L10 — Second Wind: once per level, prevent lethal hit
+              try {
+                const hasUrnMax = companions.some(c => (c.name||'').toLowerCase().includes('urn') && (c.affinity||0) >= 10);
+                const lvl = runtime.currentLevel || 1;
+                if (hasUrnMax && taken >= player.hp && runtime._secondWindAtLevel !== lvl) {
+                  runtime._secondWindAtLevel = lvl;
+                  player.hp = 1;
+                  player.invulnTimer = Math.max(player.invulnTimer || 0, 1.2);
+                  spawnFloatText(player.x + player.w/2, player.y - 10, 'Second Wind!', { color: '#9ae6ff', life: 1.0 });
+                  // Consume projectile without applying knockback
+                  removeIdx.push(i);
+                  continue;
+                }
+              } catch {}
               player.hp = Math.max(0, player.hp - taken);
               player.knockbackX = 0; player.knockbackY = 0;
               let invul = 0.6;
@@ -506,6 +530,22 @@ export function step(dt) {
               import('../engine/state.js').then(m => m.spawnFloatText(player.x + player.w/2, player.y - 6, 'Blocked', { color: '#a8c6ff', life: 0.7 }));
               try { playSfx('block'); } catch {}
             }
+            // Oyin L8 — Veil Anchor: on ranged hit taken, drop a short slow+DR zone
+            try {
+              const cds = runtime.companionCDs || (runtime.companionCDs = {});
+              const hasOyinL8 = companions.some(c => (c.name||'').toLowerCase().includes('oyin') && (c.affinity||0) >= 8);
+              if (hasOyinL8 && (cds.oyinAnchor || 0) <= 0 && taken > 0) {
+                for (const e2 of enemies) {
+                  if (e2.hp <= 0) continue;
+                  const dx2 = e2.x - player.x, dy2 = e2.y - player.y;
+                  if ((dx2*dx2 + dy2*dy2) <= (52*52)) { e2._veilSlowTimer = Math.max(e2._veilSlowTimer||0, 3.0); e2._veilSlow = Math.max(e2._veilSlow||0, 0.25); }
+                }
+                runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 1);
+                runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 3.0);
+                cds.oyinAnchor = 16;
+                spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil Anchor.', { color: '#a1e3ff', life: 0.8 });
+              }
+            } catch {}
             // Consume projectile
             removeIdx.push(i);
           }
@@ -1482,7 +1522,21 @@ export function step(dt) {
           }
           e.hitTimer = e.hitCooldown;
             if (taken > 0) {
-              player.hp = Math.max(0, player.hp - taken);
+              // Urn L10 — Second Wind: once per level, prevent lethal contact hit
+              try {
+                const hasUrnMax = companions.some(c => (c.name||'').toLowerCase().includes('urn') && (c.affinity||0) >= 10);
+                const lvl = runtime.currentLevel || 1;
+                if (hasUrnMax && taken >= player.hp && runtime._secondWindAtLevel !== lvl) {
+                  runtime._secondWindAtLevel = lvl;
+                  player.hp = 1;
+                  let invul = Math.max(player.invulnTimer || 0, 1.2);
+                  player.invulnTimer = invul;
+                  spawnFloatText(player.x + player.w/2, player.y - 10, 'Second Wind!', { color: '#9ae6ff', life: 1.0 });
+                  // Skip standard knockback/invul assignment (already set)
+                } else {
+                  player.hp = Math.max(0, player.hp - taken);
+                }
+              } catch { player.hp = Math.max(0, player.hp - taken); }
               // Minimal or no knockback; keep player controllable
               player.knockbackX = 0;
               player.knockbackY = 0;
@@ -2329,12 +2383,13 @@ function applyCompanionAuras(dt) {
   // Include temporary attack speed bonus from triggers (e.g., Urn Cheer)
   buffs.aspd += (runtime.tempAspdBonus || 0);
   buffs.aspd = Math.min(buffs.aspd, COMPANION_BUFF_CAPS.aspd);
-  // Include temporary crit and dash CDR bonuses from triggers, then cap
+  // Include temporary crit, rangedDR, and dash CDR bonuses from triggers, then cap
   buffs.crit = Math.min(buffs.crit + (runtime.tempCritBonus || 0), COMPANION_BUFF_CAPS.crit || (buffs.crit + (runtime.tempCritBonus || 0)));
-  buffs.rangedDR = Math.min(buffs.rangedDR, COMPANION_BUFF_CAPS.rangedDR || buffs.rangedDR);
+  buffs.rangedDR = Math.min(buffs.rangedDR + (runtime.tempRangedDr || 0), COMPANION_BUFF_CAPS.rangedDR || (buffs.rangedDR + (runtime.tempRangedDr || 0)));
   buffs.dashCdr = Math.min(buffs.dashCdr + (runtime.tempDashCdr || 0), COMPANION_BUFF_CAPS.dashCdr || (buffs.dashCdr + (runtime.tempDashCdr || 0)));
-  // Cap deflect chance
+  // Cap deflect chance (include temporary bonus)
   if (!runtime.projectileDeflect) runtime.projectileDeflect = { chance: 0, radius: 0 };
+  runtime.projectileDeflect.chance = (runtime.projectileDeflect.chance || 0) + (runtime.tempDeflectBonus || 0);
   runtime.projectileDeflect.chance = Math.min(runtime.projectileDeflect.chance || 0, COMPANION_BUFF_CAPS.deflect || (runtime.projectileDeflect.chance || 0));
   // Regen
   if (buffs.regen > 0 && player.hp > 0) {
@@ -2374,15 +2429,34 @@ function applyCompanionAuras(dt) {
     runtime._tempDashCdrTimer = Math.max(0, (runtime._tempDashCdrTimer || 0) - dt);
     if (runtime._tempDashCdrTimer === 0) runtime.tempDashCdr = 0;
   }
+  // Decay temporary ranged DR bonus
+  if ((runtime._tempRangedDrTimer || 0) > 0) {
+    runtime._tempRangedDrTimer = Math.max(0, (runtime._tempRangedDrTimer || 0) - dt);
+    if (runtime._tempRangedDrTimer === 0) runtime.tempRangedDr = 0;
+  }
   // Decay temporary touch DR from triggers (e.g., Nellis Keep the Line)
   if ((runtime._tempTouchDrTimer || 0) > 0) {
     runtime._tempTouchDrTimer = Math.max(0, (runtime._tempTouchDrTimer || 0) - dt);
     if (runtime._tempTouchDrTimer === 0) runtime.tempTouchDr = 0;
   }
+  // Decay temporary deflect chance bonus
+  if ((runtime._tempDeflectTimer || 0) > 0) {
+    runtime._tempDeflectTimer = Math.max(0, (runtime._tempDeflectTimer || 0) - dt);
+    if (runtime._tempDeflectTimer === 0) runtime.tempDeflectBonus = 0;
+  }
   // Decay temporary pierce bonus for projectiles
   if ((runtime._tempPierceTimer || 0) > 0) {
     runtime._tempPierceTimer = Math.max(0, (runtime._tempPierceTimer || 0) - dt);
     if (runtime._tempPierceTimer === 0) runtime._tempPierceBonus = 0;
+  }
+  // Decay temporary AP and true-damage bonuses (Yorna Execution Window)
+  if ((runtime._tempApTimer || 0) > 0) {
+    runtime._tempApTimer = Math.max(0, (runtime._tempApTimer || 0) - dt);
+    if (runtime._tempApTimer === 0) runtime.tempAPBonus = 0;
+  }
+  if ((runtime._tempTrueTimer || 0) > 0) {
+    runtime._tempTrueTimer = Math.max(0, (runtime._tempTrueTimer || 0) - dt);
+    if (runtime._tempTrueTimer === 0) runtime.tempTrueDamage = 0;
   }
   // Per-enemy slow multiplier for this frame
   for (let ei = 0; ei < enemies.length; ei++) {
@@ -2421,6 +2495,18 @@ function handleCompanionTriggers(dt) {
   cds.twilFlare = Math.max(0, (cds.twilFlare || 0) - dt);
   cds.snakeVenom = Math.max(0, (cds.snakeVenom || 0) - dt);
   cds.synergy10 = Math.max(0, (cds.synergy10 || 0) - dt);
+  // Additional cooldowns for new triggers
+  cds.canopyAegis = Math.max(0, (cds.canopyAegis || 0) - dt);
+  cds.canopyVeil = Math.max(0, (cds.canopyVeil || 0) - dt);
+  cds.yornaExpose = Math.max(0, (cds.yornaExpose || 0) - dt);
+  cds.yornaExecute = Math.max(0, (cds.yornaExecute || 0) - dt);
+  cds.oyinAnchor = Math.max(0, (cds.oyinAnchor || 0) - dt);
+  cds.oyinEclipse = Math.max(0, (cds.oyinEclipse || 0) - dt);
+  cds.varaPerfect = Math.max(0, (cds.varaPerfect || 0) - dt);
+  cds.nellisBulwark = Math.max(0, (cds.nellisBulwark || 0) - dt);
+  cds.cowsillCrescendo = Math.max(0, (cds.cowsillCrescendo || 0) - dt);
+  cds.cowsillEncore = Math.max(0, (cds.cowsillEncore || 0) - dt);
+  cds.snakeConstriction = Math.max(0, (cds.snakeConstriction || 0) - dt);
 
   // Shield countdown
   if (runtime.shieldActive) {
@@ -2561,6 +2647,146 @@ function handleCompanionTriggers(dt) {
       runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, 2.0);
       cds.holaSlipstream = 12;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Slipstream.', { color: '#9ae6ff', life: 0.7 });
+    }
+  }
+
+  // Hola L10 — Maelstrom: density knockback + heavy slow; brief deflect boost
+  if (hasAffinity('hola', 10)) {
+    let count = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy) <= (64*64)) { count++; } } }
+    if ((cds.holaMaelstrom || 0) <= 0 && count >= 4) {
+      for (const e of enemies) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - player.x, dy = e.y - player.y; const d2 = dx*dx + dy*dy; if (d2 > (64*64)) continue;
+        const d = Math.max(1, Math.sqrt(d2)); const push = 26; const px = (dx/d) * push; const py = (dy/d) * push;
+        const solids = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
+        moveWithCollision(e, px, py, solids);
+        e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 1.5); e._veilSlow = Math.max(e._veilSlow || 0, 0.35);
+      }
+      runtime.tempDeflectBonus = Math.max(runtime.tempDeflectBonus || 0, 0.15);
+      runtime._tempDeflectTimer = Math.max(runtime._tempDeflectTimer || 0, 1.5);
+      cds.holaMaelstrom = 32;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Maelstrom!', { color: '#9ae6ff', life: 0.9 });
+    }
+  }
+
+  // Oyin L10 — Eclipse: brief global slow + minor DoT; player gets light DR
+  if (hasAffinity('oyin', 10)) {
+    let dense = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(120*120)) dense++; } }
+    if ((cds.oyinEclipse || 0) <= 0 && dense >= 4) {
+      for (const e of enemies) { if (e.hp>0) { e._veilSlowTimer = Math.max(e._veilSlowTimer||0, 2.0); e._veilSlow = Math.max(e._veilSlow||0, 0.30); e._burnTimer = Math.max(e._burnTimer||0, 1.5); e._burnDps = Math.max(e._burnDps||0, 0.3); } }
+      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 1);
+      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 2.0);
+      cds.oyinEclipse = 45;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Eclipse!', { color: '#a1e3ff', life: 0.9 });
+      try { playSfx('veil'); } catch {}
+    }
+  }
+
+  // Snake L10 — Constriction: root nearest elite briefly and apply heavy DoT
+  if (hasAffinity('snake', 10)) {
+    if ((cds.snakeConstriction || 0) <= 0) {
+      let nearest = null, nd2 = Infinity;
+      for (const e of enemies) {
+        if (!e || e.hp <= 0) continue;
+        const isElite = String(e.kind||'').toLowerCase() === 'featured' || String(e.kind||'').toLowerCase() === 'boss';
+        if (!isElite) continue;
+        const dx = e.x - player.x, dy = e.y - player.y; const d2 = dx*dx + dy*dy;
+        if (d2 < nd2 && d2 <= (90*90)) { nd2 = d2; nearest = e; }
+      }
+      if (nearest) {
+        nearest._veilSlowTimer = Math.max(nearest._veilSlowTimer || 0, 1.0); nearest._veilSlow = 1.0;
+        nearest._burnTimer = Math.max(nearest._burnTimer || 0, 1.5); nearest._burnDps = Math.max(nearest._burnDps || 0, 1.0);
+        cds.snakeConstriction = 35;
+        spawnFloatText(nearest.x + nearest.w/2, nearest.y - 12, 'Constricted!', { color: '#9ae66f', life: 0.8 });
+      }
+    }
+  }
+
+  // Canopy L8 — Aegis Surge: low HP + density → DR + small sustain
+  if (hasAffinity('canopy', 8)) {
+    const hp = player.hp / Math.max(1, player.maxHp||10);
+    let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(72*72)) d++; } }
+    if ((cds.canopyAegis || 0) <= 0 && (hp < 0.4 || (runtime._recentPlayerHitTimer||0) > 0) && d >= 2) {
+      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 2);
+      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 3.0);
+      // Small sustain: immediate heal of 1 HP
+      player.hp = Math.min(player.maxHp, player.hp + 1);
+      cds.canopyAegis = 18;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Aegis!', { color: '#8ab4ff', life: 0.8 });
+      try { playSfx('shield'); } catch {}
+    }
+  }
+
+  // Canopy L10 — Guardian Veil: brief near-invulnerability
+  if (hasAffinity('canopy', 10)) {
+    let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(80*80)) d++; } }
+    if ((cds.canopyVeil || 0) <= 0 && d >= 3 && !runtime.shieldActive) {
+      runtime.shieldActive = true; runtime.shieldTimer = 1.5;
+      cds.canopyVeil = 40;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Guardian Veil!', { color: '#8ab4ff', life: 0.9 });
+      try { playSfx('shield'); } catch {}
+    }
+  }
+
+  // Yorna L8 — Expose Weakness: Dash Combo or recent crit → local armor shred (lower enemy DR)
+  if (hasAffinity('yorna', 8)) {
+    const dash = !!(runtime._dashComboJustTriggered); const crit = (runtime._recentPlayerCritTimer||0) > 0;
+    if ((cds.yornaExpose || 0) <= 0 && (dash || crit)) {
+      for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy) <= (60*60)) { e._tempDr = Math.min(e._tempDr || 0, -2); e._tempDrTimer = Math.max(e._tempDrTimer||0, 4.0); } } }
+      cds.yornaExpose = 14; runtime._dashComboJustTriggered = false; runtime._recentPlayerCritTimer = 0;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Expose!', { color: '#ffd166', life: 0.8 });
+    }
+  }
+
+  // Yorna L10 — Execution Window: brief AP + true damage against low-HP enemies
+  if (hasAffinity('yorna', 10)) {
+    if ((cds.yornaExecute || 0) <= 0 && ((runtime._dashComboJustTriggered||false) || (runtime._recentPlayerCritTimer||0) > 0)) {
+      runtime.tempAPBonus = Math.max(runtime.tempAPBonus || 0, 2);
+      runtime.tempTrueDamage = Math.max(runtime.tempTrueDamage || 0, 1);
+      runtime._tempApTimer = Math.max(runtime._tempApTimer || 0, 2.0);
+      runtime._tempTrueTimer = Math.max(runtime._tempTrueTimer || 0, 2.0);
+      cds.yornaExecute = 35; runtime._dashComboJustTriggered = false; runtime._recentPlayerCritTimer = 0;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Execute!', { color: '#ffd166', life: 0.9 });
+    }
+  }
+
+  // Varabella L8 — Perfect Angle: detect alignment → next shots pierce + AP briefly
+  if (hasAffinity('varabella', 8)) {
+    if ((cds.varaPerfect || 0) <= 0) {
+      // Simple heuristic: if two enemies near share a similar angle from the player
+      const near = enemies.filter(e => e && e.hp>0).map(e => ({e, dx: e.x - player.x, dy: e.y - player.y})).filter(o => (o.dx*o.dx + o.dy*o.dy) <= (120*120));
+      if (near.length >= 2) {
+        let aligned = false;
+        for (let i=0;i<Math.min(near.length,5)&&!aligned;i++){
+          for (let j=i+1;j<Math.min(near.length,6);j++){
+            const a = near[i], b = near[j];
+            const ca = Math.atan2(a.dy, a.dx), cb = Math.atan2(b.dy, b.dx);
+            const da = Math.abs(ca - cb); const dAng = Math.min(da, Math.abs((Math.PI*2) - da));
+            if (dAng < 0.2) { aligned = true; break; }
+          }
+        }
+        if (aligned) {
+          runtime._tempPierceBonus = Math.max(runtime._tempPierceBonus || 0, 1);
+          runtime._tempPierceTimer = Math.max(runtime._tempPierceTimer || 0, 3.0);
+          runtime.tempAPBonus = Math.max(runtime.tempAPBonus || 0, 1);
+          runtime._tempApTimer = Math.max(runtime._tempApTimer || 0, 3.0);
+          cds.varaPerfect = 14;
+          spawnFloatText(player.x + player.w/2, player.y - 12, 'Perfect Angle.', { color: '#ffd166', life: 0.8 });
+        }
+      }
+    }
+  }
+
+  // Nellis L10 — Bulwark: temporary frontal protection (modeled as DR boosts)
+  if (hasAffinity('nellis', 10)) {
+    let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(80*80)) d++; } }
+    if ((cds.nellisBulwark || 0) <= 0 && d >= 3) {
+      runtime.tempRangedDr = Math.max(runtime.tempRangedDr || 0, 3);
+      runtime._tempRangedDrTimer = Math.max(runtime._tempRangedDrTimer || 0, 3.0);
+      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 1);
+      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 3.0);
+      cds.nellisBulwark = 45;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Bulwark!', { color: '#8ab4ff', life: 0.9 });
     }
   }
 
