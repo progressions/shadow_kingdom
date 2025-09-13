@@ -3,6 +3,7 @@ import { getEquipStats } from './utils.js';
 import { tryStartMusic, stopMusic, initAudioUnlock, playTitleFanfare } from './audio.js';
 import { playSfx } from './audio.js';
 import { TILE } from './constants.js';
+import { sampleLightAtPx, MAX_LIGHT_LEVEL } from './lighting.js';
 export const canvas = document.getElementById('game');
 export const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -260,6 +261,18 @@ export function setupTitleScreen(opts = {}) {
     btnLoad.onclick = (ev) => { ev.preventDefault(); initAudioUnlock(); playSfx('uiSelect'); if (_titleHandlers.onLoad) _titleHandlers.onLoad(); };
     btnLoad.addEventListener('mouseenter', () => { playSfx('uiMove'); });
   }
+}
+
+// Adjust overlay dimness based on current light at player position
+export function updateOverlayDim() {
+  try {
+    if (!overlay || overlay.style.display !== 'block') return;
+    const px = player.x + player.w/2, py = player.y + player.h/2;
+    const lv = sampleLightAtPx(px, py);
+    const ratio = Math.max(0, Math.min(1, MAX_LIGHT_LEVEL ? (lv / MAX_LIGHT_LEVEL) : 0));
+    const alpha = Math.max(0.25, Math.min(0.65, 0.65 - 0.30 * ratio));
+    overlay.style.background = `rgba(0,0,0,${alpha.toFixed(2)})`;
+  } catch {}
 }
 
 export function showTitleScreen() {

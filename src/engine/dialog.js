@@ -1379,7 +1379,10 @@ function doEquip(actorTag, slot, index, itemId) {
     const equippedTorch = { id: 'torch', name: stack.name || 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
     eq[slot] = equippedTorch;
     // Immediately rebuild lighting so the torch lights up even while inventory is open
-    try { import('./lighting.js').then(m => m.rebuildLighting && m.rebuildLighting(0)).catch(()=>{}); } catch {}
+    try {
+      import('./lighting.js').then(m => m.rebuildLighting && m.rebuildLighting(0)).catch(()=>{});
+      import('./ui.js').then(u => u.updateOverlayDim && u.updateOverlayDim()).catch(()=>{});
+    } catch {}
     // Tutorial: after equipping a torch, prompt to find a weapon and mark the sword chest
     try {
       if (!runtime.questFlags) runtime.questFlags = {};
@@ -1443,7 +1446,10 @@ function doUnequip(actorTag, slot) {
     try { showBanner('Torch consumed'); } catch {}
     eq[slot] = null;
     // Rebuild lighting immediately so darkness updates while inventory is open
-    try { import('./lighting.js').then(m => m.rebuildLighting && m.rebuildLighting(0)).catch(()=>{}); } catch {}
+    try {
+      import('./lighting.js').then(m => m.rebuildLighting && m.rebuildLighting(0)).catch(()=>{});
+      import('./ui.js').then(u => u.updateOverlayDim && u.updateOverlayDim()).catch(()=>{});
+    } catch {}
   } else {
     actor.inventory.items.push(eq[slot]);
     eq[slot] = null;
