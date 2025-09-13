@@ -195,8 +195,16 @@ export function step(dt) {
   } catch {}
   // Decay global input suppression timer (used for death scene)
   try { if ((runtime._suppressInputTimer || 0) > 0) runtime._suppressInputTimer = Math.max(0, (runtime._suppressInputTimer || 0) - dt); } catch {}
-  // Decay player dash cooldown (double-tap) timer
-  try { if ((runtime._dashCooldown || 0) > 0) runtime._dashCooldown = Math.max(0, (runtime._dashCooldown || 0) - dt); } catch {}
+  // Decay player dash cooldown (double-tap) timer and ping when it ends
+  try {
+    const prevCd = runtime._dashCooldown || 0;
+    if (prevCd > 0) {
+      runtime._dashCooldown = Math.max(0, prevCd - dt);
+      if (runtime._dashCooldown === 0 && !runtime.paused && runtime.gameState === 'play') {
+        try { playSfx('uiSelect'); } catch {}
+      }
+    }
+  } catch {}
   // Decay dash-combo lockout and vulnerability timers
   try { if ((runtime._dashComboLockout || 0) > 0) runtime._dashComboLockout = Math.max(0, (runtime._dashComboLockout || 0) - dt); } catch {}
   try { if ((runtime._dashComboVulnTimer || 0) > 0) runtime._dashComboVulnTimer = Math.max(0, (runtime._dashComboVulnTimer || 0) - dt); } catch {}
