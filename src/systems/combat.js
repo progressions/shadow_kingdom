@@ -166,6 +166,8 @@ export function handleAttacks(dt) {
             import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 12, `Dash +${Math.max(1, Math.ceil(finalDmg - dmg))}`, { color: '#9ae6ff', life: 0.7 }));
           }
         } catch {}
+        // Synergy mark: increase damage to marked enemies
+        try { if ((e._markedTimer || 0) > 0) { finalDmg = Math.ceil(finalDmg * 1.25); } } catch {}
         // Cowsill L8 — Crescendo: after 5 hits within 3s, this hit deals +100% bonus
         try {
           const cds = runtime.companionCDs || (runtime.companionCDs = {});

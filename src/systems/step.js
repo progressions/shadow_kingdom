@@ -346,6 +346,8 @@ export function step(dt) {
               let critChance = 0.08 + (runtime?.combatBuffs?.crit || 0);
               if (Math.random() < critChance) { isCrit = true; finalDmg = Math.ceil(finalDmg * 1.5); }
             }
+            // Synergy mark damage amp for marked enemies
+            try { if ((e._markedTimer || 0) > 0) { finalDmg = Math.ceil(finalDmg * 1.25); } } catch {}
             const before = e.hp;
             e.hp -= finalDmg;
             try {
@@ -2834,6 +2836,34 @@ function handleCompanionTriggers(dt) {
     }
   }
 
+  // Twil L10 — Detonate Brand: if a burning enemy is present, detonate for small AoE and clear burns
+  if (hasAffinity('twil', 10)) {
+    const cds = runtime.companionCDs || (runtime.companionCDs = {});
+    if ((cds.twilDetonate || 0) <= 0) {
+      // Find a target with sustained burn
+      let target = null;
+      for (const e of enemies) {
+        if (!e || e.hp <= 0) continue;
+        const burning = (e._burnTimer || 0) > 1.2 && (e._burnDps || 0) >= 0.4;
+        if (burning) { target = e; break; }
+      }
+      if (target) {
+        const cx = target.x, cy = target.y;
+        for (const t of enemies) {
+          if (!t || t.hp <= 0) continue;
+          const dx = (t.x - cx), dy = (t.y - cy);
+          if ((dx*dx + dy*dy) <= (28*28)) {
+            t.hp -= 3; // small AoE burst
+            // Clear burn on detonated target
+            if (t === target) { t._burnTimer = 0; t._burnDps = 0; }
+          }
+        }
+        cds.twilDetonate = 40;
+        spawnFloatText(target.x + target.w/2, target.y - 12, 'Detonate!', { color: '#ff9a3d', life: 0.9 });
+      }
+    }
+  }
+
   // Snake L8 — Venom Cloud: periodic slow+DoT around player when ready
   if (hasAffinity('snake', 8)) {
     if ((cds.snakeVenom || 0) <= 0) {
@@ -2846,11 +2876,13 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Synergy (Urn + Varabella both at 10): Sanctuary Convergence (simple scaffolding)
+  // Synergy (Urn + Varabella both at 10): Sanctuary Convergence / Chrono Lattice
   const bothMax = hasAffinity('urn', 10) && hasAffinity('varabella', 10);
   if (bothMax && (cds.synergy10 || 0) <= 0) {
     const hpRatio = player.hp / Math.max(1, player.maxHp||10);
-    let density = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(100*100)) density++; } }
+    let density = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(120*120)) density++; } }
+    const critRecently = (runtime._recentPlayerCritTimer || 0) > 0;
+    const dashCombo = !!(runtime._dashComboJustTriggered);
     if (hpRatio < 0.35 && density >= 3) {
       runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 2);
       runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 2.5);
@@ -2859,6 +2891,16 @@ function handleCompanionTriggers(dt) {
       for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(100*100)) { e._veilSlowTimer = Math.max(e._veilSlowTimer||0, 2.5); e._veilSlow = Math.max(e._veilSlow||0, 0.30); } } }
       cds.synergy10 = 58;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Sanctuary!', { color: '#9ae6ff', life: 1.0 });
+    } else if (density >= 3 && (critRecently || dashCombo)) {
+      // Chrono Lattice: short global time drag + stronger shots; mark enemies for bonus damage
+      for (const e of enemies) { if (e.hp>0) { e._veilSlowTimer = Math.max(e._veilSlowTimer||0, 1.8); e._veilSlow = Math.max(e._veilSlow||0, 0.35); e._markedTimer = Math.max(e._markedTimer||0, 1.8); } }
+      runtime.tempCritBonus = Math.max(runtime.tempCritBonus || 0, 0.20);
+      runtime._tempCritTimer = Math.max(runtime._tempCritTimer || 0, 1.8);
+      runtime._tempPierceBonus = Math.max(runtime._tempPierceBonus || 0, 1);
+      runtime._tempPierceTimer = Math.max(runtime._tempPierceTimer || 0, 1.8);
+      cds.synergy10 = 58;
+      runtime._recentPlayerCritTimer = 0; runtime._dashComboJustTriggered = false;
+      spawnFloatText(player.x + player.w/2, player.y - 12, 'Chrono Lattice!', { color: '#ffd166', life: 1.0 });
     }
   }
 
@@ -3108,6 +3150,7 @@ function applyEnemyAurasAndTriggers(dt) {
     e._baseDr = baseDr;
     // Tick active timers
     if (e._tempDrTimer && e._tempDrTimer > 0) { e._tempDrTimer = Math.max(0, e._tempDrTimer - dt); if (e._tempDrTimer <= 0) e._tempDr = 0; }
+    if (e._markedTimer && e._markedTimer > 0) { e._markedTimer = Math.max(0, e._markedTimer - dt); }
     if (e._speedBoostTimer && e._speedBoostTimer > 0) { e._speedBoostTimer = Math.max(0, e._speedBoostTimer - dt); if (e._speedBoostTimer <= 0) e._speedBoostFactor = 1; }
     if (e._guardCd && e._guardCd > 0) e._guardCd = Math.max(0, e._guardCd - dt);
     if (e._gustCd && e._gustCd > 0) e._gustCd = Math.max(0, e._gustCd - dt);

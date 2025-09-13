@@ -232,7 +232,7 @@ export function selectChoice(index) {
               startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
               return;
             }
-            spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+            spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
             const idx = npcs.indexOf(npc);
             if (idx !== -1) npcs.splice(idx, 1);
             updatePartyUI(companions);
@@ -293,7 +293,7 @@ export function selectChoice(index) {
         startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
         return;
       }
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
       updatePartyUI(companions);
@@ -333,7 +333,7 @@ export function selectChoice(index) {
         return;
       }
       // Spawn as companion; preserve external sprite if present
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
       // Remove NPC from world
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
@@ -422,7 +422,7 @@ export function selectChoice(index) {
     } catch {}
     removeCompanion(comp);
     // Recruit the active NPC into the now-free slot
-    spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : 5 });
+    spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
     const ni = npcs.indexOf(npc); if (ni !== -1) npcs.splice(ni, 1);
     updatePartyUI(companions);
     showBanner(`${npc.name || 'Companion'} joined your party!`);

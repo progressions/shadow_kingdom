@@ -461,7 +461,7 @@ export function spawnCompanion(x, y, sheet, opts = {}) {
     name: opts.name || 'Companion',
     portraitSrc: opts.portrait || opts.portraitSrc || null,
     inventory: { items: [], equipped: { head: null, torso: null, legs: null, leftHand: null, rightHand: null } },
-    affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
+    affinity: (typeof opts.affinity === 'number') ? opts.affinity : ((String(opts.name||'').toLowerCase()==='codex') ? 5 : 3),
     level: typeof opts.level === 'number' ? opts.level : 1,
     xp: typeof opts.xp === 'number' ? opts.xp : 0,
   };
@@ -488,7 +488,7 @@ export function spawnNpc(x, y, dir = 'down', opts = {}) {
     // Minimal VN intro flag: if present, a simple VN appears once when first seen
     vnOnSight: opts.vnOnSight || null,
     // Affinity before recruitment (carried into party on join)
-    affinity: (typeof opts.affinity === 'number') ? opts.affinity : 5,
+    affinity: (typeof opts.affinity === 'number') ? opts.affinity : ((String(opts.name||'').toLowerCase()==='codex') ? 5 : 3),
   };
   // Preload portrait only for image extensions (with asset version)
   if (npc.portraitSrc && /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(npc.portraitSrc)) {

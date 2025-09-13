@@ -239,7 +239,7 @@ function spawnCompanionFromRecord(d) {
     name: d.name,
     portrait: d.portrait || null,
     sheetPalette: d.sheetPalette || null,
-    affinity: (typeof d.affinity === 'number') ? d.affinity : 2,
+    affinity: (typeof d.affinity === 'number') ? d.affinity : ((String(d.name||'').toLowerCase()==='codex') ? 5 : 3),
     level: (typeof d.level === 'number') ? d.level : 1,
     xp: (typeof d.xp === 'number') ? d.xp : 0,
   });
@@ -266,7 +266,7 @@ function serializeNpcEntity(n) {
     animFrame: n.animFrame || 0,
     portrait: n.portraitSrc || null,
     sheetPalette: n.sheetPalette || null,
-    affinity: (typeof n.affinity === 'number') ? n.affinity : 5,
+    affinity: (typeof n.affinity === 'number') ? n.affinity : ((String(n.name||'').toLowerCase()==='codex') ? 5 : 3),
   };
 }
 
@@ -313,7 +313,7 @@ function spawnNpcFromRecord(d) {
     sheet,
     portrait: d.portrait || null,
     sheetPalette: d.sheetPalette || null,
-    affinity: (typeof d.affinity === 'number') ? d.affinity : 5,
+    affinity: (typeof d.affinity === 'number') ? d.affinity : ((String(d.name||'').toLowerCase()==='codex') ? 5 : 3),
     dialogId: d.dialogId || null,
   });
   npc.dialogId = d.dialogId || npc.dialogId || null;
