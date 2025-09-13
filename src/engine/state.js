@@ -24,6 +24,8 @@ export const player = {
   moving: false,
   animTime: 0,
   animFrame: 0,
+  // Use external sprite by default (custom sheet)
+  spriteId: 'assets/sprites/custom/player.png',
   hp: 10,
   maxHp: 10,
   level: 1,
@@ -171,8 +173,15 @@ export async function autoEquipIfBetter(actor, slotOrItem) {
   const sKey = String(slot);
   const eq = inv.equipped || {};
   const current = eq[sKey] || null;
-  // Consider only non-stackable candidates for auto-equip
-  const candidates = (inv.items || []).filter(it => it && it.slot === sKey && !it.stackable);
+  // Consider only non-stackable candidates for auto-equip; never auto-equip torches
+  const candidates = (inv.items || []).filter(it => {
+    if (!it || it.slot !== sKey) return false;
+    if (it.stackable) return false;
+    if (it.id === 'torch') return false; // never auto-equip torches
+    // Do not consider two-handed right-hand weapons if left hand is currently occupied
+    if (sKey === 'rightHand' && it.twoHanded && (eq.leftHand != null)) return false;
+    return true;
+  });
   if (!candidates.length) {
     // Nothing to equip from backpack
     return false;
@@ -189,6 +198,22 @@ export async function autoEquipIfBetter(actor, slotOrItem) {
   }
   // If nothing equipped, or best is better than current, equip it
   if (!current || isBetterForSlot(best, current, sKey)) {
+    // Hand constraints
+    if (sKey === 'leftHand') {
+      // Do not equip left-hand if a two-handed right-hand is equipped
+      try {
+        if (eq.rightHand && eq.rightHand.twoHanded) return false;
+      } catch {}
+    }
+    if (sKey === 'rightHand' && best && best.twoHanded) {
+      // Free left hand for two-handed weapons (consume torch, return others to backpack)
+      try {
+        if (eq.leftHand) {
+          if (eq.leftHand.id === 'torch') { eq.leftHand = null; }
+          else { (inv.items || (inv.items = [])).push(eq.leftHand); eq.leftHand = null; }
+        }
+      } catch {}
+    }
     // Move currently equipped back to backpack
     if (current) (inv.items || (inv.items = [])).push(current);
     // Equip best and remove from backpack
@@ -219,6 +244,13 @@ export function normalizeInventory(inv) {
       eq[k] = null;
     }
   }
+  // Enforce two-handed constraint: if a 2H right-hand weapon is equipped, clear left hand
+  try {
+    if (eq.rightHand && eq.rightHand.twoHanded && eq.leftHand) {
+      if (eq.leftHand.id === 'torch') { eq.leftHand = null; }
+      else { items.push(eq.leftHand); eq.leftHand = null; }
+    }
+  } catch {}
 }
 
 export function spawnEnemy(x, y, type = 'mook', opts = {}) {
@@ -568,6 +600,19 @@ export const runtime = {
   },
   // Pathfinding flow field (coarse, tile-based)
   _flow: { dist: null, w: 0, h: 0, lastBuildAt: 0, lastPlayerTx: -1, lastPlayerTy: -1, dirty: true },
+
+  // --- Player dash (double-tap WASD) ---
+  // Recent tap timestamps by key (e.g., 'w','a','s','d') in seconds
+  _dashLastTap: {},
+  // Active dash state
+  _dashTimer: 0,        // seconds remaining in current dash (0 = none)
+  _dashVx: 0,           // dash velocity X (px/sec)
+  _dashVy: 0,           // dash velocity Y (px/sec)
+  _dashCooldown: 0,     // cooldown before next dash (seconds)
+  // Tunables
+  _dashDurationDefault: 0.14,
+  _dashSpeedDefault: 340, // px/sec
+  _dashDoubleTapWindow: 0.25, // seconds between taps to trigger dash
 
 };
 

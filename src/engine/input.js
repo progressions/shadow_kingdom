@@ -39,6 +39,33 @@ export function initInput() {
       return; // ignore other keys while in chat
     }
     runtime.keys.add(e.key.toLowerCase());
+    // Double-tap WASD to dash in that direction
+    try {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 'a' || k === 's' || k === 'd') {
+        const now = (typeof performance !== 'undefined' && performance.now) ? (performance.now() / 1000) : (Date.now() / 1000);
+        const last = (runtime._dashLastTap && typeof runtime._dashLastTap[k] === 'number') ? runtime._dashLastTap[k] : -999;
+        const windowSec = (typeof runtime._dashDoubleTapWindow === 'number') ? runtime._dashDoubleTapWindow : 0.25;
+        const canDash = !runtime.paused && !runtime.gameOver && ((runtime._dashCooldown || 0) <= 0) && ((runtime._suppressInputTimer || 0) <= 0) && ((runtime._dashTimer || 0) <= 0);
+        if (canDash && (now - last) <= windowSec) {
+          // Start dash in axis-aligned direction of the tapped key
+          let vx = 0, vy = 0;
+          if (k === 'w') vy = -1; else if (k === 's') vy = 1; else if (k === 'a') vx = -1; else if (k === 'd') vx = 1;
+          const spd = (typeof runtime._dashSpeedDefault === 'number') ? runtime._dashSpeedDefault : 340;
+          runtime._dashVx = vx * spd;
+          runtime._dashVy = vy * spd;
+          runtime._dashTimer = (typeof runtime._dashDurationDefault === 'number') ? runtime._dashDurationDefault : 0.14;
+          runtime._dashCooldown = Math.max(runtime._dashCooldown || 0, 0.25);
+          // Face the dash direction immediately
+          try { import('./state.js').then(m => { const p = m.player; if (p) { if (Math.abs(vx) > Math.abs(vy)) p.dir = vx < 0 ? 'left' : 'right'; else if (vy !== 0) p.dir = vy < 0 ? 'up' : 'down'; } }); } catch {}
+          // Optional: subtle screen shake could reinforce the feel (kept minimal)
+          try { runtime.shakeTimer = Math.max(runtime.shakeTimer || 0, 0.05); } catch {}
+        }
+        // Update last tap time for this key
+        if (!runtime._dashLastTap) runtime._dashLastTap = {};
+        runtime._dashLastTap[k] = now;
+      }
+    } catch {}
     if (e.key === 'Escape') {
       // Pause game and music
       runtime.paused = true;

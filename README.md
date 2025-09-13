@@ -4,6 +4,8 @@ Run by opening index.html directly in your browser. No installs or build steps r
 
 Changelog: See `CHANGELOG.md` for a history of notable changes.
 
+Equipment auto‑equip behavior: See `docs/AUTO_EQUIP_RULES.md`.
+
 Controls:
 - Move: WASD or Arrow Keys
 - Toggle grid: G

@@ -193,6 +193,8 @@ export function step(dt) {
   } catch {}
   // Decay global input suppression timer (used for death scene)
   try { if ((runtime._suppressInputTimer || 0) > 0) runtime._suppressInputTimer = Math.max(0, (runtime._suppressInputTimer || 0) - dt); } catch {}
+  // Decay player dash cooldown (double-tap) timer
+  try { if ((runtime._dashCooldown || 0) > 0) runtime._dashCooldown = Math.max(0, (runtime._dashCooldown || 0) - dt); } catch {}
 
   // Torch burnout: if a torch is equipped in left hand, tick down and consume on expiry
   try {
@@ -680,6 +682,17 @@ export function step(dt) {
     player.knockbackX *= Math.pow(0.001, dt);
     player.knockbackY *= Math.pow(0.001, dt);
   }
+  // Apply dash movement (takes precedence over normal input while active)
+  let dashActive = false;
+  try {
+    if ((runtime._dashTimer || 0) > 0) {
+      const vx = runtime._dashVx || 0;
+      const vy = runtime._dashVy || 0;
+      moveWithCollision(player, vx * dt, vy * dt, solidsForPlayer);
+      runtime._dashTimer = Math.max(0, (runtime._dashTimer || 0) - dt);
+      dashActive = true;
+    }
+  } catch {}
   // Terrain effects: compute slow/burn zones for player
   let terrainSlow = 1.0;
   let terrainBurnDps = 0;
@@ -702,7 +715,7 @@ export function step(dt) {
     terrainSlow *= mul;
   } catch {}
   // Then apply input movement with terrain slow
-  if (hasInput) {
+  if (!dashActive && hasInput) {
     const dx = ax * player.speed * terrainSlow * dt;
     const dy = ay * player.speed * terrainSlow * dt;
     moveWithCollision(player, dx, dy, solidsForPlayer);
@@ -713,7 +726,11 @@ export function step(dt) {
     player._burnTimer = Math.max(player._burnTimer || 0, 1.0);
   }
   // Direction preference: input > knockback
-  if (hasInput) {
+  if (dashActive) {
+    const vx = runtime._dashVx || 0, vy = runtime._dashVy || 0;
+    if (Math.abs(vx) > Math.abs(vy)) player.dir = vx < 0 ? 'left' : 'right';
+    else if (vy !== 0) player.dir = vy < 0 ? 'up' : 'down';
+  } else if (hasInput) {
     if (Math.abs(ax) > Math.abs(ay)) player.dir = ax < 0 ? 'left' : 'right';
     else if (ay !== 0) player.dir = ay < 0 ? 'up' : 'down';
   } else if (hasKnock) {
@@ -721,11 +738,14 @@ export function step(dt) {
     if (Math.abs(dx) > Math.abs(dy)) player.dir = dx < 0 ? 'left' : 'right';
     else if (dy !== 0) player.dir = dy < 0 ? 'up' : 'down';
   }
-  // Anim state
-  player.moving = hasInput || hasKnock;
-  if (player.moving) {
-    player.animTime += dt; if (player.animTime > 0.18) { player.animTime = 0; player.animFrame = (player.animFrame + 1) % FRAMES_PER_DIR; }
-  } else { player.animTime = 0; player.animFrame = 0; }
+  // Anim state: bob while moving (fast) and idle (slow)
+  player.moving = dashActive || hasInput || hasKnock;
+  player.animTime += dt;
+  const animThresh = player.moving ? 0.18 : 0.55; // slower idle bob
+  if (player.animTime > animThresh) {
+    player.animTime = 0;
+    player.animFrame = (player.animFrame + 1) % FRAMES_PER_DIR; // 0..1 bob
+  }
 
   // Attacks
   handleAttacks(dt);
@@ -1982,16 +2002,23 @@ export function step(dt) {
           playSfx('pickup');
           // Auto-equip rules:
           // - Armor (head/torso/legs): auto-equip if strictly better.
-          // - Hands: auto-equip only if the target hand is empty, and only for non-stackable items (won't auto-equip torches).
+          // - Hands: auto-equip only if the target hand is empty, and only for non-stackable items.
+          // - Never auto-equip torches on pickup (torches are manual-use only and should not overwrite shields/bucklers).
           try {
             if (!picked) {
               // no-op
+            } else if (picked.id === 'torch') {
+              // Never auto-equip torches from pickup
             } else if (!picked.stackable) {
               const slot = picked.slot;
               const valid = slot === 'head' || slot === 'torso' || slot === 'legs' || slot === 'leftHand' || slot === 'rightHand';
               if (valid) {
                 const eqNow = player?.inventory?.equipped || {};
                 const cur = eqNow[slot] || null;
+                // Never auto-equip two-handed right-hand weapons (require manual equip)
+                if (slot === 'rightHand' && picked.twoHanded) {
+                  // skip
+                } else {
                 const hasStats = (it) => !!it && (((typeof it.dr === 'number') && it.dr > 0) || ((typeof it.atk === 'number') && it.atk > 0));
                 if (!cur) {
                   // Empty slot: equip it
@@ -1999,6 +2026,7 @@ export function step(dt) {
                 } else if (hasStats(cur) && hasStats(picked)) {
                   // Both have meaningful stats: upgrade if strictly better for the slot
                   autoEquipIfBetter(player, slot);
+                }
                 }
               }
             }

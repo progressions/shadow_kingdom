@@ -291,6 +291,109 @@ export function render(terrainBitmap, obstacles) {
 
   for (const d of drawables) {
     if (d.isPlayer && runtime._hidePlayer) continue;
+    // Player: draw from custom sheet only
+    // Direction mapping on single-row strip (16px tiles):
+    // - right/down: frames 1–2 (cols 0–1)
+    // - left:       frames 3–4 (cols 2–3)
+    // - up:         frames 5–6 (cols 4–5)
+    if (d.isPlayer) {
+      const ent = d.spriteRef;
+      const scale = d.spriteScale || 1;
+      const destW = SPRITE_SIZE * scale;
+      const destH = SPRITE_SIZE * scale;
+      const dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
+      let dy = Math.round(d.y - (destH - d.h) - camera.y);
+      try {
+        if (ent && ent.spriteId) {
+          if (ent._sprite && ent._sprite.image && canDrawImage(ent._sprite.image)) {
+            const dir = String(ent.dir || 'down');
+            // Determine if a weapon is equipped in right hand and whether it's a bow (ranged)
+            let weaponRH = false;
+            let isBow = false;
+            // Determine if a shield is held in left hand
+            let hasShield = false;
+            // And whether shield is the only item (no RH weapon)
+            let shieldOnly = false;
+            try {
+              const eq = player?.inventory?.equipped || {};
+              const RH = eq.rightHand || null;
+              const LH = eq.leftHand || null;
+              if (RH && !RH.stackable) {
+                if ((typeof RH.atk === 'number' && RH.atk > 0) || RH.ranged) weaponRH = true;
+                if (RH.ranged) isBow = true;
+              }
+              // Shield detection: explicit isShield flag or name/id regex
+              // Consider as shield if explicitly flagged, name/id suggests it, or it's a left-hand DR item
+              const nameId = String((LH && (LH.name || LH.id)) || '');
+              const looksLikeShield = /shield|buckler/i.test(nameId);
+              const isLeftHandDr = !!(LH && LH.slot === 'leftHand' && !LH.stackable && typeof LH.dr === 'number' && LH.dr > 0 && !LH.ranged && !(typeof LH.atk === 'number' && LH.atk > 0));
+              hasShield = !!(LH && !LH.stackable && (LH.isShield || looksLikeShield || isLeftHandDr));
+              shieldOnly = hasShield && !weaponRH;
+            } catch {}
+            // Base frame column offset for 2‑frame pairs by direction
+            // Default: right/down → 0, left → 2, up → 4
+            // With right-hand melee weapon: use sword poses
+            //   right/down → frames 11–12 (base 10), left → 13–14 (base 12); up unchanged
+            // With bow (ranged): use bow poses
+            //   right/down → frames 19–20 (base 18), left → 21–22 (base 20); up unchanged
+            // With shield only (no RH weapon): use shield poses
+            //   right/down → frames 7–8 (base 6), left → 9–10 (base 8); up unchanged
+            // With sword + shield (RH weapon melee + LH shield): use combo poses
+            //   right/down → frames 15–16 (base 14), left → 17–18 (base 16); up unchanged
+            let base = 0;
+            if (weaponRH) {
+              if (isBow) {
+                if (dir === 'left') base = 20;
+                else if (dir === 'up') base = 4;
+                else base = 18; // right and down share 19–20
+              } else if (hasShield) {
+                if (dir === 'left') base = 16;
+                else if (dir === 'up') base = 4;
+                else base = 14; // right and down share 15–16
+              } else {
+                if (dir === 'left') base = 12;
+                else if (dir === 'up') base = 4;
+                else base = 10; // right and down share 11–12
+              }
+            } else if (shieldOnly) {
+              if (dir === 'left') base = 8;
+              else if (dir === 'up') base = 4;
+              else base = 6; // right and down share 7–8
+            } else {
+              if (dir === 'left') base = 2;
+              else if (dir === 'up') base = 4;
+              else base = 0;
+            }
+            // Clamp to available columns to avoid out-of-range crops on shorter sheets
+            const img = ent._sprite.image;
+            const cols = (img && img.width) ? Math.max(0, Math.floor(img.width / SPRITE_SIZE)) : 0;
+            if (cols >= 2) base = Math.min(base, cols - 2);
+            const col = base + ((ent.animFrame || 0) % 2);
+            const sx = col * SPRITE_SIZE;
+            // Smooth sine bob for whole sprite while moving (debug-tunable)
+            try {
+              if (ent.moving) {
+                const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
+                let hz = 0.5, amp = 1;
+                try { if (typeof window !== 'undefined' && typeof window.PLAYER_BOB_HZ === 'number') hz = window.PLAYER_BOB_HZ; } catch {}
+                try { if (typeof window !== 'undefined' && typeof window.PLAYER_BOB_AMP === 'number') amp = window.PLAYER_BOB_AMP; } catch {}
+                const freq = Math.max(0, Number(hz) || 0);
+                const A = Math.max(0, Number(amp) || 0);
+                const bob = Math.round(Math.sin(t * Math.PI * 2 * freq) * A);
+                dy += bob;
+              }
+            } catch {}
+            ctx.drawImage(ent._sprite.image, sx, 0, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+          } else {
+            if (!ent._spriteLoading) {
+              ent._spriteLoading = true;
+              getSprite(ent.spriteId).then(s => { ent._sprite = s; ent._spriteLoading = false; }).catch(() => { ent._spriteLoading = false; });
+            }
+          }
+        }
+      } catch {}
+      continue;
+    }
     const scale = d.spriteScale || 1;
     let drew = false;
     // Custom sprite path via spriteId (supports 32x32 and meta frames)
@@ -314,10 +417,26 @@ export function render(terrainBitmap, obstacles) {
           }
           const fr = frames[idx];
           sx = fr.x|0; sy = fr.y|0; fw = fr.w||32; fh = fr.h||32;
+        } else if (meta && meta.indices && Array.isArray(meta.indices[d.dir]) && meta.indices[d.dir].length) {
+          const frames = meta.indices[d.dir];
+          let idx = 0;
+          if (frames.length >= 3) {
+            if (ent && ent.moving) idx = 1 + ((ent.animFrame || 0) % 2);
+            else idx = 0;
+          } else {
+            idx = Math.max(0, (ent && typeof ent.animFrame === 'number' ? ent.animFrame : 0) % frames.length);
+          }
+          const index1 = Math.max(1, Number(frames[idx]) || 1);
+          const fw2 = (meta.w || fw || SPRITE_SIZE);
+          const fh2 = (meta.h || fh || SPRITE_SIZE);
+          const cols = Math.max(1, Number(meta.cols || meta.columns || Math.floor((img && img.width) ? (img.width / fw2) : 1)));
+          const i0 = index1 - 1;
+          const cx = i0 % cols; const cy = Math.floor(i0 / cols);
+          sx = cx * fw2; sy = cy * fh2; fw = fw2; fh = fh2;
         } else {
           // Assume grid: 2 columns × 4 directions
-          fw = (meta && meta.w) ? meta.w : 32;
-          fh = (meta && meta.h) ? meta.h : 32;
+          fw = (meta && meta.w) ? meta.w : SPRITE_SIZE;
+          fh = (meta && meta.h) ? meta.h : SPRITE_SIZE;
           const row = DIRECTIONS.indexOf(d.dir);
           const col = d.frame % 2;
           sx = col * fw; sy = row * fh;
@@ -362,8 +481,9 @@ export function render(terrainBitmap, obstacles) {
           ent._spriteLoading = true;
           getSprite(ent.spriteId).then(s => { ent._sprite = s; ent._spriteLoading = false; }).catch(() => { ent._spriteLoading = false; });
         }
-        // Suppress legacy fallback while custom sprite is loading
-        drew = true;
+        // For the player, do not draw legacy fallback — go all-in on custom sprite
+        // For others, allow fallback while loading.
+        drew = !!d.isPlayer;
       }
     }
     if (!drew) {

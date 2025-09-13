@@ -27,7 +27,7 @@ initInput();
 updatePartyUI([]);
 
 // Use user's single-frame 16×16 sprite at assets/sprites/custom/player.png
-try { player.spriteId = 'assets/sprites/custom/player'; } catch {}
+try { player.spriteId = 'assets/sprites/custom/player.png'; } catch {}
 
 // Title screen setup: show image, then fade-in menu
 function startIntroScene() {

@@ -363,7 +363,11 @@
       </div>
       <!-- Sidebar removed: VN overlay handles dialog -->
     </div>
-    <script>window.ASSET_VERSION = '2025-09-10';</script>
+    <script>
+      // Always bust caches during active development to ensure fresh JS modules and assets.
+      // This sets a version used by the asset loader and appends it to the module import below.
+      try { window.ASSET_VERSION = String(Date.now()); } catch {}
+    </script>
     <script>
       // Enable remote saves when hosted (same-origin API). No secret in client.
       // When served from Fly/Node (http/https), use same-origin '/api/save';
@@ -374,6 +378,12 @@
         }
       } catch {}
     </script>
-    <script type="module" src="src/main.js"></script>
+    <script>
+      // Dynamically import the app with a version query to bust the browser module cache.
+      (function(){
+        const v = (window && window.ASSET_VERSION) ? window.ASSET_VERSION : String(Date.now());
+        import(`./src/main.js?v=${encodeURIComponent(v)}`);
+      })();
+    </script>
   </body>
   </html>
