@@ -292,10 +292,16 @@ export function render(terrainBitmap, obstacles) {
   for (const d of drawables) {
     if (d.isPlayer && runtime._hidePlayer) continue;
     // Player: draw from custom sheet only
-    // Direction mapping on single-row strip (16px tiles):
-    // - right/down: frames 1–2 (cols 0–1)
-    // - left:       frames 3–4 (cols 2–3)
-    // - up:         frames 5–6 (cols 4–5)
+    // New player sheet: 6×7 grid of 16×16 cells (w=96,h=112)
+    // Columns (pairs): 1–2 = down/right, 3–4 = left, 5–6 = up
+    // Rows:
+    // 1 none
+    // 2 shield only
+    // 3 sword only (any melee RH)
+    // 4 sword+shield
+    // 5 bow (two‑handed)
+    // 6 torch only (LH torch, RH none/utility)
+    // 7 torch+sword (LH torch + RH melee)
     if (d.isPlayer) {
       const ent = d.spriteRef;
       const scale = d.spriteScale || 1;
@@ -307,70 +313,54 @@ export function render(terrainBitmap, obstacles) {
         if (ent && ent.spriteId) {
           if (ent._sprite && ent._sprite.image && canDrawImage(ent._sprite.image)) {
             const dir = String(ent.dir || 'down');
-            // Determine if a weapon is equipped in right hand and whether it's a bow (ranged)
-            let weaponRH = false;
-            let isBow = false;
-            // Determine if a shield is held in left hand
-            let hasShield = false;
-            // And whether shield is the only item (no RH weapon)
-            let shieldOnly = false;
+            // Equipment flags
+            let hasMelee = false, hasBow = false, hasShield = false, hasTorch = false;
             try {
               const eq = player?.inventory?.equipped || {};
               const RH = eq.rightHand || null;
               const LH = eq.leftHand || null;
               if (RH && !RH.stackable) {
-                if ((typeof RH.atk === 'number' && RH.atk > 0) || RH.ranged) weaponRH = true;
-                if (RH.ranged) isBow = true;
+                hasBow = !!RH.ranged; // any truthy 'ranged' means bow/ranged
+                const hasAtk = (typeof RH.atk === 'number' && RH.atk > 0);
+                hasMelee = hasAtk && !hasBow;
               }
-              // Shield detection: explicit isShield flag or name/id regex
-              // Consider as shield if explicitly flagged, name/id suggests it, or it's a left-hand DR item
+              // Shield detection (left hand)
               const nameId = String((LH && (LH.name || LH.id)) || '');
               const looksLikeShield = /shield|buckler/i.test(nameId);
               const isLeftHandDr = !!(LH && LH.slot === 'leftHand' && !LH.stackable && typeof LH.dr === 'number' && LH.dr > 0 && !LH.ranged && !(typeof LH.atk === 'number' && LH.atk > 0));
               hasShield = !!(LH && !LH.stackable && (LH.isShield || looksLikeShield || isLeftHandDr));
-              shieldOnly = hasShield && !weaponRH;
+              hasTorch = !!(LH && LH.id === 'torch');
             } catch {}
-            // Base frame column offset for 2‑frame pairs by direction
-            // Default: right/down → 0, left → 2, up → 4
-            // With right-hand melee weapon: use sword poses
-            //   right/down → frames 11–12 (base 10), left → 13–14 (base 12); up unchanged
-            // With bow (ranged): use bow poses
-            //   right/down → frames 19–20 (base 18), left → 21–22 (base 20); up unchanged
-            // With shield only (no RH weapon): use shield poses
-            //   right/down → frames 7–8 (base 6), left → 9–10 (base 8); up unchanged
-            // With sword + shield (RH weapon melee + LH shield): use combo poses
-            //   right/down → frames 15–16 (base 14), left → 17–18 (base 16); up unchanged
-            let base = 0;
-            if (weaponRH) {
-              if (isBow) {
-                if (dir === 'left') base = 20;
-                else if (dir === 'up') base = 4;
-                else base = 18; // right and down share 19–20
-              } else if (hasShield) {
-                if (dir === 'left') base = 16;
-                else if (dir === 'up') base = 4;
-                else base = 14; // right and down share 15–16
-              } else {
-                if (dir === 'left') base = 12;
-                else if (dir === 'up') base = 4;
-                else base = 10; // right and down share 11–12
-              }
-            } else if (shieldOnly) {
-              if (dir === 'left') base = 8;
-              else if (dir === 'up') base = 4;
-              else base = 6; // right and down share 7–8
-            } else {
-              if (dir === 'left') base = 2;
-              else if (dir === 'up') base = 4;
-              else base = 0;
-            }
-            // Clamp to available columns to avoid out-of-range crops on shorter sheets
-            const img = ent._sprite.image;
-            const cols = (img && img.width) ? Math.max(0, Math.floor(img.width / SPRITE_SIZE)) : 0;
-            if (cols >= 2) base = Math.min(base, cols - 2);
-            const col = base + ((ent.animFrame || 0) % 2);
+            // Determine row (0..6) by priority
+            let row = 0;
+            if (hasBow) row = 4;               // row 5 (bow)
+            else if (hasTorch && hasMelee) row = 6; // row 7 (torch+sword)
+            else if (hasTorch) row = 5;       // row 6 (torch only)
+            else if (hasMelee && hasShield) row = 3; // row 4 (sword+shield)
+            else if (hasMelee) row = 2;       // row 3 (sword only)
+            else if (hasShield) row = 1;      // row 2 (shield only)
+            else row = 0;                     // row 1 (none)
+
+            // Column pair per direction
+            let colBase = 0;
+            if (dir === 'left') colBase = 2;
+            else if (dir === 'up') colBase = 4;
+            else colBase = 0; // down and right
+            const frameCol = (ent.animFrame || 0) % 2; // alternate while moving AND idle
+            const col = colBase + frameCol;
             const sx = col * SPRITE_SIZE;
-            // Smooth sine bob for whole sprite while moving (debug-tunable)
+            const sy = row * SPRITE_SIZE;
+
+            // Optional: subtle 1px vertical flicker on torch rows
+            try {
+              const torchRow = (row === 5 || row === 6) || hasTorch;
+              if (torchRow) {
+                const tms = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                if ((Math.floor(tms / 100) % 2) === 0) dy -= 1; // ~10 Hz, 1px
+              }
+            } catch {}
+
+            // Keep existing smooth sine bob while moving (in addition to frame toggle)
             try {
               if (ent.moving) {
                 const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
@@ -383,7 +373,13 @@ export function render(terrainBitmap, obstacles) {
                 dy += bob;
               }
             } catch {}
-            ctx.drawImage(ent._sprite.image, sx, 0, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+
+            if (d.isPlayer && player.invulnTimer > 0) {
+              const flicker = Math.floor(performance.now() / 100) % 2 === 0;
+              if (!flicker) ctx.drawImage(ent._sprite.image, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+            } else {
+              ctx.drawImage(ent._sprite.image, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+            }
           } else {
             if (!ent._spriteLoading) {
               ent._spriteLoading = true;
