@@ -147,6 +147,49 @@ export function initInput() {
           }
         });
       } catch {}
+    } else if (e.key.toLowerCase() === 't') {
+      // Quick-equip a torch to left hand from inventory (consumes one).
+      try {
+        import('./state.js').then(async (m) => {
+          const { player, companions, runtime } = await m;
+          const eq = player?.inventory?.equipped || {};
+          // Block if right hand is two-handed
+          if (eq.rightHand && eq.rightHand.twoHanded) { showBanner('Cannot equip with two-handed weapon'); return; }
+          // Already lit
+          if (eq.leftHand && eq.leftHand.id === 'torch') { showBanner('Torch already lit'); return; }
+          const inv = player?.inventory?.items || [];
+          const idx = inv.findIndex(s => s && s.stackable && s.id === 'torch' && (s.qty||0) > 0);
+          if (idx === -1) { showBanner('No torches'); return; }
+          // If something is in left hand, move it back (torch consumes on unequip handled elsewhere)
+          if (eq.leftHand) {
+            const cur = eq.leftHand;
+            if (cur.id === 'torch') eq.leftHand = null; // consume existing torch
+            else { inv.push(cur); eq.leftHand = null; }
+          }
+          // Consume one torch from stack and equip a lit torch instance
+          inv[idx].qty = Math.max(0, (inv[idx].qty || 0) - 1);
+          if (inv[idx].qty <= 0) inv.splice(idx, 1);
+          eq.leftHand = { id: 'torch', name: 'Torch', slot: 'leftHand', atk: 0, burnMsRemaining: 180000 };
+          // Immediate lighting/UI refresh
+          try {
+            import('./lighting.js').then(L => L.rebuildLighting && L.rebuildLighting(0)).catch(()=>{});
+            import('./ui.js').then(u => { u.updateOverlayDim && u.updateOverlayDim(); u.updatePartyUI && u.updatePartyUI(companions); }).catch(()=>{});
+          } catch {}
+          // Tutorial flag: clear torch-equip hint and advance to "find a weapon"
+          try {
+            if (!runtime.questFlags) runtime.questFlags = {};
+            if (runtime.questFlags['tutorial_inv_equip_torch']) {
+              runtime.questFlags['tutorial_inv_equip_torch'] = false;
+              import('./ui.js').then(u => u.hideBanner && u.hideBanner()).catch(()=>{});
+            }
+            if (!runtime.questFlags['tutorial_find_sword_done'] && !runtime.questFlags['tutorial_find_sword']) {
+              runtime.questFlags['tutorial_find_sword'] = true;
+              import('./ui.js').then(u => u.showPersistentBanner && u.showPersistentBanner('You need a weapon! Find a nearby chest')).catch(()=>{});
+            }
+          } catch {}
+          showBanner('Torch lit');
+        });
+      } catch {}
     } else if (e.key.toLowerCase() === 'm') {
       toggleMute();
     } else if (e.key.toLowerCase() === 'b') {
