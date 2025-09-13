@@ -142,6 +142,7 @@ export function startDebugMenu() {
     { label: 'Lighting: Ambient 4 (Dim)', action: 'light_ambient', data: 4 },
     { label: 'Lighting: Ambient 8 (Bright)', action: 'light_ambient', data: 8 },
     { label: 'Give Torches x3', action: 'debug_give_torches' },
+    { label: 'Give Arrows x50', action: 'debug_give_arrows' },
     { label: `God Mode: ${runtime.godMode ? 'On' : 'Off'}`, action: 'toggle_godmode' },
     { label: `Snake Mode: ${runtime.snakeMode ? 'On' : 'Off'}`, action: 'toggle_snake_mode' },
     { label: 'Back', action: 'end' },
@@ -397,6 +398,18 @@ export function selectChoice(index) {
         const S = await import('./state.js');
         S.addItemToInventory(player.inventory, { id: 'torch', name: 'Torch', slot: 'leftHand', stackable: true, maxQty: 99, qty: 3 });
         showBanner('Added 3 Torches');
+      } catch {}
+      startDebugMenu();
+    })();
+    return;
+  }
+  if (choice.action === 'debug_give_arrows') {
+    (async () => {
+      try {
+        const S = await import('./state.js');
+        // Add 50 arrows across stacks (max 25/stack)
+        S.addItemToInventory(player.inventory, { id: 'arrow_basic', name: 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: 50 });
+        showBanner('Added 50 Arrows');
       } catch {}
       startDebugMenu();
     })();

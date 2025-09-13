@@ -14,6 +14,7 @@ import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitl
 import { applyPendingRestore } from './engine/save_core.js';
 import { loadGame, getSaveMeta } from './engine/save.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
+import { AI_TUNING } from './data/ai_tuning.js';
 
 // Initial level: use loader registry (Level 1 by default)
 let terrain = loadLevel1();
@@ -174,6 +175,30 @@ try {
       return found;
     }
     return null;
+  };
+  // Expose AI tuning for quick iteration from console
+  window.AI_TUNING = AI_TUNING;
+  window.setAITuning = function(kind, path, value) {
+    try {
+      const k = String(kind || '').toLowerCase();
+      const obj = (AI_TUNING[k] || AI_TUNING.global);
+      const parts = String(path || '').split('.').filter(Boolean);
+      let ref = (parts[0] === 'global') ? AI_TUNING.global : obj;
+      if (parts[0] === 'global') parts.shift();
+      for (let i = 0; i < parts.length - 1; i++) { const p = parts[i]; if (!(p in ref)) ref[p] = {}; ref = ref[p]; }
+      ref[parts[parts.length - 1]] = value;
+      return true;
+    } catch (e) { console.warn('setAITuning failed', e); return false; }
+  };
+  window.giveArrows = async (qty = 50) => {
+    try {
+      const S = await import('./engine/state.js');
+      const U = await import('./engine/ui.js');
+      const n = Math.max(1, Math.floor(Number(qty || 50)));
+      S.addItemToInventory(player.inventory, { id: 'arrow_basic', name: 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: n });
+      U.showBanner && U.showBanner(`Added ${n} Arrows`);
+      return n;
+    } catch (e) { try { console.warn('giveArrows failed:', e); } catch {} return 0; }
   };
 } catch {}
 

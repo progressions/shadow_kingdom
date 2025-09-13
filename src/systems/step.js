@@ -1,5 +1,6 @@
 import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy, addItemToInventory, autoEquipIfBetter, normalizeInventory } from '../engine/state.js';
 import { rebuildLighting } from '../engine/lighting.js';
+import { rebuildFlowField, sampleFlowDirAt } from '../engine/pathfinding.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
@@ -16,6 +17,7 @@ import { exitChat } from '../engine/ui.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges, showMusicTheme } from '../engine/ui.js';
 import { ENEMY_LOOT, ENEMY_LOOT_L2, ENEMY_LOOT_L3, rollFromTable, itemById, BREAKABLE_LOOT } from '../data/loot.js';
+import { AI_TUNING } from '../data/ai_tuning.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
   // Move X
@@ -157,6 +159,11 @@ function rectsTouchOrOverlap(a, b, pad = 2.0) {
 export function step(dt) {
   // Allow death-scene timers to progress even while paused (to avoid freeze)
   try {
+    // Safety: ensure player is visible if alive (debug overlays should not hide the player)
+    if (player.hp > 0 && runtime._hidePlayer) {
+      runtime._hidePlayer = false;
+      runtime._deathZoom = 1.0; runtime._deathZoomTarget = 1.0;
+    }
     if (player.hp <= 0) {
       if ((runtime._suppressInputTimer || 0) > 0) runtime._suppressInputTimer = Math.max(0, (runtime._suppressInputTimer || 0) - dt);
       if ((runtime._deathDelay || 0) > 0) {
@@ -237,6 +244,8 @@ export function step(dt) {
 
   // Rebuild lighting grid (coarse, tile-based). Throttle lightly (~60ms) to reduce cost.
   try { rebuildLighting(60); } catch {}
+  // Rebuild pathfinding flow field on a throttle; dirty on player tile change or gate toggles
+  try { rebuildFlowField(150); } catch {}
 
   // --- Projectiles tick ---
   if (Array.isArray(projectiles) && projectiles.length) {
@@ -305,6 +314,7 @@ export function step(dt) {
               const idx = obstacles.indexOf(o);
               if (idx !== -1) obstacles.splice(idx, 1);
               try { playSfx('break'); } catch {}
+              try { import('../engine/pathfinding.js').then(m => m.markFlowDirty && m.markFlowDirty()).catch(()=>{}); } catch {}
             }
             // Consume the projectile unless it pierces
             if (p.pierce > 0) { p.pierce--; }
@@ -348,6 +358,32 @@ export function step(dt) {
               import('../engine/state.js').then(m => m.spawnFloatText(e.x + e.w/2, e.y - 10, `${Number(Math.max(1, finalDmg)).toFixed(2)}`, { color: '#eaeaea', life: 0.6 }));
               try { playSfx('hit'); } catch {}
             }
+            // Phase 1: Brace on projectile hit for bosses/featured (knockback reduction + temp projectile DR + slight slow)
+            try {
+              const kind = String(e.kind || 'mook').toLowerCase();
+              if (kind === 'boss' || kind === 'featured') {
+                const TT = AI_TUNING[kind];
+                const dur = TT.brace.durationSec;
+                const addDr = TT.brace.projDr;
+                e._braceTimer = Math.max(e._braceTimer || 0, dur);
+                e._braceKbMul = TT.brace.kbMul;
+                e._braceSpeedMul = TT.brace.speedMul;
+                e._tempDr = Math.max(e._tempDr || 0, addDr);
+                e._tempDrTimer = Math.max(e._tempDrTimer || 0, dur);
+                // Advance-under-fire: track short hit streak and trigger a push-through window
+                const win = TT.advance.windowSec || 0.8;
+                if ((e._hitStreakTimer || 0) > 0) e._hitStreakCount = (e._hitStreakCount || 0) + 1; else e._hitStreakCount = 1;
+                e._hitStreakTimer = win;
+                if (e._hitStreakCount >= (TT.advance.triggerHits || 2)) {
+                  e._advanceTimer = Math.max(e._advanceTimer || 0, TT.advance.durationSec || 0.6);
+                  e._advanceSpeedMul = TT.advance.speedMul || 1.3;
+                  e._advanceKbMul = TT.advance.kbMul || 0.2;
+                  // Optionally clamp dash cooldown to encourage a quick gap-closer soon
+                  if ((e._dashCd || 0) > (TT.advance.dashCooldownCapSec || 5.0)) e._dashCd = TT.advance.dashCooldownCapSec || 5.0;
+                  e._hitStreakCount = 0; // reset streak after triggering
+                }
+              }
+            } catch {}
             // Twil (swapped): fire arrows kindle quest progress for Light the Fuse
             try {
               const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
@@ -371,10 +407,15 @@ export function step(dt) {
                 e._burnDps = Math.max(e._burnDps || 0, 0.35);
               }
             } catch {}
-            // Knockback from projectile dir
+            // Knockback from projectile dir (reduced for elites; further reduced if braced/advancing)
             const dvx = p.vx, dvy = p.vy; const mag = Math.hypot(dvx, dvy) || 1;
-            e.knockbackX = (dvx / mag) * (p.knockback || 60);
-            e.knockbackY = (dvy / mag) * (p.knockback || 60);
+            const kind2 = String(e.kind || 'mook').toLowerCase();
+            let kb = (p.knockback || 60);
+            if (kind2 === 'boss') kb *= 0.22; else if (kind2 === 'featured') kb *= 0.33;
+            if (e._braceTimer && e._braceTimer > 0) kb *= Math.max(0.1, Math.min(1, (e._braceKbMul || 1)));
+            if (e._advanceTimer && e._advanceTimer > 0) kb *= Math.max(0.1, Math.min(1, (e._advanceKbMul || 1)));
+            e.knockbackX = (dvx / mag) * kb;
+            e.knockbackY = (dvy / mag) * kb;
             // Consume or pierce
             if (p.pierce > 0) { p.pierce--; }
             else { removeIdx.push(i); }
@@ -806,9 +847,17 @@ export function step(dt) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
-      moveWithCollision(e, e.knockbackX * dt * mul, e.knockbackY * dt * mul, solidsForEnemy);
-      e.knockbackX *= Math.pow(0.001, dt); e.knockbackY *= Math.pow(0.001, dt);
+      const braceMul = (e._braceTimer && e._braceTimer > 0) ? (e._braceSpeedMul || 1) : 1;
+      const kbBrace = (e._braceTimer && e._braceTimer > 0) ? (e._braceKbMul || 1) : 1;
+      const kbDash = (e._dashTimer && e._dashTimer > 0 && (!e._dashTelegraph || e._dashTelegraph <= 0)) ? (e._dashKbMul || 1) : 1;
+      const kbAdvance = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceKbMul || 1) : 1;
+      const kbMul = Math.min(kbBrace, kbDash, kbAdvance);
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul;
+      moveWithCollision(e, e.knockbackX * dt * mul * kbMul, e.knockbackY * dt * mul * kbMul, solidsForEnemy);
+      // Rapidly settle knockback when braced or advancing so AI regains control
+      const settle = (e._advanceTimer && e._advanceTimer > 0) || (e._braceTimer && e._braceTimer > 0);
+      const decay = Math.pow(0.001, dt) * (settle ? 0.2 : 1);
+      e.knockbackX *= decay; e.knockbackY *= decay;
     } else {
       e.knockbackX = 0; e.knockbackY = 0;
       // Decide target behavior: chase if player is near, otherwise wander
@@ -816,13 +865,244 @@ export function step(dt) {
       const pxp = player.x + player.w/2, pyp = player.y + player.h/2;
       const ddx = (pxp - ex), ddy = (pyp - ey);
       const dist2 = ddx*ddx + ddy*ddy;
-      const baseAggro = (e.kind === 'boss') ? 280 : (e.kind === 'featured' ? 220 : 180);
+      const roleKind = String(e.kind || 'mook').toLowerCase();
+      const baseAggro = (roleKind === 'boss') ? 280 : (roleKind === 'featured' ? 220 : 180);
       const aggroR = (typeof e.aggroRadius === 'number') ? e.aggroRadius : baseAggro;
       const aggroR2 = aggroR * aggroR;
       let dx, dy;
       if (dist2 <= aggroR2) {
-        // Chase player
+        // Chase player (base heading)
         const d = Math.hypot(ddx, ddy) || 1; dx = ddx / d; dy = ddy / d;
+        // Flow-field base guidance (blend with direct heading; do not fully override)
+        try {
+          const dir = sampleFlowDirAt(ex, ey);
+          if (dir && (dir.x !== 0 || dir.y !== 0)) {
+            const bx = dx, by = dy;
+            const fx = dir.x, fy = dir.y;
+            const dot = Math.max(-1, Math.min(1, bx * fx + by * fy));
+            const pathCfg = (AI_TUNING[roleKind]?.path) || { flowWeight: 0.35, minDot: -0.2 };
+            let w = pathCfg.flowWeight || 0.35;
+            if (dot < (pathCfg.minDot || -0.2)) w *= 0.2; // if flow points badly away, downweight it heavily
+            const nx = bx * (1 - w) + fx * w;
+            const ny = by * (1 - w) + fy * w;
+            const nn = Math.hypot(nx, ny) || 1;
+            dx = nx / nn; dy = ny / nn;
+          }
+        } catch {}
+        // If no flow direction (likely disconnected components) and LOS is blocked by a wall,
+        // commit to a wall-follow (tangential) direction to search for an opening.
+        try {
+          const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+          const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+          let losBlockedWF = false;
+          for (const o of obstacles) {
+            if (!o) continue;
+            if (o.type === 'gate' && o.locked === false) continue;
+            // consider strong blockers; chest/mud/fire/lava are non-blocking for movement
+            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+            if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losBlockedWF = true; break; }
+          }
+          const flowDirNull = (() => { try { const d = sampleFlowDirAt(ex, ey); return !d || (d.x === 0 && d.y === 0); } catch { return true; } })();
+          if (flowDirNull && losBlockedWF && ((e.stuckTime || 0) > 0.3)) {
+            e._wallTimer = Math.max(0, (e._wallTimer || 0) - dt);
+            if ((e._wallTimer || 0) <= 0) {
+              const sign = (typeof e._strafeSign === 'number') ? e._strafeSign : (e.avoidSign || 1);
+              // Tangent vector along the blocking surface (perpendicular to player heading)
+              const tx = -dy * sign, ty = dx * sign; const nm = Math.hypot(tx, ty) || 1;
+              e._wallDirX = tx / nm; e._wallDirY = ty / nm;
+              e._wallTimer = (roleKind === 'boss') ? 1.0 : 0.8;
+            }
+            if ((e._wallTimer || 0) > 0 && typeof e._wallDirX === 'number') { dx = e._wallDirX; dy = e._wallDirY; }
+          }
+        } catch {}
+        const kind = String(e.kind || 'mook').toLowerCase();
+        const elite = (kind === 'boss' || kind === 'featured');
+        // Ranged awareness helpers
+        const nowSec = ((performance && performance.now) ? performance.now() : Date.now()) / 1000;
+        const eq = (player && player.inventory && player.inventory.equipped) ? player.inventory.equipped : {};
+        const hasRanged = !!(eq && eq.rightHand && eq.rightHand.ranged);
+        const firedRecently = (typeof player.lastRanged === 'number') && ((nowSec - player.lastRanged) <= (AI_TUNING.global.rangedAwareRecentSec || 0.8));
+        const rangedAware = hasRanged || firedRecently;
+
+        // Phase 3: Gap-closer dash with telegraph (elite only)
+        try {
+          if (elite) {
+            e._dashCd = Math.max(0, (e._dashCd || 0) - dt);
+            if ((e._dashTelegraph || 0) > 0) {
+              e._dashTelegraph = Math.max(0, (e._dashTelegraph || 0) - dt);
+              // Slight slow during telegraph (hold heading but reduced speed via mul below)
+            } else if ((e._dashTimer || 0) > 0) {
+              e._dashTimer = Math.max(0, (e._dashTimer || 0) - dt);
+              // Lock heading to dash direction
+              if (typeof e._dashDirX === 'number' && typeof e._dashDirY === 'number') { dx = e._dashDirX; dy = e._dashDirY; }
+            } else if ((e._dashCd || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0 && ((e._braceTimer || 0) <= 0 || (e._advanceTimer || 0) > 0)) {
+              // Conditions to start dash: mid-range and LOS clear
+              const distPx = d;
+              const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+              const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+              let losClear = true;
+              for (const o of obstacles) {
+                if (!o || !o.blocksAttacks) continue;
+                if (o.type === 'gate' && o.locked === false) continue;
+                if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losClear = false; break; }
+              }
+              if (losClear && distPx >= (AI_TUNING.global.dash.minDist || 90) && distPx <= (AI_TUNING.global.dash.maxDist || 180)) {
+                // Start telegraph → dash
+                e._dashTelegraph = AI_TUNING[kind].dash.telegraphSec;
+                e._dashTimer = AI_TUNING[kind].dash.durationSec; // will count down after telegraph finishes
+                e._dashDirX = dx; e._dashDirY = dy;
+                const cdBase = AI_TUNING[kind].dash.cooldownBaseSec;
+                const amp = (AI_TUNING[kind].dash.cooldownJitterSec || 0);
+                const jitter = (Math.random()*2*amp - amp);
+                e._dashCd = Math.max(2.0, cdBase + jitter);
+                // Knockback resistance during dash
+                e._dashKbMul = AI_TUNING[kind].dash.kbMul;
+                // Temporary speed multiplier applied below via jukeMult pipeline
+                e._dashSpeedMult = AI_TUNING[kind].dash.speedMul;
+              }
+            }
+            // If actively dashing, override movement blend multiplier
+            if ((e._dashTimer || 0) > 0 && (e._dashTelegraph || 0) <= 0) {
+              e._jukeMult = e._dashSpeedMult || e._jukeMult || 1;
+            }
+          }
+        } catch {}
+
+        // Phase 2: Juke on incoming player projectile (elite only)
+        try {
+          if (elite) {
+            e._jukeCd = Math.max(0, (e._jukeCd || 0) - dt);
+            e._jukeTimer = Math.max(0, (e._jukeTimer || 0) - dt);
+            if ((e._jukeTimer || 0) <= 0 && (e._jukeCd || 0) <= 0) {
+              // Scan a few player projectiles and detect near path intersection
+              let trigger = null;
+              const exC = e.x + e.w/2, eyC = e.y + e.h/2;
+              for (let i = 0, seen = 0; i < projectiles.length && seen < (AI_TUNING.global.juke.scanMax || 24); i++) {
+                const p = projectiles[i]; if (!p || p.team !== 'player') continue; seen++;
+                const vx = p.vx, vy = p.vy; const sp = Math.hypot(vx, vy) || 1;
+                const nvx = vx / sp, nvy = vy / sp;
+                const rx = exC - (p.x + p.w/2), ry = eyC - (p.y + p.h/2);
+                const ahead = rx*nvx + ry*nvy; // distance along projectile dir (px)
+                if (ahead < 0 || ahead > (AI_TUNING.global.juke.nearAheadPx || 120)) continue; // only if enemy is in front within range
+                const lateral = Math.abs(rx*nvy - ry*nvx); // perpendicular distance (px)
+                const rad = Math.max(8, Math.min(14, Math.max(e.w, e.h)/2));
+                if (lateral <= rad + (AI_TUNING.global.juke.lateralPadPx || 6)) { trigger = { nvx, nvy, rx, ry }; break; }
+              }
+              if (trigger) {
+                let TT = AI_TUNING[kind];
+                // Slightly increase juke chance if currently under an advance window (sustained fire)
+                const chance = (e._advanceTimer && e._advanceTimer > 0) ? Math.min(0.6, (TT.juke.chance || 0) + 0.1) : TT.juke.chance;
+                if (Math.random() < chance) {
+                  const dur = TT.juke.durationSec;
+                  const mult = TT.juke.speedMul;
+                  // Choose perpendicular direction away from the projectile path
+                  const cross = trigger.rx*trigger.nvy - trigger.ry*trigger.nvx;
+                  const sign = (cross >= 0) ? 1 : -1;
+                  e._jukeDirX = (-trigger.nvy) * sign;
+                  e._jukeDirY = ( trigger.nvx) * sign;
+                  const nrm = Math.hypot(e._jukeDirX, e._jukeDirY) || 1;
+                  e._jukeDirX /= nrm; e._jukeDirY /= nrm;
+                  e._jukeTimer = dur;
+                  e._jukeMult = mult;
+                  e._jukeCd = TT.juke.cooldownSec;
+                }
+              }
+            }
+            if ((e._jukeTimer || 0) > 0) {
+              dx = e._jukeDirX || dx; dy = e._jukeDirY || dy;
+            }
+          }
+        } catch {}
+
+        // Phase 2: Use Cover — pick a cover corner and commit briefly (elite only)
+        try {
+          if (elite) {
+            e._coverTimer = Math.max(0, (e._coverTimer || 0) - dt);
+            e._coverCd = Math.max(0, (e._coverCd || 0) - dt);
+            const dist = d;
+            // Minimal LOS check helper (center-to-center)
+            const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+            const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+            const losBlocked = (() => {
+              for (const o of obstacles) {
+                if (!o || !o.blocksAttacks) continue;
+                if (o.type === 'gate' && o.locked === false) continue;
+                if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) return true;
+              }
+              return false;
+            })();
+            // Choose new cover target when LOS is clear, recently shot, and at range
+            const recentlyShot = (e._recentHitTimer || 0) > 0;
+            if ((e._coverTimer || 0) <= 0 && (e._jukeTimer || 0) <= 0 && (e._coverCd || 0) <= 0 && (e._advanceTimer || 0) <= 0 && recentlyShot && !losBlocked && dist > Math.max(100, (AI_TUNING.global.cover.minDist || 80)) && dist < (AI_TUNING.global.cover.maxDist || 260)) {
+              let best = null; let bestScore = Infinity;
+              for (const o of obstacles) {
+                if (!o || !o.blocksAttacks) continue;
+                if (o.type === 'gate' && o.locked === false) continue;
+                // Quick reject by distance to obstacle center
+                const ox = (o.x + o.w/2) - ex2, oy = (o.y + o.h/2) - ey2;
+                const r = (AI_TUNING.global.cover.searchRadius || 160); if ((ox*ox + oy*oy) > (r*r)) continue;
+                // Candidate corners (slightly nudged away from player)
+                const corners = [ [o.x, o.y], [o.x+o.w, o.y], [o.x, o.y+o.h], [o.x+o.w, o.y+o.h] ];
+                for (const c of corners) {
+                  const cx = c[0], cy = c[1];
+                  const dirx = cx - px2, diry = cy - py2;
+                  const len = Math.hypot(dirx, diry) || 1; // push a bit further behind cover
+                  const adjx = cx + (dirx/len) * 6; const adjy = cy + (diry/len) * 6;
+                  // Does this point have cover (segment to player intersects obstacle)?
+                  let covered = false;
+                  if (segmentIntersectsRect(adjx, adjy, px2, py2, o)) covered = true;
+                  if (!covered) continue;
+                  const dxp = adjx - ex2, dyp = adjy - ey2; const dd = Math.hypot(dxp, dyp);
+                  const curToPlayer = Math.hypot(px2 - ex2, py2 - ey2);
+                  const coverToPlayer = Math.hypot(px2 - adjx, py2 - adjy);
+                  const delta = Math.max(0, coverToPlayer - curToPlayer); // moving farther from player is penalized
+                  const awayPenalty = delta * 0.8;
+                  // Misalignment penalty relative to current heading (avoid picking cover that pushes away from pursuit)
+                  const bx = dx, by = dy; const bl = Math.hypot(bx, by) || 1;
+                  const ax = adjx - ex2, ay = adjy - ey2; const al = Math.hypot(ax, ay) || 1;
+                  const align = Math.max(-1, Math.min(1, (bx/bl) * (ax/al) + (by/bl) * (ay/al)));
+                  const misalign = (1 - align) * 1.5;
+                  const score = dd + awayPenalty + misalign + Math.random()*1.5; // prefer nearer, not-away cover
+                  if (score < bestScore) { bestScore = score; best = { x: adjx, y: adjy }; }
+                }
+              }
+              if (best) {
+                const TT = AI_TUNING[kind];
+                e._coverTarget = best; e._coverTimer = TT.cover.commitSec; e._coverCd = (AI_TUNING.global.cover.cooldown || 0.6); // brief commitment + small cooldown
+              }
+            }
+            if ((e._coverTimer || 0) > 0 && e._coverTarget) {
+              const tx = e._coverTarget.x - ex2, ty = e._coverTarget.y - ey2;
+              const n = Math.hypot(tx, ty) || 1; dx = tx / n; dy = ty / n;
+              // Release early if reached
+              if (Math.hypot(tx, ty) < 8) { e._coverTimer = 0; e._coverTarget = null; }
+            }
+          }
+        } catch {}
+
+        // Phase 1: Zig-zag advance for bosses/featured when player is using ranged
+        try {
+          if (elite) {
+            const dist = d;
+            if (rangedAware && dist >= (AI_TUNING.global.zigzag.minDist || 60) && dist <= (AI_TUNING.global.zigzag.maxDist || 220) && (e._jukeTimer || 0) <= 0 && (e._coverTimer || 0) <= 0 && (e._advanceTimer || 0) <= 0) {
+              e._strafeTimer = Math.max(0, (e._strafeTimer || 0) - dt);
+              if ((e._strafeTimer || 0) <= 0) {
+                e._strafeSign = (typeof e._strafeSign === 'number') ? e._strafeSign : (e.avoidSign || 1);
+                e._strafeTimer = AI_TUNING[kind].zigzag.commitSec;
+              }
+              const w = AI_TUNING[kind].zigzag.weight;
+              const tx = -dy * (e._strafeSign || 1);
+              const ty = dx * (e._strafeSign || 1);
+              const nx = dx * (1 - w) + tx * w;
+              const ny = dy * (1 - w) + ty * w;
+              const nm = Math.hypot(nx, ny) || 1;
+              dx = nx / nm; dy = ny / nm;
+            } else {
+              e._strafeTimer = Math.max(0, (e._strafeTimer || 0) - dt);
+            }
+          }
+        } catch {}
+
         e._aggro = true;
       } else {
         // Wander: pick a direction for a short duration, sometimes pause
@@ -844,15 +1124,32 @@ export function step(dt) {
       const slowMul = (e._slowMul || 1);
       const gustSlow = (e._gustSlowTimer && e._gustSlowTimer > 0) ? (e._gustSlowFactor ?? 0.25) : 0;
       const veilSlow = (e._veilSlowTimer && e._veilSlowTimer > 0) ? (e._veilSlow ?? 0.5) : 0;
-      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow;
+      const braceMul = (e._braceTimer && e._braceTimer > 0) ? (e._braceSpeedMul || 1) : 1;
+      const advMul = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceSpeedMul || 1) : 1;
+      const mul = slowMul * (1 - Math.max(0, Math.min(0.9, gustSlow))) * (1 - Math.max(0, Math.min(0.9, veilSlow))) * envSlow * braceMul * advMul;
 
-      // Hazard avoidance steering: pick a nearby direction with lower hazard exposure
+      // Hazard/obstacle avoidance steering: pick a nearby direction with lower hazard exposure and fewer imminent collisions
       const baseDir = { x: dx, y: dy };
       const offsets = [-0.9, -0.5, 0, 0.5, 0.9]; // radians near target
       let best = { x: baseDir.x, y: baseDir.y };
       let bestScore = Infinity;
       const px = ex, py = ey;
       const avoidBias = (e.kind === 'boss') ? 0.5 : (e.kind === 'featured' ? 0.8 : 1.0);
+      const steerT = (AI_TUNING[String(e.kind||'mook').toLowerCase()]?.steering) || { hazardWeightMul: 1, obstaclePenaltyMul: 1 };
+      // If LOS to player is clear, prefer direct heading and avoid steering away from target
+      let losClearToPlayer = false;
+      try {
+        const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+        const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+        let blocked = false;
+        for (const o of obstacles) {
+          if (!o) continue;
+          if (o.type === 'gate' && o.locked === false) continue;
+          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+          if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { blocked = true; break; }
+        }
+        losClearToPlayer = !blocked;
+      } catch {}
       if (baseDir.x !== 0 || baseDir.y !== 0) {
         for (const a of offsets) {
           const ca = Math.cos(a), sa = Math.sin(a);
@@ -860,9 +1157,10 @@ export function step(dt) {
           const vy = baseDir.x * sa + baseDir.y * ca;
           // Alignment penalty (prefer towards player)
           const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
-          const alignPenalty = (1 - dot) * 0.6;
+          const alignPenalty = (1 - dot) * (losClearToPlayer ? 0.3 : 0.6);
           // Hazard exposure along a short ray with 3 samples
           let haz = 0;
+          let obs = 0;
           const samples = [0.33, 0.66, 1.0];
           const stepLen = 26; // px
           for (const t of samples) {
@@ -871,16 +1169,21 @@ export function step(dt) {
             const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
             for (const o of obstacles) {
               if (!o) continue;
-              if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
-              // quick reject by distance
-              const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy;
-              if ((ox*ox + oy*oy) > (160*160)) continue;
-              if (rectsIntersect(probe, o)) {
-                haz += (o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12);
+              // Hazards (non-blocking)
+              if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava') {
+                const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (160*160)) continue;
+                if (rectsIntersect(probe, o)) { haz += ((o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12)); }
+              } else {
+                // Blocking obstacles: penalize directions that will collide
+                let blocks = o.blocksAttacks === true || o.type === 'wall' || o.type === 'water' || (o.type === 'gate' && o.locked !== false);
+                if (!blocks) continue;
+                // quick distance check
+                const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (180*180)) continue;
+                if (!losClearToPlayer && rectsIntersect(probe, o)) { obs += 50; }
               }
             }
           }
-          const score = alignPenalty + haz * avoidBias;
+          const score = alignPenalty + (haz * avoidBias * (steerT.hazardWeightMul || 1)) + (obs * (steerT.obstaclePenaltyMul || 1));
           if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
         }
       } else {
@@ -888,10 +1191,31 @@ export function step(dt) {
         best = { x: 0, y: 0 };
         bestScore = 0;
       }
+      // If LOS is clear, avoid steering away: trust the direct heading
+      if (losClearToPlayer) {
+        // Strong clamp when within engage band: don't choose directions pointing away
+        const dlen = Math.hypot(ddx, ddy) || 1;
+        const ux = ddx / dlen, uy = ddy / dlen;
+        const dotDirect = (best.x * ux + best.y * uy);
+        const ek = String(e.kind||'mook').toLowerCase();
+        const engageDist = (AI_TUNING[ek]?.engageDistPx) || 180;
+        const engage = dlen <= engageDist;
+        if (engage && dotDirect < 0.2) {
+          best = { x: baseDir.x, y: baseDir.y };
+        }
+      }
 
       // Temporary enemy speed boost from triggers
       const spdBoost = (e._speedBoostTimer && e._speedBoostTimer > 0) ? (e._speedBoostFactor || 1) : 1;
-      moveWithCollision(e, best.x * e.speed * spdBoost * mul * dt, best.y * e.speed * spdBoost * mul * dt, solidsForEnemy);
+      const jukeMult = (e._jukeTimer && e._jukeTimer > 0) ? (e._jukeMult || 1) : 1;
+      const dashTeleMul = (e._dashTelegraph && e._dashTelegraph > 0) ? 0.4 : 1; // slow slightly during telegraph
+      const dashMult = ((e._dashTimer && e._dashTimer > 0) && (!e._dashTelegraph || e._dashTelegraph <= 0)) ? (e._dashSpeedMult || 1) : 1;
+      const advMult = (e._advanceTimer && e._advanceTimer > 0) ? (e._advanceSpeedMul || 1) : 1;
+      // Base class speed multiplier (tunable via AI_TUNING)
+      const role = String(e.kind||'mook').toLowerCase();
+      const baseClassMul = (AI_TUNING[role]?.baseSpeedMul) || 1;
+      const spdMul = spdBoost * Math.max(jukeMult, dashMult) * dashTeleMul * advMult * baseClassMul;
+      moveWithCollision(e, best.x * e.speed * spdMul * mul * dt, best.y * e.speed * spdMul * mul * dt, solidsForEnemy);
       let moved = Math.hypot(e.x - oldX, e.y - oldY);
       // Axis fallback if stuck
       if (moved < 0.05) {
@@ -922,7 +1246,7 @@ export function step(dt) {
       if (moved < 0.1) { e.stuckTime += dt; if (e.stuckTime > 0.6) { e.avoidSign *= -1; e.stuckTime = 0; } }
       else e.stuckTime = 0;
 
-      // Enemy ranged attack (MVP)
+      // Enemy ranged attack with telegraph for bosses
       if (e.ranged) {
         e._shootCd = Math.max(0, (e._shootCd || 0) - dt);
         // Check LOS and range
@@ -942,14 +1266,40 @@ export function step(dt) {
             if (!blocked) { losClear = true; break; }
           }
           if (losClear) {
-            const ang = Math.atan2(py2 - ey, px2 - ex) + (e.aimError || 0) * (Math.random()*2 - 1);
-            const spd = Math.max(60, e.projectileSpeed || 160);
-            const vx = Math.cos(ang) * spd;
-            const vy = Math.sin(ang) * spd;
-            const dmg = Math.max(1, e.projectileDamage || Math.max(1, (e.touchDamage||1) - 1));
-            spawnProjectile(ex, ey, { team: 'enemy', vx, vy, damage: dmg, life: 1.8, sourceId: e.id, color: '#ff9a3d' });
-            e._shootCd = Math.max(0.2, e.shootCooldown || 1.2);
-            try { playSfx('attack'); } catch {}
+            const kind = String(e.kind||'').toLowerCase();
+            // Bosses: brief telegraph before firing
+            if (kind === 'boss') {
+              e._shootTele = Math.max(0, (e._shootTele || 0) - dt);
+              if (!e._shootTele || e._shootTele <= 0) {
+                // Start telegraph and cache aim
+                e._shootAim = Math.atan2(py2 - ey, px2 - ex);
+                e._shootTele = (AI_TUNING.boss?.ranged?.telegraphSec) || 0.14;
+                try { playSfx('bossTelegraph'); } catch {}
+                // Do not fire this frame; fire after telegraph expires
+              } else {
+                // Waiting for telegraph to finish; skip firing
+              }
+              if (e._shootTele <= 0) {
+                const ang = (e._shootAim || Math.atan2(py2 - ey, px2 - ex)) + (e.aimError || 0) * (Math.random()*2 - 1);
+                const spd = Math.max(60, e.projectileSpeed || 160);
+                const vx = Math.cos(ang) * spd;
+                const vy = Math.sin(ang) * spd;
+                const dmg = Math.max(1, e.projectileDamage || Math.max(1, (e.touchDamage||1) - 1));
+                spawnProjectile(ex, ey, { team: 'enemy', vx, vy, damage: dmg, life: 1.8, sourceId: e.id, color: '#ff9a3d' });
+                e._shootCd = Math.max(0.2, e.shootCooldown || 1.2);
+                try { playSfx('attack'); } catch {}
+              }
+            } else {
+              // Non-boss: fire immediately
+              const ang = Math.atan2(py2 - ey, px2 - ex) + (e.aimError || 0) * (Math.random()*2 - 1);
+              const spd = Math.max(60, e.projectileSpeed || 160);
+              const vx = Math.cos(ang) * spd;
+              const vy = Math.sin(ang) * spd;
+              const dmg = Math.max(1, e.projectileDamage || Math.max(1, (e.touchDamage||1) - 1));
+              spawnProjectile(ex, ey, { team: 'enemy', vx, vy, damage: dmg, life: 1.8, sourceId: e.id, color: '#ff9a3d' });
+              e._shootCd = Math.max(0.2, e.shootCooldown || 1.2);
+              try { playSfx('attack'); } catch {}
+            }
           }
         }
       }
@@ -959,6 +1309,14 @@ export function step(dt) {
     e.hitTimer -= dt; if (e.hitTimer < 0) e.hitTimer = 0;
     if (e._gustSlowTimer && e._gustSlowTimer > 0) e._gustSlowTimer = Math.max(0, e._gustSlowTimer - dt);
     if (e._veilSlowTimer && e._veilSlowTimer > 0) e._veilSlowTimer = Math.max(0, e._veilSlowTimer - dt);
+    if (e._braceTimer && e._braceTimer > 0) e._braceTimer = Math.max(0, e._braceTimer - dt);
+    if (e._coverCd && e._coverCd > 0) e._coverCd = Math.max(0, e._coverCd - dt);
+    if (e._dashCd && e._dashCd > 0) e._dashCd = Math.max(0, e._dashCd - dt);
+    if (e._hitStreakTimer && e._hitStreakTimer > 0) {
+      e._hitStreakTimer = Math.max(0, e._hitStreakTimer - dt);
+      if (e._hitStreakTimer === 0) e._hitStreakCount = 0;
+    }
+    if (e._advanceTimer && e._advanceTimer > 0) e._advanceTimer = Math.max(0, e._advanceTimer - dt);
     if (e._burnTimer && e._burnTimer > 0) {
       e._burnTimer = Math.max(0, e._burnTimer - dt);
       const dps = e._burnDps || 0;
@@ -1002,6 +1360,21 @@ export function step(dt) {
         } catch {}
         // If they actually overlap, separate just enough but still allow contact
         if (rectsIntersect(pr, er)) separateEntities(player, e, 0.65);
+        // Boss melee telegraph: brief wind-up before the hit
+        const isBoss = String(e.kind||'').toLowerCase() === 'boss';
+        if (isBoss) {
+          e._meleeTele = Math.max(0, (e._meleeTele || 0) - dt);
+          if ((e._meleeTele || 0) <= 0 && player.invulnTimer <= 0) {
+            e._meleeTele = (AI_TUNING.boss?.melee?.telegraphSec) || 0.18;
+            try { playSfx('bossTelegraph'); } catch {}
+            // Delay actual damage until telegraph expires
+            continue;
+          }
+          if ((e._meleeTele || 0) > 0) {
+            // Still telegraphing; skip applying damage this frame
+            continue;
+          }
+        }
         // Overworld realtime damage on contact; apply armor DR with chip/crit/AP
         if (player.invulnTimer <= 0) {
           const toggles = runtime?.combatToggles || { chip: true, enemyCrits: true, ap: true };
@@ -1570,7 +1943,8 @@ export function step(dt) {
             const before = player.hp;
             player.hp = Math.min(player.maxHp, player.hp + healAmt);
             const gained = Math.max(0, player.hp - before);
-            showBanner(`Drank ${picked.name}: +${gained} HP`);
+            const gainedDisp = Math.max(1, Math.ceil(gained));
+            showBanner(`Drank ${picked.name}: +${gainedDisp} HP`);
             playSfx('pickup');
             // small sparkle burst
             for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
@@ -1697,22 +2071,27 @@ export function step(dt) {
     } else {
       const view = { x: camera.x, y: camera.y, w: camera.w, h: camera.h };
       let bossOn = false, anyOn = false;
-      // Require proximity to the player to count as danger (prevents far-edge enemies from flipping music)
+      // Proximity radii (boss has a wider pull, and does not require on-screen)
       const px = player.x + player.w / 2;
       const py = player.y + player.h / 2;
-      const dangerR = 220; // pixels
+      const dangerR = 300; // was 220 — widen general danger radius
       const dangerR2 = dangerR * dangerR;
+      const bossR = 460;   // boss-specific wider radius, ignores on-screen check
+      const bossR2 = bossR * bossR;
       for (const e of enemies) {
         if (!e || e.hp <= 0) continue;
-        // Must be within the camera view
-        const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
-        if (!on) continue;
-        // And within proximity of the player
         const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
         const dx = ex - px, dy = ey - py;
+        const isBoss = String(e.kind).toLowerCase() === 'boss';
+        if (isBoss) {
+          if ((dx*dx + dy*dy) <= bossR2) { bossOn = true; break; }
+          continue;
+        }
+        // Non-boss: must be within camera view and within general danger radius
+        const on = !(e.x + e.w < view.x || e.x > view.x + view.w || e.y + e.h < view.y || e.y > view.y + view.h);
+        if (!on) continue;
         if ((dx*dx + dy*dy) > dangerR2) continue;
         anyOn = true;
-        if (String(e.kind).toLowerCase() === 'boss') { bossOn = true; break; }
       }
       desired = bossOn ? 'high' : (anyOn ? 'low' : 'normal');
       // If player HP is very low, prefer low mode over normal even without visible enemies to keep tension

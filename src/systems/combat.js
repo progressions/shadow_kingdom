@@ -7,6 +7,7 @@ import { enterChat } from '../engine/ui.js';
 import { startDialog, startPrompt } from '../engine/dialog.js';
 import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, CHEST_LOOT_L3, rollFromTable, itemById } from '../data/loot.js';
 import { spawnProjectile } from '../engine/state.js';
+import { markFlowDirty } from '../engine/pathfinding.js';
 
 export function startAttack() {
   const now = performance.now() / 1000;
@@ -89,6 +90,7 @@ export function handleAttacks(dt) {
         const idx = obstacles.indexOf(o);
         if (idx !== -1) obstacles.splice(idx, 1);
         playSfx('break');
+        try { import('../engine/pathfinding.js').then(m => m.markFlowDirty && m.markFlowDirty()).catch(()=>{}); } catch {}
       }
     }
     const hasOyin = companions.some(c => (c.name || '').toLowerCase().includes('oyin'));
@@ -365,6 +367,7 @@ function tryUnlockGate(hb) {
       const baseMsg = `Used ${itm.name || 'Key'} to open ${gateName}`;
       const msg = matched ? (clearSuffix ? `${baseMsg} — ${clearSuffix}` : `${baseMsg} — Quest updated`) : baseMsg;
       showBanner(msg);
+      try { markFlowDirty(); } catch {}
       // Consume the item if configured
       if (shouldConsume) {
         try {
