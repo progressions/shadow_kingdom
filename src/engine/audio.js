@@ -39,6 +39,7 @@ const files = {
     keepLine: 'assets/audio/sfx/keepLine.wav',
     quake: 'assets/audio/sfx/quake.wav',
     hiss: 'assets/audio/sfx/hiss.wav',
+    bossTelegraph: 'assets/audio/sfx/telegraph.wav',
   },
 };
 

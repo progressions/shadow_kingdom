@@ -1259,6 +1259,7 @@ export function step(dt) {
                 // Start telegraph and cache aim
                 e._shootAim = Math.atan2(py2 - ey, px2 - ex);
                 e._shootTele = (AI_TUNING.boss?.ranged?.telegraphSec) || 0.14;
+                try { playSfx('bossTelegraph'); } catch {}
                 // Do not fire this frame; fire after telegraph expires
               } else {
                 // Waiting for telegraph to finish; skip firing
@@ -1350,6 +1351,7 @@ export function step(dt) {
           e._meleeTele = Math.max(0, (e._meleeTele || 0) - dt);
           if ((e._meleeTele || 0) <= 0 && player.invulnTimer <= 0) {
             e._meleeTele = (AI_TUNING.boss?.melee?.telegraphSec) || 0.18;
+            try { playSfx('bossTelegraph'); } catch {}
             // Delay actual damage until telegraph expires
             continue;
           }
