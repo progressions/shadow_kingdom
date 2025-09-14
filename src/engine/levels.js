@@ -12,6 +12,7 @@ import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dial
 import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
 import { rectsIntersect } from './utils.js';
+import { rebuildObstacleIndex } from './spatial_index.js';
 
 // Level 1: Greenwood — initial world (moved from main.js to support load route)
 export function loadLevel1() {
@@ -456,7 +457,8 @@ export function loadLevel1() {
       }
     } catch {}
   })();
-
+  // Build spatial index for obstacles (accelerates AI/collision)
+  try { rebuildObstacleIndex(64); } catch {}
   return terrain;
 }
 

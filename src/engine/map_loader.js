@@ -2,6 +2,7 @@ import { TILE } from './constants.js';
 import { world, player, enemies, npcs, companions, obstacles, corpses, stains, floaters, sparkles, spawners, runtime, spawnEnemy, spawnNpc } from './state.js';
 import { buildTerrainBitmap } from './terrain.js';
 import { sheetForName } from './sprites.js';
+import { rebuildObstacleIndex } from './spatial_index.js';
 import { setNpcDialog } from './dialog.js';
 import { introTexts } from '../data/intro_texts.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
@@ -274,6 +275,8 @@ export async function applyPngMap(url, legend) {
       }
     }
 
+    // Rebuild spatial index after obstacles/props are finalized
+    try { rebuildObstacleIndex(64); } catch {}
     // Build a terrain bitmap using existing generator (default theme)
     const terrain = buildTerrainBitmap(world, legend?.theme || 'default');
     return terrain;
