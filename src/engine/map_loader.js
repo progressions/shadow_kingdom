@@ -56,7 +56,7 @@ function buildObstaclesFromGrid(grid, legend) {
   obstacles.length = 0;
   const h = world.tileH, w = world.tileW;
   // Fast pass: gather horizontal runs for mergeable types, then merge vertically
-  const mergeable = new Set(['wall', 'water', 'gate', 'wood']);
+  const mergeable = new Set(['wall', 'water', 'gate', 'wood', 'rock']);
   const rows = [];
   for (let y = 0; y < h; y++) {
     const row = new Array(w);
@@ -73,11 +73,11 @@ function buildObstaclesFromGrid(grid, legend) {
     if (type === 'gate') { o.locked = true; o.id = o.id || 'castle_gate'; o.keyId = o.keyId || 'castle_gate'; }
     obstacles.push(o);
   }
-  // Second pass: trees and rocks as 1x1 tiles
+  // Second pass: trees as 1x1 tiles (rocks are merged above)
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const t = grid[y*w + x];
-      if (t === 'tree' || t === 'rock') {
+      if (t === 'tree') {
         const px = x * TILE, py = y * TILE;
         const size = TILE; // full-tile footprint
         obstacles.push({ x: px, y: py, w: size, h: size, type: t });
