@@ -1129,6 +1129,28 @@ export function step(dt) {
       }
 
       if (shouldChase) {
+        // Require line of sight to engage; retain short memory to avoid flicker
+        let losClear = true;
+        try {
+          const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
+          const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
+          for (const o of obstacles) {
+            if (!o) continue;
+            if (o.type === 'gate' && o.locked === false) continue; // see-through/open gates
+            // Ignore non-sight-blockers
+            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
+            if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losClear = false; break; }
+          }
+        } catch {}
+        // Decay LoS memory and refresh when clear
+        e._losMemory = Math.max(0, (e._losMemory || 0) - dt);
+        if (losClear) e._losMemory = Math.max(e._losMemory || 0, 0.8); // keep aggro for ~0.8s after LoS breaks
+        if (!losClear && (e._losMemory || 0) <= 0) {
+          shouldChase = false;
+        }
+      }
+
+      if (shouldChase) {
         // Chase player (base heading)
         const d = Math.hypot(ddx, ddy) || 1; dx = ddx / d; dy = ddy / d;
         // Flow-field base guidance (blend with direct heading; do not fully override)
