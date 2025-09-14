@@ -15,6 +15,8 @@ import { applyPendingRestore } from './engine/save_core.js';
 import { loadGame, getSaveMeta } from './engine/save.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
 import { AI_TUNING } from './data/ai_tuning.js';
+// Dev helper: map exporter (safe no-op in production)
+import('./dev/map_export.js').catch(()=>{});
 
 // Initial level: use loader registry (Level 1 by default)
 let terrain = loadLevel1();
