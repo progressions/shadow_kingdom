@@ -524,14 +524,14 @@ export const companionDialogs = {
       },
       // L1: Find Yorna (lead to northwest; auto-turn-in on recruiting Yorna)
       find_yorna_intro: {
-        text: 'Hola: My Lord, I saw a red-headed fighter in the woods to the northwest. She moved like she knew what she was doing. Maybe she could help us.',
+        text: 'Hola: My Lord… I think I saw a red-headed fighter to the northwest. She looked… strong. If you want, we could try to find her.',
         choices: [
           { label: "Let's find her.", action: 'start_quest', data: { id: 'hola_find_yorna' }, next: 'find_yorna_started' },
           { label: 'Later.', action: 'companion_back' },
         ],
       },
       find_yorna_started: {
-        text: 'Hola: Northwest—red hair. I\'ll stay close.',
+        text: 'Hola: My Lord… northwest—red hair. I\'ll stay close.',
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       magic: {

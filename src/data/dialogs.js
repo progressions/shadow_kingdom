@@ -156,7 +156,7 @@ export const holaDialog = {
       ],
     },
     hint_yorna: {
-      text: 'Hola: I saw a red-headed fighter in the woods to the north west. Maybe she could help us.',
+      text: 'Hola: My Lord… I think I saw a red-headed fighter to the northwest. If you want, we could… go talk to her.',
       choices: [
         { label: 'Let\'s find her.', action: 'start_quest', data: { id: 'hola_find_yorna' }, next: 'intro' },
         { label: 'Later.', action: 'end' },
