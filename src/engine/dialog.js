@@ -569,7 +569,7 @@ export function selectChoice(index) {
         const actor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
         // Mark flags
         try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_yorna_feud_active'] = true; runtime.questFlags['canopy_yorna_feud_resolved'] = true; } catch {}
-        startPrompt(actor, "Yorna: Fine. Call me when you want to move.\nCanopy: My Lord, I’ll keep you standing.", [ { label: 'Continue', action: 'vn_continue' } ]);
+        startPrompt(actor, "Yorna: Fine. I’ll step back. Call when you want to move faster.\nCanopy: My Lord, I’ll keep you standing. We go careful; we don’t lose people.", [ { label: 'Continue', action: 'vn_continue' } ]);
         return;
       }
       if (choice.action === 'feud_keep_yorna') {
@@ -578,7 +578,7 @@ export function selectChoice(index) {
         dismiss(canopy);
         const actor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
         try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_yorna_feud_active'] = true; runtime.questFlags['canopy_yorna_feud_resolved'] = true; } catch {}
-        startPrompt(actor, "Canopy: I won’t stand behind that pace. I’ll step back.\nYorna: Good. We move now.", [ { label: 'Continue', action: 'vn_continue' } ]);
+        startPrompt(actor, "Canopy: I won’t walk behind that pace. I’ll step back.\nYorna: Good. We move now. Stay tight—I’ll make the openings.", [ { label: 'Continue', action: 'vn_continue' } ]);
         return;
       }
     } catch {}

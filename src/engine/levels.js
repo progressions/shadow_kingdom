@@ -659,11 +659,11 @@ export function loadLevel2() {
             ],
           },
           kept_canopy: {
-            text: "Yorna: Fine. Call me when you want to move.\nCanopy: My Lord, I’ll keep you standing.",
+            text: "Yorna: Fine. I’ll step back. Call when you want to move faster.\nCanopy: My Lord, I’ll keep you standing. We go careful; we don’t lose people.",
             choices: [ { label: 'Continue', action: 'set_flag', data: { key: 'canopy_yorna_feud_resolved' }, next: 'end' } ],
           },
           kept_yorna: {
-            text: "Canopy: I won’t stand behind that pace. I’ll step back.\nYorna: Good. We move now.",
+            text: "Canopy: I won’t walk behind that pace. I’ll step back.\nYorna: Good. We move now. Stay tight—I’ll make the openings.",
             choices: [ { label: 'Continue', action: 'set_flag', data: { key: 'canopy_yorna_feud_resolved' }, next: 'end' } ],
           },
           end: {
