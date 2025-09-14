@@ -1,4 +1,5 @@
 import { runtime, player, camera, world, xpToNext, obstacles as OBSTACLES, npcs as NPCS, enemies as ENEMIES } from './state.js';
+import { companionEffectsByKey } from '../data/companion_effects.js';
 import { getEquipStats } from './utils.js';
 import { tryStartMusic, stopMusic, initAudioUnlock, playTitleFanfare } from './audio.js';
 import { playSfx } from './audio.js';
@@ -1076,10 +1077,10 @@ function rolesForCompanion(name) {
     ];
   }
   if (key.includes('tin')) {
-    return [
-      { cls: 'as', label: 'AS', title: 'Tempo (Attack Speed)' },
-      { cls: 'ww', label: 'Ww', title: 'Water Walk' },
-    ];
+    const arr = [ { cls: 'as', label: 'AS', title: 'Tempo (Attack Speed)' } ];
+    const eff = companionEffectsByKey[key];
+    if (eff && Array.isArray(eff.auras) && eff.auras.some(a => a && a.type === 'waterWalk')) arr.push({ cls: 'ww', label: 'Ww', title: 'Water Walk' });
+    return arr;
   }
   if (key.includes('nellis')) {
     return [

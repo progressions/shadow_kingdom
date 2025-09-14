@@ -1,5 +1,5 @@
 // Companion effect definitions for realtime auras (Phase 1)
-// Types: atk, dr, regen, range, slow, touchDR, rangedDR, deflect, aspd, crit, dashCdr
+// Types: atk, dr, regen, range, slow, touchDR, rangedDR, deflect, aspd, crit, dashCdr, waterWalk
 // For slow auras, radius is in pixels and anchor can be 'player' or 'self'.
 
 export const companionEffectsByKey = {
@@ -75,6 +75,8 @@ export const companionEffectsByKey = {
       { type: 'aspd', value: 0.12 },
       // Slipstream: reduce dash cooldown noticeably
       { type: 'dashCdr', value: 0.20 },
+      // Water affinity: allow walking on water when in party
+      { type: 'waterWalk' },
     ],
     // Triggers can be added later (Slipstream, Tumble Up, etc.)
     triggers: {

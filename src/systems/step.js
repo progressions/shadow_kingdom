@@ -767,12 +767,7 @@ export function step(dt) {
   // Aggregate companion auras and process companion triggers before combat/movement
   applyCompanionAuras(dt);
   handleCompanionTriggers(dt);
-  // Party auras derived from presence (e.g., Tin water-walk on any level)
-  try {
-    const hasTin = companions.some(c => (c.name || '').toLowerCase().includes('tin'));
-    runtime.partyAuras = runtime.partyAuras || {};
-    runtime.partyAuras.waterWalk = !!hasTin;
-  } catch {}
+  // Party auras are computed in applyCompanionAuras
   // Apply enemy auras and triggers (player debuffs, enemy DR/regen) before movement/combat
   applyEnemyAurasAndTriggers(dt);
 
@@ -2621,6 +2616,9 @@ function applyCompanionAuras(dt) {
   if (!runtime.projectileDeflect) runtime.projectileDeflect = { chance: 0, radius: 0 };
   runtime.projectileDeflect.chance = 0;
   runtime.projectileDeflect.radius = 0;
+  // Reset party auras
+  runtime.partyAuras = runtime.partyAuras || {};
+  runtime.partyAuras.waterWalk = false;
   // Prepare per-enemy slow accumulation
   const slowAccum = new Array(enemies.length).fill(0);
   // Synergy: Urn + Varabella small boost when both are present
@@ -2649,6 +2647,7 @@ function applyCompanionAuras(dt) {
         case 'rangedDR': buffs.rangedDR += (a.value || 0) * mult; break; // resistance vs ranged/projectile damage
         case 'crit': buffs.crit += (a.value || 0) * mult; break; // absolute crit chance add
         case 'dashCdr': buffs.dashCdr += (a.value || 0) * mult; break; // dash cooldown reduction (fractional)
+        case 'waterWalk': runtime.partyAuras.waterWalk = true; break; // boolean aura
         case 'slow': {
           const rad = a.radius || 0;
           if (rad > 0) {
