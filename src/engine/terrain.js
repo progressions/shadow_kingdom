@@ -85,6 +85,7 @@ let _lavaPat = null;
 let _lavaPatSize = 32;
 let _rockPat = null;
 let _rockPatSize = 32;
+let _rockClusterCache = { sig: '', clusters: [] };
 function ensureLavaPattern(ctx) {
   if (_lavaPat) return _lavaPat;
   const size = _lavaPatSize;
@@ -195,6 +196,185 @@ function ensureWaterPattern(ctx) {
   return _waterPat;
 }
 
+function rectsTouchOrOverlap(a, b, pad = 1.0) {
+  return (
+    a.x < b.x + b.w + pad &&
+    a.x + a.w > b.x - pad &&
+    a.y < b.y + b.h + pad &&
+    a.y + a.h > b.y - pad
+  );
+}
+
+function buildRockClusters(obstacles) {
+  const rocks = obstacles.filter(o => o && o.type === 'rock');
+  const sig = rocks.map(o => `${o.x},${o.y},${o.w},${o.h}`).join('|');
+  if (_rockClusterCache.sig === sig && _rockClusterCache.clusters && _rockClusterCache.clusters.length) return _rockClusterCache.clusters;
+  const N = rocks.length;
+  const visited = new Array(N).fill(false);
+  const clusters = [];
+  for (let i = 0; i < N; i++) {
+    if (visited[i]) continue;
+    visited[i] = true;
+    const queue = [i];
+    const rects = [rocks[i]];
+    while (queue.length) {
+      const idx = queue.pop();
+      const a = rocks[idx];
+      for (let j = 0; j < N; j++) {
+        if (visited[j]) continue;
+        const b = rocks[j];
+        if (rectsTouchOrOverlap(a, b, 1.0)) { visited[j] = true; queue.push(j); rects.push(b); }
+      }
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const r of rects) { if (!r) continue; minX = Math.min(minX, r.x); minY = Math.min(minY, r.y); maxX = Math.max(maxX, r.x + r.w); maxY = Math.max(maxY, r.y + r.h); }
+    clusters.push({ rects, minX, minY, maxX, maxY, paths: null });
+  }
+  _rockClusterCache = { sig, clusters };
+  return clusters;
+}
+
+function computeClusterPaths(cluster, gridStep = 2) {
+  if (cluster.paths && Array.isArray(cluster.paths) && cluster.paths.length) return cluster.paths;
+  const pad = 0;
+  const minX = Math.floor(cluster.minX) - pad;
+  const minY = Math.floor(cluster.minY) - pad;
+  const maxX = Math.ceil(cluster.maxX) + pad;
+  const maxY = Math.ceil(cluster.maxY) + pad;
+  const w = Math.max(1, Math.ceil((maxX - minX) / gridStep));
+  const h = Math.max(1, Math.ceil((maxY - minY) / gridStep));
+  const occ = new Uint8Array(w * h);
+  const idx = (x, y) => y * w + x;
+  for (const r of cluster.rects) {
+    if (!r) continue;
+    const x1 = Math.max(0, Math.floor((r.x - minX) / gridStep));
+    const y1 = Math.max(0, Math.floor((r.y - minY) / gridStep));
+    const x2 = Math.min(w - 1, Math.floor(((r.x + r.w - 1) - minX) / gridStep));
+    const y2 = Math.min(h - 1, Math.floor(((r.y + r.h - 1) - minY) / gridStep));
+    for (let y = y1; y <= y2; y++) {
+      let base = idx(x1, y);
+      for (let x = x1; x <= x2; x++, base++) occ[base] = 1;
+    }
+  }
+  const horiz = new Map();
+  const vert = new Map();
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!occ[idx(x, y)]) continue;
+      if (y === 0 || !occ[idx(x, y - 1)]) {
+        const arr = horiz.get(y) || []; arr.push([x, x + 1]); horiz.set(y, arr);
+      }
+      if (y === h - 1 || !occ[idx(x, y + 1)]) {
+        const Y = y + 1; const arr = horiz.get(Y) || []; arr.push([x, x + 1]); horiz.set(Y, arr);
+      }
+      if (x === 0 || !occ[idx(x - 1, y)]) {
+        const arr = vert.get(x) || []; arr.push([y, y + 1]); vert.set(x, arr);
+      }
+      if (x === w - 1 || !occ[idx(x + 1, y)]) {
+        const X = x + 1; const arr = vert.get(X) || []; arr.push([y, y + 1]); vert.set(X, arr);
+      }
+    }
+  }
+  const edges = [];
+  for (const [Y, list] of horiz.entries()) {
+    list.sort((a, b) => a[0] - b[0]);
+    let cur = null;
+    for (const s of list) {
+      if (!cur) { cur = [s[0], s[1]]; continue; }
+      if (s[0] === cur[1]) { cur[1] = s[1]; }
+      else { edges.push({ x1: cur[0], y1: Y, x2: cur[1], y2: Y }); cur = [s[0], s[1]]; }
+    }
+    if (cur) edges.push({ x1: cur[0], y1: Y, x2: cur[1], y2: Y });
+  }
+  for (const [X, list] of vert.entries()) {
+    list.sort((a, b) => a[0] - b[0]);
+    let cur = null;
+    for (const s of list) {
+      if (!cur) { cur = [s[0], s[1]]; continue; }
+      if (s[0] === cur[1]) { cur[1] = s[1]; }
+      else { edges.push({ x1: X, y1: cur[0], x2: X, y2: cur[1] }); cur = [s[0], s[1]]; }
+    }
+    if (cur) edges.push({ x1: X, y1: cur[0], x2: X, y2: cur[1] });
+  }
+  const key = (x, y) => `${x},${y}`;
+  const adj = new Map();
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    const k1 = key(e.x1, e.y1);
+    const k2 = key(e.x2, e.y2);
+    if (!adj.has(k1)) adj.set(k1, []);
+    if (!adj.has(k2)) adj.set(k2, []);
+    adj.get(k1).push(i);
+    adj.get(k2).push(i);
+  }
+  const used = new Array(edges.length).fill(false);
+  const paths = [];
+  for (let i = 0; i < edges.length; i++) {
+    if (used[i]) continue;
+    const path = [];
+    let curIdx = i;
+    let cur = edges[curIdx];
+    let cx = cur.x1, cy = cur.y1;
+    const startKey = key(cx, cy);
+    path.push([cx, cy]);
+    while (true) {
+      used[curIdx] = true;
+      cx = cur.x2; cy = cur.y2;
+      path.push([cx, cy]);
+      const ck = key(cx, cy);
+      if (ck === startKey) break;
+      const nextList = (adj.get(ck) || []).filter(ii => !used[ii]);
+      if (nextList.length === 0) break;
+      curIdx = nextList[0];
+      cur = edges[curIdx];
+      if (!(cur.x1 === cx && cur.y1 === cy)) {
+        const tx = cur.x1, ty = cur.y1; cur.x1 = cur.x2; cur.y1 = cur.y2; cur.x2 = tx; cur.y2 = ty;
+      }
+    }
+    if (path.length >= 3) paths.push(path);
+  }
+  const pxPaths = paths.map(arr => arr.map(([gx, gy]) => [minX + gx * gridStep, minY + gy * gridStep]));
+  cluster.paths = pxPaths;
+  return pxPaths;
+}
+
+function drawRockClusters(ctx, obstacles, camera) {
+  const clusters = buildRockClusters(obstacles);
+  const pat = ensureRockPattern(ctx);
+  for (const c of clusters) {
+    const minX = c.minX, minY = c.minY, maxX = c.maxX, maxY = c.maxY;
+    if (maxX < camera.x || minX > camera.x + camera.w || maxY < camera.y || minY > camera.y + camera.h) continue;
+    const paths = computeClusterPaths(c, 2);
+    if (!paths || !paths.length) continue;
+    ctx.save();
+    ctx.beginPath();
+    for (const p of paths) {
+      if (!p || p.length === 0) continue;
+      ctx.moveTo(Math.round(p[0][0] - camera.x), Math.round(p[0][1] - camera.y));
+      for (let k = 1; k < p.length; k++) ctx.lineTo(Math.round(p[k][0] - camera.x), Math.round(p[k][1] - camera.y));
+      ctx.closePath();
+    }
+    ctx.fillStyle = '#6f6f6f';
+    try { ctx.fill('evenodd'); } catch { ctx.fill(); }
+    if (pat) {
+      try {
+        ctx.save();
+        try { ctx.clip('evenodd'); } catch { ctx.clip(); }
+        ctx.translate(-camera.x, -camera.y);
+        ctx.fillStyle = pat;
+        ctx.globalAlpha = 0.45;
+        ctx.fillRect(minX, minY, Math.max(1, maxX - minX), Math.max(1, maxY - minY));
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+      } catch {}
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#2a2a2e';
+    try { ctx.stroke('evenodd'); } catch { ctx.stroke(); }
+    ctx.restore();
+  }
+}
+
 export function drawGrid(ctx, world, camera) {
   const s = TILE;
   ctx.save();
@@ -261,6 +441,8 @@ export function buildObstacles(world, player, enemies, npcs, theme = 'default') 
 }
 
 export function drawObstacles(ctx, obstacles, camera) {
+  // Draw rock clusters as contiguous shapes with a single outline
+  try { drawRockClusters(ctx, obstacles, camera); } catch {}
   for (const o of obstacles) {
     // Frustum culling: skip obstacles fully outside the camera view
     if (o.x + o.w < camera.x || o.x > camera.x + camera.w || o.y + o.h < camera.y || o.y > camera.y + camera.h) continue;
@@ -320,20 +502,8 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillStyle = '#2f7a42'; ctx.fillRect(sx, sy - 2, o.w, 6);
       ctx.fillStyle = '#6e4b2a'; ctx.fillRect(sx + (o.w/2 - 2)|0, sy + 6, 4, o.h - 6);
     } else if (o.type === 'rock') {
-      // Rock outcrop: borderless block with subtle speckle texture
-      ctx.fillStyle = '#6f6f6f';
-      ctx.fillRect(sx, sy, o.w, o.h);
-      const pat = ensureRockPattern(ctx);
-      if (pat) {
-        ctx.save();
-        // Anchor texture to world space for continuity across adjacent placements
-        ctx.translate(-camera.x, -camera.y);
-        ctx.fillStyle = pat;
-        ctx.globalAlpha = 0.45;
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-        ctx.globalAlpha = 1.0;
-        ctx.restore();
-      }
+      // Skip per-rect rock drawing; clusters are rendered above for a unified outline
+      continue;
     } else if (o.type === 'wall') {
       // Stone wall segment
       ctx.fillStyle = '#4f4f57'; ctx.fillRect(sx, sy, o.w, o.h);
