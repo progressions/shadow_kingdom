@@ -1380,40 +1380,46 @@ export function step(dt) {
         losClearToPlayer = !blocked;
       } catch {}
       if (baseDir.x !== 0 || baseDir.y !== 0) {
-        for (const a of offsets) {
-          const ca = Math.cos(a), sa = Math.sin(a);
-          const vx = baseDir.x * ca - baseDir.y * sa;
-          const vy = baseDir.x * sa + baseDir.y * ca;
-          // Alignment penalty (prefer towards player)
-          const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
-          const alignPenalty = (1 - dot) * (losClearToPlayer ? 0.3 : 0.6);
-          // Hazard exposure along a short ray with 3 samples
-          let haz = 0;
-          let obs = 0;
-          const samples = [0.33, 0.66, 1.0];
-          const stepLen = 26; // px
-          for (const t of samples) {
-            const cx = px + vx * stepLen * t;
-            const cy = py + vy * stepLen * t;
-            const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
-            for (const o of obstacles) {
-              if (!o) continue;
-              // Hazards (non-blocking)
-              if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava') {
-                const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (160*160)) continue;
-                if (rectsIntersect(probe, o)) { haz += ((o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12)); }
-              } else {
-                // Blocking obstacles: penalize directions that will collide
-                let blocks = o.blocksAttacks === true || o.type === 'wall' || o.type === 'water' || (o.type === 'gate' && o.locked !== false);
-                if (!blocks) continue;
-                // quick distance check
-                const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (180*180)) continue;
-                if (!losClearToPlayer && rectsIntersect(probe, o)) { obs += 50; }
+        if (roleKind === 'mook') {
+          // Mook‑lite steering: trust base heading (direct→flow blend) without expensive scans
+          best = { x: baseDir.x, y: baseDir.y };
+          bestScore = 0;
+        } else {
+          for (const a of offsets) {
+            const ca = Math.cos(a), sa = Math.sin(a);
+            const vx = baseDir.x * ca - baseDir.y * sa;
+            const vy = baseDir.x * sa + baseDir.y * ca;
+            // Alignment penalty (prefer towards player)
+            const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
+            const alignPenalty = (1 - dot) * (losClearToPlayer ? 0.3 : 0.6);
+            // Hazard exposure along a short ray with 3 samples
+            let haz = 0;
+            let obs = 0;
+            const samples = [0.33, 0.66, 1.0];
+            const stepLen = 26; // px
+            for (const t of samples) {
+              const cx = px + vx * stepLen * t;
+              const cy = py + vy * stepLen * t;
+              const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
+              for (const o of obstacles) {
+                if (!o) continue;
+                // Hazards (non-blocking)
+                if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava') {
+                  const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (160*160)) continue;
+                  if (rectsIntersect(probe, o)) { haz += ((o.type === 'mud') ? 1 : (o.type === 'fire' ? 6 : 12)); }
+                } else {
+                  // Blocking obstacles: penalize directions that will collide
+                  let blocks = o.blocksAttacks === true || o.type === 'wall' || o.type === 'water' || (o.type === 'gate' && o.locked !== false);
+                  if (!blocks) continue;
+                  // quick distance check
+                  const ox = (o.x + o.w/2) - cx; const oy = (o.y + o.h/2) - cy; if ((ox*ox + oy*oy) > (180*180)) continue;
+                  if (!losClearToPlayer && rectsIntersect(probe, o)) { obs += 50; }
+                }
               }
             }
+            const score = alignPenalty + (haz * avoidBias * (steerT.hazardWeightMul || 1)) + (obs * (steerT.obstaclePenaltyMul || 1));
+            if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
           }
-          const score = alignPenalty + (haz * avoidBias * (steerT.hazardWeightMul || 1)) + (obs * (steerT.obstaclePenaltyMul || 1));
-          if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
         }
       } else {
         // Idle this frame (no movement direction)

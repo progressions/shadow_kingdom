@@ -146,6 +146,8 @@ export function buildObstacles(world, player, enemies, npcs, theme = 'default') 
 
 export function drawObstacles(ctx, obstacles, camera) {
   for (const o of obstacles) {
+    // Frustum culling: skip obstacles fully outside the camera view
+    if (o.x + o.w < camera.x || o.x > camera.x + camera.w || o.y + o.h < camera.y || o.y > camera.y + camera.h) continue;
     const sx = Math.round(o.x - camera.x);
     const sy = Math.round(o.y - camera.y);
     if (o.type === 'wood') {
