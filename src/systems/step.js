@@ -2843,24 +2843,7 @@ function handleCompanionTriggers(dt) {
     return m;
   };
   const hasAffinity = (key, min) => companions.some(c => (c.name || '').toLowerCase().includes(key) && (c.affinity || 0) >= min);
-  // Canopy shield trigger
-  if (false && has('canopy')) {
-    const base = companionEffectsByKey.canopy?.triggers?.shield || { hpThresh: 0.4, cooldownSec: 12, durationSec: 6 };
-    const m = multFor('canopy');
-    const eff = {
-      hpThresh: (base.hpThresh || 0.4) + ((m - 1) * 0.2),
-      cooldownSec: (base.cooldownSec || 12) / (1 + (m - 1) * 0.5),
-      durationSec: (base.durationSec || 6) * m,
-    };
-    const hpRatio = player.hp / player.maxHp;
-    if (!runtime.shieldActive && (cds.canopyShield || 0) <= 0 && hpRatio < eff.hpThresh) {
-      runtime.shieldActive = true;
-      runtime.shieldTimer = eff.durationSec;
-      cds.canopyShield = eff.cooldownSec;
-      spawnFloatText(player.x + player.w/2, player.y - 10, 'Shield!', { color: '#8ab4ff', life: 0.8 });
-      try { playSfx('shield'); } catch {}
-    }
-  }
+  // Canopy shield handled by generic triggers
 
   // Hola Gust handled by generic triggers
 
@@ -2870,17 +2853,7 @@ function handleCompanionTriggers(dt) {
 
   // Hola Slipstream handled by generic triggers
 
-  // Canopy Affinity 5 — Dash Mend handled by generic triggers
-  if (false && hasAffinity('canopy', 5)) {
-    const justDashed = (runtime._dashJustStartedAtSec || 0) > 0 && Math.abs((runtime._timeSec || 0) - runtime._dashJustStartedAtSec) < 0.05;
-    if ((cds.canopyDashHeal || 0) <= 0 && justDashed) {
-      const heal = 1;
-      player.hp = Math.min(player.maxHp, player.hp + heal);
-      cds.canopyDashHeal = 6; // seconds
-      spawnFloatText(player.x + player.w/2, player.y - 12, '+1', { color: '#62e563', life: 0.7 });
-      try { playSfx('potion'); } catch {}
-    }
-  }
+  // Canopy Dash Mend handled by generic triggers
 
   // Hola Maelstrom handled by generic triggers
 
@@ -2898,156 +2871,24 @@ function handleCompanionTriggers(dt) {
   }
 
   // Snake L10 — Constriction handled by generic triggers
-  if (false && hasAffinity('snake', 10)) {
-    if ((cds.snakeConstriction || 0) <= 0) {
-      let nearest = null, nd2 = Infinity;
-      for (const e of enemies) {
-        if (!e || e.hp <= 0) continue;
-        const isElite = String(e.kind||'').toLowerCase() === 'featured' || String(e.kind||'').toLowerCase() === 'boss';
-        if (!isElite) continue;
-        const dx = e.x - player.x, dy = e.y - player.y; const d2 = dx*dx + dy*dy;
-        if (d2 < nd2 && d2 <= (90*90)) { nd2 = d2; nearest = e; }
-      }
-      if (nearest) {
-        nearest._veilSlowTimer = Math.max(nearest._veilSlowTimer || 0, 1.0); nearest._veilSlow = 1.0;
-        nearest._burnTimer = Math.max(nearest._burnTimer || 0, 1.5); nearest._burnDps = Math.max(nearest._burnDps || 0, 1.0);
-        cds.snakeConstriction = 35;
-        spawnFloatText(nearest.x + nearest.w/2, nearest.y - 12, 'Constricted!', { color: '#9ae66f', life: 0.8 });
-      }
-    }
-  }
 
   // Canopy L8 — Aegis Surge handled by generic triggers
-  if (false && hasAffinity('canopy', 8)) {
-    const hp = player.hp / Math.max(1, player.maxHp||10);
-    let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(72*72)) d++; } }
-    if ((cds.canopyAegis || 0) <= 0 && (hp < 0.4 || (runtime._recentPlayerHitTimer||0) > 0) && d >= 2) {
-      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 2);
-      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 3.0);
-      // Small sustain: immediate heal of 1 HP
-      player.hp = Math.min(player.maxHp, player.hp + 1);
-      cds.canopyAegis = 18;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Aegis!', { color: '#8ab4ff', life: 0.8 });
-      try { playSfx('shield'); } catch {}
-    }
-  }
 
   // Canopy L10 — Guardian Veil handled by generic triggers
-  if (false && hasAffinity('canopy', 10)) {
-    let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(80*80)) d++; } }
-    if ((cds.canopyVeil || 0) <= 0 && d >= 3 && !runtime.shieldActive) {
-      runtime.shieldActive = true; runtime.shieldTimer = 1.5;
-      cds.canopyVeil = 40;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Guardian Veil!', { color: '#8ab4ff', life: 0.9 });
-      try { playSfx('shield'); } catch {}
-    }
-  }
 
   // Yorna L8 — Expose handled by generic triggers
-  if (false && hasAffinity('yorna', 8)) {
-    const dash = !!(runtime._dashComboJustTriggered); const crit = (runtime._recentPlayerCritTimer||0) > 0;
-    if ((cds.yornaExpose || 0) <= 0 && (dash || crit)) {
-      for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy) <= (60*60)) { e._tempDr = Math.min(e._tempDr || 0, -2); e._tempDrTimer = Math.max(e._tempDrTimer||0, 4.0); } } }
-      cds.yornaExpose = 14; runtime._dashComboJustTriggered = false; runtime._recentPlayerCritTimer = 0;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Expose!', { color: '#ffd166', life: 0.8 });
-    }
-  }
 
   // Yorna L10 — Execution handled by generic triggers
-  if (false && hasAffinity('yorna', 10)) {
-    if ((cds.yornaExecute || 0) <= 0 && ((runtime._dashComboJustTriggered||false) || (runtime._recentPlayerCritTimer||0) > 0)) {
-      runtime.tempAPBonus = Math.max(runtime.tempAPBonus || 0, 2);
-      runtime.tempTrueDamage = Math.max(runtime.tempTrueDamage || 0, 1);
-      runtime._tempApTimer = Math.max(runtime._tempApTimer || 0, 2.0);
-      runtime._tempTrueTimer = Math.max(runtime._tempTrueTimer || 0, 2.0);
-      cds.yornaExecute = 35; runtime._dashComboJustTriggered = false; runtime._recentPlayerCritTimer = 0;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Execute!', { color: '#ffd166', life: 0.9 });
-    }
-  }
 
   // Varabella L8 — Perfect Angle handled by generic triggers
-  if (false && hasAffinity('varabella', 8)) {
-    if ((cds.varaPerfect || 0) <= 0) {
-      // Simple heuristic: if two enemies near share a similar angle from the player
-      const near = enemies.filter(e => e && e.hp>0).map(e => ({e, dx: e.x - player.x, dy: e.y - player.y})).filter(o => (o.dx*o.dx + o.dy*o.dy) <= (120*120));
-      if (near.length >= 2) {
-        let aligned = false;
-        for (let i=0;i<Math.min(near.length,5)&&!aligned;i++){
-          for (let j=i+1;j<Math.min(near.length,6);j++){
-            const a = near[i], b = near[j];
-            const ca = Math.atan2(a.dy, a.dx), cb = Math.atan2(b.dy, b.dx);
-            const da = Math.abs(ca - cb); const dAng = Math.min(da, Math.abs((Math.PI*2) - da));
-            if (dAng < 0.2) { aligned = true; break; }
-          }
-        }
-        if (aligned) {
-          runtime._tempPierceBonus = Math.max(runtime._tempPierceBonus || 0, 1);
-          runtime._tempPierceTimer = Math.max(runtime._tempPierceTimer || 0, 3.0);
-          runtime.tempAPBonus = Math.max(runtime.tempAPBonus || 0, 1);
-          runtime._tempApTimer = Math.max(runtime._tempApTimer || 0, 3.0);
-          cds.varaPerfect = 14;
-          spawnFloatText(player.x + player.w/2, player.y - 12, 'Perfect Angle.', { color: '#ffd166', life: 0.8 });
-        }
-      }
-    }
-  }
 
   // Nellis L10 — Bulwark handled by generic triggers
-  if (false && hasAffinity('nellis', 10)) {
-    let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(80*80)) d++; } }
-    if ((cds.nellisBulwark || 0) <= 0 && d >= 3) {
-      runtime.tempRangedDr = Math.max(runtime.tempRangedDr || 0, 3);
-      runtime._tempRangedDrTimer = Math.max(runtime._tempRangedDrTimer || 0, 3.0);
-      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 1);
-      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 3.0);
-      cds.nellisBulwark = 45;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Bulwark!', { color: '#8ab4ff', life: 0.9 });
-    }
-  }
 
   // Nellis L8 — Phalanx handled by generic triggers
-  if (false && hasAffinity('nellis', 8)) {
-    if ((cds.nellisPhalanx || 0) <= 0) {
-      let nearby = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(48*48)) { nearby++; if (nearby>=2) break; } } }
-      if (nearby >= 2) {
-        runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, 2);
-        runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, 3);
-        cds.nellisPhalanx = 20;
-        spawnFloatText(player.x + player.w/2, player.y - 12, 'Phalanx.', { color: '#8ab4ff', life: 0.8 });
-      }
-    }
-  }
 
   // Urn L8 — Beacon Surge handled by generic triggers
-  if (false && hasAffinity('urn', 8)) {
-    const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
-    let density = 0; for (const e of enemies) { if (e.hp > 0) { const dx = e.x - player.x, dy = e.y - player.y; if ((dx*dx + dy*dy) <= (80*80)) density++; } }
-    if ((cds.urnBeaconSurge || 0) <= 0 && (hpRatio < 0.35 || (runtime._recentPlayerHitTimer||0) > 0) && density >= 2) {
-      player.hp = Math.min(player.maxHp, player.hp + 4);
-      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, 0.10);
-      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, 3.0);
-      cds.urnBeaconSurge = 20;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Beacon Surge!', { color: '#9ae6ff', life: 0.8 });
-      try { playSfx('beacon'); } catch {}
-    }
-  }
 
   // Varabella L10 — Time Dilation handled by generic triggers
-  if (false && hasAffinity('varabella', 10)) {
-    const density = enemies.reduce((n,e)=> n + (e.hp>0 && ((e.x-player.x)**2 + (e.y-player.y)**2) <= (120*120) ? 1 : 0), 0);
-    const critRecently = (runtime._recentPlayerCritTimer || 0) > 0;
-    const dashCombo = !!(runtime._dashComboJustTriggered);
-    if ((cds.varaTime || 0) <= 0 && density >= 3 && (critRecently || dashCombo)) {
-      for (const e of enemies) { if (e.hp>0) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 2.0); e._veilSlow = Math.max(e._veilSlow || 0, 0.25); } }
-      runtime.tempCritBonus = Math.max(runtime.tempCritBonus || 0, 0.20);
-      runtime._tempCritTimer = Math.max(runtime._tempCritTimer || 0, 2.0);
-      runtime._tempPierceBonus = Math.max(runtime._tempPierceBonus || 0, 1);
-      runtime._tempPierceTimer = Math.max(runtime._tempPierceTimer || 0, 2.0);
-      cds.varaTime = 40;
-      runtime._recentPlayerCritTimer = 0; runtime._dashComboJustTriggered = false;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Time Dilation!', { color: '#ffd166', life: 0.9 });
-    }
-  }
 
   // Twil L10 — Detonate Brand: if a burning enemy is present, detonate for small AoE and clear burns
   if (hasAffinity('twil', 10)) {
@@ -3078,16 +2919,6 @@ function handleCompanionTriggers(dt) {
   }
 
   // Snake L8 — Venom Cloud handled by generic triggers
-  if (false && hasAffinity('snake', 8)) {
-    if ((cds.snakeVenom || 0) <= 0) {
-      let any = false; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(52*52)) { any=true; break; } } }
-      if (any) {
-        for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(52*52)) { e._veilSlowTimer = Math.max(e._veilSlowTimer||0, 2.0); e._veilSlow = Math.max(e._veilSlow||0, 0.15); e._burnTimer = Math.max(e._burnTimer||0, 1.5); e._burnDps = Math.max(e._burnDps||0, 0.5); } } }
-        cds.snakeVenom = 18;
-        spawnFloatText(player.x + player.w/2, player.y - 12, 'Venom Cloud.', { color: '#9ae66f', life: 0.7 });
-      }
-    }
-  }
 
   // Synergy (Urn + Varabella both at 10): Sanctuary Convergence / Chrono Lattice
   const bothMax = hasAffinity('urn', 10) && hasAffinity('varabella', 10);
@@ -3122,34 +2953,7 @@ function handleCompanionTriggers(dt) {
   // Urn Cheer handled by generic triggers
 
   // Varabella Call the Angle handled by generic triggers
-  if (false && has('varabella')) {
-    const base = companionEffectsByKey.varabella?.triggers?.angle || { atk: 1, range: 2, durationSec: 3, cooldownSec: 9, proximity: 140 };
-    const m = multFor('varabella');
-    const eff = {
-      atk: Math.min(2, (base.atk || 1) * m),
-      range: Math.min(3, (base.range || 2) * m),
-      durationSec: (base.durationSec || 3) * m,
-      cooldownSec: (base.cooldownSec || 9) / (1 + (m - 1) * 0.5),
-      proximity: (base.proximity || 140),
-    };
-    if ((cds.varaAngle || 0) <= 0) {
-      let any = false;
-      for (const e of enemies) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (eff.proximity * eff.proximity)) { any = true; break; }
-      }
-      if (any) {
-        runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, eff.atk);
-        runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, eff.durationSec);
-        runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, eff.range);
-        runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, eff.durationSec);
-        cds.varaAngle = eff.cooldownSec;
-        spawnFloatText(player.x + player.w/2, player.y - 12, 'Angle!', { color: '#ffd166', life: 0.8 });
-        try { playSfx('angle'); } catch {}
-      }
-    }
-  }
+  // Varabella Angle handled by generic triggers
 
   // Tin Slipstream handled by generic triggers
 
