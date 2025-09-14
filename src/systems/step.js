@@ -2036,16 +2036,14 @@ export function step(dt) {
   // Show item label when passing over an item (lower-right target info)
   if (itemsOnGround && itemsOnGround.length) {
     try {
-      const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
-      let best = null; let bestD2 = Infinity;
       const px = player.x + player.w/2, py = player.y + player.h/2;
+      let best = null; let bestD2 = Infinity;
+      const radius = 16; const r2 = radius * radius;
       for (const it of itemsOnGround) {
         if (!it || !it.item) continue;
-        const ir = { x: it.x, y: it.y, w: it.w, h: it.h };
-        if (!rectsIntersect(pr, ir)) continue;
         const cx = it.x + it.w/2, cy = it.y + it.h/2;
         const d2 = (cx - px) * (cx - px) + (cy - py) * (cy - py);
-        if (d2 < bestD2) { bestD2 = d2; best = it; }
+        if (d2 <= r2 && d2 < bestD2) { bestD2 = d2; best = it; }
       }
       if (best) {
         const nm = best.item?.name || best.item?.id || 'Item';
