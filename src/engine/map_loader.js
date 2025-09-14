@@ -55,7 +55,7 @@ function buildObstaclesFromGrid(grid, legend) {
   obstacles.length = 0;
   const h = world.tileH, w = world.tileW;
   // Fast pass: gather horizontal runs for mergeable types, then merge vertically
-  const mergeable = new Set(['wall', 'water', 'gate']);
+  const mergeable = new Set(['wall', 'water', 'gate', 'wood']);
   const rows = [];
   for (let y = 0; y < h; y++) {
     const row = new Array(w);
@@ -63,6 +63,9 @@ function buildObstaclesFromGrid(grid, legend) {
     addMergedRowRuns(y, row, mergeable, rows);
   }
   const rects = mergeVerticalRuns(rows, mergeable);
+  // Draw order: water first, then wood (bridge), then walls/gates
+  const pri = (t) => (t === 'water') ? 0 : (t === 'wood') ? 1 : (t === 'wall') ? 2 : (t === 'gate') ? 3 : 9;
+  rects.sort((a, b) => pri(a.type) - pri(b.type));
   for (const r of rects) {
     const type = r.type;
     const o = { x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type, blocksAttacks: (type === 'wall' || (type === 'gate')) };

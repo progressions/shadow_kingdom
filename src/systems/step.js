@@ -29,7 +29,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
-      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -55,7 +55,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
-      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
