@@ -332,8 +332,8 @@ export const companionDialogs = {
         ],
       },
       style: {
-        text: 'Yorna: Chief, I hit first and I hit hard. Keep the lane open and I\'ll bulldoze the problem.',
-        choices: [ { label: 'Back', action: 'companion_back' } ],
+        text: "Yorna: Chief, my strategy is to hit first and hit hard. If you clear a path for me, I'll take down any enemy in the way.",
+        choices: [ { label: "Back", action: "companion_back" } ],
       },
       mood: {
         text: 'Yorna: Chief, never better. If trouble wants a dance, I\'ll lead.',
@@ -522,7 +522,7 @@ export const companionDialogs = {
         ],
       },
       quest_started: {
-        text: 'Hola: My Lord, I\'ll try to keep the wind steady. Please stay close.',
+        text: "Hola: My Lord, I'll try to keep my magic focused. Please stay close.",
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       quest_turnin: {
@@ -1156,11 +1156,6 @@ export const companionDialogs = {
       snake_den_done: {
         text: 'Snek: I stay nearer now.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'snake_den_done' }, next: 'root' } ],
-      },
-    },
-  },
-};
- 'root' } ],
       },
     },
   },

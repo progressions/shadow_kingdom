@@ -373,9 +373,10 @@ export function applyPendingRestore() {
     runtime.questFlags = {}; (data.questFlags||[]).forEach(k => runtime.questFlags[k]=true);
     runtime.questCounters = {}; Object.assign(runtime.questCounters, data.questCounters||{});
     runtime.questMeta = {}; Object.assign(runtime.questMeta, data.questMeta||{});
-    // Re-show persistent tutorial banner if applicable
+    // Re-show persistent tutorial banner if applicable and no torch bearer saved
     try {
-      if (runtime.questFlags['tutorial_canopy_torch'] === true) {
+      const hasBearer = !!(data.torch && typeof data.torch.bearerIndex === 'number' && data.torch.bearerIndex >= 0);
+      if (runtime.questFlags['tutorial_canopy_torch'] === true && !hasBearer) {
         import('./ui.js').then(u => u.showPersistentBanner && u.showPersistentBanner('Ask Canopy to hold the torch, press C for companions')).catch(()=>{});
       }
     } catch {}

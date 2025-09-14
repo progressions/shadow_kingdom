@@ -870,7 +870,7 @@ export function step(dt) {
           } catch { showBanner(`Equipped ${pick.name}`); }
           // Tutorial: Level 1 bow equip → recommend asking Canopy to carry torch (persist until Canopy bears torch)
           try {
-            if ((runtime.currentLevel || 1) === 1) {
+            if ((runtime.currentLevel || 1) === 1 && !runtime._torchBearerRef) {
               if (!runtime.questFlags) runtime.questFlags = {};
               if (!runtime.questFlags['tutorial_canopy_torch_done']) {
                 runtime.questFlags['tutorial_canopy_torch'] = true;
