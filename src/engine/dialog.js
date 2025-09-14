@@ -244,7 +244,8 @@ export function selectChoice(index) {
               const names = companions.map(c => (c.name || '').toLowerCase());
               const has = (s) => names.some(x => x.includes(String(s).toLowerCase()));
               const truce = !!(runtime.questFlags && runtime.questFlags['canopy_yorna_respect']);
-              if (!truce) {
+              const afterL2 = !!(runtime.questFlags && runtime.questFlags['level2_reached']);
+              if (!truce && afterL2) {
                 if (nm.includes('yorna') && has('canopy')) {
                   startPrompt(npc, 'Yorna: No. Not while she’s on your line. Choose first.', [ { label: 'Back', action: 'end' } ]);
                   return;

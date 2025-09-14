@@ -32,9 +32,10 @@ export const canopyDialog = {
       text: "Canopy: My Lord, I'm Canopy. I'm searching these woods for my sister—Ell. Urathar's raiders took her when they burned our village. I keep you standing: slow healing, a little less damage, and a short shield if your health drops. If you lead, I'll keep you standing. Shall I come?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_canopy' }, next: 'post_l5_canopy' },
-        { label: 'Yes, join me.', requires: { partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Yes, join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Yes, join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'Yes, join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
-        { label: 'Not with her here.', requires: { partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
         { label: 'You can lean on me, I\'ve got you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_intro_encourage' }, next: 'after_aff' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Share a plan (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
@@ -48,18 +49,20 @@ export const canopyDialog = {
     about: {
       text: "Canopy: My Lord, I keep you standing. I gently heal you over time, give quick touch‑ups, and raise a short shield that blocks a hit when things get rough. Stay near me and hard hits feel softer.",
       choices: [
-        { label: 'Good. Join me.', requires: { partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Good. Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Good. Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'Good. Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
-        { label: 'We need to settle this first.', requires: { partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
+        { label: 'We need to settle this first.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
         { label: 'Later.', action: 'end' }
       ],
     },
     after_aff: {
       text: 'Canopy: My Lord, thank you. I\'ll do my best to keep everyone whole.',
       choices: [
-        { label: 'Join me.', requires: { partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
-        { label: 'Not with her here.', requires: { partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],
@@ -67,9 +70,10 @@ export const canopyDialog = {
     bond: {
       text: 'Canopy: My Lord, a good plan is simple and steady. I\'m with you.',
       choices: [
-        { label: 'Join me.', requires: { partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
         { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
-        { label: 'Not with her here.', requires: { partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],
@@ -88,9 +92,10 @@ export const yornaDialog = {
       text: "Yorna: Name's Yorna. I hit hard and I don't quit. The castle is to the southeast. The gate's locked—Gorg, the red brute, carries a brass key outside the northeast wall. We take it, open the gate, kill Vast, and keep this valley ours. Want me along?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_yorna' }, next: 'post_l5_yorna' },
-        { label: 'Yes, join me.', requires: { partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Yes, join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Yes, join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Yes, join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
-        { label: 'Not with her here.', requires: { partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'What can you do for us?', next: 'skills' },
         { label: 'You hit hard; I\'ll stay with you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
         { label: 'Trade tactics (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
@@ -104,18 +109,20 @@ export const yornaDialog = {
     skills: {
       text: "Yorna: I take the front and keep trouble off you. I hit hard and extend your reach so you can land hits from a bit farther. Stay close and fights get easier.",
       choices: [
-        { label: 'Sounds great — join me.', requires: { partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Sounds great — join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Sounds great — join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Sounds great — join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
-        { label: 'Not with her here.', requires: { partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
     after_aff: {
       text: 'Yorna: Chief, that\'s the way—clear space and we\'ll bulldoze through.',
       choices: [
-        { label: 'Join me.', requires: { partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
-        { label: 'Not with her here.', requires: { partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'What can you do for us?', next: 'skills' },
         { label: 'Later.', action: 'end' }
       ],
@@ -123,9 +130,10 @@ export const yornaDialog = {
     bond: {
       text: 'Yorna: Chief, I like how you think. I\'ll match your pace.',
       choices: [
-        { label: 'Join me.', requires: { partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
-        { label: 'Not with her here.', requires: { partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'What can you do for us?', next: 'skills' },
         { label: 'Later.', action: 'end' }
       ],
