@@ -216,7 +216,7 @@ export const oyinDialog = {
       text: "Oyin: My Lord, Oyin here. I keep count and keep us steady. I can rally when it hurts—heal a little and lend strength for a few breaths—and I help your timing so the sharp hits land. If you want me… I can come along.",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_oyin' }, next: 'post_l5_oyin' },
-        { label: 'Yes, join me.', action: 'join_party', hint: 'Rally · Keen Timing · +Range' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Rally · Slow · DR' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'You’re doing fine; breathe and stay with me.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'oyin_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
@@ -252,7 +252,7 @@ export const twilDialog = {
       text: "Twil: Master, I'm Twil. I scout ahead, read the ground, and call the gap. I'll mark weak points—take them when I say and we move faster. You want me along or what?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_twil' }, next: 'post_l5_twil' },
-        { label: 'Yes, join me.', action: 'join_party', hint: 'Scout · Slow Aura · Weak Points' },
+        { label: 'Yes, join me.', action: 'join_party', hint: '+Range · Precision · Crit' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Your read is sharp; call the line and I’ll follow.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'twil_intro_encourage' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
@@ -277,7 +277,7 @@ export const twilDialog = {
     after_aff: {
       text: 'Twil: Master, ha—nice. Keep up and I’ll make it easy.',
       choices: [
-        { label: 'Join me.', action: 'join_party', hint: 'Scout · Slow Aura · Weak Points' },
+        { label: 'Join me.', action: 'join_party', hint: '+Range · Precision · Crit' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],
