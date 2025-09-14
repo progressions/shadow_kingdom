@@ -227,8 +227,16 @@ export const oyinDialog = {
       choices: [ { label: 'On we go.', action: 'set_flag', data: { key: 'post_l5_oyin' }, next: 'intro' } ],
     },
     about: {
-      text: "Oyin: My Lord, I help you land cleaner hits. I nudge your timing for a few more crits, give you a touch more reach, and when you’re hurting I rally—heal a little and lend +1 ATK for a few breaths.",
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Rally · Keen Timing · +Range' }, { label: 'Later.', action: 'end' } ],
+      variants: [
+        {
+          requires: { level: 2, missingFlag: 'level3_reached' },
+          text: "Oyin: My Lord, Nethra has long reach. I slow her and give you some protection so you can close safely. I also help your timing for cleaner hits, and when it hurts I rally—small heal and a short +1 ATK.",
+        },
+        {
+          text: "Oyin: My Lord, I help you land cleaner hits. I slow enemies near you, give a little extra protection, and when you’re hurting I rally—heal a little and lend +1 ATK for a few breaths.",
+        },
+      ],
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Rally · Slow · DR' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
       text: 'Oyin: My Lord, thanks… I can try a little longer if you lead.',
@@ -255,8 +263,16 @@ export const twilDialog = {
       choices: [ { label: 'Cut them.', action: 'set_flag', data: { key: 'post_l5_twil' }, next: 'intro' } ],
     },
     about: {
-      text: "Twil: Master, I help you hit smarter. I point out weak spots so your big hits land more, make nearby enemies hesitate, and shave a bit off the hits you take.",
-      choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Scout · Slow Aura · Weak Points' }, { label: 'Later.', action: 'end' } ],
+      variants: [
+        {
+          requires: { level: 2, missingFlag: 'level3_reached' },
+          text: "Twil: Master, if Nethra keeps us at the edge, I add reach. I’ll call the gap and you can hit back. I also mark weak points so your big hits land more.",
+        },
+        {
+          text: "Twil: Master, I help you hit smarter. I mark weak points so your big hits land more, and I give you a bit more reach.",
+        },
+      ],
+      choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Precision · +Range · Crit' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
       text: 'Twil: Master, ha—nice. Keep up and I’ll make it easy.',

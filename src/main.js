@@ -3,7 +3,7 @@ import { canvas, ctx, setupChatInputHandlers, setupTitleScreen, showTitleScreen,
 import { world, camera, player, enemies, npcs, obstacles, spawnEnemy, spawnCompanion, spawnNpc, runtime } from './engine/state.js';
 import { TILE } from './engine/constants.js';
 import { makeSpriteSheet } from './engine/sprites.js';
-import { buildTerrainBitmap, buildObstacles } from './engine/terrain.js';
+import { buildTerrainBitmap, buildObstacles, drawObstacles } from './engine/terrain.js';
 import { initInput } from './engine/input.js';
 import { render } from './engine/render.js';
 import { step } from './systems/step.js';
@@ -227,6 +227,30 @@ try {
   window.maxAffinityAll = async () => window.setAllAffinity(10);
   window.setUrnVara10 = async () => {
     try { let n=0; for (const c of companions) { const nm=(c.name||'').toLowerCase(); if (nm.includes('urn')||nm.includes('varabella')) { c.affinity = 10; n++; } } updatePartyUI(companions); console.log('[Affinity] Set Urn/Varabella to 10 (matched:',n,')'); return n; } catch(e){ console.warn('setUrnVara10 failed', e); return 0; }
+  };
+
+  // Export full map PNG of current level (terrain + obstacles)
+  window.exportMapPng = () => {
+    try {
+      const w = world.w|0, h = world.h|0;
+      if (!(w > 0 && h > 0)) { console.warn('World size invalid'); return false; }
+      const off = document.createElement('canvas');
+      off.width = w; off.height = h;
+      const g = off.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      // Draw base terrain and all obstacles with a world-sized camera
+      try { g.drawImage(terrain, 0, 0); } catch {}
+      try { drawObstacles(g, obstacles, { x: 0, y: 0, w, h }); } catch {}
+      const url = off.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      const lvl = (runtime.currentLevel || 1);
+      a.download = `level_${lvl}_map.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return true;
+    } catch (e) { console.warn('exportMapPng failed', e); return false; }
   };
 } catch {}
 
