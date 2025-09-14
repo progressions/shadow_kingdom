@@ -67,6 +67,53 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
   } catch {}
 })();
 
+// Apply Level 2 PNG map when Level 2 loads (120x70 desert map)
+(function watchForL2Png(){
+  let applied = false;
+  const tick = async () => {
+    try {
+      if (applied) return;
+      if ((runtime.currentLevel || 1) !== 2) return;
+      applied = true;
+      const url = 'assets/maps/level_02.png';
+      const legend = {
+        theme: 'desert',
+        gate: { id: 'nethra_gate', keyId: 'key_nethra' },
+        // Optionally override boss/guardian templates (we branch by level in loader if omitted)
+        colors: {
+          // background (sand)
+          'dba463': { type: 'grass' },
+          // structures / blockers
+          '6d758d': { type: 'wall' },
+          '060608': { type: 'rock' },
+          '1a7a3e': { type: 'cactus' },
+          'bb7547': { type: 'gate' },
+          // hazards
+          'b4202a': { type: 'lava' },
+          // spawns & markers
+          'ffffff': { type: 'player_spawn' },
+          'df3e23': { type: 'spawn_boss' },
+          'b9bffb': { type: 'spawn_guardian' },
+          'ffd541': { type: 'spawn_mook' },
+          'fffc40': { type: 'spawn_featured' },
+          'd6f264': { type: 'spawn_leashed_mook' },
+          '9cdb43': { type: 'spawn_leashed_featured' },
+          '59c135': { type: 'spawn_leashed_featured_ranged' },
+          '14a02e': { type: 'oyin_spawn' },
+          '24523b': { type: 'twil_spawn' },
+        },
+      };
+      const M = await import('./engine/map_loader.js');
+      const t = await M.applyPngMap(url, legend);
+      if (t) {
+        terrain = t;
+        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+      }
+    } catch {}
+  };
+  setInterval(tick, 300);
+})();
+
 // Input and UI
 setupChatInputHandlers(runtime);
 initInput();

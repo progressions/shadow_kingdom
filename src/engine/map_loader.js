@@ -82,11 +82,11 @@ function buildObstaclesFromGrid(grid, legend) {
     if (type === 'gate') { o.locked = true; o.id = o.id || 'castle_gate'; o.keyId = o.keyId || 'castle_gate'; }
     obstacles.push(o);
   }
-  // Second pass: trees as 1x1 tiles (rocks are merged above)
+  // Second pass: trees/cacti as 1x1 tiles (rocks are merged above)
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const t = grid[y*w + x];
-      if (t === 'tree') {
+      if (t === 'tree' || t === 'cactus') {
         const px = x * TILE, py = y * TILE;
         const size = TILE; // full-tile footprint
         obstacles.push({ x: px, y: py, w: size, h: size, type: t });
@@ -162,10 +162,11 @@ export async function applyPngMap(url, legend) {
     const grid = new Array(width * height);
     const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss'|'leashed_mook'|'leashed_featured'|'leashed_featured_ranged', x, y }
     let playerSpawn = null; // { x, y }
-    const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola', x, y }
+    const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola'|'oyin'|'twil', x, y }
     const chestSpawns = []; // { id, itemId, x, y }
     const breakables = [];  // { type: 'barrel', x, y }
     const torchNodes = [];  // { x, y }
+    const hazards = [];     // { type: 'lava'|'fire'|'mud', x, y }
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
@@ -182,6 +183,7 @@ export async function applyPngMap(url, legend) {
           case 'water':
           case 'rock':
           case 'tree':
+          case 'cactus':
           case 'gate':
             tForGrid = type; break;
           default:
@@ -195,14 +197,18 @@ export async function applyPngMap(url, legend) {
           case 'canopy_spawn': npcSpawns.push({ who: 'canopy', x, y }); break;
           case 'yorna_spawn':  npcSpawns.push({ who: 'yorna',  x, y }); break;
           case 'hola_spawn':   npcSpawns.push({ who: 'hola',   x, y }); break;
+          case 'oyin_spawn':   npcSpawns.push({ who: 'oyin',   x, y }); break;
+          case 'twil_spawn':   npcSpawns.push({ who: 'twil',   x, y }); break;
           // Props
           case 'chest_dagger': chestSpawns.push({ id: 'chest_l1_weapon', itemId: 'dagger',   x, y }); break;
           case 'chest_bow':    chestSpawns.push({ id: 'chest_l1_bow',    itemId: 'bow_wood', x, y }); break;
           case 'barrel':       breakables.push({ type: 'barrel', x, y }); break;
           case 'torch_node':   torchNodes.push({ x, y }); break;
+          case 'lava':         hazards.push({ type: 'lava', x, y }); break;
           // Enemies
           case 'spawn_mook': enemySpawns.push({ kind: 'mook', x, y }); break;
           case 'spawn_featured_ranged': enemySpawns.push({ kind: 'featured_ranged', x, y }); break;
+          case 'spawn_featured': enemySpawns.push({ kind: 'featured', x, y }); break;
           case 'spawn_guardian': enemySpawns.push({ kind: 'guardian', x, y }); break;
           case 'spawn_boss': enemySpawns.push({ kind: 'boss', x, y }); break;
           case 'spawn_leashed_mook': enemySpawns.push({ kind: 'leashed_mook', x, y }); break;
@@ -213,6 +219,16 @@ export async function applyPngMap(url, legend) {
     }
     // Build obstacles from the grid
     buildObstaclesFromGrid(grid, legend);
+    // If legend provides gate settings, apply to all gates
+    try {
+      if (legend && legend.gate && typeof legend.gate === 'object') {
+        for (const o of obstacles) {
+          if (!o || o.type !== 'gate') continue;
+          if (legend.gate.id) o.id = legend.gate.id;
+          if (legend.gate.keyId) o.keyId = legend.gate.keyId;
+        }
+      }
+    } catch {}
 
     // Clear any previous authored light nodes to avoid duplication when applying maps repeatedly
     try { clearLightNodes(); } catch {}
@@ -241,6 +257,11 @@ export async function applyPngMap(url, legend) {
       obstacles.push({ x: px, y: py, w: 10, h: 10, type: 'torch_node', blocksAttacks: true });
       try { addLightNode({ x: px + 5, y: py + 5, level: MAX_LIGHT_LEVEL, radius: 6, enabled: true }); } catch {}
     }
+    // Hazards (lava/fire/mud) single-tile areas
+    for (const h2 of hazards) {
+      const px = h2.x * TILE, py = h2.y * TILE;
+      obstacles.push({ x: px, y: py, w: TILE, h: TILE, type: h2.type, blocksAttacks: false });
+    }
 
     // If the map defines any enemy spawns, replace the current enemies with the map-defined set
     if (enemySpawns.length > 0) {
@@ -251,25 +272,58 @@ export async function applyPngMap(url, legend) {
           spawnEnemy(ex, ey, 'mook', { name: 'Greenwood Bandit' });
         } else if (s.kind === 'featured_ranged') {
           spawnEnemy(ex, ey, 'featured', { name: 'Bandit Lieutenant', hp: 12, dmg: 6, ranged: true, shootRange: 160, shootCooldown: 1.0, projectileSpeed: 200, projectileDamage: 3, aimError: 0.03 });
+        } else if (s.kind === 'featured') {
+          spawnEnemy(ex, ey, 'featured', { name: 'Desert Marauder', hp: 12, dmg: 6 });
         } else if (s.kind === 'guardian') {
-          // Key guardian stats aligned with Level 1 (tough featured foe)
-          spawnEnemy(ex, ey, 'featured', {
-            name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze',
-            guardian: true,
-            hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
-            vnOnSight: { text: introTexts.gorg },
-            portrait: 'assets/portraits/level01/Gorg/Gorg.mp4',
-          });
+          // Guardian spawn template: prefer legend.actors.guardian, else branch by level
+          const lvl = runtime.currentLevel || 1;
+          const tpl = legend?.actors?.guardian || null;
+          if (tpl) {
+            spawnEnemy(ex, ey, tpl.kind || 'featured', { ...tpl.opts, guardian: true });
+          } else if (lvl === 2) {
+            spawnEnemy(ex, ey, 'featured', {
+              name: 'Aarg', vnId: 'enemy:aarg', guaranteedDropId: 'key_nethra', guardian: true,
+              hp: 52, dmg: 7, hitCooldown: 0.6, aggroRadius: 180,
+              vnOnSight: { text: introTexts.aarg },
+              portrait: 'assets/portraits/level02/Aarg/Aarg.mp4',
+            });
+          } else {
+            // Level 1 default: Gorg
+            spawnEnemy(ex, ey, 'featured', {
+              name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', guardian: true,
+              hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
+              vnOnSight: { text: introTexts.gorg },
+              portrait: 'assets/portraits/level01/Gorg/Gorg.mp4',
+            });
+          }
         } else if (s.kind === 'boss') {
-          // Boss Vast with full VN portrait set and intro, like Level 1
-          spawnEnemy(ex, ey, 'boss', {
-            name: 'Vast', vnId: 'enemy:vast',
-            portrait: 'assets/portraits/level01/Vast/Vast video.mp4',
-            portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4',
-            portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4',
-            onDefeatNextLevel: 2,
-            vnOnSight: { text: introTexts.vast },
-          });
+          // Boss spawn template: prefer legend.actors.boss, else branch by level
+          const lvl = runtime.currentLevel || 1;
+          const tpl = legend?.actors?.boss || null;
+          if (tpl) {
+            spawnEnemy(ex, ey, 'boss', { ...tpl });
+          } else if (lvl === 2) {
+            spawnEnemy(ex, ey, 'boss', {
+              name: 'Nethra', vnId: 'enemy:nethra',
+              portrait: 'assets/portraits/level02/Nethra/Nethra.mp4',
+              portraitPowered: 'assets/portraits/level02/Nethra/Nethra powered.mp4',
+              portraitDefeated: 'assets/portraits/level02/Nethra/Nethra defeated.mp4',
+              onDefeatNextLevel: 3,
+              hp: 50, dmg: 9, speed: 12, hitCooldown: 0.7,
+              vnOnSight: { text: introTexts.nethra },
+              ap: 2,
+            });
+          } else {
+            // Level 1 default: Vast
+            spawnEnemy(ex, ey, 'boss', {
+              name: 'Vast', vnId: 'enemy:vast',
+              portrait: 'assets/portraits/level01/Vast/Vast video.mp4',
+              portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4',
+              portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4',
+              onDefeatNextLevel: 2,
+              vnOnSight: { text: introTexts.vast },
+            });
+          }
         } else if (s.kind === 'leashed_mook') {
           spawnEnemy(ex, ey, 'mook', { name: 'Greenwood Bandit', leashed: true, aggroRadius: 160 });
         } else if (s.kind === 'leashed_featured') {
@@ -283,7 +337,7 @@ export async function applyPngMap(url, legend) {
       }
     }
 
-    // NPCs: if defined by map, replace existing Level 1 NPCs
+    // NPCs: if defined by map, replace existing NPCs
     if (npcSpawns.length > 0) {
       npcs.length = 0;
       for (const s of npcSpawns) {
@@ -297,13 +351,19 @@ export async function applyPngMap(url, legend) {
         } else if (s.who === 'hola') {
           const n = spawnNpc(px, py, 'left', { name: 'Hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', dialogId: 'hola', sheet: sheetForName('Hola') });
           try { setNpcDialog(n, holaDialog); } catch {}
+        } else if (s.who === 'oyin') {
+          const n = spawnNpc(px, py, 'right', { name: 'Oyin', portrait: 'assets/portraits/level02/Oyin/Oyin.mp4', dialogId: 'oyin', sheet: sheetForName('Oyin') });
+          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.oyinDialog); }); } catch {}
+        } else if (s.who === 'twil') {
+          const n = spawnNpc(px, py, 'left', { name: 'Twil', portrait: 'assets/portraits/level02/Twil/Twil.mp4', dialogId: 'twil', sheet: sheetForName('Twil') });
+          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.twilDialog); }); } catch {}
         }
       }
     }
 
     // Rebuild spatial index after obstacles/props are finalized
     try { rebuildObstacleIndex(64); } catch {}
-    // Build a terrain bitmap using existing generator (default theme)
+    // Build a terrain bitmap using existing generator (by provided theme)
     const terrain = buildTerrainBitmap(world, legend?.theme || 'default');
     return terrain;
   } catch (e) {
