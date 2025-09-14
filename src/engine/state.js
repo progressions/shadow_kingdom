@@ -600,8 +600,8 @@ export const runtime = {
   combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
   // Feature toggles
   snakeMode: false,
-  // Fog of War settings
-  fogOfWar: { enabled: false, mode: 'los', alpha: 0.75 },
+  // Fog of War settings (enabled globally by default)
+  fogOfWar: { enabled: true, mode: 'los', alpha: 0.75 },
   // Quest indicators (new)
   questIndicators: {}, // by companion key: { new, turnIn, newIds:Set, turnInIds:Set }
   questNotify: {},     // by companion key: { shown: { [questId]:true }, cooldownUntil:number, queue:Array<{id,t}> }
