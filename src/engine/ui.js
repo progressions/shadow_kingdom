@@ -744,6 +744,13 @@ export function initMinimap() {
       case 'water':
         drawRect(tx, ty, tw, th, '#2b5c93');
         break;
+      case 'wood':
+        // Wood bridge planks
+        drawRect(tx, ty, tw, th, '#8a6a3a');
+        break;
+      case 'rock':
+        drawRect(tx, ty, tw, th, '#777');
+        break;
       case 'gate':
         drawRect(tx, ty, tw, th, '#caa24a');
         break;
