@@ -30,10 +30,25 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
       colors: {
         // hex without leading '#'
         '49aa10': { type: 'grass' },
+        '8a8a00': { type: 'wood' }, // passable floor
         '797979': { type: 'wall' },
         'a2a2a2': { type: 'rock' },
         '386d00': { type: 'tree' },
         '4161fb': { type: 'water' },
+        // Structures / gates
+        '794100': { type: 'gate' },
+        // Spawns & markers
+        'ebebeb': { type: 'player_spawn' },
+        '61d3e3': { type: 'canopy_spawn' },
+        'c3b2ff': { type: 'hola_spawn' },
+        'a271ff': { type: 'yorna_spawn' },
+        '71f341': { type: 'chest_dagger' },
+        'a2f3a2': { type: 'chest_bow' },
+        'ffbaeb': { type: 'barrel' },
+        '9a2079': { type: 'spawn_mook' },
+        'ff61b2': { type: 'spawn_featured_ranged' },
+        'db4161': { type: 'spawn_guardian' },
+        'b21030': { type: 'spawn_boss' },
       },
     };
     const M = await import('./engine/map_loader.js');
