@@ -238,6 +238,23 @@ export function selectChoice(index) {
           }
           const npc = runtime.activeNpc;
           if (npc) {
+            // Feud gating: Yorna ↔ Canopy cannot join together until truce
+            try {
+              const nm = String(npc.name || '').toLowerCase();
+              const names = companions.map(c => (c.name || '').toLowerCase());
+              const has = (s) => names.some(x => x.includes(String(s).toLowerCase()));
+              const truce = !!(runtime.questFlags && runtime.questFlags['canopy_yorna_respect']);
+              if (!truce) {
+                if (nm.includes('yorna') && has('canopy')) {
+                  startPrompt(npc, 'Yorna: No. Not while she’s on your line. Choose first.', [ { label: 'Back', action: 'end' } ]);
+                  return;
+                }
+                if (nm.includes('canopy') && has('yorna')) {
+                  startPrompt(npc, 'Canopy: My Lord, not with her in the party. Choose first.', [ { label: 'Back', action: 'end' } ]);
+                  return;
+                }
+              }
+            } catch {}
             if (companions.length >= 3) {
               const choices = companions.map((c, i) => ({ label: `Replace ${c.name || ('Companion ' + (i+1))}`, action: 'replace_companion', data: i }));
               choices.push({ label: 'I changed my mine, wait here.', action: 'end' });
