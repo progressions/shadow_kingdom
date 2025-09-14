@@ -327,6 +327,9 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     guardian: !!opts.guardian,
     // Non-guardian leash (no regen): when true, enemy is leashed to spawn/home
     leashed: !!opts.leashed,
+    // Line-of-sight aggro gating (tunable)
+    requiresLoS: (typeof opts.requiresLoS === 'boolean') ? !!opts.requiresLoS : true,
+    losMemorySec: (typeof opts.losMemorySec === 'number') ? Math.max(0, opts.losMemorySec) : 0.8,
     // Record home position (center) for any enemy; used by guardian logic
     homeX: Math.round((x || 0) + ((w || 12) / 2)),
     homeY: Math.round((y || 0) + ((h || 16) / 2)),

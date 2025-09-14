@@ -213,6 +213,9 @@ function serializeEnemyEntity(e) {
     homeX: (typeof e.homeX === 'number') ? e.homeX : undefined,
     homeY: (typeof e.homeY === 'number') ? e.homeY : undefined,
     aggroRadius: (typeof e.aggroRadius === 'number') ? e.aggroRadius : undefined,
+    // LoS tuning
+    requiresLoS: (typeof e.requiresLoS === 'boolean') ? e.requiresLoS : undefined,
+    losMemorySec: (typeof e.losMemorySec === 'number') ? e.losMemorySec : undefined,
   };
 }
 
@@ -265,6 +268,9 @@ function spawnEnemyFromRecord(d) {
     homeX: (typeof d.homeX === 'number') ? d.homeX : Math.round(x + w/2),
     homeY: (typeof d.homeY === 'number') ? d.homeY : Math.round(y + h/2),
     aggroRadius: (typeof d.aggroRadius === 'number') ? d.aggroRadius : undefined,
+    // LoS tuning (defaults match runtime defaults)
+    requiresLoS: (typeof d.requiresLoS === 'boolean') ? d.requiresLoS : true,
+    losMemorySec: (typeof d.losMemorySec === 'number') ? Math.max(0, d.losMemorySec) : 0.8,
   });
 }
 

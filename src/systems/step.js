@@ -1128,7 +1128,7 @@ export function step(dt) {
         if (distPlayerHome2 > leashR2) shouldChase = false;
       }
 
-      if (shouldChase) {
+      if (shouldChase && (e.requiresLoS !== false)) {
         // Require line of sight to engage; retain short memory to avoid flicker
         let losClear = true;
         try {
@@ -1143,8 +1143,9 @@ export function step(dt) {
           }
         } catch {}
         // Decay LoS memory and refresh when clear
+        const mem = (typeof e.losMemorySec === 'number') ? Math.max(0, e.losMemorySec) : 0.8;
         e._losMemory = Math.max(0, (e._losMemory || 0) - dt);
-        if (losClear) e._losMemory = Math.max(e._losMemory || 0, 0.8); // keep aggro for ~0.8s after LoS breaks
+        if (losClear) e._losMemory = Math.max(e._losMemory || 0, mem); // keep aggro after LoS breaks briefly
         if (!losClear && (e._losMemory || 0) <= 0) {
           shouldChase = false;
         }
