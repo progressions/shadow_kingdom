@@ -40,6 +40,8 @@ const files = {
     quake: 'assets/audio/sfx/quake.wav',
     hiss: 'assets/audio/sfx/hiss.wav',
     bossTelegraph: 'assets/audio/sfx/telegraph.wav',
+    // Ammo pickup cue (fallback to UI select)
+    ammo: 'assets/audio/sfx/ui-select.wav',
   },
 };
 
@@ -338,6 +340,11 @@ function playSfxChip(name) {
       // Soft pickup chime
       envTone({ type: 'sine', freq: 880.0, attack: 0.002, decay: 0.08, release: 0.05, gain: 0.06, t });
       envTone({ type: 'triangle', freq: 1320.0, attack: 0.001, decay: 0.10, release: 0.06, gain: 0.05, t: t + 0.02 });
+      break;
+    case 'ammo':
+      // Subtle, bright blip distinct from generic pickup
+      envTone({ type: 'square',   freq: 1200.0, attack: 0.001, decay: 0.06, release: 0.04, gain: 0.06, t });
+      envTone({ type: 'triangle', freq: 1600.0, attack: 0.001, decay: 0.05, release: 0.04, gain: 0.05, t: t + 0.015 });
       break;
     case 'levelUp':
       // Bright celebratory arpeggio
