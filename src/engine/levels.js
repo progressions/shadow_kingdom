@@ -706,7 +706,7 @@ export function loadLevel3() {
     { x: player.x - 200, y: player.y + 100, w: TILE * 12, h: TILE * 7 },
     { x: player.x - 260, y: player.y - 140, w: TILE * 8, h: TILE * 5 },
   ];
-  for (const p of pools) obstacles.push({ x: Math.max(0, Math.min(world.w - TILE, p.x)), y: Math.max(0, Math.min(world.h - TILE, p.y)), w: p.w, h: p.h, type: 'water', blocksAttacks: true });
+  for (const p of pools) obstacles.push({ x: Math.max(0, Math.min(world.w - TILE, p.x)), y: Math.max(0, Math.min(world.h - TILE, p.y)), w: p.w, h: p.h, type: 'water', blocksAttacks: false });
 
   // Spawns
   for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 }); }

@@ -1127,7 +1127,7 @@ export function step(dt) {
             if (!o) continue;
             if (o.type === 'gate' && o.locked === false) continue;
             // consider strong blockers; chest/mud/fire/lava are non-blocking for movement
-            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
             if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losBlockedWF = true; break; }
           }
           const flowDirNull = (() => { try { const d = sampleFlowDirAt(ex, ey); return !d || (d.x === 0 && d.y === 0); } catch { return true; } })();
@@ -1373,7 +1373,8 @@ export function step(dt) {
         for (const o of obstacles) {
           if (!o) continue;
           if (o.type === 'gate' && o.locked === false) continue;
-          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+          // Ignore non-sight-blockers: chests, hazards, bridges, water
+          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
           if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { blocked = true; break; }
         }
         losClearToPlayer = !blocked;
