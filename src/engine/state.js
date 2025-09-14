@@ -326,7 +326,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     // Guardian behavior: leashed to spawn/home, heals when home
     guardian: !!opts.guardian,
     // Non-guardian leash (no regen): when true, enemy is leashed to spawn/home
-    leashed: !!opts.leashed,
+    // Bosses are leashed by default so they return to their spawn point
+    leashed: (typeof opts.leashed === 'boolean') ? !!opts.leashed : (T === 'boss'),
     // Line-of-sight aggro gating (tunable)
     requiresLoS: (typeof opts.requiresLoS === 'boolean') ? !!opts.requiresLoS : true,
     losMemorySec: (typeof opts.losMemorySec === 'number') ? Math.max(0, opts.losMemorySec) : 0.8,
