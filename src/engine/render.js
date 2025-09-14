@@ -6,8 +6,8 @@ import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
 import { getSprite } from './sprite_loader.js';
 import { sampleFlowDirAt } from './pathfinding.js';
-import { queryObstaclesSegment } from './spatial_index.js';
-import { segmentIntersectsRect } from './utils.js';
+import { queryObstaclesSegment, queryObstaclesAABB } from './spatial_index.js';
+import { segmentIntersectsRect, rectsIntersect } from './utils.js';
 
 // Cached offscreen for sprite outlines
 let _olCan = null, _olCtx = null, _olW = 0, _olH = 0;
@@ -580,21 +580,63 @@ export function render(terrainBitmap, obstacles) {
       const ty1 = Math.min(H - 1, Math.floor((camera.y + camera.h) / s));
       const px = player.x + player.w/2, py = player.y + player.h/2;
       // Update seen from player's current LoS within camera
+      function isSightBlocker(o) {
+        if (!o) return false;
+        if (o.type === 'gate' && o.locked === false) return false; // open gates are see-through
+        // Ignore non-sight-blockers
+        if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') return false;
+        return true;
+      }
+      function tileHasSightBlocker(tx, ty) {
+        const rx = tx * s, ry = ty * s; const rw = s, rh = s;
+        const cand = queryObstaclesAABB(rx, ry, rw, rh);
+        for (const o of cand) {
+          if (!isSightBlocker(o)) continue;
+          if (rectsIntersect({ x: rx, y: ry, w: rw, h: rh }, o)) return true;
+        }
+        return false;
+      }
+      function segmentAabbEntryT(x0, y0, x1, y1, r) {
+        const dx = x1 - x0, dy = y1 - y0;
+        let tmin = 0, tmax = 1;
+        const rx0 = r.x - 0.0001, ry0 = r.y - 0.0001;
+        const rx1 = r.x + r.w + 0.0001, ry1 = r.y + r.h + 0.0001;
+        // X slabs
+        if (dx !== 0) {
+          const tx1 = (rx0 - x0) / dx;
+          const tx2 = (rx1 - x0) / dx;
+          tmin = Math.max(tmin, Math.min(tx1, tx2));
+          tmax = Math.min(tmax, Math.max(tx1, tx2));
+          if (tmax < tmin) return null;
+        } else if (x0 <= rx0 || x0 >= rx1) { return null; }
+        // Y slabs
+        if (dy !== 0) {
+          const ty1 = (ry0 - y0) / dy;
+          const ty2 = (ry1 - y0) / dy;
+          tmin = Math.max(tmin, Math.min(ty1, ty2));
+          tmax = Math.min(tmax, Math.max(ty1, ty2));
+          if (tmax < tmin) return null;
+        } else if (y0 <= ry0 || y0 >= ry1) { return null; }
+        if (tmin < 0 || tmin > 1) return null;
+        return tmin;
+      }
       for (let ty = ty0; ty <= ty1; ty++) {
         for (let tx = tx0; tx <= tx1; tx++) {
           const cx = tx * s + s/2;
           const cy = ty * s + s/2;
-          // Determine LoS using blocking obstacles
-          let blocked = false;
+          // Determine LoS using blocking obstacles; if blocked, still reveal the blocking tile itself
+          let anyHit = false; let tHit = Infinity; let hitX = 0; let hitY = 0;
           const cand = queryObstaclesSegment(px, py, cx, cy, 8);
           for (const o of cand) {
-            if (!o) continue;
-            if (o.type === 'gate' && o.locked === false) continue; // see-through/open gates
-            // Ignore non-sight-blockers
-            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
-            if (segmentIntersectsRect(px, py, cx, cy, o)) { blocked = true; break; }
+            if (!isSightBlocker(o)) continue;
+            const t = segmentAabbEntryT(px, py, cx, cy, o);
+            if (t != null && t < tHit) { anyHit = true; tHit = t; hitX = px + (cx - px) * t; hitY = py + (cy - py) * t; }
           }
-          if (!blocked) { seen[ty * W + tx] = 1; }
+          if (!anyHit) { seen[ty * W + tx] = 1; }
+          else {
+            // If this tile itself contains a sight-blocking obstacle, reveal it.
+            if (tileHasSightBlocker(tx, ty)) seen[ty * W + tx] = 1;
+          }
         }
       }
       // Darken unseen tiles (draw after actors so enemies/items are hidden)
