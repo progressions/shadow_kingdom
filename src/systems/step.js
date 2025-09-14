@@ -32,7 +32,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
-      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
+      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'reed') continue;
       // Water walking aura: if Tin is in party (Level 3), player/companions can walk on water
       try {
         const ww = !!(runtime?.partyAuras?.waterWalk);
@@ -68,7 +68,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
-      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
+      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'reed') continue;
       // Water walking aura
       try {
         const ww = !!(runtime?.partyAuras?.waterWalk);
@@ -3178,6 +3178,25 @@ function processGenericCompanionTriggers(dt) {
               for (let i = 0; i < count; i++) spawnSparkle(player.x + player.w/2 + (Math.random()*12-6), player.y - 6 + (Math.random()*8-4));
               break;
             }
+            case 'quest_counter': {
+              try {
+                const k = String(eff.key || '').trim();
+                if (!k) break;
+                if (!runtime.questCounters) runtime.questCounters = {};
+                const prev = Number(runtime.questCounters[k] || 0);
+                const inc = Number(eff.inc || 1);
+                const next = prev + inc;
+                runtime.questCounters[k] = next;
+                const clearAt = Number(eff.clearAt || 0);
+                if (clearAt > 0 && next >= clearAt) {
+                  const setFlag = String(eff.setFlagOnClear || '').trim();
+                  if (setFlag) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags[setFlag] = true; }
+                  const banner = eff.bannerOnClear || null;
+                  if (banner) { try { import('../engine/ui.js').then(u => u.showBanner && u.showBanner(banner)); } catch {} }
+                }
+              } catch {}
+              break;
+            }
           }
         }
       }
@@ -3316,22 +3335,3 @@ function tryWarpNear(leader, follower) {
   }
   return false;
 }
-            case 'quest_counter': {
-              try {
-                const k = String(eff.key || '').trim();
-                if (!k) break;
-                if (!runtime.questCounters) runtime.questCounters = {};
-                const prev = Number(runtime.questCounters[k] || 0);
-                const inc = Number(eff.inc || 1);
-                const next = prev + inc;
-                runtime.questCounters[k] = next;
-                const clearAt = Number(eff.clearAt || 0);
-                if (clearAt > 0 && next >= clearAt) {
-                  const setFlag = String(eff.setFlagOnClear || '').trim();
-                  if (setFlag) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags[setFlag] = true; }
-                  const banner = eff.bannerOnClear || null;
-                  if (banner) { try { import('../engine/ui.js').then(u => u.showBanner && u.showBanner(banner)); } catch {} }
-                }
-              } catch {}
-              break;
-            }

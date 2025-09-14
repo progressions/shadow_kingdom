@@ -117,6 +117,164 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
   setInterval(tick, 300);
 })();
 
+// Apply Level 4 PNG map when Level 4 loads (140x85 ruined city map)
+(function watchForL4Png(){
+  let applied = false;
+  const tick = async () => {
+    try {
+      if (applied) return;
+      if ((runtime.currentLevel || 1) !== 4) return;
+      applied = true;
+      const url = 'assets/maps/level_4.png';
+      const legend = {
+        theme: 'city',
+        gate: { id: 'city_gate', keyId: 'key_sigil' },
+        // Provide actor templates so the map spawns the correct L4 boss/guardian
+        actors: {
+          guardian: {
+            kind: 'featured',
+            opts: {
+              name: 'Blurb', vnId: 'enemy:blurb',
+              portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
+              vnOnSight: { text: introTexts.blurb },
+              guaranteedDropId: 'key_sigil',
+              guardian: true,
+              hp: 76, dmg: 9, hitCooldown: 0.5,
+            }
+          },
+          boss: {
+            name: 'Vanificia', vnId: 'enemy:vanificia',
+            portrait: 'assets/portraits/level04/Vanificia/Vanificia.mp4',
+            portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4',
+            portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4',
+            vnOnSight: { text: introTexts.vanificia },
+            onDefeatNextLevel: 5,
+            hp: 80, dmg: 13, speed: 16, hitCooldown: 0.6, ap: 3,
+          },
+        },
+        colors: {
+          // Background
+          'dba463': { type: 'grass' }, // sand base
+          // Structures
+          '6d758d': { type: 'wall' },
+          '060608': { type: 'rock' },
+          'bb7547': { type: 'gate' },
+          '71413b': { type: 'wood' },
+          // Vegetation / water
+          '23674e': { type: 'tree' },
+          '1a7a3e': { type: 'cactus' },
+          '249fde': { type: 'water' },
+          '328464': { type: 'reed' }, // reeds (decorative, non-blocking)
+          // Hazards
+          'b4202a': { type: 'lava' },
+          // Spawns & markers
+          'ffffff': { type: 'player_spawn' },
+          'fef3c0': { type: 'torch_node' },
+          'b9bffb': { type: 'spawn_guardian' },
+          'df3e23': { type: 'spawn_boss' },
+          'ffd541': { type: 'spawn_mook' },
+          'fffc40': { type: 'spawn_featured' },
+          'd6f264': { type: 'spawn_leashed_mook' },
+          '9cdb43': { type: 'spawn_leashed_featured' },
+          '59c135': { type: 'spawn_leashed_featured_ranged' },
+          // NPCs
+          '14a02e': { type: 'urn_spawn' },
+          '24523b': { type: 'varabella_spawn' },
+          // Props
+          '92dcba': { type: 'barrel' },
+          'cdf7e2': { type: 'chest' },
+        },
+      };
+      const M = await import('./engine/map_loader.js');
+      const t = await M.applyPngMap(url, legend);
+      if (t) {
+        terrain = t;
+        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+      }
+    } catch {}
+  };
+  setInterval(tick, 300);
+})();
+
+// Apply Level 3 PNG map when Level 3 loads (130x80 marsh map)
+(function watchForL3Png(){
+  let applied = false;
+  const tick = async () => {
+    try {
+      if (applied) return;
+      if ((runtime.currentLevel || 1) !== 3) return;
+      applied = true;
+      const url = 'assets/maps/level_3.png';
+      const legend = {
+        theme: 'marsh',
+        gate: { id: 'marsh_gate', keyId: 'key_reed' },
+        actors: {
+          guardian: {
+            kind: 'featured',
+            opts: {
+              name: 'Wight', vnId: 'enemy:wight',
+              portrait: 'assets/portraits/level03/Wight/Wight.mp4',
+              vnOnSight: { text: introTexts.wight },
+              guaranteedDropId: 'key_reed',
+              guardian: true,
+              hp: 64, dmg: 8, hitCooldown: 0.55,
+            }
+          },
+          boss: {
+            name: 'Luula', vnId: 'enemy:luula',
+            portrait: 'assets/portraits/level03/Luula/Luula.mp4',
+            portraitPowered: 'assets/portraits/level03/Luula/Luula powered.mp4',
+            portraitDefeated: 'assets/portraits/level03/Luula/Luula defeated.mp4',
+            vnOnSight: { text: introTexts.luula },
+            onDefeatNextLevel: 4,
+            hp: 65, dmg: 11, speed: 14, hitCooldown: 0.65, ap: 2,
+          },
+        },
+        colors: {
+          // background (marshy ground base)
+          'dba463': { type: 'grass' },
+          // structures / blockers
+          '6d758d': { type: 'wall' },
+          '060608': { type: 'rock' },
+          '71413b': { type: 'wood' },
+          'bb7547': { type: 'gate' },
+          // water and reeds
+          '249fde': { type: 'water' },
+          '328464': { type: 'reed' },
+          '23674e': { type: 'tree' },
+          '1a7a3e': { type: 'cactus' },
+          // hazards
+          'b4202a': { type: 'lava' },
+          // spawns & markers
+          'ffffff': { type: 'player_spawn' },
+          'b9bffb': { type: 'spawn_guardian' },
+          'df3e23': { type: 'spawn_boss' },
+          'ffd541': { type: 'spawn_mook' },
+          'fffc40': { type: 'spawn_featured' },
+          'd6f264': { type: 'spawn_leashed_mook' },
+          '9cdb43': { type: 'spawn_leashed_featured' },
+          '59c135': { type: 'spawn_leashed_featured_ranged' },
+          // NPCs (companions)
+          '14a02e': { type: 'tin_spawn' },
+          '24523b': { type: 'nellis_spawn' },
+          // props
+          '92dcba': { type: 'barrel' },
+          'cdf7e2': { type: 'chest' },
+          // torch nodes
+          'fef3c0': { type: 'torch_node' },
+        },
+      };
+      const M = await import('./engine/map_loader.js');
+      const t = await M.applyPngMap(url, legend);
+      if (t) {
+        terrain = t;
+        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+      }
+    } catch {}
+  };
+  setInterval(tick, 300);
+})();
+
 // Input and UI
 setupChatInputHandlers(runtime);
 initInput();

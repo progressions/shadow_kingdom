@@ -82,11 +82,11 @@ function buildObstaclesFromGrid(grid, legend) {
     if (type === 'gate') { o.locked = true; o.id = o.id || 'castle_gate'; o.keyId = o.keyId || 'castle_gate'; }
     obstacles.push(o);
   }
-  // Second pass: trees/cacti as 1x1 tiles (rocks are merged above)
+  // Second pass: trees/cacti/reeds as 1x1 tiles (rocks are merged above)
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const t = grid[y*w + x];
-      if (t === 'tree' || t === 'cactus') {
+      if (t === 'tree' || t === 'cactus' || t === 'reed') {
         const px = x * TILE, py = y * TILE;
         const size = TILE; // full-tile footprint
         obstacles.push({ x: px, y: py, w: size, h: size, type: t });
@@ -162,7 +162,7 @@ export async function applyPngMap(url, legend) {
     const grid = new Array(width * height);
     const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss'|'leashed_mook'|'leashed_featured'|'leashed_featured_ranged', x, y }
     let playerSpawn = null; // { x, y }
-    const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola'|'oyin'|'twil', x, y }
+    const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola'|'oyin'|'twil'|'urn'|'varabella', x, y }
     const chestSpawns = []; // { id?, itemId?, lootTier?, x, y }
     const breakables = [];  // { type: 'barrel', x, y }
     const torchNodes = [];  // { x, y }
@@ -185,6 +185,7 @@ export async function applyPngMap(url, legend) {
           case 'tree':
           case 'cactus':
           case 'gate':
+          case 'reed':
             tForGrid = type; break;
           default:
             tForGrid = null; break;
@@ -197,8 +198,10 @@ export async function applyPngMap(url, legend) {
           case 'canopy_spawn': npcSpawns.push({ who: 'canopy', x, y }); break;
           case 'yorna_spawn':  npcSpawns.push({ who: 'yorna',  x, y }); break;
           case 'hola_spawn':   npcSpawns.push({ who: 'hola',   x, y }); break;
-          case 'oyin_spawn':   npcSpawns.push({ who: 'oyin',   x, y }); break;
-          case 'twil_spawn':   npcSpawns.push({ who: 'twil',   x, y }); break;
+          case 'oyin_spawn':   npcSpawns.push({ who: 'oyin',       x, y }); break;
+          case 'twil_spawn':   npcSpawns.push({ who: 'twil',       x, y }); break;
+          case 'urn_spawn':    npcSpawns.push({ who: 'urn',        x, y }); break;
+          case 'varabella_spawn': npcSpawns.push({ who: 'varabella', x, y }); break;
           // Props
           case 'chest_dagger': chestSpawns.push({ id: 'chest_l1_weapon', itemId: 'dagger',   x, y }); break;
           case 'chest_bow':    chestSpawns.push({ id: 'chest_l1_bow',    itemId: 'bow_wood', x, y }); break;
@@ -215,6 +218,8 @@ export async function applyPngMap(url, legend) {
           case 'spawn_leashed_mook': enemySpawns.push({ kind: 'leashed_mook', x, y }); break;
           case 'spawn_leashed_featured': enemySpawns.push({ kind: 'leashed_featured', x, y }); break;
           case 'spawn_leashed_featured_ranged': enemySpawns.push({ kind: 'leashed_featured_ranged', x, y }); break;
+          case 'tin_spawn':    npcSpawns.push({ who: 'tin', x, y }); break;
+          case 'nellis_spawn': npcSpawns.push({ who: 'nellis', x, y }); break;
         }
       }
     }
@@ -361,6 +366,18 @@ export async function applyPngMap(url, legend) {
         } else if (s.who === 'twil') {
           const n = spawnNpc(px, py, 'left', { name: 'Twil', portrait: 'assets/portraits/level02/Twil/Twil.mp4', dialogId: 'twil', sheet: sheetForName('Twil') });
           try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.twilDialog); }); } catch {}
+        } else if (s.who === 'urn') {
+          const n = spawnNpc(px, py, 'up', { name: 'Urn', portrait: 'assets/portraits/level04/Urn/Urn.mp4', dialogId: 'urn', sheet: sheetForName('Urn') });
+          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.urnDialog); }); } catch {}
+        } else if (s.who === 'varabella') {
+          const n = spawnNpc(px, py, 'down', { name: 'Varabella', portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', dialogId: 'varabella', sheet: sheetForName('Varabella') });
+          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.varabellaDialog); }); } catch {}
+        } else if (s.who === 'tin') {
+          const n = spawnNpc(px, py, 'right', { name: 'Tin', portrait: 'assets/portraits/level03/Tin/Tin.mp4', dialogId: 'tin', sheet: sheetForName('Tin') });
+          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.tinDialog); }); } catch {}
+        } else if (s.who === 'nellis') {
+          const n = spawnNpc(px, py, 'left', { name: 'Nellis', portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', dialogId: 'nellis', sheet: sheetForName('Nellis') });
+          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.nellisDialog); }); } catch {}
         }
       }
     }

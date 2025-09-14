@@ -267,6 +267,18 @@ export function render(terrainBitmap, obstacles) {
   }
 
   // Build a y-sorted list of drawables
+  // Helper: check fog-of-war visibility for a pixel position
+  function isSeenPx(px, py) {
+    try {
+      const fow = runtime?.fogOfWar;
+      if (!fow || !fow.enabled || !fow.seen) return true;
+      const W = fow._w || world.tileW|0; const H = fow._h || world.tileH|0;
+      const tx = Math.max(0, Math.min(W - 1, Math.floor(px / TILE)));
+      const ty = Math.max(0, Math.min(H - 1, Math.floor(py / TILE)));
+      return !!fow.seen[ty * W + tx];
+    } catch { return true; }
+  }
+
   const drawables = [];
   for (const n of npcs) drawables.push({
     x: n.x, y: n.y, w: n.w, h: n.h,
@@ -278,11 +290,16 @@ export function render(terrainBitmap, obstacles) {
     dir: c.dir, frame: c.animFrame, sheet: c.sheet || npcSheet,
     spriteId: c.spriteId || null, spriteRef: c, spriteScale: c.spriteScale || 1,
   });
-  for (const e of enemies) if (e.hp > 0) drawables.push({
+  for (const e of enemies) if (e.hp > 0) {
+    // Hide enemies fully if their center tile is unseen by FoW
+    const ex = e.x + e.w/2, ey = e.y + e.h/2;
+    if (!isSeenPx(ex, ey)) { continue; }
+    drawables.push({
     x: e.x, y: e.y, w: e.w, h: e.h,
     dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet, spriteScale: e.spriteScale || 1,
     spriteId: e.spriteId || null, spriteRef: e,
   });
+  }
   drawables.push({
     x: player.x, y: player.y, w: player.w, h: player.h,
     dir: player.dir, frame: player.animFrame, sheet: playerSheet, isPlayer: true,
@@ -584,7 +601,7 @@ export function render(terrainBitmap, obstacles) {
         if (!o) return false;
         if (o.type === 'gate' && o.locked === false) return false; // open gates are see-through
         // Ignore non-sight-blockers
-        if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') return false;
+        if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water' || o.type === 'reed') return false;
         return true;
       }
       function tileHasSightBlocker(tx, ty) {
@@ -667,6 +684,7 @@ export function render(terrainBitmap, obstacles) {
       ctx.textBaseline = 'top';
       for (const e of enemies) {
         if (!e || e.hp <= 0) continue;
+        try { if (!isSeenPx(e.x + e.w/2, e.y + e.h/2)) continue; } catch {}
         const sx = Math.round(e.x + e.w/2 - camera.x);
         const sy = Math.round(e.y + e.h/2 - camera.y);
         ctx.fillStyle = '#ff4a4a';
@@ -688,6 +706,9 @@ export function render(terrainBitmap, obstacles) {
   // Enemy health bars (overlay)
   for (const e of enemies) {
     if (e.hp <= 0) continue;
+    // Skip HP bars and overlays if enemy is not seen due to FoW
+    const ex = e.x + e.w/2, ey = e.y + e.h/2;
+    try { const seen = isSeenPx(ex, ey); if (!seen) continue; } catch {}
     drawBar(e.x - 2 - camera.x, e.y - 4 - camera.y, e.w + 4, 2, e.hp / e.maxHp, '#ff5555');
     // Boss telegraph overlays
     try {

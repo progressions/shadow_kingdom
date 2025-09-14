@@ -692,6 +692,8 @@ export function loadLevel3() {
   // Resize world for level 3
   world.tileW = 130;
   world.tileH = 80;
+  // Dim the marsh: ~50% ambient light
+  try { import('./lighting.js').then(m => m.setAmbientLevel(Math.floor((m.MAX_LIGHT_LEVEL || 8) * 0.5))).catch(()=>{}); } catch {}
   // Mark progression flag for gating dialog/quests
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level3_reached'] = true; } catch {}
   enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
@@ -830,6 +832,8 @@ export function loadLevel4() {
   // Resize world for level 4
   world.tileW = 140;
   world.tileH = 85;
+  // Turn out the lights in the city: fully dark ambient
+  try { import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{}); } catch {}
   // Mark progression flag for gating dialog/quests
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level4_reached'] = true; } catch {}
   // Clear dynamic arrays
