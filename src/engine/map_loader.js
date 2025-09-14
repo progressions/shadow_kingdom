@@ -223,7 +223,13 @@ export async function applyPngMap(url, legend) {
       const ex = s.x * TILE, ey = s.y * TILE;
       if (s.kind === 'mook') spawnEnemy(ex, ey, 'mook', { name: 'Greenwood Bandit' });
       else if (s.kind === 'featured_ranged') spawnEnemy(ex, ey, 'featured', { name: 'Archer', ranged: true, shootRange: 140, shootCooldown: 1.4, aimError: 0.12 });
-      else if (s.kind === 'guardian') spawnEnemy(ex, ey, 'featured', { name: 'Gorg', guaranteedDropId: 'key_bronze', vnId: 'enemy:gorg' });
+      else if (s.kind === 'guardian') {
+        // Key guardian stats aligned with Level 1 (tough featured foe)
+        spawnEnemy(ex, ey, 'featured', {
+          name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze',
+          hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
+        });
+      }
       else if (s.kind === 'boss') spawnEnemy(ex, ey, 'boss', { name: 'Boss' });
     }
 
