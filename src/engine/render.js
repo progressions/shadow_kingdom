@@ -1011,17 +1011,20 @@ function drawQuestMarkers() {
       case 'canopy_triage': return '#8effc1';
       case 'twil_trace': return '#e0b3ff';
       case 'twil_fuse': return '#ffd166';
+      case 'hola_find_yorna': return '#6fb7ff';
       default: return '#9ae6ff';
     }
   };
   const margin = 12;
-  for (const e of enemies) {
-    if (!e || e.hp <= 0 || !e.questId) continue;
-    const tx = e.x + e.w / 2 - camera.x;
-    const ty = e.y + e.h / 2 - camera.y;
+  const sources = [];
+  for (const e of enemies) if (e && e.hp > 0 && e.questId) sources.push(e);
+  for (const n of npcs) if (n && n.questId) sources.push(n);
+  for (const ent of sources) {
+    const tx = ent.x + ent.w / 2 - camera.x;
+    const ty = ent.y + ent.h / 2 - camera.y;
     const inView = tx >= 0 && tx <= camera.w && ty >= 0 && ty <= camera.h;
     ctx.save();
-    ctx.fillStyle = colorFor(e.questId);
+    ctx.fillStyle = colorFor(ent.questId);
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
     if (inView) {

@@ -850,7 +850,7 @@ export const companionDialogs = {
 
       // L3: Cut the Wake (defeat Skimmers)
       wake_intro: {
-        text: 'Twil: Master, three skimmers keep the path slick. We trim their wake.',
+        text: 'Twil: Master, there are three \'skimmers\' making this path dangerous. Let\'s get rid of them.',
         choices: [ { label: 'Cut it.', action: 'start_quest', data: { id: 'twil_wake' }, next: 'wake_started' }, { label: 'Later.', action: 'companion_back' } ],
       },
       wake_started: {

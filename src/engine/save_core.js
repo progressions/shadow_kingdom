@@ -286,6 +286,7 @@ function serializeNpcEntity(n) {
     portrait: n.portraitSrc || null,
     sheetPalette: n.sheetPalette || null,
     affinity: (typeof n.affinity === 'number') ? n.affinity : ((String(n.name||'').toLowerCase()==='codex') ? 5 : 3),
+    questId: n.questId || null,
   };
 }
 
@@ -336,6 +337,7 @@ function spawnNpcFromRecord(d) {
     dialogId: d.dialogId || null,
   });
   npc.dialogId = d.dialogId || npc.dialogId || null;
+  if (d.questId) npc.questId = d.questId;
   if (typeof d.w === 'number') npc.w = d.w;
   if (typeof d.h === 'number') npc.h = d.h;
   if (typeof d.speed === 'number') npc.speed = d.speed;

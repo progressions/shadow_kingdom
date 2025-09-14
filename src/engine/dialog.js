@@ -232,26 +232,34 @@ export function selectChoice(index) {
               startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
               return;
             }
-            spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
-            const idx = npcs.indexOf(npc);
-            if (idx !== -1) npcs.splice(idx, 1);
-            updatePartyUI(companions);
-            const joinMsg = `${npc.name || 'Companion'} joined your party!`;
-            const delay = (delta !== 0) ? 900 : 0;
-            if (delay > 0) setTimeout(() => { try { showBanner(joinMsg); } catch {} }, delay);
-            else showBanner(joinMsg);
-            try {
-              const nm = String(npc.name || '').toLowerCase();
-              const id = String(npc.dialogId || '').toLowerCase();
-              if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
-              playSfx('partyJoin');
-              if (!runtime.questFlags) runtime.questFlags = {};
-              if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
-                runtime.questFlags['tutorial_save_canopy_done'] = true;
-                runtime.questFlags['tutorial_save_canopy'] = false;
-                hideBanner();
-              }
-            } catch {}
+      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
+      const idx = npcs.indexOf(npc);
+      if (idx !== -1) npcs.splice(idx, 1);
+      updatePartyUI(companions);
+      const joinMsg = `${npc.name || 'Companion'} joined your party!`;
+      const delay = (delta !== 0) ? 900 : 0;
+      if (delay > 0) setTimeout(() => { try { showBanner(joinMsg); } catch {} }, delay);
+      else showBanner(joinMsg);
+      try {
+        const nm = String(npc.name || '').toLowerCase();
+        const id = String(npc.dialogId || '').toLowerCase();
+        if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
+        playSfx('partyJoin');
+        // Hola quest: Find Yorna — grant reward on recruiting Yorna
+        if (nm.includes('yorna')) {
+          if (!runtime.questFlags) runtime.questFlags = {};
+          if (runtime.questFlags['hola_find_yorna_started'] && !runtime.questFlags['hola_find_yorna_cleared']) {
+            runtime.questFlags['hola_find_yorna_cleared'] = true;
+            import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('hola_find_yorna')).catch(()=>{});
+          }
+        }
+        if (!runtime.questFlags) runtime.questFlags = {};
+        if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
+          runtime.questFlags['tutorial_save_canopy_done'] = true;
+          runtime.questFlags['tutorial_save_canopy'] = false;
+          hideBanner();
+        }
+      } catch {}
           }
           endDialog(); exitChat(runtime); return;
         }
@@ -435,6 +443,12 @@ export function selectChoice(index) {
       playSfx('partyJoin');
       if (!runtime.questFlags) runtime.questFlags = {};
       const nm2 = String(npc.name || '').toLowerCase();
+      if (nm2.includes('yorna')) {
+        if (runtime.questFlags['hola_find_yorna_started'] && !runtime.questFlags['hola_find_yorna_cleared']) {
+          runtime.questFlags['hola_find_yorna_cleared'] = true;
+          import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('hola_find_yorna')).catch(()=>{});
+        }
+      }
       if (nm2.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
         runtime.questFlags['tutorial_save_canopy_done'] = true;
         runtime.questFlags['tutorial_save_canopy'] = false;
@@ -821,7 +835,7 @@ function handleStartQuest(data) {
       try { showBanner('Quest started: Return the Ribbon — Find and place it'); } catch {}
     }
     // Yorna: Cut the Knot — spawn two featured targets
-    if (id === 'yorna_knot') {
+  if (id === 'yorna_knot') {
       import('./state.js').then(m => {
         const { player, spawnEnemy } = m;
         const dx = 160, dy = 120;
@@ -1032,6 +1046,16 @@ function handleStartQuest(data) {
       }).catch(()=>{});
       runtime.questCounters['snake_den_remaining'] = 3;
       try { showBanner('Quest started: Clear the Den — 3 pests'); } catch {}
+    } else if (id === 'hola_find_yorna') {
+      // Level 1 Hola quest: point to Yorna's location; quest clears on recruiting Yorna
+      try {
+        // Find Yorna NPC and attach a quest marker
+        for (const n of npcs) {
+          const nm = String(n?.name || '').toLowerCase();
+          if (nm.includes('yorna')) { n.questId = 'hola_find_yorna'; break; }
+        }
+      } catch {}
+      try { showBanner('Quest started: Find Yorna — Talk to her'); } catch {}
     }
   } catch {}
 }

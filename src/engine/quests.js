@@ -15,6 +15,8 @@ export const QUEST_REWARDS = {
   hola_practice:           { companion: 'hola',     amount: 0.7, rewardFlag: 'hola_practice_reward',      doneFlag: 'hola_practice_done' },
   hola_silence:            { companion: 'hola',     amount: 1.0, rewardFlag: 'hola_silence_reward',       doneFlag: 'hola_silence_done' },
   hola_breath_bog:         { companion: 'hola',     amount: 1.2, rewardFlag: 'hola_breath_bog_reward',    doneFlag: 'hola_breath_bog_done' },
+  // Level 1 Hola quest: Find Yorna
+  hola_find_yorna:        { companion: 'hola',     amount: 0.7, rewardFlag: 'hola_find_yorna_reward',    doneFlag: 'hola_find_yorna_done' },
 
   twil_fuse:               { companion: 'twil',     amount: 0.8, rewardFlag: 'twil_fuse_reward',          doneFlag: 'twil_fuse_done' },
   twil_ember:              { companion: 'twil',     amount: 1.2, rewardFlag: 'twil_ember_reward',         doneFlag: 'twil_ember_done' },
