@@ -1726,11 +1726,12 @@ export function step(dt) {
       const e = enemies[i];
       // Unlink from spawner live set if applicable
       try { if (e.spawnerId) { const sp = findSpawnerById(e.spawnerId); if (sp && sp.currentlyAliveIds) sp.currentlyAliveIds.delete(e.id); } } catch {}
-      // Post-load grace: avoid immediate despawn right after load (so you can see enemies persist)
+      // Post-load grace: avoid immediate despawn right after load.
+      // Do not temporarily "revive" defeated enemies (keeps them invisible and inert).
       try {
         const now = (performance && performance.now) ? performance.now() : Date.now();
         const since = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
-        if (since < 1.0) { e.hp = 0.1; continue; }
+        if (since < 1.0) { continue; }
       } catch {}
       // Boss behavior: default bosses have 2 phases; Vorthak (L5) has 3
       const isBoss = ((e.kind || '').toLowerCase() === 'boss');

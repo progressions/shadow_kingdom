@@ -1,4 +1,4 @@
-import { runtime, player, camera, world, xpToNext, obstacles as OBSTACLES } from './state.js';
+import { runtime, player, camera, world, xpToNext, obstacles as OBSTACLES, npcs as NPCS, enemies as ENEMIES } from './state.js';
 import { getEquipStats } from './utils.js';
 import { tryStartMusic, stopMusic, initAudioUnlock, playTitleFanfare } from './audio.js';
 import { playSfx } from './audio.js';
@@ -803,6 +803,29 @@ export function updateMinimap() {
   ctx.clearRect(0, 0, _miniW, _miniH);
   ctx.drawImage(_miniBase, 0, 0);
   ctx.drawImage(_miniFog, 0, 0);
+  // Quest markers on minimap (NPCs/enemies with questId)
+  try {
+    const colorFor = (qid) => {
+      switch (qid) {
+        case 'yorna_knot': return '#ff8a3d';
+        case 'canopy_triage': return '#8effc1';
+        case 'twil_trace': return '#e0b3ff';
+        case 'twil_fuse': return '#ffd166';
+        case 'hola_find_yorna': return '#6fb7ff';
+        default: return '#9ae6ff';
+      }
+    };
+    const drawEnt = (ent) => {
+      if (!ent || !ent.questId) return;
+      const tx = Math.max(0, Math.min(_miniW-1, Math.floor(ent.x / TILE)));
+      const ty = Math.max(0, Math.min(_miniH-1, Math.floor(ent.y / TILE)));
+      ctx.fillStyle = colorFor(ent.questId);
+      ctx.fillRect(tx, ty, 1, 1);
+    };
+    // Draw markers for quest-tagged NPCs and live enemies
+    for (const n of (NPCS || [])) drawEnt(n);
+    for (const e of (ENEMIES || [])) if (e && e.hp > 0) drawEnt(e);
+  } catch {}
   // Tutorial objective: highlight Level 1 sword chest on minimap
   try {
     const f = runtime.questFlags || {};
@@ -955,6 +978,8 @@ export function updateQuestHint() {
     } else if (f['twil_trace_started'] && !f['twil_trace_cleared']) {
       const left = c['twil_trace_remaining'] ?? 3;
       msg = `Quest — Trace the Footprints: ${left} left`;
+    } else if (f['hola_find_yorna_started'] && !f['hola_find_yorna_cleared']) {
+      msg = 'Quest — Find Yorna: Talk to her';
     } else if (f['yorna_ring_started'] && !f['yorna_ring_cleared']) {
       const left = c['yorna_ring_remaining'] ?? 3;
       msg = `Quest — Shatter the Ring: ${left} left`;

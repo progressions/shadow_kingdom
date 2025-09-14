@@ -51,8 +51,18 @@ export function serializeSave() {
   // Ensure keys exist for current level's known uniques if absent
   for (const k of uniques) { if (!uniqueActors[k]) uniqueActors[k] = { state: 'unspawned' }; }
 
-  // Dynamic enemies (non-unique)
-  const dynamicEnemies = [];
+  // Dynamic enemies (non-unique). Prioritize those near anchors (player and alive uniques)
+  // so critical encounters are preserved even if we cap the list.
+  const anchors = [];
+  try {
+    anchors.push({ x: player.x + player.w/2, y: player.y + player.h/2 });
+    for (const e of enemies) {
+      if (!e || e.hp <= 0) continue;
+      const key = e.vnId || null;
+      if (key && uniques.has(key)) anchors.push({ x: e.x + (e.w||12)/2, y: e.y + (e.h||16)/2 });
+    }
+  } catch {}
+  const candidates = [];
   for (const e of enemies) {
     if (!e || e.hp <= 0) continue;
     const key = e.vnId || (e.name ? `enemy:${String(e.name).toLowerCase()}` : null);
@@ -60,11 +70,26 @@ export function serializeSave() {
     const rec = serializeEnemyEntity(e);
     if (e.spawnerId) rec.spawnerId = e.spawnerId;
     if (typeof rec.x !== 'number' || typeof rec.y !== 'number' || !Number.isFinite(rec.x) || !Number.isFinite(rec.y)) continue;
-    dynamicEnemies.push(rec);
+    // Compute priority: closer to any anchor = higher priority
+    let best = Infinity;
+    try {
+      const cx = e.x + (e.w||12)/2, cy = e.y + (e.h||16)/2;
+      for (const a of anchors) {
+        const dx = (cx - a.x), dy = (cy - a.y);
+        const d2 = dx*dx + dy*dy; if (d2 < best) best = d2;
+      }
+    } catch {}
+    candidates.push({ rec, prio: (Number.isFinite(best) ? -best : 0) });
   }
-  // Cap to avoid bloat
-  const DYNAMIC_CAP = 200;
-  if (dynamicEnemies.length > DYNAMIC_CAP) dynamicEnemies.length = DYNAMIC_CAP;
+  // Cap to avoid bloat; keep highest-priority first
+  const DYNAMIC_CAP = 300;
+  let dynamicEnemies;
+  if (candidates.length > DYNAMIC_CAP) {
+    candidates.sort((a, b) => b.prio - a.prio);
+    dynamicEnemies = candidates.slice(0, DYNAMIC_CAP).map(c => c.rec);
+  } else {
+    dynamicEnemies = candidates.map(c => c.rec);
+  }
 
   // Persist VN seen (NPCs and enemies); only keep truthy flags
   const vnSeenAll = Object.keys(runtime?.vnSeen || {}).filter(k => !!runtime.vnSeen[k]);
@@ -354,7 +379,7 @@ export function applyPendingRestore() {
   if (!data) return;
   runtime._pendingRestore = null;
   try {
-    runtime._suspendRenderUntilRestore = false;
+    // Keep render suspended during restore; cleared at the end.
     // Normalize and pause systems during restore
     data = normalizeSave(data);
     runtime.paused = true; runtime.disableVN = true;
@@ -550,10 +575,13 @@ export function applyPendingRestore() {
     try { runtime._loadedAt = (performance && performance.now) ? performance.now() : Date.now(); } catch { runtime._loadedAt = Date.now(); }
     // Resume systems next tick; re-enable VN
     try { setTimeout(() => { runtime.disableVN = false; runtime.paused = false; }, 0); } catch { runtime.disableVN = false; runtime.paused = false; }
+    // Allow render again
+    runtime._suspendRenderUntilRestore = false;
   } catch (e) {
     console.error('Apply restore failed', e);
     showBanner('Load failed');
     runtime.disableVN = false; runtime.paused = false;
+    runtime._suspendRenderUntilRestore = false;
   }
 }
 
@@ -570,6 +598,10 @@ export function loadDataPayload(data) {
       showBanner(`Loading… switching to Level ${target}`);
       return;
     }
+    // For same-level loads, suspend render during restore to avoid showing baseline entities.
+    runtime._suspendRenderUntilRestore = true;
+    runtime.paused = true;
+    runtime.disableVN = true;
     runtime._pendingRestore = data;
     applyPendingRestore();
   } catch (e) {
