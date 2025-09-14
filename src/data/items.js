@@ -20,7 +20,8 @@ export const sampleItems = [
   { id: 'bow_wood',      name: 'Wooden Bow',    slot: 'rightHand',  atk: 2, twoHanded: true, ranged: { cooldownSec: 0.6, projectileSpeed: 200, pierce: 0, consumes: 'arrow_basic' } },
   { id: 'greatsword',    name: 'Greatsword',    slot: 'rightHand',  atk: 8, twoHanded: true },
   // Ammo (stackable)
-  { id: 'arrow_basic',   name: 'Arrows',        slot: 'misc',       stackable: true, maxQty: 25 },
+  // Default ground/loot stack size: 10 arrows per pickup
+  { id: 'arrow_basic',   name: 'Arrows',        slot: 'misc',       stackable: true, maxQty: 25, qty: 10 },
   { id: 'buckler',       name: 'Small Buckler', slot: 'leftHand',   dr: 1, isShield: true },
   { id: 'heavy_shield',  name: 'Heavy Shield',  slot: 'leftHand',   dr: 3, isShield: true },
   { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0, stackable: true, maxQty: 99 },

@@ -2105,6 +2105,25 @@ export function step(dt) {
           continue;
         }
 
+        // Special-case: Arrows — each ground pickup contains 10 arrows by default.
+        // If total arrows < 25, consume the pickup and add up to the cap; otherwise leave on ground.
+        const isArrows = picked && picked.stackable && picked.id === 'arrow_basic';
+        if (isArrows) {
+          let total = 0;
+          for (const s of invItems) if (s && s.stackable && s.id === 'arrow_basic') total += (s.qty || 0);
+          for (const key of ['head','torso','legs','leftHand','rightHand']) { const e = eq[key]; if (e && e.stackable && e.id === 'arrow_basic') total += (e.qty || 0); }
+          if (total >= 25) {
+            continue; // already full; do not pick up
+          }
+          const addQty = Math.min(picked.qty || 10, 25 - total);
+          itemsOnGround.splice(ii, 1);
+          addItemToInventory(player.inventory, { id: 'arrow_basic', name: picked.name || 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: addQty });
+          showBanner(`Arrows +${addQty}`);
+          playSfx('pickup');
+          for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
+          continue;
+        }
+
         if (isFull) {
           // At cap: do not auto-pickup; leave on ground
           continue;
