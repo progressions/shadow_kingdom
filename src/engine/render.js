@@ -1,11 +1,13 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext, spawners, projectiles } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext, spawners, projectiles, obstacles } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE, TILE } from './constants.js';
 import { MAX_LIGHT_LEVEL } from './lighting.js';
 import { drawGrid, drawObstacles } from './terrain.js';
 import { playerSheet, enemySheet, npcSheet } from './sprites.js';
 import { getSprite } from './sprite_loader.js';
 import { sampleFlowDirAt } from './pathfinding.js';
+import { queryObstaclesSegment } from './spatial_index.js';
+import { segmentIntersectsRect } from './utils.js';
 
 // Cached offscreen for sprite outlines
 let _olCan = null, _olCtx = null, _olW = 0, _olH = 0;
@@ -97,6 +99,46 @@ export function render(terrainBitmap, obstacles) {
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
+  // Fog of War overlay (LoS)
+  try {
+    const fow = runtime?.fogOfWar || { enabled: false };
+    if (fow.enabled && fow.mode === 'los') {
+      const s = TILE;
+      const tx0 = Math.max(0, Math.floor(camera.x / s));
+      const ty0 = Math.max(0, Math.floor(camera.y / s));
+      const tx1 = Math.min(world.tileW - 1, Math.floor((camera.x + camera.w) / s));
+      const ty1 = Math.min(world.tileH - 1, Math.floor((camera.y + camera.h) / s));
+      const px = player.x + player.w/2, py = player.y + player.h/2;
+      const alpha = Math.max(0, Math.min(1, Number(fow.alpha ?? 0.75)));
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#000000';
+      for (let ty = ty0; ty <= ty1; ty++) {
+        for (let tx = tx0; tx <= tx1; tx++) {
+          const cx = tx * s + s/2;
+          const cy = ty * s + s/2;
+          // Skip the tile containing the player to avoid self-block
+          if (Math.floor(player.x / s) === tx && Math.floor(player.y / s) === ty) continue;
+          // Determine LoS using blocking obstacles
+          let blocked = false;
+          const cand = queryObstaclesSegment(px, py, cx, cy, 8);
+          for (const o of cand) {
+            if (!o) continue;
+            if (o.type === 'gate' && o.locked === false) continue;
+            // Ignore non-sight-blockers
+            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
+            if (segmentIntersectsRect(px, py, cx, cy, o)) { blocked = true; break; }
+          }
+          if (blocked) {
+            const sx = Math.round(tx * s - camera.x);
+            const sy = Math.round(ty * s - camera.y);
+            ctx.fillRect(sx, sy, s, s);
+          }
+        }
+      }
+      ctx.restore();
+    }
+  } catch {}
   // Debug: flow field vectors overlay (coarse), when enabled
   try {
     if (window && window.DEBUG_FLOW) {
