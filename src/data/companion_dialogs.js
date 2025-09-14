@@ -108,7 +108,7 @@ export const companionDialogs = {
       },
 
       quest_intro: {
-        text: 'Canopy: My Lord, three cry out first. If we clear the snare, the rest may breathe easier.',
+        text: 'Canopy: My Lord, there are three hostiles nearby. If we deal with them, it will be safer for everyone.',
         choices: [
           { label: 'Point me to them.', action: 'start_quest', data: { id: 'canopy_triage' }, next: 'quest_started' },
           { label: 'Later.', action: 'companion_back' },
@@ -129,9 +129,9 @@ export const companionDialogs = {
 
       // Level 2: Sister clue — defeat scouts
       sister_l2_intro: {
-        text: "Canopy: Scouts here wear reed-stitched cords—Ell stitched like that. Drop three patrols; watch for a ribbon.",
+        text: "Canopy: The scouts here use reed-stitched cords—that's how Ell used to stitch. We need to defeat three of their patrols and look for a ribbon.",
         choices: [
-          { label: 'We cut their line.', action: 'start_quest', data: { id: 'canopy_sister2' }, next: 'sister_l2_started' },
+          { label: 'Let\'s hunt them down.', action: 'start_quest', data: { id: 'canopy_sister2' }, next: 'sister_l2_started' },
           { label: 'Later.', next: 'root' },
         ],
       },
@@ -150,7 +150,7 @@ export const companionDialogs = {
 
       // Level 3: Marsh whisperers — defeat to orient the trail
       sister_l3_intro: {
-        text: "Canopy: Marsh folk say whispers carry names. If we still three of them, the wind might stop pointing wrong for once.",
+        text: "Canopy: The Marsh Whisperers in this area are disorienting. If we defeat three of them, it should be easier to get our bearings.",
         choices: [
           { label: 'Silence three whispers.', action: 'start_quest', data: { id: 'canopy_sister3' }, next: 'sister_l3_started' },
           { label: 'Later.', next: 'root' },
@@ -161,7 +161,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       sister_l3_turnin: {
-        text: "Canopy: The reeds bent east when they quieted. If Urathar's shadow took her, it's east we go.",
+        text: "Canopy: After we defeated them, I noticed the reeds were all bent towards the east. If Urathar's forces took her, they must have gone that way.",
         choices: [ { label: 'We go together.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'canopy_sister3_reward' }, next: 'sister_l3_done' } ],
       },
       sister_l3_done: {
@@ -171,9 +171,9 @@ export const companionDialogs = {
 
       // Level 4: Stitch the Streets — defeat three street bleeders
       streets_l4_intro: {
-        text: 'Canopy: My Lord, stone bleeds too. Three streets run red—if we clear the hands that did it, people can pass.',
+        text: 'Canopy: My Lord, these streets are dangerous. There are three areas controlled by hostiles. If we clear them out, people can pass.',
         choices: [
-          { label: 'Bind them.', action: 'start_quest', data: { id: 'canopy_streets4' }, next: 'streets_l4_started' },
+          { label: 'Let\'s clear the streets.', action: 'start_quest', data: { id: 'canopy_streets4' }, next: 'streets_l4_started' },
           { label: 'Later.', next: 'root' },
         ],
       },
@@ -266,20 +266,20 @@ export const companionDialogs = {
       vast_intro: {
         text: "Yorna: First job: kill Vast in the castle to the southeast. The gate's locked; Gorg has the brass key outside the northeast wall.",
         choices: [
-          { label: 'We end her.', action: 'start_quest', data: { id: 'yorna_vast' }, next: 'vast_started' },
+          { label: 'Let\'s go kill her.', action: 'start_quest', data: { id: 'yorna_vast' }, next: 'vast_started' },
           { label: 'Later.', action: 'companion_back' },
         ],
       },
       vast_started: {
-        text: "Yorna: Stay with me. We take the key, open the gate, finish Vast.",
+        text: "Yorna: Stay with me, Chief. We get the key from Gorg, open the gate, and then we kill Vast.",
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       vast_turnin: {
-        text: 'Yorna: Vast is dead. The valley\'s safer. Next.',
+        text: 'Yorna: Vast is dead. Good. One less problem for the valley. What\'s next, Chief?',
         choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'yorna_vast_reward' }, next: 'vast_done' } ],
       },
       vast_done: {
-        text: 'Yorna: Onward.',
+        text: 'Yorna: Onward, Chief.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_vast_done' }, next: 'root' } ],
       },
       bond_menu: {
@@ -305,7 +305,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', next: 'bond_menu' } ],
       },
       bond6a: {
-        text: "Yorna: Momentum is a blade. If I stop, it's because I'm picking which wall to use.",
+        text: "Yorna: I don't like to stop moving. If I do, it's to pick a better position to attack from.",
         choices: [ { label: 'Continue', next: 'bond6b' } ],
       },
       bond6b: {
@@ -345,62 +345,62 @@ export const companionDialogs = {
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       quest_intro: {
-        text: 'Yorna: Chief, there\'s a pair of sneaks setting ambushes. We cut them, we cut the knot.',
+        text: 'Yorna: Chief, there\'s a pair of scouts setting ambushes. If we take them out, we clear the path.',
         choices: [
           { label: 'Let\'s do it.', action: 'start_quest', data: { id: 'yorna_knot' }, next: 'quest_started' },
           { label: 'Another time.', action: 'companion_back' },
         ],
       },
       quest_started: {
-        text: 'Yorna: Chief, two targets. I\'ll mark the lanes—move fast.',
+        text: 'Yorna: Chief, there are two targets. I\'ll show you where they are. Let\'s move fast.',
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       quest_turnin: {
-        text: 'Yorna: Chief, clean cuts. Ambushes will falter for a while.',
+        text: 'Yorna: Chief, they\'re dead. That should stop the ambushes for a while.',
         choices: [
           { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'yorna_knot_reward' }, next: 'quest_done' },
         ],
       },
       quest_done: {
-        text: 'Yorna: Chief, on to the next knot.',
+        text: 'Yorna: Chief, on to the next problem.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_knot_done' }, next: 'root' } ],
       },
 
       // L2: Shatter the Ring
       ring_intro: {
-        text: "Yorna: Three captains hold these ruins. We take them out and the road opens.",
+        text: "Yorna: Three captains are holding these ruins. If we take them out, the road will be clear.",
         choices: [
-          { label: "Crack it.", action: 'start_quest', data: { id: 'yorna_ring' }, next: 'ring_started' },
+          { label: "Let's do it.", action: 'start_quest', data: { id: 'yorna_ring' }, next: 'ring_started' },
           { label: 'Later.', action: 'companion_back' },
         ],
       },
       ring_started: {
-        text: 'Yorna: Chief, I\'ll point the lanes. Hit what leans.',
+        text: 'Yorna: Chief, I\'ll point them out. You take down anyone who gets in our way.',
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       ring_turnin: {
-        text: "Yorna: Ring's cracked. The road breathes.",
+        text: "Yorna: The captains are dead. The road is clear.",
         choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'yorna_ring_reward' }, next: 'ring_done' } ],
       },
       ring_done: {
-        text: 'Yorna: Chief, next ring, same plan.',
+        text: 'Yorna: Chief, next group, same plan.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_ring_done' }, next: 'root' } ],
       },
 
       // L3: Hold the Causeway
       causeway_intro: {
-        text: 'Yorna: Chief, three wardens keep the causeway narrow. We widen it with their mistakes.',
+        text: 'Yorna: Chief, three wardens are blocking the causeway. Let\'s kill them and open it up.',
         choices: [
-          { label: 'Take it.', action: 'start_quest', data: { id: 'yorna_causeway' }, next: 'causeway_started' },
+          { label: 'Let\'s take it.', action: 'start_quest', data: { id: 'yorna_causeway' }, next: 'causeway_started' },
           { label: 'Later.', action: 'companion_back' },
         ],
       },
       causeway_started: {
-        text: "Yorna: Clear space. If I push, you follow.",
+        text: "Yorna: Clear some space. When I push forward, you follow.",
         choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       causeway_turnin: {
-        text: 'Yorna: Chief, wide enough for a caravan.',
+        text: 'Yorna: Chief, the causeway is clear now.',
         choices: [ { label: 'Nice.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'yorna_causeway_reward' }, next: 'causeway_done' } ],
       },
       causeway_done: {
@@ -463,6 +463,7 @@ export const companionDialogs = {
           { label: 'Speak up (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
           { label: 'Stand firm (Affinity 9.5+)', requires: { target: 'active', min: 9.5 }, next: 'bond10' },
           // Quest entries
+          { label: 'Find Yorna', requires: { partyMissing: 'yorna', missingFlag: 'hola_find_yorna_started' }, next: 'find_yorna_intro' },
           { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
           { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared', missingFlag: 'hola_practice_done' }, next: 'quest_turnin' },
           { label: 'Break the Silence (L2)', requires: { level: 2, flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
@@ -511,6 +512,7 @@ export const companionDialogs = {
       quests: {
         text: 'Hola: My Lord, I can practice… if you stay close.',
         choices: [
+          { label: 'Find Yorna', requires: { partyMissing: 'yorna', missingFlag: 'hola_find_yorna_started' }, next: 'find_yorna_intro' },
           { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
           { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared', missingFlag: 'hola_practice_done' }, next: 'quest_turnin' },
           { label: 'Break the Silence (L2)', requires: { level: 2, flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
@@ -519,6 +521,18 @@ export const companionDialogs = {
           { label: 'Turn in: Breath Over Bog', requires: { flag: 'hola_breath_bog_cleared', missingFlag: 'hola_breath_bog_done' }, next: 'bog_turnin' },
           { label: 'Back', next: 'root' },
         ],
+      },
+      // L1: Find Yorna (lead to northwest; auto-turn-in on recruiting Yorna)
+      find_yorna_intro: {
+        text: 'Hola: My Lord, I saw a red-headed fighter in the woods to the northwest. She moved like she knew what she was doing. Maybe she could help us.',
+        choices: [
+          { label: "Let's find her.", action: 'start_quest', data: { id: 'hola_find_yorna' }, next: 'find_yorna_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ],
+      },
+      find_yorna_started: {
+        text: 'Hola: Northwest—red hair. I\'ll stay close.',
+        choices: [ { label: 'Back', action: 'companion_back' } ],
       },
       magic: {
         text: 'Hola: I can... I can make a light. To light your way! And I can... push the air... to keep enemies away from you. I\'ll make sure I get it right for you, My Lord!',
@@ -1217,3 +1231,4 @@ export const companionDialogs = {
     },
   },
 };
+  
