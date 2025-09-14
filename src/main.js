@@ -20,6 +20,31 @@ import { AI_TUNING } from './data/ai_tuning.js';
 let terrain = loadLevel1();
 try { initMinimap(); } catch {}
 try { showLevelTitle(levelNameFor(1)); } catch {}
+// If a PNG map is present for Level 1, apply it asynchronously using the provided color legend.
+// The PNG should be 1 pixel per tile and live at assets/maps/level_01.png.
+(async function tryApplyL1Png(){
+  try {
+    const url = 'assets/maps/level_01.png';
+    const legend = {
+      theme: 'default',
+      colors: {
+        // hex without leading '#'
+        '49aa10': { type: 'grass' },
+        '797979': { type: 'wall' },
+        'a2a2a2': { type: 'rock' },
+        '386d00': { type: 'tree' },
+        '4161fb': { type: 'water' },
+      },
+    };
+    const M = await import('./engine/map_loader.js');
+    const t = await M.applyPngMap(url, legend);
+    if (t) {
+      terrain = t;
+      // Refresh minimap base after terrain/obstacles change
+      try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+    }
+  } catch {}
+})();
 
 // Input and UI
 setupChatInputHandlers(runtime);

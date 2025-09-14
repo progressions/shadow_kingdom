@@ -59,6 +59,13 @@ In certain situations, especially when personalities clash under pressure, the r
 
 These conflicts create opportunities for the player to intervene and mediate, strengthening their bond with the involved companions and shaping the party's dynamic.
 
+## 4. Practical Notes for Implementation
+
+- Keep the writing literal and grounded. Avoid metaphors, idioms, and overly poetic phrasing.
+- Address the player consistently using each companion’s preferred form of address (e.g., Hola uses “My Lord”).
+- When adding content that references direction or location (e.g., “northwest”), prefer short, plain sentences.
+- In tooltips and map notes, use direct labels like “Gate key”, “Temple”, “Find Yorna” instead of figurative names.
+
 Level 2 Feud Example (Canopy ↔ Yorna)
 - Setup: Entering Level 2 with both in the party triggers a VN scene. The tone is direct, personal, and grounded — no metaphors/idioms.
 - Sample beats:
