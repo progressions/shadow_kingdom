@@ -116,6 +116,10 @@ export async function applyPngMap(url, legend) {
     const map = legend && legend.colors ? legend.colors : {};
     const grid = new Array(width * height);
     const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss', x, y }
+    let playerSpawn = null; // { x, y }
+    const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola', x, y }
+    const chestSpawns = []; // { id, itemId, x, y }
+    const breakables = [];  // { type: 'barrel', x, y }
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
@@ -138,8 +142,18 @@ export async function applyPngMap(url, legend) {
             tForGrid = null; break;
         }
         grid[y*width + x] = tForGrid;
-        // Optional enemy spawn markers defined in the map
+        // Optional spawn/prop markers defined in the map
         switch (type) {
+          // Player/NPCs
+          case 'player_spawn': playerSpawn = playerSpawn || { x, y }; break;
+          case 'canopy_spawn': npcSpawns.push({ who: 'canopy', x, y }); break;
+          case 'yorna_spawn':  npcSpawns.push({ who: 'yorna',  x, y }); break;
+          case 'hola_spawn':   npcSpawns.push({ who: 'hola',   x, y }); break;
+          // Props
+          case 'chest_dagger': chestSpawns.push({ id: 'chest_l1_weapon', itemId: 'dagger',   x, y }); break;
+          case 'chest_bow':    chestSpawns.push({ id: 'chest_l1_bow',    itemId: 'bow_wood', x, y }); break;
+          case 'barrel':       breakables.push({ type: 'barrel', x, y }); break;
+          // Enemies
           case 'spawn_mook': enemySpawns.push({ kind: 'mook', x, y }); break;
           case 'spawn_featured_ranged': enemySpawns.push({ kind: 'featured_ranged', x, y }); break;
           case 'spawn_guardian': enemySpawns.push({ kind: 'guardian', x, y }); break;
@@ -149,6 +163,24 @@ export async function applyPngMap(url, legend) {
     }
     // Build obstacles from the grid
     buildObstaclesFromGrid(grid, legend);
+
+    // Player spawn override (tile origin)
+    if (playerSpawn) {
+      player.x = Math.floor(playerSpawn.x * TILE);
+      player.y = Math.floor(playerSpawn.y * TILE);
+      // Re-fan companions around player
+      for (let i = 0; i < companions.length; i++) { const c = companions[i]; if (!c) continue; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
+    }
+
+    // Place chests and barrels (props)
+    for (const c of chestSpawns) {
+      obstacles.push({ x: c.x * TILE, y: c.y * TILE, w: 12, h: 10, type: 'chest', id: c.id, fixedItemId: c.itemId, opened: false, locked: false });
+    }
+    let brkIdx = 0;
+    for (const b2 of breakables) {
+      const id = `brk_l1_${brkIdx++}`;
+      obstacles.push({ x: b2.x * TILE, y: b2.y * TILE, w: 12, h: 12, type: 'barrel', id, hp: 2 });
+    }
 
     // If the map defines any enemy spawns, replace the current enemies with the map-defined set
     if (enemySpawns.length > 0) {
@@ -177,6 +209,24 @@ export async function applyPngMap(url, legend) {
             onDefeatNextLevel: 2,
             vnOnSight: { text: introTexts.vast },
           });
+        }
+      }
+    }
+
+    // NPCs: if defined by map, replace existing Level 1 NPCs
+    if (npcSpawns.length > 0) {
+      npcs.length = 0;
+      for (const s of npcSpawns) {
+        const px = s.x * TILE, py = s.y * TILE;
+        if (s.who === 'canopy') {
+          const n = spawnNpc(px, py, 'right', { name: 'Canopy', portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4', dialogId: 'canopy', sheet: sheetForName('Canopy') });
+          try { setNpcDialog(n, canopyDialog); } catch {}
+        } else if (s.who === 'yorna') {
+          const n = spawnNpc(px, py, 'down', { name: 'Yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', dialogId: 'yorna', sheet: sheetForName('Yorna') });
+          try { setNpcDialog(n, yornaDialog); } catch {}
+        } else if (s.who === 'hola') {
+          const n = spawnNpc(px, py, 'left', { name: 'Hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', dialogId: 'hola', sheet: sheetForName('Hola') });
+          try { setNpcDialog(n, holaDialog); } catch {}
         }
       }
     }
