@@ -75,7 +75,7 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
       if (applied) return;
       if ((runtime.currentLevel || 1) !== 2) return;
       applied = true;
-      const url = 'assets/maps/level_02.png';
+      const url = 'assets/maps/level_2.png';
       const legend = {
         theme: 'desert',
         gate: { id: 'nethra_gate', keyId: 'key_nethra' },
