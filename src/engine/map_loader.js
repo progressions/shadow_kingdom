@@ -3,6 +3,7 @@ import { world, player, enemies, npcs, companions, obstacles, corpses, stains, f
 import { buildTerrainBitmap } from './terrain.js';
 import { sheetForName } from './sprites.js';
 import { setNpcDialog } from './dialog.js';
+import { introTexts } from '../data/intro_texts.js';
 import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
 
 function rgbToHex(r, g, b) {
@@ -228,6 +229,8 @@ export async function applyPngMap(url, legend) {
         spawnEnemy(ex, ey, 'featured', {
           name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze',
           hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
+          vnOnSight: { text: introTexts.gorg },
+          portrait: 'assets/portraits/level01/Gorg/Gorg.mp4',
         });
       }
       else if (s.kind === 'boss') spawnEnemy(ex, ey, 'boss', { name: 'Boss' });
