@@ -57,9 +57,7 @@ export function startCompanionSelector() {
       const inds = runtime.questIndicators || {};
       let found = null;
       for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
-      if (found && (found.new || found.turnIn) && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') {
-        label = `${label} wants to talk to you`;
-      }
+      if (found && found.new && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') label = `${label} wants to talk to you`;
     } catch {}
     return { label, action: 'companion_select', data: i };
   });
@@ -76,8 +74,19 @@ export function startCompanionAction(comp) {
   const torchOn = (runtime._torchBearerRef === comp);
   const torchLabel = torchOn ? 'Stop carrying torch' : 'Carry a torch (hold the light)';
   const torchAction = torchOn ? 'companion_torch_stop' : 'companion_torch_start';
+  // Adjust Talk label when this companion has a new quest available
+  let talkLabel = 'Talk';
+  try {
+    const nm = String(comp?.name || '').toLowerCase();
+    const inds = runtime.questIndicators || {};
+    let found = null;
+    for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
+    if (found && found.new && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') {
+      talkLabel = `Find out what ${comp.name || 'she'} wants`;
+    }
+  } catch {}
   startPrompt(comp, `What do you want to do with ${comp.name || 'this companion'}?`, [
-    { label: 'Talk', action: 'companion_talk', data: comp },
+    { label: talkLabel, action: 'companion_talk', data: comp },
     { label: torchLabel, action: torchAction, data: comp },
     { label: 'Dismiss', action: 'dismiss_companion', data: comp },
     { label: 'Back', action: 'companion_back' },
