@@ -868,6 +868,16 @@ export function step(dt) {
             const arrows = (player?.inventory?.items || []).filter(x => x && x.stackable && x.id === 'arrow_basic').reduce((s,x)=>s+(x.qty||0),0);
             showBanner(arrows > 0 ? `Equipped ${pick.name}` : `Equipped ${pick.name} — No arrows`);
           } catch { showBanner(`Equipped ${pick.name}`); }
+          // Tutorial: Level 1 bow equip → recommend asking Canopy to carry torch (persist until Canopy bears torch)
+          try {
+            if ((runtime.currentLevel || 1) === 1) {
+              if (!runtime.questFlags) runtime.questFlags = {};
+              if (!runtime.questFlags['tutorial_canopy_torch_done']) {
+                runtime.questFlags['tutorial_canopy_torch'] = true;
+                import('../engine/ui.js').then(u => u.showPersistentBanner && u.showPersistentBanner('Ask Canopy to hold the torch, press C for companions')).catch(()=>{});
+              }
+            }
+          } catch {}
           // Dark prompt for torch bearer
           try {
             const lv = sampleLightAtPx(player.x + player.w/2, player.y + player.h/2);

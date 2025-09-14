@@ -1417,6 +1417,16 @@ function doEquip(actorTag, slot, index, itemId) {
     eq[slot] = it;
     items.splice(idx, 1);
   }
+  // Tutorial: Level 1 bow equip → recommend asking Canopy to carry torch (persist until Canopy bears torch)
+  try {
+    if (slot === 'rightHand' && it && it.ranged && (runtime.currentLevel || 1) === 1) {
+      if (!runtime.questFlags) runtime.questFlags = {};
+      if (!runtime.questFlags['tutorial_canopy_torch_done']) {
+        runtime.questFlags['tutorial_canopy_torch'] = true;
+        import('./ui.js').then(u => u.showPersistentBanner && u.showPersistentBanner('Ask Canopy to hold the torch, press C for companions')).catch(()=>{});
+      }
+    }
+  } catch {}
   // Remember loadout preferences (last-used)
   try {
     if (!runtime._loadouts) runtime._loadouts = { melee: {}, ranged: {} };

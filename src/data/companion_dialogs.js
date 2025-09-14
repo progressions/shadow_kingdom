@@ -186,7 +186,7 @@ export const companionDialogs = {
         choices: [ { label: 'We did.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'canopy_streets4_reward' }, next: 'streets_l4_done' } ],
       },
       streets_l4_done: {
-        text: 'Canopy: My Lord, I\'ll keep stitching what they break.',
+        text: "Canopy: My Lord, I'll keep doing what I can to mend this broken place.",
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_streets4_done' }, next: 'root' } ],
       },
 
@@ -1156,6 +1156,11 @@ export const companionDialogs = {
       snake_den_done: {
         text: 'Snek: I stay nearer now.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'snake_den_done' }, next: 'root' } ],
+      },
+    },
+  },
+};
+ 'root' } ],
       },
     },
   },

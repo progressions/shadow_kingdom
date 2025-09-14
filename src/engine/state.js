@@ -747,6 +747,18 @@ export function setTorchBearer(companion) {
         runtime._torchLightNode = node;
       } catch {}
     }).catch(()=>{});
+    // Tutorial: if Canopy is now torch bearer, clear the banner and mark done
+    try {
+      const nm = String(companion?.name || '').toLowerCase();
+      if (nm.includes('canopy')) {
+        if (!runtime.questFlags) runtime.questFlags = {};
+        if (runtime.questFlags['tutorial_canopy_torch']) {
+          runtime.questFlags['tutorial_canopy_torch'] = false;
+          runtime.questFlags['tutorial_canopy_torch_done'] = true;
+          import('./ui.js').then(u => u.hideBanner && u.hideBanner()).catch(()=>{});
+        }
+      }
+    } catch {}
     return true;
   } catch { return false; }
 }

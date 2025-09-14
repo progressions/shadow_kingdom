@@ -373,6 +373,12 @@ export function applyPendingRestore() {
     runtime.questFlags = {}; (data.questFlags||[]).forEach(k => runtime.questFlags[k]=true);
     runtime.questCounters = {}; Object.assign(runtime.questCounters, data.questCounters||{});
     runtime.questMeta = {}; Object.assign(runtime.questMeta, data.questMeta||{});
+    // Re-show persistent tutorial banner if applicable
+    try {
+      if (runtime.questFlags['tutorial_canopy_torch'] === true) {
+        import('./ui.js').then(u => u.showPersistentBanner && u.showPersistentBanner('Ask Canopy to hold the torch, press C for companions')).catch(()=>{});
+      }
+    } catch {}
     // Loadouts (melee/ranged)
     try {
       const LO = data.loadouts || null;
