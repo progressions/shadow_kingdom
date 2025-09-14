@@ -224,6 +224,10 @@ export function initInput() {
       e.preventDefault(); saveGame();
     } else if (e.key === 'F7') {
       e.preventDefault(); loadGame();
+    } else if (e.key === 'F8') {
+      // Export a full PNG of the current level map
+      e.preventDefault();
+      try { if (typeof window !== 'undefined' && typeof window.exportMapPng === 'function') { window.exportMapPng(); } } catch {}
     } else if (e.shiftKey && e.key.toLowerCase() === 'd') {
       // Shift+D — schedule next level (cur+1). Main loop loads if implemented.
       const cur = runtime.currentLevel || 1;

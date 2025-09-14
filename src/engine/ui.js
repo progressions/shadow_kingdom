@@ -1,4 +1,4 @@
-import { runtime, player, camera, world, xpToNext, obstacles as OBSTACLES } from './state.js';
+import { runtime, player, camera, world, xpToNext, obstacles as OBSTACLES, npcs as NPCS, enemies as ENEMIES } from './state.js';
 import { getEquipStats } from './utils.js';
 import { tryStartMusic, stopMusic, initAudioUnlock, playTitleFanfare } from './audio.js';
 import { playSfx } from './audio.js';
@@ -402,7 +402,28 @@ export function setOverlayDialog(text, choices) {
       choices.forEach((c, i) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = `${i+1}) ${c.label}`;
+        let label = String(c.label || '');
+        // Add small badges for quest Start/Turn-In entries (VN dialog only)
+        try {
+          const show = (runtime?.uiSettings?.questIndicators || 'normal') !== 'off';
+          if (show && runtime.activeDialog && runtime.activeDialog.tree) {
+            const tree = runtime.activeDialog.tree;
+            // Turn-In detection by label
+            const low = label.toLowerCase();
+            let suffix = '';
+            if (low.startsWith('turn in')) {
+              suffix = ' (Turn-In)';
+            } else if (c && c.action === 'start_quest') {
+              suffix = ' (New)';
+            } else if (c && c.next && tree.nodes && tree.nodes[c.next]) {
+              const node = tree.nodes[c.next];
+              const nc = Array.isArray(node.choices) ? node.choices : [];
+              if (nc.some(n => n && n.action === 'start_quest')) suffix = ' (New)';
+            }
+            if (suffix) label = `${label}${suffix}`;
+          }
+        } catch {}
+        btn.textContent = `${i+1}) ${label}`;
         btn.dataset.index = String(i);
         if (c && typeof c.hint === 'string' && c.hint.trim().length) {
           btn.title = c.hint;
@@ -452,11 +473,28 @@ export function updatePartyUI(companions) {
   companions.forEach((c, idx) => {
     const chip = document.createElement('div');
     chip.className = 'party-chip';
-    // Base name
+    // Base name (party UI stays unchanged)
     const nameSpan = document.createElement('span');
     const lv = Math.max(1, (c.level||1));
     nameSpan.textContent = `Lv ${lv} · ${c.name || `Companion ${idx+1}`}`;
     chip.appendChild(nameSpan);
+    // Quest indicator dot (subtle)
+    try {
+      const nm = String(c?.name || '').toLowerCase();
+      const inds = runtime.questIndicators || {};
+      let found = null;
+      for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
+      if (found && (found.new || found.turnIn) && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') {
+        const dot = document.createElement('span');
+        dot.textContent = '•';
+        dot.style.marginLeft = '6px';
+        dot.style.fontSize = '14px';
+        dot.style.opacity = '0.9';
+        dot.title = found.turnIn ? 'Quest turn-in available' : 'New quest available';
+        dot.style.color = found.turnIn ? '#62e563' : '#5ec3ff';
+        chip.appendChild(dot);
+      }
+    } catch {}
     // Affinity hearts (0–3 hearts, 0.5 steps). 3 hearts ≈ affinity 10; 1.5 hearts ≈ affinity 5
     const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
     const heartsVal = Math.max(0, Math.min(3, Math.round((aff / (10/3)) * 2) / 2));
@@ -706,6 +744,13 @@ export function initMinimap() {
       case 'water':
         drawRect(tx, ty, tw, th, '#2b5c93');
         break;
+      case 'wood':
+        // Wood bridge planks
+        drawRect(tx, ty, tw, th, '#8a6a3a');
+        break;
+      case 'rock':
+        drawRect(tx, ty, tw, th, '#777');
+        break;
       case 'gate':
         drawRect(tx, ty, tw, th, '#caa24a');
         break;
@@ -765,6 +810,29 @@ export function updateMinimap() {
   ctx.clearRect(0, 0, _miniW, _miniH);
   ctx.drawImage(_miniBase, 0, 0);
   ctx.drawImage(_miniFog, 0, 0);
+  // Quest markers on minimap (NPCs/enemies with questId)
+  try {
+    const colorFor = (qid) => {
+      switch (qid) {
+        case 'yorna_knot': return '#ff8a3d';
+        case 'canopy_triage': return '#8effc1';
+        case 'twil_trace': return '#e0b3ff';
+        case 'twil_fuse': return '#ffd166';
+        case 'hola_find_yorna': return '#6fb7ff';
+        default: return '#9ae6ff';
+      }
+    };
+    const drawEnt = (ent) => {
+      if (!ent || !ent.questId) return;
+      const tx = Math.max(0, Math.min(_miniW-1, Math.floor(ent.x / TILE)));
+      const ty = Math.max(0, Math.min(_miniH-1, Math.floor(ent.y / TILE)));
+      ctx.fillStyle = colorFor(ent.questId);
+      ctx.fillRect(tx, ty, 1, 1);
+    };
+    // Draw markers for quest-tagged NPCs and live enemies
+    for (const n of (NPCS || [])) drawEnt(n);
+    for (const e of (ENEMIES || [])) if (e && e.hp > 0) drawEnt(e);
+  } catch {}
   // Tutorial objective: highlight Level 1 sword chest on minimap
   try {
     const f = runtime.questFlags || {};
@@ -917,6 +985,8 @@ export function updateQuestHint() {
     } else if (f['twil_trace_started'] && !f['twil_trace_cleared']) {
       const left = c['twil_trace_remaining'] ?? 3;
       msg = `Quest — Trace the Footprints: ${left} left`;
+    } else if (f['hola_find_yorna_started'] && !f['hola_find_yorna_cleared']) {
+      msg = 'Quest — Find Yorna: Talk to her';
     } else if (f['yorna_ring_started'] && !f['yorna_ring_cleared']) {
       const left = c['yorna_ring_remaining'] ?? 3;
       msg = `Quest — Shatter the Ring: ${left} left`;

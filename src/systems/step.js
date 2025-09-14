@@ -4,10 +4,12 @@ import { rebuildFlowField, sampleFlowDirAt } from '../engine/pathfinding.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
+import { recomputeQuestIndicators, tickQuestIndicatorQueue } from '../engine/quest_indicators.js';
 import { autoTurnInIfCleared } from '../engine/quests.js';
 import { clearFadeOverlay } from '../engine/ui.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
+import { queryObstaclesAABB, queryObstaclesSegment } from '../engine/spatial_index.js';
 import { sampleLightAtPx } from '../engine/lighting.js';
 import { handleAttacks, startRangedAttack as startRangedAttackFn } from './combat.js';
 import { startGameOver, startPrompt } from '../engine/dialog.js';
@@ -24,11 +26,13 @@ function moveWithCollision(ent, dx, dy, solids = []) {
   if (dx !== 0) {
     let newX = ent.x + dx;
     const rect = { x: newX, y: ent.y, w: ent.w, h: ent.h };
-    for (const o of obstacles) {
+    // Nearby blocking obstacles only
+    const candX = queryObstaclesAABB(newX, ent.y, ent.w, ent.h);
+    for (const o of candX) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
-      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -50,11 +54,12 @@ function moveWithCollision(ent, dx, dy, solids = []) {
   if (dy !== 0) {
     let newY = ent.y + dy;
     const rect = { x: ent.x, y: newY, w: ent.w, h: ent.h };
-    for (const o of obstacles) {
+    const candY = queryObstaclesAABB(ent.x, newY, ent.w, ent.h);
+    for (const o of candY) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
-      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+      if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
@@ -181,6 +186,12 @@ export function step(dt) {
   if ((runtime.shakeTimer || 0) > 0) runtime.shakeTimer = Math.max(0, (runtime.shakeTimer || 0) - dt);
   // Decay VN intro cooldown so flagged actors don't retrigger back-to-back
   if ((runtime.introCooldown || 0) > 0) runtime.introCooldown = Math.max(0, (runtime.introCooldown || 0) - dt);
+  // Quest indicator cadence + reveal queue
+  try {
+    runtime.questIndTimer = (runtime.questIndTimer || 0) - dt;
+    if (runtime.questIndTimer <= 0) { recomputeQuestIndicators(); runtime.questIndTimer = 1.6; }
+    tickQuestIndicatorQueue(dt);
+  } catch {}
   // Track recent low-HP window (3s) for certain pair ticks
   try {
     const below = player.hp < (player.maxHp || 10) * 0.5;
@@ -1045,7 +1056,9 @@ export function step(dt) {
     const sinceLoadSec = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
     try {
       const er = { x: e.x, y: e.y, w: e.w, h: e.h };
-      for (const o of obstacles) {
+      const area = 140; // px radius window
+      const cand = queryObstaclesAABB(e.x - area, e.y - area, area*2, area*2);
+      for (const o of cand) {
         if (!o) continue;
         if (o.type !== 'mud' && o.type !== 'fire' && o.type !== 'lava') continue;
         // Skip far hazards for a tiny speed win
@@ -1116,13 +1129,14 @@ export function step(dt) {
           const ex2 = e.x + e.w/2, ey2 = e.y + e.h/2;
           const px2 = player.x + player.w/2, py2 = player.y + player.h/2;
           let losBlockedWF = false;
-          for (const o of obstacles) {
-            if (!o) continue;
-            if (o.type === 'gate' && o.locked === false) continue;
-            // consider strong blockers; chest/mud/fire/lava are non-blocking for movement
-            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
-            if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losBlockedWF = true; break; }
-          }
+        const losCand = queryObstaclesSegment(ex2, ey2, px2, py2, 8);
+        for (const o of losCand) {
+          if (!o) continue;
+          if (o.type === 'gate' && o.locked === false) continue;
+          // consider strong blockers; chest/mud/fire/lava are non-blocking for movement
+          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
+          if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losBlockedWF = true; break; }
+        }
           const flowDirNull = (() => { try { const d = sampleFlowDirAt(ex, ey); return !d || (d.x === 0 && d.y === 0); } catch { return true; } })();
           if (flowDirNull && losBlockedWF && ((e.stuckTime || 0) > 0.3)) {
             e._wallTimer = Math.max(0, (e._wallTimer || 0) - dt);
@@ -1366,29 +1380,36 @@ export function step(dt) {
         for (const o of obstacles) {
           if (!o) continue;
           if (o.type === 'gate' && o.locked === false) continue;
-          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava') continue;
+          // Ignore non-sight-blockers: chests, hazards, bridges, water
+          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
           if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { blocked = true; break; }
         }
         losClearToPlayer = !blocked;
       } catch {}
       if (baseDir.x !== 0 || baseDir.y !== 0) {
-        for (const a of offsets) {
-          const ca = Math.cos(a), sa = Math.sin(a);
-          const vx = baseDir.x * ca - baseDir.y * sa;
-          const vy = baseDir.x * sa + baseDir.y * ca;
-          // Alignment penalty (prefer towards player)
-          const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
-          const alignPenalty = (1 - dot) * (losClearToPlayer ? 0.3 : 0.6);
-          // Hazard exposure along a short ray with 3 samples
-          let haz = 0;
-          let obs = 0;
-          const samples = [0.33, 0.66, 1.0];
-          const stepLen = 26; // px
+        if (roleKind === 'mook') {
+          // Mook‑lite steering: trust base heading (direct→flow blend) without expensive scans
+          best = { x: baseDir.x, y: baseDir.y };
+          bestScore = 0;
+        } else {
+          for (const a of offsets) {
+            const ca = Math.cos(a), sa = Math.sin(a);
+            const vx = baseDir.x * ca - baseDir.y * sa;
+            const vy = baseDir.x * sa + baseDir.y * ca;
+            // Alignment penalty (prefer towards player)
+            const dot = Math.max(-1, Math.min(1, vx * baseDir.x + vy * baseDir.y));
+            const alignPenalty = (1 - dot) * (losClearToPlayer ? 0.3 : 0.6);
+            // Hazard exposure along a short ray with 3 samples
+            let haz = 0;
+            let obs = 0;
+            const samples = [0.33, 0.66, 1.0];
+            const stepLen = 26; // px
           for (const t of samples) {
             const cx = px + vx * stepLen * t;
             const cy = py + vy * stepLen * t;
             const probe = { x: cx - e.w/2, y: cy - e.h/2, w: e.w, h: e.h };
-            for (const o of obstacles) {
+            const cand = queryObstaclesAABB(probe.x - 180, probe.y - 180, probe.w + 360, probe.h + 360);
+            for (const o of cand) {
               if (!o) continue;
               // Hazards (non-blocking)
               if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava') {
@@ -1404,8 +1425,9 @@ export function step(dt) {
               }
             }
           }
-          const score = alignPenalty + (haz * avoidBias * (steerT.hazardWeightMul || 1)) + (obs * (steerT.obstaclePenaltyMul || 1));
-          if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
+            const score = alignPenalty + (haz * avoidBias * (steerT.hazardWeightMul || 1)) + (obs * (steerT.obstaclePenaltyMul || 1));
+            if (score < bestScore) { bestScore = score; best = { x: vx, y: vy }; }
+          }
         }
       } else {
         // Idle this frame (no movement direction)
@@ -1479,7 +1501,8 @@ export function step(dt) {
           const samples = [ [px2, py2], [player.x, player.y], [player.x + player.w, player.y], [player.x, player.y + player.h], [player.x + player.w, player.y + player.h] ];
           for (const [sx, sy] of samples) {
             let blocked = false;
-            for (const o of obstacles) {
+            const losC = queryObstaclesAABB(Math.min(ex, sx), Math.min(ey, sy), Math.abs(sx-ex), Math.abs(sy-ey));
+            for (const o of losC) {
               if (!o || !o.blocksAttacks) continue;
               if (o.type === 'gate' && o.locked === false) continue;
               if (segmentIntersectsRect(ex, ey, sx, sy, o)) { blocked = true; break; }
@@ -1719,11 +1742,12 @@ export function step(dt) {
       const e = enemies[i];
       // Unlink from spawner live set if applicable
       try { if (e.spawnerId) { const sp = findSpawnerById(e.spawnerId); if (sp && sp.currentlyAliveIds) sp.currentlyAliveIds.delete(e.id); } } catch {}
-      // Post-load grace: avoid immediate despawn right after load (so you can see enemies persist)
+      // Post-load grace: avoid immediate despawn right after load.
+      // Do not temporarily "revive" defeated enemies (keeps them invisible and inert).
       try {
         const now = (performance && performance.now) ? performance.now() : Date.now();
         const since = Math.max(0, ((now - (runtime._loadedAt || 0)) / 1000));
-        if (since < 1.0) { e.hp = 0.1; continue; }
+        if (since < 1.0) { continue; }
       } catch {}
       // Boss behavior: default bosses have 2 phases; Vorthak (L5) has 3
       const isBoss = ((e.kind || '').toLowerCase() === 'boss');
@@ -2634,6 +2658,7 @@ function handleCompanionTriggers(dt) {
   // Cooldowns tick
   cds.yornaEcho = Math.max(0, (cds.yornaEcho || 0) - dt);
   cds.canopyShield = Math.max(0, (cds.canopyShield || 0) - dt);
+  cds.canopyDashHeal = Math.max(0, (cds.canopyDashHeal || 0) - dt);
   cds.holaGust = Math.max(0, (cds.holaGust || 0) - dt);
   cds.oyinRally = Math.max(0, (cds.oyinRally || 0) - dt);
   cds.twilDust = Math.max(0, (cds.twilDust || 0) - dt);
@@ -2809,6 +2834,18 @@ function handleCompanionTriggers(dt) {
       runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, 2.0);
       cds.holaSlipstream = 12;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Slipstream.', { color: '#9ae6ff', life: 0.7 });
+    }
+  }
+
+  // Canopy Affinity 5 — Dash Mend: on dash start, heal a small amount (cooldown)
+  if (hasAffinity('canopy', 5)) {
+    const justDashed = (runtime._dashJustStartedAtSec || 0) > 0 && Math.abs((runtime._timeSec || 0) - runtime._dashJustStartedAtSec) < 0.05;
+    if ((cds.canopyDashHeal || 0) <= 0 && justDashed) {
+      const heal = 1;
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      cds.canopyDashHeal = 6; // seconds
+      spawnFloatText(player.x + player.w/2, player.y - 12, '+1', { color: '#62e563', life: 0.7 });
+      try { playSfx('potion'); } catch {}
     }
   }
 

@@ -43,6 +43,12 @@ VN-on-sight behavior
 - First‑sight VN intros are narrative only and never recruit; they show a single “Continue”.
 - This includes the opening Canopy scene and any other vnOnSight sequences.
 
+Level 2 Feud — Join Button Gating
+- During the Level 2 feud (Canopy ↔ Yorna), recruitment nodes should be gated by party composition until a later truce:
+  - Canopy “Join me” requires `partyMissing: 'yorna'` unless `canopy_yorna_respect` is set.
+  - Yorna “Join me” requires `partyMissing: 'canopy'` unless `canopy_yorna_respect` is set.
+- Triads still present their three choices; the gating applies to the Join action path, not the intro VN.
+
 Ordering
 - Denial is always last.
 - The position of Match/Clash is hard‑coded per companion (no runtime shuffling).
@@ -62,7 +68,7 @@ Implementation notes
 
 - Yorna (Exacting) — +0.2 / −0.15
   - Order: Clash, Match, Defer
-  - Match: “We take the key, drop Vast—fall in.”
+  - Match: “Let’s get the key and kill Vast. Keep up.”
   - Clash: “Hang back and patch me up, alright?”
   - Defer: “Not now, Yorna.”
 
@@ -142,6 +148,10 @@ Implementation notes
   - cowsill_intro_team
   - fana_intro_reassure
   - snake_intro_encourage (new, reserved)
+
+Feud/Truce Flags (reference)
+- `canopy_yorna_feud_active`, `canopy_yorna_choice`, `canopy_yorna_feud_resolved` — Level 2 event flow.
+- `canopy_yorna_respect` — truce unlocks riding together; also lifts soft affinity cap applied while together without respect.
 
 ## Data Model (proposed; no code in this doc)
 - `temperamentByCompanion`: `{ canopy: 'nurturing', yorna: 'exacting', ... }`

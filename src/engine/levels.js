@@ -7,11 +7,12 @@ import { makeSpriteSheet, sheetForName, makeSnakeSpriteSheet } from './sprites.j
 import { setMusicLocation } from './audio.js';
 import { spawnEnemy, spawnNpc, addItemToInventory, spawnPickup } from './state.js';
 import { TILE } from './constants.js';
-import { setNpcDialog } from './dialog.js';
+import { setNpcDialog, startDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
 import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
 import { rectsIntersect } from './utils.js';
+import { rebuildObstacleIndex } from './spatial_index.js';
 
 // Level 1: Greenwood — initial world (moved from main.js to support load route)
 export function loadLevel1() {
@@ -425,6 +426,8 @@ export function loadLevel1() {
   const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', dialogId: 'yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
   const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', dialogId: 'hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
   setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
+  // Recompute quest indicators after Level 1 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   // Snake companion (Level 1): small slow aura + small bite (ATK) — gated by Snake Mode
   if (runtime.snakeMode) {
@@ -454,7 +457,8 @@ export function loadLevel1() {
       }
     } catch {}
   })();
-
+  // Build spatial index for obstacles (accelerates AI/collision)
+  try { rebuildObstacleIndex(64); } catch {}
   return terrain;
 }
 
@@ -622,6 +626,61 @@ export function loadLevel2() {
   const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', dialogId: 'twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/level02/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
   // Attach basic recruit dialogs
   import('../data/dialogs.js').then(mod => { setNpcDialog(oyin, mod.oyinDialog); setNpcDialog(twil, mod.twilDialog); }).catch(()=>{});
+  // Recompute quest indicators after Level 2 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
+
+  // Level 2 Party Feud: Canopy ↔ Yorna — force a strategic choice if both are present
+  (function maybeStartCanopyYornaFeud() {
+    try {
+      const flags = (runtime.questFlags ||= {});
+      if (flags['canopy_yorna_feud_resolved']) return; // already decided
+      // Find party companions by name
+      const findBy = (key) => companions.find(c => (c?.name || '').toLowerCase().includes(key));
+      const canopyComp = findBy('canopy');
+      const yornaComp = findBy('yorna');
+      if (!canopyComp || !yornaComp) return;
+      // Mark feud active (informational)
+      flags['canopy_yorna_feud_active'] = true;
+      // Build a small VN tree with two choices that dismiss one companion, then confirm
+      const vnActor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
+      const tree = {
+        start: 'root',
+        nodes: {
+          root: {
+            text: (
+              "The tension between Yorna and Canopy has been building for miles. " +
+              "Every decision has become a quiet struggle. Yorna pushes the pace, her frustration clear in her clipped movements. " +
+              "Canopy urges caution, her disapproval shown in steady, deliberate slowness.\n\n" +
+              "Now, they have stopped. The argument is no longer quiet.\n\n" +
+              "Yorna: Chief, she is too slow. If we wait, we will be surrounded. We must attack now. You have to choose.\n" +
+              "Canopy: My Lord, to attack without knowing what is there is a mistake. We will lose people. I cannot support a plan that is so careless."
+            ),
+            choices: [
+              { label: 'Keep Canopy (Healer · Regeneration · Shield)', action: 'feud_keep_canopy' },
+              { label: 'Keep Yorna (Frontliner · ATK · Reach)', action: 'feud_keep_yorna' },
+            ],
+          },
+          kept_canopy: {
+            text: "Yorna: Fine. I’ll step back. Call when you want to move faster.\nCanopy: My Lord, I’ll keep you standing. We go careful; we don’t lose people.",
+            choices: [ { label: 'Continue', action: 'set_flag', data: { key: 'canopy_yorna_feud_resolved' }, next: 'end' } ],
+          },
+          kept_yorna: {
+            text: "Canopy: I won’t walk behind that pace. I’ll step back.\nYorna: Good. We move now. Stay tight—I’ll make the openings.",
+            choices: [ { label: 'Continue', action: 'set_flag', data: { key: 'canopy_yorna_feud_resolved' }, next: 'end' } ],
+          },
+          end: {
+            text: '',
+            choices: [ { label: 'Continue', action: 'vn_continue' } ],
+          },
+        },
+      };
+      // Lock overlay so the player must choose; exitChat will unlock
+      runtime.lockOverlay = true;
+      // Start the VN using a synthetic actor object (not added to world)
+      const actor = { name: vnActor.name, portraitSrc: vnActor.portraitSrc, dialog: tree };
+      startDialog(actor);
+    } catch {}
+  })();
 
   return terrain;
 }
@@ -649,7 +708,7 @@ export function loadLevel3() {
     { x: player.x - 200, y: player.y + 100, w: TILE * 12, h: TILE * 7 },
     { x: player.x - 260, y: player.y - 140, w: TILE * 8, h: TILE * 5 },
   ];
-  for (const p of pools) obstacles.push({ x: Math.max(0, Math.min(world.w - TILE, p.x)), y: Math.max(0, Math.min(world.h - TILE, p.y)), w: p.w, h: p.h, type: 'water', blocksAttacks: true });
+  for (const p of pools) obstacles.push({ x: Math.max(0, Math.min(world.w - TILE, p.x)), y: Math.max(0, Math.min(world.h - TILE, p.y)), w: p.w, h: p.h, type: 'water', blocksAttacks: false });
 
   // Spawns
   for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 }); }
@@ -757,6 +816,8 @@ export function loadLevel3() {
   })();
   const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', dialogId: 'nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
   import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
+  // Recompute quest indicators after Level 3 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   return terrain;
 }
@@ -925,6 +986,8 @@ export function loadLevel4() {
     vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', dialogId: 'varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
   })();
   import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
+  // Recompute quest indicators after Level 4 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   return terrain;
 }
@@ -1131,6 +1194,9 @@ export function loadLevel5() {
     if (mod.cowsillDialog) setNpcDialog(cowsill, mod.cowsillDialog); 
   }).catch(()=>{});
 
+  // Recompute quest indicators after Level 5 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
+
   return terrain;
 }
 
@@ -1204,6 +1270,8 @@ export function loadLevel6() {
     return spawnNpc(x, y, dir || 'down', Object.assign({ name, sheet, portrait: opts.portrait || null }, opts));
   };
   const inParty = (name) => companions.some(c => (c.name || '').toLowerCase().includes(String(name||'').toLowerCase()));
+  // Recompute quest indicators when entering the hub to refresh tags
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
   // Convenient anchors around the main hall
   const midY = ry + rh/2 - 8;
   const topY = ry + TILE * 5;

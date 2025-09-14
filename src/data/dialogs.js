@@ -32,7 +32,10 @@ export const canopyDialog = {
       text: "Canopy: My Lord, I'm Canopy. I'm searching these woods for my sister—Ell. Urathar's raiders took her when they burned our village. I keep you standing: slow healing, a little less damage, and a short shield if your health drops. If you lead, I'll keep you standing. Shall I come?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_canopy' }, next: 'post_l5_canopy' },
-        { label: 'Yes, join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Yes, join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Yes, join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Yes, join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
         { label: 'You can lean on me, I\'ve got you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_intro_encourage' }, next: 'after_aff' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Share a plan (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
@@ -45,12 +48,21 @@ export const canopyDialog = {
     },
     about: {
       text: "Canopy: My Lord, I keep you standing. I gently heal you over time, give quick touch‑ups, and raise a short shield that blocks a hit when things get rough. Stay near me and hard hits feel softer.",
-      choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' }, { label: 'Later.', action: 'end' } ],
+      choices: [
+        { label: 'Good. Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Good. Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Good. Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'We need to settle this first.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
+        { label: 'Later.', action: 'end' }
+      ],
     },
     after_aff: {
       text: 'Canopy: My Lord, thank you. I\'ll do my best to keep everyone whole.',
       choices: [
-        { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],
@@ -58,10 +70,17 @@ export const canopyDialog = {
     bond: {
       text: 'Canopy: My Lord, a good plan is simple and steady. I\'m with you.',
       choices: [
-        { label: 'Join me.', action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'yorna' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Healer · Regeneration · Safeguard' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refusal_yorna_present' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],
+    },
+    canopy_refusal_yorna_present: {
+      text: 'Canopy: My Lord, not with her in the party. Choose first.',
+      choices: [ { label: 'Back', action: 'end' } ],
     },
   },
 };
@@ -70,10 +89,22 @@ export const yornaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Yorna: Name's Yorna. I hit hard and I don't quit. The castle is to the southeast. The gate's locked—Gorg, the red brute, carries a brass key outside the northeast wall. We take it, open the gate, kill Vast, and keep this valley ours. Want me along?",
+      variants: [
+        {
+          requires: { missingFlag: 'level2_reached' },
+          text: "Yorna: Name's Yorna. I hit hard and I don't quit. The castle is to the southeast. The gate's locked—Gorg, the red brute, carries a brass key outside the northeast wall. We take it, open the gate, kill Vast, and keep this valley ours. Want me along?",
+        },
+        {
+          requires: { hasFlag: 'level2_reached' },
+          text: "Yorna: Let's press forward and take the fight to Urathar. I hit hard and extend your reach. Stay close and fights get easier.",
+        },
+      ],
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_yorna' }, next: 'post_l5_yorna' },
-        { label: 'Yes, join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Yes, join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Yes, join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Yes, join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'What can you do for us?', next: 'skills' },
         { label: 'You hit hard; I\'ll stay with you.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'yorna_intro_encourage' }, next: 'after_aff' },
         { label: 'Trade tactics (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
@@ -87,14 +118,20 @@ export const yornaDialog = {
     skills: {
       text: "Yorna: I take the front and keep trouble off you. I hit hard and extend your reach so you can land hits from a bit farther. Stay close and fights get easier.",
       choices: [
-        { label: 'Sounds great — join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Sounds great — join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Sounds great — join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Sounds great — join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
     after_aff: {
       text: 'Yorna: Chief, that\'s the way—clear space and we\'ll bulldoze through.',
       choices: [
-        { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'What can you do for us?', next: 'skills' },
         { label: 'Later.', action: 'end' }
       ],
@@ -102,10 +139,17 @@ export const yornaDialog = {
     bond: {
       text: 'Yorna: Chief, I like how you think. I\'ll match your pace.',
       choices: [
-        { label: 'Join me.', action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Join me.', requires: { hasFlag: 'canopy_yorna_respect' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
+        { label: 'Not with her here.', requires: { hasFlag: 'level2_reached', partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refusal_canopy_present' },
         { label: 'What can you do for us?', next: 'skills' },
         { label: 'Later.', action: 'end' }
       ],
+    },
+    yorna_refusal_canopy_present: {
+      text: 'Yorna: No. Not while she’s on your line. Choose first.',
+      choices: [ { label: 'Back', action: 'end' } ],
     },
   },
 };
@@ -156,7 +200,7 @@ export const holaDialog = {
       ],
     },
     hint_yorna: {
-      text: 'Hola: I saw a tough fighter in the woods to the northwest, maybe she could help us.',
+      text: 'Hola: My Lord… I think I saw a red-headed fighter to the northwest. If you want, we could… go talk to her.',
       choices: [
         { label: 'Let\'s find her.', action: 'start_quest', data: { id: 'hola_find_yorna' }, next: 'intro' },
         { label: 'Later.', action: 'end' },
@@ -172,7 +216,7 @@ export const oyinDialog = {
       text: "Oyin: My Lord, Oyin here. I keep count and keep us steady. I can rally when it hurts—heal a little and lend strength for a few breaths—and I help your timing so the sharp hits land. If you want me… I can come along.",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_oyin' }, next: 'post_l5_oyin' },
-        { label: 'Yes, join me.', action: 'join_party', hint: 'Rally · Keen Timing · +Range' },
+        { label: 'Yes, join me.', action: 'join_party', hint: 'Rally · Slow · DR' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'You’re doing fine; breathe and stay with me.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'oyin_intro_encourage' }, next: 'after_aff' },
         { label: 'Not right now.', action: 'end' },
@@ -183,8 +227,16 @@ export const oyinDialog = {
       choices: [ { label: 'On we go.', action: 'set_flag', data: { key: 'post_l5_oyin' }, next: 'intro' } ],
     },
     about: {
-      text: "Oyin: My Lord, I help you land cleaner hits. I nudge your timing for a few more crits, give you a touch more reach, and when you’re hurting I rally—heal a little and lend +1 ATK for a few breaths.",
-      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Rally · Keen Timing · +Range' }, { label: 'Later.', action: 'end' } ],
+      variants: [
+        {
+          requires: { level: 2, missingFlag: 'level3_reached' },
+          text: "Oyin: My Lord, Nethra has long reach. I slow her and give you some protection so you can close safely. I also help your timing for cleaner hits, and when it hurts I rally—small heal and a short +1 ATK.",
+        },
+        {
+          text: "Oyin: My Lord, I help you land cleaner hits. I slow enemies near you, give a little extra protection, and when you’re hurting I rally—heal a little and lend +1 ATK for a few breaths.",
+        },
+      ],
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Rally · Slow · DR' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
       text: 'Oyin: My Lord, thanks… I can try a little longer if you lead.',
@@ -200,7 +252,7 @@ export const twilDialog = {
       text: "Twil: Master, I'm Twil. I scout ahead, read the ground, and call the gap. I'll mark weak points—take them when I say and we move faster. You want me along or what?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_twil' }, next: 'post_l5_twil' },
-        { label: 'Yes, join me.', action: 'join_party', hint: 'Scout · Slow Aura · Weak Points' },
+        { label: 'Yes, join me.', action: 'join_party', hint: '+Range · Precision · Crit' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Your read is sharp; call the line and I’ll follow.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'twil_intro_encourage' }, next: 'after_aff' },
         { label: 'Not now.', action: 'end' },
@@ -211,13 +263,21 @@ export const twilDialog = {
       choices: [ { label: 'Cut them.', action: 'set_flag', data: { key: 'post_l5_twil' }, next: 'intro' } ],
     },
     about: {
-      text: "Twil: Master, I help you hit smarter. I point out weak spots so your big hits land more, make nearby enemies hesitate, and shave a bit off the hits you take.",
-      choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Scout · Slow Aura · Weak Points' }, { label: 'Later.', action: 'end' } ],
+      variants: [
+        {
+          requires: { level: 2, missingFlag: 'level3_reached' },
+          text: "Twil: Master, if Nethra keeps us at the edge, I add reach. I’ll call the gap and you can hit back. I also mark weak points so your big hits land more.",
+        },
+        {
+          text: "Twil: Master, I help you hit smarter. I mark weak points so your big hits land more, and I give you a bit more reach.",
+        },
+      ],
+      choices: [ { label: 'Good. Join me.', action: 'join_party', hint: 'Precision · +Range · Crit' }, { label: 'Later.', action: 'end' } ],
     },
     after_aff: {
       text: 'Twil: Master, ha—nice. Keep up and I’ll make it easy.',
       choices: [
-        { label: 'Join me.', action: 'join_party', hint: 'Scout · Slow Aura · Weak Points' },
+        { label: 'Join me.', action: 'join_party', hint: '+Range · Precision · Crit' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],

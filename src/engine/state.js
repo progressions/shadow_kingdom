@@ -586,6 +586,11 @@ export const runtime = {
   combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
   // Feature toggles
   snakeMode: false,
+  // Quest indicators (new)
+  questIndicators: {}, // by companion key: { new, turnIn, newIds:Set, turnInIds:Set }
+  questNotify: {},     // by companion key: { shown: { [questId]:true }, cooldownUntil:number, queue:Array<{id,t}> }
+  uiSettings: { questIndicators: 'normal' },
+  questIndTimer: 0,
   // Scene helpers
   _suppressInputTimer: 0, // seconds to ignore input (e.g., immediately after death)
   _deathDelay: 0,         // delay before accepting Game Over key
@@ -613,7 +618,7 @@ export const runtime = {
   _dashDurationDefault: 0.14,
   _dashSpeedDefault: 340, // px/sec
   _dashDoubleTapWindow: 0.25, // seconds between taps to trigger dash
-  _dashCooldownDefault: 1.10, // seconds after a dash before another can start (longer base)
+  _dashCooldownDefault: 2.20, // seconds after a dash before another can start (doubled)
 
   // --- Dash Combo (dash -> attack) ---
   _dashComboReadyUntil: 0,     // timeSec deadline when a dash-attack will count as a combo

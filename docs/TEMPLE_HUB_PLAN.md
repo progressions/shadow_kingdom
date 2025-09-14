@@ -76,6 +76,7 @@ Rules:
 - If a companion is in party, do not spawn their hub NPC (avoid duplicates).
 - Talking to a companion NPC opens companion dialog; “Join” respects party cap 3.
 - When dismissed from party, they are converted back to an NPC near a free tile in the hub.
+- Respect Level 2 feud gating: until `canopy_yorna_respect` is earned, Canopy will not join while Yorna is in party, and vice‑versa.
 
 Data sketch (pseudo):
 

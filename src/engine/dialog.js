@@ -50,7 +50,17 @@ export function startGameOver() {
 
 // Open a menu to choose a companion to interact with
 export function startCompanionSelector() {
-  const list = companions.map((c, i) => ({ label: c.name || `Companion ${i+1}`, action: 'companion_select', data: i }));
+  const list = companions.map((c, i) => {
+    let label = c.name || `Companion ${i+1}`;
+    try {
+      const nm = String(c?.name || '').toLowerCase();
+      const inds = runtime.questIndicators || {};
+      let found = null;
+      for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
+      if (found && found.new && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') label = `${label} wants to talk to you`;
+    } catch {}
+    return { label, action: 'companion_select', data: i };
+  });
   if (list.length === 0) {
     // Non-blocking notice; do not enter chat mode
     showBanner('You have no companions.');
@@ -64,8 +74,19 @@ export function startCompanionAction(comp) {
   const torchOn = (runtime._torchBearerRef === comp);
   const torchLabel = torchOn ? 'Stop carrying torch' : 'Carry a torch (hold the light)';
   const torchAction = torchOn ? 'companion_torch_stop' : 'companion_torch_start';
+  // Adjust Talk label when this companion has a new quest available
+  let talkLabel = 'Talk';
+  try {
+    const nm = String(comp?.name || '').toLowerCase();
+    const inds = runtime.questIndicators || {};
+    let found = null;
+    for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
+    if (found && found.new && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') {
+      talkLabel = `Find out what ${comp.name || 'she'} wants`;
+    }
+  } catch {}
   startPrompt(comp, `What do you want to do with ${comp.name || 'this companion'}?`, [
-    { label: 'Talk', action: 'companion_talk', data: comp },
+    { label: talkLabel, action: 'companion_talk', data: comp },
     { label: torchLabel, action: torchAction, data: comp },
     { label: 'Dismiss', action: 'dismiss_companion', data: comp },
     { label: 'Back', action: 'companion_back' },
@@ -185,7 +206,32 @@ export function renderCurrentNode() {
     if (!ch || !ch.requires) { filtered.push(ch); continue; }
     if (meetsRequirement(ch.requires)) filtered.push(ch);
   }
-  setOverlayDialog(node.text || '', filtered);
+  // Node variants: choose the first variant whose 'requires' pass, falling back to base node
+  let effectiveText = node.text || '';
+  let effectiveChoices = filtered;
+  try {
+    if (Array.isArray(node.variants) && node.variants.length) {
+      let picked = null;
+      for (const v of node.variants) {
+        if (!v || !v.requires) continue;
+        if (meetsRequirement(v.requires)) { picked = v; break; }
+      }
+      if (!picked) {
+        // If a default variant (no requires) is present, use it
+        picked = node.variants.find(v => v && !v.requires) || null;
+      }
+      if (picked) {
+        if (typeof picked.text === 'string') effectiveText = picked.text;
+        if (Array.isArray(picked.choices)) {
+          // Re-filter the picked variant choices by requirements
+          const pv = [];
+          for (const ch of picked.choices) { if (!ch || !ch.requires || meetsRequirement(ch.requires)) pv.push(ch); }
+          effectiveChoices = pv;
+        }
+      }
+    }
+  } catch {}
+  setOverlayDialog(effectiveText, effectiveChoices);
   // Sidebar placeholder removed; VN overlay displays choices
 }
 
@@ -226,6 +272,24 @@ export function selectChoice(index) {
           }
           const npc = runtime.activeNpc;
           if (npc) {
+            // Feud gating: Yorna ↔ Canopy cannot join together until truce
+            try {
+              const nm = String(npc.name || '').toLowerCase();
+              const names = companions.map(c => (c.name || '').toLowerCase());
+              const has = (s) => names.some(x => x.includes(String(s).toLowerCase()));
+              const truce = !!(runtime.questFlags && runtime.questFlags['canopy_yorna_respect']);
+              const afterL2 = !!(runtime.questFlags && runtime.questFlags['level2_reached']);
+              if (!truce && afterL2) {
+                if (nm.includes('yorna') && has('canopy')) {
+                  startPrompt(npc, 'Yorna: No. Not while she’s on your line. Choose first.', [ { label: 'Back', action: 'end' } ]);
+                  return;
+                }
+                if (nm.includes('canopy') && has('yorna')) {
+                  startPrompt(npc, 'Canopy: My Lord, not with her in the party. Choose first.', [ { label: 'Back', action: 'end' } ]);
+                  return;
+                }
+              }
+            } catch {}
             if (companions.length >= 3) {
               const choices = companions.map((c, i) => ({ label: `Replace ${c.name || ('Companion ' + (i+1))}`, action: 'replace_companion', data: i }));
               choices.push({ label: 'I changed my mine, wait here.', action: 'end' });
@@ -491,6 +555,58 @@ export function selectChoice(index) {
     }
     endDialog();
     exitChat(runtime);
+    return;
+  }
+  if (choice.action === 'feud_keep_canopy' || choice.action === 'feud_keep_yorna') {
+    // Resolve Level 2 feud by keeping one and dismissing the other
+    try {
+      const lower = (s) => String(s || '').toLowerCase();
+      const findBy = (key) => companions.find(c => lower(c?.name).includes(key));
+      const canopy = findBy('canopy');
+      const yorna = findBy('yorna');
+      const dismiss = (comp) => {
+        if (!comp) return;
+        // Convert companion back into an NPC near their current position (nudge to nearest free tile)
+        const spot = findNearbyFreeSpot(comp.x, comp.y, comp.w, comp.h);
+        const nx = spot ? spot.x : comp.x;
+        const ny = spot ? spot.y : comp.y;
+        const npc = spawnNpc(nx, ny, comp.dir || 'down', {
+          name: comp.name || 'Companion',
+          sheet: comp.sheet || null,
+          portrait: comp.portraitSrc || null,
+          affinity: (typeof comp.affinity === 'number') ? comp.affinity : undefined,
+        });
+        // Attach appropriate dialog so you can re-recruit them later
+        const key = lower(npc.name);
+        if (key.includes('canopy')) setNpcDialog(npc, canopyDialog);
+        else if (key.includes('yorna')) setNpcDialog(npc, yornaDialog);
+        else if (key.includes('hola')) setNpcDialog(npc, holaDialog);
+        // Remove from party
+        removeCompanion(comp);
+        updatePartyUI(companions);
+        showBanner(`${comp.name || 'Companion'} left your party.`);
+      };
+      if (choice.action === 'feud_keep_canopy') {
+        // Yorna takes it personally: apply a larger negative affinity
+        try { handleAffinityAdd({ target: 'yorna', amount: -1.0 }); } catch {}
+        dismiss(yorna);
+        // Follow-up VN line
+        const actor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
+        // Mark flags
+        try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_yorna_feud_active'] = true; runtime.questFlags['canopy_yorna_feud_resolved'] = true; } catch {}
+        startPrompt(actor, "Yorna: Fine. I’ll step back. Call when you want to move faster.\nCanopy: My Lord, I’ll keep you standing. We go careful; we don’t lose people.", [ { label: 'Continue', action: 'vn_continue' } ]);
+        return;
+      }
+      if (choice.action === 'feud_keep_yorna') {
+        // Canopy is hurt but steadier: smaller negative affinity
+        try { handleAffinityAdd({ target: 'canopy', amount: -0.6 }); } catch {}
+        dismiss(canopy);
+        const actor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
+        try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_yorna_feud_active'] = true; runtime.questFlags['canopy_yorna_feud_resolved'] = true; } catch {}
+        startPrompt(actor, "Canopy: I won’t walk behind that pace. I’ll step back.\nYorna: Good. We move now. Stay tight—I’ll make the openings.", [ { label: 'Continue', action: 'vn_continue' } ]);
+        return;
+      }
+    } catch {}
     return;
   }
   if (choice.action === 'companion_select') {
@@ -763,6 +879,11 @@ function meetsRequirement(req) {
     }
     return true;
   } catch { return true; }
+}
+
+// Public adapter for requirement evaluation (used by quest indicator system)
+export function evalRequirement(req) {
+  return meetsRequirement(req);
 }
 
 function handleAffinityAdd(data) {
@@ -1118,6 +1239,8 @@ function handleStartQuest(data) {
       } catch {}
       try { showBanner('Quest started: Find Yorna — Talk to her'); } catch {}
     }
+    // Refresh quest indicators shortly after starting a quest
+    try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
   } catch {}
 }
 

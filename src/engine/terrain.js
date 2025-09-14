@@ -146,8 +146,59 @@ export function buildObstacles(world, player, enemies, npcs, theme = 'default') 
 
 export function drawObstacles(ctx, obstacles, camera) {
   for (const o of obstacles) {
+    // Frustum culling: skip obstacles fully outside the camera view
+    if (o.x + o.w < camera.x || o.x > camera.x + camera.w || o.y + o.h < camera.y || o.y > camera.y + camera.h) continue;
     const sx = Math.round(o.x - camera.x);
     const sy = Math.round(o.y - camera.y);
+    if (o.type === 'wood') {
+      // Passable wooden planks (bridge). Draw an oriented plank pattern.
+      const base = '#6b4a2a';
+      const mid = '#7a5533';
+      const light = '#9a6b3f';
+      const dark = '#3a2414';
+      // Base fill
+      ctx.fillStyle = mid;
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = dark; ctx.lineWidth = 1;
+      // Choose plank orientation by aspect ratio (boards across the narrow axis)
+      if (o.w >= o.h) {
+        // Horizontal planks (lines across width every 4px)
+        for (let y = sy; y <= sy + o.h; y += 4) {
+          ctx.beginPath();
+          ctx.moveTo(sx, y + 0.5);
+          ctx.lineTo(sx + o.w, y + 0.5);
+          ctx.stroke();
+          // Nail highlights
+          ctx.fillStyle = light;
+          ctx.fillRect(sx + 3, y + 1, 1, 1);
+          ctx.fillRect(sx + o.w - 5, y + 2, 1, 1);
+        }
+        // Edge beams
+        ctx.fillStyle = base;
+        ctx.fillRect(sx, sy, o.w, 2);
+        ctx.fillRect(sx, sy + o.h - 2, o.w, 2);
+      } else {
+        // Vertical planks (lines down height every 4px)
+        for (let x = sx; x <= sx + o.w; x += 4) {
+          ctx.beginPath();
+          ctx.moveTo(x + 0.5, sy);
+          ctx.lineTo(x + 0.5, sy + o.h);
+          ctx.stroke();
+          // Nail highlights
+          ctx.fillStyle = light;
+          ctx.fillRect(x + 1, sy + 3, 1, 1);
+          ctx.fillRect(x + 2, sy + o.h - 5, 1, 1);
+        }
+        // Edge beams
+        ctx.fillStyle = base;
+        ctx.fillRect(sx, sy, 2, o.h);
+        ctx.fillRect(sx + o.w - 2, sy, 2, o.h);
+      }
+      // Outline
+      ctx.strokeStyle = dark; ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      continue;
+    }
     if (o.type === 'tree') {
       ctx.fillStyle = '#245f33'; ctx.fillRect(sx - 1, sy - 6, o.w + 2, 8);
       ctx.fillStyle = '#2f7a42'; ctx.fillRect(sx, sy - 2, o.w, 6);

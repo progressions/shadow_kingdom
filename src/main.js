@@ -3,7 +3,7 @@ import { canvas, ctx, setupChatInputHandlers, setupTitleScreen, showTitleScreen,
 import { world, camera, player, enemies, npcs, obstacles, spawnEnemy, spawnCompanion, spawnNpc, runtime } from './engine/state.js';
 import { TILE } from './engine/constants.js';
 import { makeSpriteSheet } from './engine/sprites.js';
-import { buildTerrainBitmap, buildObstacles } from './engine/terrain.js';
+import { buildTerrainBitmap, buildObstacles, drawObstacles } from './engine/terrain.js';
 import { initInput } from './engine/input.js';
 import { render } from './engine/render.js';
 import { step } from './systems/step.js';
@@ -20,6 +20,46 @@ import { AI_TUNING } from './data/ai_tuning.js';
 let terrain = loadLevel1();
 try { initMinimap(); } catch {}
 try { showLevelTitle(levelNameFor(1)); } catch {}
+// If a PNG map is present for Level 1, apply it asynchronously using the provided color legend.
+// The PNG should be 1 pixel per tile and live at assets/maps/level_01.png.
+(async function tryApplyL1Png(){
+  try {
+    const url = 'assets/maps/level_01.png';
+    const legend = {
+      theme: 'default',
+      colors: {
+        // hex without leading '#'
+        '49aa10': { type: 'grass' },
+        '8a8a00': { type: 'wood' }, // passable floor
+        '797979': { type: 'wall' },
+        'a2a2a2': { type: 'rock' },
+        '386d00': { type: 'tree' },
+        '4161fb': { type: 'water' },
+        // Structures / gates
+        '794100': { type: 'gate' },
+        // Spawns & markers
+        'ebebeb': { type: 'player_spawn' },
+        '61d3e3': { type: 'canopy_spawn' },
+        'c3b2ff': { type: 'hola_spawn' },
+        'a271ff': { type: 'yorna_spawn' },
+        '71f341': { type: 'chest_dagger' },
+        'a2f3a2': { type: 'chest_bow' },
+        'ffbaeb': { type: 'barrel' },
+        '9a2079': { type: 'spawn_mook' },
+        'ff61b2': { type: 'spawn_featured_ranged' },
+        'db4161': { type: 'spawn_guardian' },
+        'b21030': { type: 'spawn_boss' },
+      },
+    };
+    const M = await import('./engine/map_loader.js');
+    const t = await M.applyPngMap(url, legend);
+    if (t) {
+      terrain = t;
+      // Refresh minimap base after terrain/obstacles change
+      try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+    }
+  } catch {}
+})();
 
 // Input and UI
 setupChatInputHandlers(runtime);
@@ -227,6 +267,30 @@ try {
   window.maxAffinityAll = async () => window.setAllAffinity(10);
   window.setUrnVara10 = async () => {
     try { let n=0; for (const c of companions) { const nm=(c.name||'').toLowerCase(); if (nm.includes('urn')||nm.includes('varabella')) { c.affinity = 10; n++; } } updatePartyUI(companions); console.log('[Affinity] Set Urn/Varabella to 10 (matched:',n,')'); return n; } catch(e){ console.warn('setUrnVara10 failed', e); return 0; }
+  };
+
+  // Export full map PNG of current level (terrain + obstacles)
+  window.exportMapPng = () => {
+    try {
+      const w = world.w|0, h = world.h|0;
+      if (!(w > 0 && h > 0)) { console.warn('World size invalid'); return false; }
+      const off = document.createElement('canvas');
+      off.width = w; off.height = h;
+      const g = off.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      // Draw base terrain and all obstacles with a world-sized camera
+      try { g.drawImage(terrain, 0, 0); } catch {}
+      try { drawObstacles(g, obstacles, { x: 0, y: 0, w, h }); } catch {}
+      const url = off.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      const lvl = (runtime.currentLevel || 1);
+      a.download = `level_${lvl}_map.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return true;
+    } catch (e) { console.warn('exportMapPng failed', e); return false; }
   };
 } catch {}
 

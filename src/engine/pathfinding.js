@@ -17,7 +17,7 @@ function buildBlockedAndHazardGrids() {
     if (!o) continue;
     if (o.type === 'gate' && o.locked === false) continue; // opened gates do not block
     // Non-blocking types
-    if (o.type === 'chest') continue;
+    if (o.type === 'chest' || o.type === 'wood') continue;
     const x1 = Math.max(0, Math.floor(o.x / TILE));
     const y1 = Math.max(0, Math.floor(o.y / TILE));
     const x2 = Math.min(w - 1, Math.floor((o.x + o.w - 1) / TILE));
