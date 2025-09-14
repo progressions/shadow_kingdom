@@ -206,7 +206,20 @@ export function renderCurrentNode() {
     if (!ch || !ch.requires) { filtered.push(ch); continue; }
     if (meetsRequirement(ch.requires)) filtered.push(ch);
   }
-  setOverlayDialog(node.text || '', filtered);
+  // Dynamic copy adjustments for certain intros
+  let effectiveText = node.text || '';
+  try {
+    const npcName = String(runtime?.activeNpc?.name || '').toLowerCase();
+    // Yorna: after Level 1, stop referencing Vast/castle; focus on Urathar push
+    if (npcName.includes('yorna') && runtime.activeDialog.nodeId === 'intro') {
+      const lvl = Math.max(1, Number(runtime.currentLevel || 1));
+      const afterL1 = (lvl > 1) || !!(runtime.questFlags && runtime.questFlags['level2_reached']);
+      if (afterL1) {
+        effectiveText = "Yorna: Let's press forward and take the fight to Urathar. I hit hard and extend your reach. Stay close and fights get easier.";
+      }
+    }
+  } catch {}
+  setOverlayDialog(effectiveText, filtered);
   // Sidebar placeholder removed; VN overlay displays choices
 }
 
