@@ -206,20 +206,32 @@ export function renderCurrentNode() {
     if (!ch || !ch.requires) { filtered.push(ch); continue; }
     if (meetsRequirement(ch.requires)) filtered.push(ch);
   }
-  // Dynamic copy adjustments for certain intros
+  // Node variants: choose the first variant whose 'requires' pass, falling back to base node
   let effectiveText = node.text || '';
+  let effectiveChoices = filtered;
   try {
-    const npcName = String(runtime?.activeNpc?.name || '').toLowerCase();
-    // Yorna: after Level 1, stop referencing Vast/castle; focus on Urathar push
-    if (npcName.includes('yorna') && runtime.activeDialog.nodeId === 'intro') {
-      const lvl = Math.max(1, Number(runtime.currentLevel || 1));
-      const afterL1 = (lvl > 1) || !!(runtime.questFlags && runtime.questFlags['level2_reached']);
-      if (afterL1) {
-        effectiveText = "Yorna: Let's press forward and take the fight to Urathar. I hit hard and extend your reach. Stay close and fights get easier.";
+    if (Array.isArray(node.variants) && node.variants.length) {
+      let picked = null;
+      for (const v of node.variants) {
+        if (!v || !v.requires) continue;
+        if (meetsRequirement(v.requires)) { picked = v; break; }
+      }
+      if (!picked) {
+        // If a default variant (no requires) is present, use it
+        picked = node.variants.find(v => v && !v.requires) || null;
+      }
+      if (picked) {
+        if (typeof picked.text === 'string') effectiveText = picked.text;
+        if (Array.isArray(picked.choices)) {
+          // Re-filter the picked variant choices by requirements
+          const pv = [];
+          for (const ch of picked.choices) { if (!ch || !ch.requires || meetsRequirement(ch.requires)) pv.push(ch); }
+          effectiveChoices = pv;
+        }
       }
     }
   } catch {}
-  setOverlayDialog(effectiveText, filtered);
+  setOverlayDialog(effectiveText, effectiveChoices);
   // Sidebar placeholder removed; VN overlay displays choices
 }
 

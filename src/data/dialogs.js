@@ -89,7 +89,16 @@ export const yornaDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Yorna: Name's Yorna. I hit hard and I don't quit. The castle is to the southeast. The gate's locked—Gorg, the red brute, carries a brass key outside the northeast wall. We take it, open the gate, kill Vast, and keep this valley ours. Want me along?",
+      variants: [
+        {
+          requires: { missingFlag: 'level2_reached' },
+          text: "Yorna: Name's Yorna. I hit hard and I don't quit. The castle is to the southeast. The gate's locked—Gorg, the red brute, carries a brass key outside the northeast wall. We take it, open the gate, kill Vast, and keep this valley ours. Want me along?",
+        },
+        {
+          requires: { hasFlag: 'level2_reached' },
+          text: "Yorna: Let's press forward and take the fight to Urathar. I hit hard and extend your reach. Stay close and fights get easier.",
+        },
+      ],
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_yorna' }, next: 'post_l5_yorna' },
         { label: 'Yes, join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
