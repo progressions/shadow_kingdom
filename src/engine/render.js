@@ -99,46 +99,6 @@ export function render(terrainBitmap, obstacles) {
   ctx.drawImage(terrainBitmap, camera.x, camera.y, camera.w, camera.h, 0, 0, camera.w, camera.h);
   if (world.showGrid) drawGrid(ctx, world, camera);
   drawObstacles(ctx, obstacles, camera);
-  // Fog of War overlay (LoS)
-  try {
-    const fow = runtime?.fogOfWar || { enabled: false };
-    if (fow.enabled && fow.mode === 'los') {
-      const s = TILE;
-      const tx0 = Math.max(0, Math.floor(camera.x / s));
-      const ty0 = Math.max(0, Math.floor(camera.y / s));
-      const tx1 = Math.min(world.tileW - 1, Math.floor((camera.x + camera.w) / s));
-      const ty1 = Math.min(world.tileH - 1, Math.floor((camera.y + camera.h) / s));
-      const px = player.x + player.w/2, py = player.y + player.h/2;
-      const alpha = Math.max(0, Math.min(1, Number(fow.alpha ?? 0.75)));
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#000000';
-      for (let ty = ty0; ty <= ty1; ty++) {
-        for (let tx = tx0; tx <= tx1; tx++) {
-          const cx = tx * s + s/2;
-          const cy = ty * s + s/2;
-          // Skip the tile containing the player to avoid self-block
-          if (Math.floor(player.x / s) === tx && Math.floor(player.y / s) === ty) continue;
-          // Determine LoS using blocking obstacles
-          let blocked = false;
-          const cand = queryObstaclesSegment(px, py, cx, cy, 8);
-          for (const o of cand) {
-            if (!o) continue;
-            if (o.type === 'gate' && o.locked === false) continue;
-            // Ignore non-sight-blockers
-            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
-            if (segmentIntersectsRect(px, py, cx, cy, o)) { blocked = true; break; }
-          }
-          if (blocked) {
-            const sx = Math.round(tx * s - camera.x);
-            const sy = Math.round(ty * s - camera.y);
-            ctx.fillRect(sx, sy, s, s);
-          }
-        }
-      }
-      ctx.restore();
-    }
-  } catch {}
   // Debug: flow field vectors overlay (coarse), when enabled
   try {
     if (window && window.DEBUG_FLOW) {
@@ -597,6 +557,64 @@ export function render(terrainBitmap, obstacles) {
       }
     }
   }
+
+  // Fog of War (memory): darken tiles not yet seen; reveal per-tile via player's current LoS
+  try {
+    const fow = runtime?.fogOfWar || { enabled: false };
+    if (fow.enabled) {
+      // Ensure seen grid matches current level and world size
+      const lvl = runtime.currentLevel || 1;
+      const W = world.tileW|0, H = world.tileH|0;
+      if (!fow || typeof fow !== 'object') runtime.fogOfWar = { enabled: true, mode: 'memory', alpha: 0.75 };
+      if (fow._level !== lvl || fow._w !== W || fow._h !== H || !(fow.seen instanceof Uint8Array) || fow.seen.length !== W * H) {
+        runtime.fogOfWar._level = lvl;
+        runtime.fogOfWar._w = W;
+        runtime.fogOfWar._h = H;
+        runtime.fogOfWar.seen = new Uint8Array(W * H);
+      }
+      const seen = runtime.fogOfWar.seen;
+      const s = TILE;
+      const tx0 = Math.max(0, Math.floor(camera.x / s));
+      const ty0 = Math.max(0, Math.floor(camera.y / s));
+      const tx1 = Math.min(W - 1, Math.floor((camera.x + camera.w) / s));
+      const ty1 = Math.min(H - 1, Math.floor((camera.y + camera.h) / s));
+      const px = player.x + player.w/2, py = player.y + player.h/2;
+      // Update seen from player's current LoS within camera
+      for (let ty = ty0; ty <= ty1; ty++) {
+        for (let tx = tx0; tx <= tx1; tx++) {
+          const cx = tx * s + s/2;
+          const cy = ty * s + s/2;
+          // Determine LoS using blocking obstacles
+          let blocked = false;
+          const cand = queryObstaclesSegment(px, py, cx, cy, 8);
+          for (const o of cand) {
+            if (!o) continue;
+            if (o.type === 'gate' && o.locked === false) continue; // see-through/open gates
+            // Ignore non-sight-blockers
+            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
+            if (segmentIntersectsRect(px, py, cx, cy, o)) { blocked = true; break; }
+          }
+          if (!blocked) { seen[ty * W + tx] = 1; }
+        }
+      }
+      // Darken unseen tiles (draw after actors so enemies/items are hidden)
+      const alpha = Math.max(0, Math.min(1, Number(fow.alpha ?? 0.75)));
+      if (alpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#000000';
+        for (let ty = ty0; ty <= ty1; ty++) {
+          for (let tx = tx0; tx <= tx1; tx++) {
+            if (seen[ty * W + tx]) continue;
+            const sx = Math.round(tx * s - camera.x);
+            const sy = Math.round(ty * s - camera.y);
+            ctx.fillRect(sx, sy, s, s);
+          }
+        }
+        ctx.restore();
+      }
+    }
+  } catch {}
 
   // Debug: draw enemy markers when enabled
   try {

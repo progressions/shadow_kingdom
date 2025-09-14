@@ -165,6 +165,25 @@ export function serializeSave() {
     spawners: spawnerRecords,
     // Feature toggles
     snakeMode: !!(runtime && runtime.snakeMode),
+    // Fog-of-war (seen tiles) for current level
+    fow: (function(){
+      try {
+        const f = runtime?.fogOfWar || {};
+        const W = f?._w|0, H = f?._h|0; if (!W || !H) return null;
+        const seen = (f.seen instanceof Uint8Array) ? f.seen : null; if (!seen || seen.length !== W*H) return null;
+        // Pack bits to bytes
+        const bytes = new Uint8Array(Math.ceil(seen.length / 8));
+        for (let i = 0; i < seen.length; i++) {
+          if (seen[i]) bytes[i >> 3] |= (1 << (i & 7));
+        }
+        // Base64 encode
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        const b64 = (typeof btoa === 'function') ? btoa(bin) : (Buffer && Buffer.from ? Buffer.from(bytes).toString('base64') : null);
+        if (!b64) return null;
+        return { level: runtime.currentLevel || 1, w: W, h: H, seenB64: b64 };
+      } catch { return null; }
+    })(),
   };
   return normalizeSave(payload);
 }
@@ -594,6 +613,29 @@ export function applyPendingRestore() {
     } catch {}
 
     showBanner('Game loaded');
+    // Restore fog-of-war seen grid for this level
+    try {
+      const f = data.fow || null;
+      if (f && f.w && f.h && f.seenB64 && (runtime.currentLevel || 1) === (f.level || (runtime.currentLevel || 1))) {
+        const bin = (typeof atob === 'function') ? atob(f.seenB64) : (Buffer && Buffer.from ? Buffer.from(f.seenB64, 'base64').toString('binary') : null);
+        if (bin) {
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xff;
+          const total = f.w * f.h;
+          const seen = new Uint8Array(total);
+          for (let i = 0; i < total; i++) { const bit = (bytes[i >> 3] >> (i & 7)) & 1; seen[i] = bit ? 1 : 0; }
+          if (!runtime.fogOfWar) runtime.fogOfWar = { enabled: true, mode: 'memory', alpha: 0.75 };
+          runtime.fogOfWar._level = runtime.currentLevel || 1;
+          runtime.fogOfWar._w = f.w; runtime.fogOfWar._h = f.h;
+          runtime.fogOfWar.seen = seen;
+        }
+      } else {
+        if (!runtime.fogOfWar) runtime.fogOfWar = { enabled: true, mode: 'memory', alpha: 0.75 };
+        runtime.fogOfWar._level = runtime.currentLevel || 1;
+        runtime.fogOfWar._w = world.tileW|0; runtime.fogOfWar._h = world.tileH|0;
+        runtime.fogOfWar.seen = new Uint8Array((runtime.fogOfWar._w||0) * (runtime.fogOfWar._h||0));
+      }
+    } catch {}
     try { runtime._loadedAt = (performance && performance.now) ? performance.now() : Date.now(); } catch { runtime._loadedAt = Date.now(); }
     // Resume systems next tick; re-enable VN
     try { setTimeout(() => { runtime.disableVN = false; runtime.paused = false; }, 0); } catch { runtime.disableVN = false; runtime.paused = false; }
