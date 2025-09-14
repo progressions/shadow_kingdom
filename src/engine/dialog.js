@@ -58,7 +58,7 @@ export function startCompanionSelector() {
       let found = null;
       for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
       if (found && (found.new || found.turnIn) && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') {
-        label += found.turnIn ? ' (Turn-In)' : ' (New)';
+        label = `${label} wants to talk to you`;
       }
     } catch {}
     return { label, action: 'companion_select', data: i };

@@ -402,7 +402,28 @@ export function setOverlayDialog(text, choices) {
       choices.forEach((c, i) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = `${i+1}) ${c.label}`;
+        let label = String(c.label || '');
+        // Add small badges for quest Start/Turn-In entries (VN dialog only)
+        try {
+          const show = (runtime?.uiSettings?.questIndicators || 'normal') !== 'off';
+          if (show && runtime.activeDialog && runtime.activeDialog.tree) {
+            const tree = runtime.activeDialog.tree;
+            // Turn-In detection by label
+            const low = label.toLowerCase();
+            let suffix = '';
+            if (low.startsWith('turn in')) {
+              suffix = ' (Turn-In)';
+            } else if (c && c.action === 'start_quest') {
+              suffix = ' (New)';
+            } else if (c && c.next && tree.nodes && tree.nodes[c.next]) {
+              const node = tree.nodes[c.next];
+              const nc = Array.isArray(node.choices) ? node.choices : [];
+              if (nc.some(n => n && n.action === 'start_quest')) suffix = ' (New)';
+            }
+            if (suffix) label = `${label}${suffix}`;
+          }
+        } catch {}
+        btn.textContent = `${i+1}) ${label}`;
         btn.dataset.index = String(i);
         if (c && typeof c.hint === 'string' && c.hint.trim().length) {
           btn.title = c.hint;
@@ -452,7 +473,7 @@ export function updatePartyUI(companions) {
   companions.forEach((c, idx) => {
     const chip = document.createElement('div');
     chip.className = 'party-chip';
-    // Base name
+    // Base name (party UI stays unchanged)
     const nameSpan = document.createElement('span');
     const lv = Math.max(1, (c.level||1));
     nameSpan.textContent = `Lv ${lv} · ${c.name || `Companion ${idx+1}`}`;
