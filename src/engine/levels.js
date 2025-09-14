@@ -425,6 +425,8 @@ export function loadLevel1() {
   const yorna = spawnNpc(yornaPos.x, yornaPos.y, 'right', { name: 'Yorna', dialogId: 'yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', sheet: yornaSheet, sheetPalette: yornaPalette, vnOnSight: { text: introTexts.yorna } });
   const hola = spawnNpc(holaPos.x, holaPos.y, 'up', { name: 'Hola', dialogId: 'hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', sheet: holaSheet, sheetPalette: holaPalette, vnOnSight: { text: introTexts.hola } });
   setNpcDialog(canopy, canopyDialog); setNpcDialog(yorna, yornaDialog); setNpcDialog(hola, holaDialog);
+  // Recompute quest indicators after Level 1 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   // Snake companion (Level 1): small slow aura + small bite (ATK) — gated by Snake Mode
   if (runtime.snakeMode) {
@@ -622,6 +624,8 @@ export function loadLevel2() {
   const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', dialogId: 'twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/level02/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
   // Attach basic recruit dialogs
   import('../data/dialogs.js').then(mod => { setNpcDialog(oyin, mod.oyinDialog); setNpcDialog(twil, mod.twilDialog); }).catch(()=>{});
+  // Recompute quest indicators after Level 2 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   // Level 2 Party Feud: Canopy ↔ Yorna — force a strategic choice if both are present
   (function maybeStartCanopyYornaFeud() {
@@ -803,6 +807,8 @@ export function loadLevel3() {
   })();
   const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', dialogId: 'nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
   import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
+  // Recompute quest indicators after Level 3 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   return terrain;
 }
@@ -971,6 +977,8 @@ export function loadLevel4() {
     vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', dialogId: 'varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
   })();
   import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
+  // Recompute quest indicators after Level 4 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   return terrain;
 }
@@ -1177,6 +1185,9 @@ export function loadLevel5() {
     if (mod.cowsillDialog) setNpcDialog(cowsill, mod.cowsillDialog); 
   }).catch(()=>{});
 
+  // Recompute quest indicators after Level 5 spawns/dialogs
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
+
   return terrain;
 }
 
@@ -1250,6 +1261,8 @@ export function loadLevel6() {
     return spawnNpc(x, y, dir || 'down', Object.assign({ name, sheet, portrait: opts.portrait || null }, opts));
   };
   const inParty = (name) => companions.some(c => (c.name || '').toLowerCase().includes(String(name||'').toLowerCase()));
+  // Recompute quest indicators when entering the hub to refresh tags
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
   // Convenient anchors around the main hall
   const midY = ry + rh/2 - 8;
   const topY = ry + TILE * 5;

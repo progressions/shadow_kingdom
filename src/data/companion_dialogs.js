@@ -313,7 +313,7 @@ export const companionDialogs = {
         choices: [ { label: 'Continue', next: 'bond6c' } ],
       },
       bond6c: {
-        text: "Yorna: If you walk ahead, I'll hit harder. If you walk beside me… I forget to look for walls.",
+        text: "Yorna: If you walk ahead, I'll hit harder. If you walk beside me… I can focus on the fight instead of watching my back.",
         choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'yorna_bond6c_reward' }, next: 'bond_menu' } ],
       },
       bond8: {
@@ -524,7 +524,7 @@ export const companionDialogs = {
       },
       // L1: Find Yorna (lead to northwest; auto-turn-in on recruiting Yorna)
       find_yorna_intro: {
-        text: 'Hola: My Lord… I think I saw a red-headed fighter to the northwest. She looked… strong. If you want, we could try to find her.',
+        text: 'Hola: My Lord, I saw a red-headed fighter in the woods to the northwest. She moved like she knew what she was doing. Maybe she could help us.',
         choices: [
           { label: "Let's find her.", action: 'start_quest', data: { id: 'hola_find_yorna' }, next: 'find_yorna_started' },
           { label: 'Later.', action: 'companion_back' },
@@ -611,7 +611,7 @@ export const companionDialogs = {
 
       // L2: Break the Silence (defeat Silencers)
       silence_intro: {
-        text: "Hola: Silencers make the air heavy. Break three so we can speak and fight clean.",
+        text: "Hola: My Lord, those 'Silencers' make the air feel heavy and confusing. If we defeat three of them, I think I'll be able to focus better.",
         choices: [
           { label: "Let's break them.", action: 'start_quest', data: { id: 'hola_silence' }, next: 'silence_started' },
           { label: 'Later.', action: 'companion_back' },
@@ -632,7 +632,7 @@ export const companionDialogs = {
 
       // L3: Breath Over Bog (defeat Marsh Whisperers)
       bog_intro: {
-        text: 'Hola: My Lord, marsh air eats words. If we still three whisperers, wind might hold a path.',
+        text: 'Hola: My Lord, the air in this marsh is heavy. It makes it hard to think. If we defeat three of those whisperers, it might clear my head.',
         choices: [
           { label: "Let's try.", action: 'start_quest', data: { id: 'hola_breath_bog' }, next: 'bog_started' },
           { label: 'Later.', action: 'companion_back' },

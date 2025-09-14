@@ -586,6 +586,11 @@ export const runtime = {
   combatToggles: { chip: true, enemyCrits: true, ap: true, playerCrits: true },
   // Feature toggles
   snakeMode: false,
+  // Quest indicators (new)
+  questIndicators: {}, // by companion key: { new, turnIn, newIds:Set, turnInIds:Set }
+  questNotify: {},     // by companion key: { shown: { [questId]:true }, cooldownUntil:number, queue:Array<{id,t}> }
+  uiSettings: { questIndicators: 'normal' },
+  questIndTimer: 0,
   // Scene helpers
   _suppressInputTimer: 0, // seconds to ignore input (e.g., immediately after death)
   _deathDelay: 0,         // delay before accepting Game Over key

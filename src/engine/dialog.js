@@ -50,7 +50,19 @@ export function startGameOver() {
 
 // Open a menu to choose a companion to interact with
 export function startCompanionSelector() {
-  const list = companions.map((c, i) => ({ label: c.name || `Companion ${i+1}`, action: 'companion_select', data: i }));
+  const list = companions.map((c, i) => {
+    let label = c.name || `Companion ${i+1}`;
+    try {
+      const nm = String(c?.name || '').toLowerCase();
+      const inds = runtime.questIndicators || {};
+      let found = null;
+      for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
+      if (found && (found.new || found.turnIn) && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') {
+        label += found.turnIn ? ' (Turn-In)' : ' (New)';
+      }
+    } catch {}
+    return { label, action: 'companion_select', data: i };
+  });
   if (list.length === 0) {
     // Non-blocking notice; do not enter chat mode
     showBanner('You have no companions.');
@@ -817,6 +829,11 @@ function meetsRequirement(req) {
   } catch { return true; }
 }
 
+// Public adapter for requirement evaluation (used by quest indicator system)
+export function evalRequirement(req) {
+  return meetsRequirement(req);
+}
+
 function handleAffinityAdd(data) {
   try {
     const amt = (typeof data?.amount === 'number') ? data.amount : 0;
@@ -1170,6 +1187,8 @@ function handleStartQuest(data) {
       } catch {}
       try { showBanner('Quest started: Find Yorna — Talk to her'); } catch {}
     }
+    // Refresh quest indicators shortly after starting a quest
+    try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
   } catch {}
 }
 

@@ -4,6 +4,7 @@ import { rebuildFlowField, sampleFlowDirAt } from '../engine/pathfinding.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
 import { enemyEffectsByKey, ENEMY_BUFF_CAPS } from '../data/enemy_effects.js';
 import { playSfx, setMusicMode } from '../engine/audio.js';
+import { recomputeQuestIndicators, tickQuestIndicatorQueue } from '../engine/quest_indicators.js';
 import { autoTurnInIfCleared } from '../engine/quests.js';
 import { clearFadeOverlay } from '../engine/ui.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
@@ -181,6 +182,12 @@ export function step(dt) {
   if ((runtime.shakeTimer || 0) > 0) runtime.shakeTimer = Math.max(0, (runtime.shakeTimer || 0) - dt);
   // Decay VN intro cooldown so flagged actors don't retrigger back-to-back
   if ((runtime.introCooldown || 0) > 0) runtime.introCooldown = Math.max(0, (runtime.introCooldown || 0) - dt);
+  // Quest indicator cadence + reveal queue
+  try {
+    runtime.questIndTimer = (runtime.questIndTimer || 0) - dt;
+    if (runtime.questIndTimer <= 0) { recomputeQuestIndicators(); runtime.questIndTimer = 1.6; }
+    tickQuestIndicatorQueue(dt);
+  } catch {}
   // Track recent low-HP window (3s) for certain pair ticks
   try {
     const below = player.hp < (player.maxHp || 10) * 0.5;

@@ -68,7 +68,7 @@ Implementation notes
 
 - Yorna (Exacting) — +0.2 / −0.15
   - Order: Clash, Match, Defer
-  - Match: “We take the key, drop Vast—fall in.”
+  - Match: “Let’s get the key and kill Vast. Keep up.”
   - Clash: “Hang back and patch me up, alright?”
   - Defer: “Not now, Yorna.”
 

@@ -457,6 +457,23 @@ export function updatePartyUI(companions) {
     const lv = Math.max(1, (c.level||1));
     nameSpan.textContent = `Lv ${lv} · ${c.name || `Companion ${idx+1}`}`;
     chip.appendChild(nameSpan);
+    // Quest indicator dot (subtle)
+    try {
+      const nm = String(c?.name || '').toLowerCase();
+      const inds = runtime.questIndicators || {};
+      let found = null;
+      for (const k of Object.keys(inds)) { if (nm.includes(k)) { found = inds[k]; break; } }
+      if (found && (found.new || found.turnIn) && (runtime?.uiSettings?.questIndicators || 'normal') !== 'off') {
+        const dot = document.createElement('span');
+        dot.textContent = '•';
+        dot.style.marginLeft = '6px';
+        dot.style.fontSize = '14px';
+        dot.style.opacity = '0.9';
+        dot.title = found.turnIn ? 'Quest turn-in available' : 'New quest available';
+        dot.style.color = found.turnIn ? '#62e563' : '#5ec3ff';
+        chip.appendChild(dot);
+      }
+    } catch {}
     // Affinity hearts (0–3 hearts, 0.5 steps). 3 hearts ≈ affinity 10; 1.5 hearts ≈ affinity 5
     const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
     const heartsVal = Math.max(0, Math.min(3, Math.round((aff / (10/3)) * 2) / 2));

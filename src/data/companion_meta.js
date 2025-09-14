@@ -33,7 +33,7 @@ export const introTriads = {
   },
   yorna: {
     matchFirst: false,
-    match: { label: 'We take the key, drop Vast\u2014fall in.', delta: 0.2, flag: 'yorna_intro_encourage' },
+    match: { label: "Let's get the key and kill Vast. Keep up.", delta: 0.2, flag: 'yorna_intro_encourage' },
     clash: { label: 'Hang back and patch me up, alright?', delta: -0.15 },
     defer: { label: 'Not now, Yorna.' },
   },
@@ -52,7 +52,7 @@ export const introTriads = {
   twil: {
     matchFirst: false,
     match: { label: 'Read the ground and call the lanes\u2014join me.', delta: 0.3, flag: 'twil_intro_encourage' },
-    clash: { label: 'Skip the scouting\u2014we just need brute force.', delta: -0.1 },
+    clash: { label: 'Skip the scouting\u2014we need brute force.', delta: -0.1 },
     defer: { label: 'Not now, Twil.' },
   },
   tin: {
