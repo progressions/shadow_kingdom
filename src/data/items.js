@@ -26,9 +26,10 @@ export const sampleItems = [
   { id: 'heavy_shield',  name: 'Heavy Shield',  slot: 'leftHand',   dr: 3, isShield: true },
   { id: 'torch',         name: 'Torch',         slot: 'leftHand',   atk: 0, stackable: true, maxQty: 99 },
   // Health potions (auto-consume on pickup; not stored)
-  { id: 'potion_light',  name: 'Light Health Potion',  slot: 'misc' },
-  { id: 'potion_medium', name: 'Medium Health Potion', slot: 'misc' },
-  { id: 'potion_strong', name: 'Strong Health Potion', slot: 'misc' },
+  // Health potions: stackable, max 3 per stack
+  { id: 'potion_light',  name: 'Light Health Potion',  slot: 'misc', stackable: true, maxQty: 3, qty: 1 },
+  { id: 'potion_medium', name: 'Medium Health Potion', slot: 'misc', stackable: true, maxQty: 3, qty: 1 },
+  { id: 'potion_strong', name: 'Strong Health Potion', slot: 'misc', stackable: true, maxQty: 3, qty: 1 },
   // Key items (not equip slots): use slot 'misc'
   { id: 'key_bronze',    name: 'Bronze Key',    slot: 'misc',       keyId: 'castle_gate' },
   { id: 'key_nethra',    name: 'Ruin Gate Key', slot: 'misc',       keyId: 'key_nethra' },

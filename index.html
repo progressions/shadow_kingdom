@@ -265,6 +265,10 @@
       /* Ammo pulse on pickup */
       #hud-top-left #hud-ammo.pulse { color: #ffd166; text-shadow: 0 0 8px rgba(255,209,102,0.9), 0 1px 0 #000; animation: ammoPulse 0.6s ease-out; }
       @keyframes ammoPulse { 0%{ transform: scale(1.0) } 35%{ transform: scale(1.08) } 100%{ transform: scale(1.0) } }
+      /* Potion pulse on pickup/use */
+      #hud-top-left #hud-potions.pulse { color: #68e873; text-shadow: 0 0 8px rgba(104,232,115,0.9), 0 1px 0 #000; animation: ammoPulse 0.6s ease-out; }
+      /* HP bar heal pulse */
+      #hud-panel .hp.heal .bar .fill { box-shadow: 0 0 10px rgba(104,232,115,0.9); animation: hpPulse 0.8s ease-in-out; }
 
       /* Level title overlay */
       #level-title {
@@ -323,10 +327,11 @@
             </div>
             <div class="row torch" id="torch-row" style="display:none"><div class="bar" id="torch-bar"><div class="fill"></div></div></div>
             <!-- Crisp labels -->
-            <div id="hud-top-left">
-              <div id="hud-ammo" class="hud-label" aria-live="polite"></div>
-              <div id="hud-torch" class="hud-label" aria-live="polite"></div>
-            </div>
+          <div id="hud-top-left">
+            <div id="hud-ammo" class="hud-label" aria-live="polite"></div>
+            <div id="hud-potions" class="hud-label" aria-live="polite"></div>
+            <div id="hud-torch" class="hud-label" aria-live="polite"></div>
+          </div>
           </div>
           <div class="hint">Move: <kbd>WASD</kbd>/<kbd>Arrows</kbd> · Attack: <kbd>Space</kbd>/<kbd>J</kbd> · Grid: <kbd>G</kbd> · Companions: <kbd>C</kbd> · Save/Load: <kbd>P</kbd> · Mute: <kbd>M</kbd> · Music: <kbd>B</kbd> · <span id="coords" style="font-size: 9px; opacity: 0.7;"></span></div>
         </div>

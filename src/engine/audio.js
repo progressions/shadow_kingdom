@@ -42,6 +42,8 @@ const files = {
     bossTelegraph: 'assets/audio/sfx/telegraph.wav',
     // Ammo pickup cue (fallback to UI select)
     ammo: 'assets/audio/sfx/ui-select.wav',
+    // Potion drink cue (fallback to UI open)
+    potion: 'assets/audio/sfx/ui-open.wav',
   },
 };
 
@@ -345,6 +347,12 @@ function playSfxChip(name) {
       // Subtle, bright blip distinct from generic pickup
       envTone({ type: 'square',   freq: 1200.0, attack: 0.001, decay: 0.06, release: 0.04, gain: 0.06, t });
       envTone({ type: 'triangle', freq: 1600.0, attack: 0.001, decay: 0.05, release: 0.04, gain: 0.05, t: t + 0.015 });
+      break;
+    case 'potion':
+      // Soft bubbly quaff cue
+      noiseBurst({ attack: 0.001, decay: 0.05, release: 0.04, gain: 0.04, t });
+      envTone({ type: 'sine', freq: 740.0, attack: 0.002, decay: 0.06, release: 0.05, gain: 0.05, t: t + 0.01 });
+      envTone({ type: 'triangle', freq: 988.0, attack: 0.002, decay: 0.08, release: 0.06, gain: 0.05, t: t + 0.05 });
       break;
     case 'levelUp':
       // Bright celebratory arpeggio

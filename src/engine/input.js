@@ -114,6 +114,10 @@ export function initInput() {
       runtime._kDownAtSec = runtime._timeSec || 0;
       runtime._kReleasePending = false;
       startRangedAttack();
+    } else if (e.key.toLowerCase() === 'h') {
+      // Mark H held for chain-consume; actual consume happens in step()
+      runtime._hDownAtSec = runtime._timeSec || 0;
+      runtime._hReleasePending = false;
     } else if (e.key.toLowerCase() === 'c') {
       // Open companion selection overlay
       startCompanionSelector();

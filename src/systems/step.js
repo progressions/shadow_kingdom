@@ -891,6 +891,88 @@ export function step(dt) {
     }
   } catch {}
 
+  // Hold-to-use H: consume health potions while held (weakest-first by default)
+  try {
+    const hHeld = runtime.keys && runtime.keys.has('h');
+    // Decay cooldown
+    const cdBase = (typeof runtime._potionCooldownSec === 'number') ? runtime._potionCooldownSec : 0.45;
+    runtime._potionCd = Math.max(0, (runtime._potionCd || 0) - dt);
+    if (hHeld && (runtime._potionCd || 0) <= 0) {
+      // Only act in play state
+      if (runtime.gameState === 'play') {
+        const hp = Math.max(0, player.hp || 0);
+        const max = Math.max(1, player.maxHp || 1);
+        if (hp >= max) {
+          // Full — feedback and delay a bit to avoid spam
+          try { showBanner('HP full'); } catch {}
+          runtime._potionCd = 0.4;
+        } else {
+          // Gather potions by strength
+          const inv = player?.inventory?.items || [];
+          const stacks = { light: [], medium: [], strong: [] };
+          for (let i = 0; i < inv.length; i++) {
+            const it = inv[i]; if (!it || !it.stackable) continue;
+            if (it.id === 'potion_light' && (it.qty||0) > 0) stacks.light.push({ i, it });
+            else if (it.id === 'potion_medium' && (it.qty||0) > 0) stacks.medium.push({ i, it });
+            else if (it.id === 'potion_strong' && (it.qty||0) > 0) stacks.strong.push({ i, it });
+          }
+          const hasAny = stacks.light.length || stacks.medium.length || stacks.strong.length;
+          if (!hasAny) {
+            try { showBanner('No potions'); } catch {}
+            // Pulse label if present
+            try { runtime._potionPulseUntil = Math.max(runtime._potionPulseUntil || 0, (runtime._timeSec || 0) + 0.6); } catch {}
+            runtime._potionCd = 0.35;
+          } else {
+            // Determine policy: weakest-first; Shift+H forces strongest-first.
+            const shift = runtime.keys.has('shift');
+            const lowHp = (hp / max) <= ((typeof runtime._potionStrongThresh === 'number') ? runtime._potionStrongThresh : 0.35);
+            const preferStrong = shift || lowHp;
+            const missing = Math.ceil(max - hp);
+            // Map heal values
+            const heal = { light: 4, medium: 8, strong: 14 };
+            // Smart: choose the smallest tier that covers missing; if none, use smallest available (or strongest if preferStrong)
+            function pickSmart(order) {
+              for (const tier of order) { if (stacks[tier].length && heal[tier] >= missing) return tier; }
+              for (const tier of order) { if (stacks[tier].length) return tier; }
+              return null;
+            }
+            const weakOrder = ['light','medium','strong'];
+            const strongOrder = ['strong','medium','light'];
+            let tier = preferStrong ? pickSmart(strongOrder) : pickSmart(weakOrder);
+            if (!tier) tier = stacks.light.length ? 'light' : (stacks.medium.length ? 'medium' : 'strong');
+            // Consume 1 from the first stack of chosen tier
+            let used = null; let idx = -1; let val = 0; let label = '';
+            if (tier) {
+              const group = stacks[tier][0];
+              idx = group.i; used = group.it; val = heal[tier];
+              label = (tier === 'light') ? 'Light' : (tier === 'medium') ? 'Medium' : 'Strong';
+              used.qty = Math.max(0, (used.qty || 0) - 1);
+              if (used.qty <= 0) inv.splice(idx, 1);
+            }
+            if (val > 0) {
+              const before = player.hp;
+              player.hp = Math.min(max, before + val);
+              const gained = Math.max(0, player.hp - before);
+              try { showBanner(`Drank ${label} Potion: +${Math.ceil(gained)} HP`); } catch {}
+              try { playSfx('potion'); } catch {}
+              // Visuals
+              try {
+                import('../engine/ui.js').then(u => {
+                  const t = runtime._timeSec || 0;
+                  runtime._hpPulseUntil = t + 0.9;
+                  runtime._potionPulseUntil = Math.max(runtime._potionPulseUntil || 0, t + 0.9);
+                });
+              } catch {}
+              // small sparkle burst
+              try { for (let k = 0; k < 8; k++) spawnSparkle(player.x + player.w/2 + (Math.random()*6-3), player.y - 6 + (Math.random()*4-2)); } catch {}
+              runtime._potionCd = cdBase;
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+
   // Player damage over time (burn)
   if (player._burnTimer && player._burnTimer > 0 && !runtime.godMode) {
     player._burnTimer = Math.max(0, player._burnTimer - dt);
@@ -2084,26 +2166,9 @@ export function step(dt) {
             if (e && e.id === picked.id) sameCount += 1;
           }
         }
-        const isFull = !isKey && (sameCount >= 3);
-        // Special-case: Health potions auto-consume on pickup if not at full HP; otherwise leave on ground
         const isPotion = picked && (picked.id === 'potion_light' || picked.id === 'potion_medium' || picked.id === 'potion_strong');
-        if (isPotion) {
-          const healAmt = (picked.id === 'potion_light') ? 4 : (picked.id === 'potion_medium') ? 8 : 14;
-          if (player.hp < player.maxHp) {
-            // Consume and heal
-            itemsOnGround.splice(ii, 1);
-            const before = player.hp;
-            player.hp = Math.min(player.maxHp, player.hp + healAmt);
-            const gained = Math.max(0, player.hp - before);
-            const gainedDisp = Math.max(1, Math.ceil(gained));
-            showBanner(`Drank ${picked.name}: +${gainedDisp} HP`);
-            playSfx('pickup');
-            // small sparkle burst
-            for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
-          }
-          // If at full health, do not pick up; leave item on ground
-          continue;
-        }
+        // Do not block pickup of potions by generic cap logic
+        const isFull = !isKey && !isPotion && (sameCount >= 3);
 
         // Special-case: Arrows — each ground pickup contains 10 arrows by default.
         // If total arrows < 25, consume the pickup and add up to the cap; otherwise leave on ground.
@@ -2137,6 +2202,11 @@ export function step(dt) {
           addItemToInventory(player.inventory, toAdd);
           showBanner(`Picked up ${picked?.name || 'an item'}`);
           playSfx('pickup');
+          // Pulse HUD labels for tracked resources
+          try {
+            if (picked && picked.stackable && picked.id === 'arrow_basic') runtime._ammoPulseUntil = Math.max(runtime._ammoPulseUntil || 0, (runtime._timeSec || 0) + 0.9);
+            if (isPotion) runtime._potionPulseUntil = Math.max(runtime._potionPulseUntil || 0, (runtime._timeSec || 0) + 0.9);
+          } catch {}
           // Auto-equip rules:
           // - Armor (head/torso/legs): auto-equip if strictly better.
           // - Hands: auto-equip only if the target hand is empty, and only for non-stackable items.

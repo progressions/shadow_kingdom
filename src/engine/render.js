@@ -769,6 +769,7 @@ export function render(terrainBitmap, obstacles) {
     if (hpBar) hpBar.style.width = `${Math.round(hpRatio * 100)}%`;
     if (hpRow) {
       if (hpRatio <= 0.35) hpRow.classList.add('low'); else hpRow.classList.remove('low');
+      try { const healPulse = typeof runtime._hpPulseUntil === 'number' && (runtime._timeSec || 0) < runtime._hpPulseUntil; hpRow.classList.toggle('heal', !!healPulse); } catch {}
     }
     const need = xpToNext(Math.max(1, player.level || 1));
     const cur = Math.max(0, player.xp || 0);
@@ -814,6 +815,20 @@ export function render(terrainBitmap, obstacles) {
         const pulsing = typeof runtime._ammoPulseUntil === 'number' && (runtime._timeSec || 0) < runtime._ammoPulseUntil;
         ammoEl.classList.toggle('pulse', !!pulsing);
       } catch {}
+    }
+    // Potions HUD label
+    const potEl = document.getElementById('hud-potions');
+    if (potEl) {
+      const inv = player?.inventory?.items || [];
+      let potions = 0;
+      for (const it of inv) {
+        if (!it || !it.stackable) continue;
+        if (it.id === 'potion_light' || it.id === 'potion_medium' || it.id === 'potion_strong') potions += (it.qty || 0);
+      }
+      const want = `Potions: ${potions}`;
+      if (potEl.textContent !== want) potEl.textContent = want;
+      potEl.classList.toggle('muted', potions === 0);
+      try { const pulsing = typeof runtime._potionPulseUntil === 'number' && (runtime._timeSec || 0) < runtime._potionPulseUntil; potEl.classList.toggle('pulse', !!pulsing); } catch {}
     }
     const torchEl = document.getElementById('hud-torch');
     if (torchEl) {
