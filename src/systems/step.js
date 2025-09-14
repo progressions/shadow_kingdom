@@ -819,7 +819,7 @@ export function step(dt) {
   // Attacks
   handleAttacks(dt);
 
-  // Hold-to-toggle K: after a short hold, toggle equip between best ranged (bow) and best melee weapon.
+  // Hold-to-toggle K: after a short hold, toggle between last-used melee and ranged loadouts.
   try {
     const kHeld = runtime.keys && runtime.keys.has('k');
     if (kHeld) {
@@ -829,61 +829,94 @@ export function step(dt) {
       const inv = player?.inventory?.items || [];
       if ((heldFor >= 0.25) && !runtime._kToggledThisHold) {
         const hasRangedEquipped = !!(eq.rightHand && eq.rightHand.ranged);
-        if (hasRangedEquipped) {
-          // Switch to best melee (rightHand, non-ranged)
-          const melee = inv.filter(it => it && it.slot === 'rightHand' && !it.stackable && !it.ranged);
-          if (melee.length) {
-            melee.sort((a,b)=> (b.atk||0) - (a.atk||0));
-            const pick = melee[0];
-            // Move current right-hand to inventory and equip melee
-            if (eq.rightHand) inv.push(eq.rightHand);
-            eq.rightHand = pick;
-            const idx = inv.indexOf(pick); if (idx !== -1) inv.splice(idx, 1);
-            try { showBanner(`Equipped ${pick.name}`); } catch {}
-          } else {
-            try { showBanner('No melee weapon'); } catch {}
-          }
-        } else {
-          // Switch to best ranged (bow)
-          const bows = inv.filter(it => it && it.ranged === Object(it.ranged));
-          if (bows.length) {
-            bows.sort((a,b)=> (b.atk||0) - (a.atk||0));
-            const pick = bows[0];
-            if (eq.rightHand) inv.push(eq.rightHand);
-            // Enforce two-handed: free left hand
-            if (pick.twoHanded && eq.leftHand) {
-              if (eq.leftHand.id === 'torch') { eq.leftHand = null; try { showBanner('Torch consumed'); } catch {} }
-              else { inv.push(eq.leftHand); eq.leftHand = null; }
+        const LO = (runtime._loadouts ||= { melee: {}, ranged: {} });
+        function getById(id) {
+          if (!id) return null; const i = inv.findIndex(x => x && x.id === id); if (i === -1) return null; const it = inv[i]; inv.splice(i,1); return it;
+        }
+        function remember(kind) {
+          try {
+            if (kind==='ranged') {
+              if (eq.rightHand && eq.rightHand.ranged) { LO.ranged.rightHandId = eq.rightHand.id; }
+            } else {
+              if (eq.rightHand && !eq.rightHand.ranged) { LO.melee.rightHandId = eq.rightHand.id; }
+              // Store shield-like only; ignore torch
+              const LH = eq.leftHand;
+              const looksShield = !!(LH && !LH.stackable && ((LH.isShield) || /shield|buckler/i.test(String(LH.name||LH.id)) || (typeof LH.dr==='number' && LH.dr>0)));
+              LO.melee.leftHandId = looksShield ? LH.id : null;
             }
-            eq.rightHand = pick;
-            const idx = inv.indexOf(pick); if (idx !== -1) inv.splice(idx, 1);
-            // Ammo check for heads-up
-            try {
-              const arrows = (player?.inventory?.items || []).filter(x => x && x.stackable && x.id === 'arrow_basic').reduce((s,x)=>s+(x.qty||0),0);
-              showBanner(arrows > 0 ? `Equipped ${pick.name}` : `Equipped ${pick.name} — No arrows`);
-            } catch { try { showBanner(`Equipped ${pick.name}`); } catch {} }
-            // If dark and no light, offer to assign torch bearer
-            try {
-              const lv = sampleLightAtPx(player.x + player.w/2, player.y + player.h/2);
-              const dark = lv <= 1;
-              const hasLight = !!(player?.inventory?.equipped?.leftHand && player.inventory.equipped.leftHand.id === 'torch') || !!runtime._torchBearerRef;
-              if (dark && !hasLight && companions && companions.length && !runtime._suppressTorchAsk) {
-                const nearest = companions.reduce((best, c) => {
-                  const d2 = Math.pow((c.x - player.x),2)+Math.pow((c.y - player.y),2);
-                  return (!best || d2 < best.d2) ? { c, d2 } : best;
-                }, null)?.c || companions[0];
-                const name = nearest?.name || 'Companion';
-                startPrompt(null, 'It\'s dark. Your hands are full.', [
-                  { label: `Ask ${name} to carry a torch`, action: 'assign_torch_bearer', data: { index: companions.indexOf(nearest) } },
-                  { label: 'Not now', action: 'end' },
-                  { label: "Don\'t ask again", action: 'set_flag', data: { key: '_suppressTorchAsk' } },
-                ]);
-              }
-            } catch {}
+          } catch {}
+        }
+        function applyRanged() {
+          // Target: last-used ranged RH if available; else best bow
+          let pick = getById(LO.ranged.rightHandId);
+          if (!pick) {
+            const bows = inv.filter(it => it && it.ranged === Object(it.ranged));
+            if (bows.length) { bows.sort((a,b)=> (b.atk||0) - (a.atk||0)); pick = bows[0]; const idx = inv.indexOf(pick); if (idx!==-1) inv.splice(idx,1); }
+          }
+          if (!pick && eq.rightHand && eq.rightHand.ranged) { showBanner(`Equipped ${eq.rightHand.name}`); return; }
+          if (!pick) { showBanner('No bow'); return; }
+          if (eq.rightHand) inv.push(eq.rightHand);
+          // Enforce two-handed: free left hand
+          if (pick.twoHanded && eq.leftHand) {
+            if (eq.leftHand.id === 'torch') { eq.leftHand = null; try { showBanner('Torch consumed'); } catch {} }
+            else { inv.push(eq.leftHand); eq.leftHand = null; }
+          }
+          eq.rightHand = pick;
+          LO.ranged.rightHandId = pick.id;
+          // Ammo check
+          try {
+            const arrows = (player?.inventory?.items || []).filter(x => x && x.stackable && x.id === 'arrow_basic').reduce((s,x)=>s+(x.qty||0),0);
+            showBanner(arrows > 0 ? `Equipped ${pick.name}` : `Equipped ${pick.name} — No arrows`);
+          } catch { showBanner(`Equipped ${pick.name}`); }
+          // Dark prompt for torch bearer
+          try {
+            const lv = sampleLightAtPx(player.x + player.w/2, player.y + player.h/2);
+            const dark = lv <= 1;
+            const hasLight = !!(player?.inventory?.equipped?.leftHand && player.inventory.equipped.leftHand.id === 'torch') || !!runtime._torchBearerRef;
+            if (dark && !hasLight && companions && companions.length && !runtime._suppressTorchAsk) {
+              const nearest = companions.reduce((best, c) => { const d2 = (c.x-player.x)**2 + (c.y-player.y)**2; return (!best || d2 < best.d2) ? { c, d2 } : best; }, null)?.c || companions[0];
+              const name = nearest?.name || 'Companion';
+              startPrompt(null, 'It\'s dark. Your hands are full.', [
+                { label: `Ask ${name} to carry a torch`, action: 'assign_torch_bearer', data: { index: companions.indexOf(nearest) } },
+                { label: 'Not now', action: 'end' },
+                { label: "Don\'t ask again", action: 'set_flag', data: { key: '_suppressTorchAsk' } },
+              ]);
+            }
+          } catch {}
+        }
+        function applyMelee() {
+          // Desired last-used melee items
+          const wantRH = LO.melee.rightHandId || null;
+          const wantLH = LO.melee.leftHandId || null;
+          let pickRH = getById(wantRH);
+          if (!pickRH) {
+            // Fall back to best melee from inventory if none saved
+            const melee = inv.filter(it => it && it.slot === 'rightHand' && !it.stackable && !it.ranged);
+            if (melee.length) { melee.sort((a,b)=> (b.atk||0) - (a.atk||0)); pickRH = melee[0]; const ii = inv.indexOf(pickRH); if (ii!==-1) inv.splice(ii,1); }
+          }
+          if (!pickRH && eq.rightHand && !eq.rightHand.ranged) { showBanner(`Equipped ${eq.rightHand.name}`); remember('melee'); return; }
+          if (!pickRH) { showBanner('No melee weapon'); return; }
+          if (eq.rightHand) inv.push(eq.rightHand);
+          eq.rightHand = pickRH;
+          LO.melee.rightHandId = pickRH.id;
+          // Left hand: if weapon is two-handed, clear; else try to equip saved shield
+          if (pickRH.twoHanded) {
+            if (eq.leftHand) { if (eq.leftHand.id === 'torch') eq.leftHand = null; else { inv.push(eq.leftHand); eq.leftHand = null; } }
+            showBanner(`Equipped ${pickRH.name}`);
           } else {
-            try { showBanner('No bow'); } catch {}
+            if (wantLH) {
+              const curLH = eq.leftHand; const needs = !curLH || curLH.id !== wantLH;
+              if (needs) {
+                if (curLH) { if (curLH.id === 'torch') eq.leftHand = null; else { inv.push(curLH); eq.leftHand = null; } }
+                const sh = getById(wantLH);
+                if (sh) { eq.leftHand = sh; LO.melee.leftHandId = sh.id; showBanner(`Equipped ${pickRH.name} + ${sh.name}`); }
+                else { showBanner(`Equipped ${pickRH.name}`); }
+              } else { showBanner(`Equipped ${pickRH.name} + ${curLH.name}`); }
+            } else { showBanner(`Equipped ${pickRH.name}`); }
           }
         }
+        if (hasRangedEquipped) applyMelee(); else applyRanged();
+        remember(hasRangedEquipped ? 'melee' : 'ranged');
         runtime._kToggledThisHold = true;
       }
       // Auto-fire while held (if ranged equipped)

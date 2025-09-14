@@ -1417,6 +1417,23 @@ function doEquip(actorTag, slot, index, itemId) {
     eq[slot] = it;
     items.splice(idx, 1);
   }
+  // Remember loadout preferences (last-used)
+  try {
+    if (!runtime._loadouts) runtime._loadouts = { melee: {}, ranged: {} };
+    const LO = runtime._loadouts;
+    const eqNow = actor.inventory.equipped;
+    if (slot === 'rightHand') {
+      if (it && it.ranged) { LO.ranged.rightHandId = it.id; }
+      else if (it && !it.ranged) { LO.melee.rightHandId = it.id; }
+    } else if (slot === 'leftHand') {
+      if (it && !it.stackable && (it.isShield || /shield|buckler/i.test(String(it.name||it.id)) || (typeof it.dr==='number' && it.dr>0))) {
+        LO.melee.leftHandId = it.id;
+      } else if (it && it.id === 'torch') {
+        // do not persist torch in melee loadout
+        LO.melee.leftHandId = LO.melee.leftHandId || null;
+      }
+    }
+  } catch {}
   // Refresh equipment panel
   updatePartyUI(companions);
 
