@@ -2809,12 +2809,20 @@ function handleCompanionTriggers(dt) {
   cds.cowsillCrescendo = Math.max(0, (cds.cowsillCrescendo || 0) - dt);
   cds.cowsillEncore = Math.max(0, (cds.cowsillEncore || 0) - dt);
   cds.snakeConstriction = Math.max(0, (cds.snakeConstriction || 0) - dt);
+  // Generic trigger cooldowns (data-driven)
+  const gcd = runtime._genericCds || (runtime._genericCds = {});
+  for (const k in gcd) { if (Object.prototype.hasOwnProperty.call(gcd, k)) { gcd[k] = Math.max(0, (gcd[k] || 0) - dt); } }
 
   // Shield countdown
   if (runtime.shieldActive) {
     runtime.shieldTimer = Math.max(0, (runtime.shieldTimer || 0) - dt);
     if (runtime.shieldTimer <= 0) runtime.shieldActive = false;
   }
+
+  // Generic data-driven triggers (no name checks)
+  try {
+    processGenericCompanionTriggers(dt);
+  } catch {}
 
   // Presence checks and affinity multiplier
   const has = (key) => companions.some(c => (c.name || '').toLowerCase().includes(key));
@@ -2854,103 +2862,13 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Hola gust trigger
-  if (has('hola')) {
-    const base = companionEffectsByKey.hola?.triggers?.gust || { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 };
-    const m = multFor('hola');
-    const eff = {
-      radius: (base.radius || 24) * (1 + (m - 1) * 0.5),
-      slow: Math.min((base.slow || 0.25) * m, COMPANION_BUFF_CAPS.slow),
-      durationSec: (base.durationSec || 0.4) * m,
-      push: (base.push || 14) * m,
-      cooldownSec: (base.cooldownSec || 10) / (1 + (m - 1) * 0.5),
-    };
-    if ((cds.holaGust || 0) <= 0) {
-      // Any enemy in radius of player?
-      let any = false;
-      for (const e of enemies) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) { any = true; break; }
-      }
-      if (any) {
-        for (const e of enemies) {
-          if (e.hp <= 0) continue;
-          const dx = e.x - player.x, dy = e.y - player.y;
-          if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) {
-            const mag = Math.hypot(dx, dy) || 1;
-            const px = (dx / mag) * eff.push;
-            const py = (dy / mag) * eff.push;
-            const solids = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
-            moveWithCollision(e, px, py, solids);
-            e._gustSlowTimer = Math.max(e._gustSlowTimer || 0, eff.durationSec);
-            e._gustSlowFactor = eff.slow;
-          }
-        }
-        cds.holaGust = eff.cooldownSec;
-        spawnFloatText(player.x + player.w/2, player.y - 12, 'Gust!', { color: '#a1e3ff', life: 0.8 });
-        try { playSfx('gust'); } catch {}
-        // Quest tracking: Hola 'Find Her Voice' — count gust uses
-        try {
-          if (runtime.questFlags && runtime.questFlags['hola_practice_started'] && !runtime.questFlags['hola_practice_cleared']) {
-            if (!runtime.questCounters) runtime.questCounters = {};
-            const used = (runtime.questCounters['hola_practice_uses'] || 0) + 1;
-            runtime.questCounters['hola_practice_uses'] = used;
-            if (used >= 2) {
-              runtime.questFlags['hola_practice_cleared'] = true;
-              showBanner('Quest updated: Find Her Voice — cleared');
-              try { autoTurnInIfCleared('hola_practice'); } catch {}
-            } else {
-              showBanner(`Quest: Gust used ${used}/2`);
-            }
-          }
-        } catch {}
-      }
-    }
-  }
+  // Hola Gust handled by generic triggers
 
-  // Tin L8 — Overclock: after Dash Combo, +ASPD and dash CDR for 3s
-  if (hasAffinity('tin', 8)) {
-    const m = multFor('tin');
-    if ((cds.tinOverclock || 0) <= 0 && (runtime._dashComboJustTriggered || false)) {
-      runtime._dashComboJustTriggered = false;
-      const dur = 3 * m;
-      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, 0.25);
-      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, dur);
-      runtime.tempDashCdr = Math.max(runtime.tempDashCdr || 0, 0.3);
-      runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, dur);
-      cds.tinOverclock = 16 / (1 + (m - 1) * 0.5);
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Overclock!', { color: '#9ae6ff', life: 0.8 });
-      try { playSfx('slipstream'); } catch {}
-    }
-  }
+  // Tin Overclock handled by generic triggers
 
-  // Tin L10 — Symphony: on Dash Combo, hyper state for 4s (ASPD + crit), reset dash CD
-  if (hasAffinity('tin', 10)) {
-    const m = multFor('tin');
-    if ((cds.tinSymphony || 0) <= 0 && (runtime._dashComboJustTriggered || false)) {
-      runtime._dashComboJustTriggered = false;
-      const dur = 4 * m;
-      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, 0.5);
-      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, dur);
-      runtime.tempCritBonus = Math.max(runtime.tempCritBonus || 0, 0.10);
-      runtime._tempCritTimer = Math.max(runtime._tempCritTimer || 0, dur);
-      runtime._dashCooldown = 0;
-      cds.tinSymphony = 45;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Symphony!', { color: '#ffd166', life: 0.9 });
-      try { playSfx('tumbleUp'); } catch {}
-    }
-  }
+  // Tin Symphony handled by generic triggers
 
-  // Hola L8 — Slipstream Field: on dash start, temporary dash CDR boost
-  if (hasAffinity('hola', 8)) {
-    if ((cds.holaSlipstream || 0) <= 0 && (runtime._dashJustStartedAtSec || 0) > 0 && Math.abs((runtime._timeSec||0) - runtime._dashJustStartedAtSec) < 0.05) {
-      runtime.tempDashCdr = Math.max(runtime.tempDashCdr || 0, 0.25);
-      runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, 2.0);
-      cds.holaSlipstream = 12;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Slipstream.', { color: '#9ae6ff', life: 0.7 });
-    }
-  }
+  // Hola Slipstream handled by generic triggers
 
   // Canopy Affinity 5 — Dash Mend: on dash start, heal a small amount (cooldown)
   if (hasAffinity('canopy', 5)) {
@@ -2964,24 +2882,7 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Hola L10 — Maelstrom: density knockback + heavy slow; brief deflect boost
-  if (hasAffinity('hola', 10)) {
-    let count = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy) <= (64*64)) { count++; } } }
-    if ((cds.holaMaelstrom || 0) <= 0 && count >= 4) {
-      for (const e of enemies) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - player.x, dy = e.y - player.y; const d2 = dx*dx + dy*dy; if (d2 > (64*64)) continue;
-        const d = Math.max(1, Math.sqrt(d2)); const push = 26; const px = (dx/d) * push; const py = (dy/d) * push;
-        const solids = [player, ...enemies.filter(x => x !== e && x.hp > 0)];
-        moveWithCollision(e, px, py, solids);
-        e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 1.5); e._veilSlow = Math.max(e._veilSlow || 0, 0.35);
-      }
-      runtime.tempDeflectBonus = Math.max(runtime.tempDeflectBonus || 0, 0.15);
-      runtime._tempDeflectTimer = Math.max(runtime._tempDeflectTimer || 0, 1.5);
-      cds.holaMaelstrom = 32;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Maelstrom!', { color: '#9ae6ff', life: 0.9 });
-    }
-  }
+  // Hola Maelstrom handled by generic triggers
 
   // Oyin L10 — Eclipse: brief global slow + minor DoT; player gets light DR
   if (hasAffinity('oyin', 10)) {
@@ -3216,53 +3117,9 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Oyin Rally: below HP threshold, small heal and temporary ATK buff
-  if (has('oyin')) {
-    const hpRatio = player.hp / player.maxHp;
-    const m = multFor('oyin');
-    const heal = Math.min(3, Math.round(2 * m));
-    const atkBonus = Math.min(2, 1 * m);
-    const dur = 5 * m;
-    const thresh = 0.4 + (m - 1) * 0.1;
-    const cd = 20 / (1 + (m - 1) * 0.5);
-    if ((cds.oyinRally || 0) <= 0 && hpRatio < thresh && player.hp > 0) {
-      player.hp = Math.min(player.maxHp, player.hp + heal);
-      runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, atkBonus);
-      runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, dur);
-      cds.oyinRally = cd;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Rally!', { color: '#ffd166', life: 0.9 });
-      try { playSfx('rally'); } catch {}
-      // Quest tracking (legacy): mark rally done if Twil fuse is active (not required for completion)
-      try { if (runtime.questFlags && runtime.questFlags['twil_fuse_started']) runtime.questFlags['twil_fuse_rally'] = true; } catch {}
-    }
-  }
+  // Oyin Rally handled by generic triggers
 
-  // Urn Cheer: burst heal when HP dips low + brief attack speed boost
-  if (has('urn')) {
-    const base = companionEffectsByKey.urn?.triggers?.cheer || { hpThresh: 0.5, heal: 3, radius: 80, cooldownSec: 12 };
-    const m = multFor('urn');
-    const eff = {
-      hpThresh: (base.hpThresh || 0.5),
-      heal: Math.round((base.heal || 3) * m),
-      radius: (base.radius || 80),
-      cooldownSec: (base.cooldownSec || 12) / (1 + (m - 1) * 0.5),
-      aspdBonus: Math.min(0.35, 0.25 * m), // moderate, noticeable boost
-      aspdDur: 3.5 * m,
-    };
-    const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
-    if ((cds.urnCheer || 0) <= 0 && player.hp > 0 && hpRatio <= eff.hpThresh) {
-      // Heal player (companions do not track HP in this slice)
-      player.hp = Math.min(player.maxHp, player.hp + eff.heal);
-      // Temporary attack speed boost
-      runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, eff.aspdBonus);
-      runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, eff.aspdDur);
-      // Visuals and SFX
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Cheer!', { color: '#8effc1', life: 0.9 });
-      for (let i = 0; i < 8; i++) spawnSparkle(player.x + player.w/2 + (Math.random()*12-6), player.y - 6 + (Math.random()*8-4));
-      try { playSfx('cheer'); } catch {}
-      cds.urnCheer = eff.cooldownSec;
-    }
-  }
+  // Urn Cheer handled by generic triggers
 
   // Varabella Call the Angle: brief ATK + range window when enemies nearby
   if (has('varabella')) {
@@ -3294,62 +3151,9 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Tin Slipstream: breezy micro-push + small slow, short range boost
-  if (has('tin')) {
-    const base = { radius: 26, push: 10, slow: 0.15, slowDur: 0.4, rangeBonus: 2, rangeDur: 2.0, cooldownSec: 10 };
-    const m = multFor('tin');
-    const eff = {
-      radius: base.radius * (1 + (m - 1) * 0.3),
-      push: base.push * m,
-      slow: Math.min(base.slow * m, COMPANION_BUFF_CAPS.slow),
-      slowDur: base.slowDur * m,
-      rangeBonus: Math.min(3, base.rangeBonus * m),
-      rangeDur: base.rangeDur * m,
-      cooldownSec: base.cooldownSec / (1 + (m - 1) * 0.5),
-    };
-    if ((cds.tinSlip || 0) <= 0) {
-      let any = false;
-      for (const e of enemies) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) { any = true; break; }
-      }
-      if (any) {
-        for (const e of enemies) {
-          if (e.hp <= 0) continue;
-          const dx = e.x - player.x, dy = e.y - player.y;
-          if ((dx*dx + dy*dy) <= (eff.radius * eff.radius)) {
-            const mag = Math.hypot(dx, dy) || 1;
-            moveWithCollision(e, (dx / mag) * eff.push, (dy / mag) * eff.push, [player, ...enemies.filter(x=>x!==e&&x.hp>0)]);
-            e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, eff.slowDur);
-            e._veilSlow = eff.slow;
-          }
-        }
-        runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, eff.rangeBonus);
-        runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, eff.rangeDur);
-        cds.tinSlip = eff.cooldownSec;
-        spawnFloatText(player.x + player.w/2, player.y - 12, 'Slipstream!', { color: '#a1e3ff', life: 0.8 });
-        try { playSfx('slipstream'); } catch {}
-      }
-    }
-  }
+  // Tin Slipstream handled by generic triggers
 
-  // Tin Tumble Up: on recent hit, quick heal and brief ATK boost
-  if (has('tin')) {
-    const m = multFor('tin');
-    const heal = Math.max(1, Math.round(1 * m));
-    const atk = Math.min(2, 1 * m);
-    const dur = 3 * m;
-    const cd = 20 / (1 + (m - 1) * 0.5);
-    if ((cds.tinTumble || 0) <= 0 && (runtime._recentPlayerHitTimer || 0) > 0 && player.hp > 0) {
-      player.hp = Math.min(player.maxHp, player.hp + heal);
-      runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, atk);
-      runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, dur);
-      cds.tinTumble = cd;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Tumble Up!', { color: '#ffd166', life: 0.9 });
-      try { playSfx('tumbleUp'); } catch {}
-    }
-  }
+  // Tin Tumble Up handled by generic triggers
 
   // Nellis Mourner's Veil: heavier slow when multiple enemies nearby
   if (has('nellis')) {
@@ -3443,6 +3247,153 @@ function handleCompanionTriggers(dt) {
       try { playSfx('veil'); } catch {}
     }
   }
+}
+
+// Data-driven companion triggers: evaluate generic conditions and apply effects
+function processGenericCompanionTriggers(dt) {
+  // Helper: check if any enemy within radius of a point
+  function anyEnemyWithin(ax, ay, r) {
+    const r2 = r * r;
+    for (const e of enemies) {
+      if (!e || e.hp <= 0) continue;
+      const dx = e.x - ax, dy = e.y - ay;
+      if ((dx*dx + dy*dy) <= r2) return true;
+    }
+    return false;
+  }
+  // Helper: iterate enemies within radius and apply callback
+  function forEnemiesWithin(ax, ay, r, fn) {
+    const r2 = r * r;
+    for (const e of enemies) {
+      if (!e || e.hp <= 0) continue;
+      const dx = e.x - ax, dy = e.y - ay;
+      if ((dx*dx + dy*dy) <= r2) fn(e, dx, dy);
+    }
+  }
+  let consumedDashCombo = false;
+  for (const c of companions) {
+    if (!c) continue;
+    const key = (c.name || '').toLowerCase();
+    const def = companionEffectsByKey[key];
+    if (!def || !Array.isArray(def.triggers2) || def.triggers2.length === 0) continue;
+    for (const t of def.triggers2) {
+      if (!t || !t.id) continue;
+      const gcd = runtime._genericCds || (runtime._genericCds = {});
+      if ((gcd[t.id] || 0) > 0) continue; // on cooldown
+      // Evaluate condition
+      let fire = false;
+      switch (t.when) {
+        case 'proximity_enemies': {
+          const anchor = (t.anchor === 'self') ? c : player;
+          const ax = anchor.x, ay = anchor.y;
+          const r = t.radius || 24;
+          fire = anyEnemyWithin(ax, ay, r);
+          break;
+        }
+        case 'player_low_hp': {
+          const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
+          fire = hpRatio <= (t.hpThresh || 0.5);
+          break;
+        }
+        case 'recent_hit_taken': {
+          fire = (runtime._recentPlayerHitTimer || 0) > 0;
+          break;
+        }
+        case 'on_dash_combo': {
+          fire = !!(runtime._dashComboJustTriggered);
+          if (fire) consumedDashCombo = true;
+          break;
+        }
+        case 'on_dash_start': {
+          const now = runtime._timeSec || 0;
+          const at = runtime._dashJustStartedAtSec || 0;
+          fire = (at > 0) && (Math.abs(now - at) < 0.05);
+          break;
+        }
+        case 'density_enemies': {
+          const r = t.radius || 64; const need = Math.max(1, t.minCount || 1);
+          const r2 = r * r; let count = 0;
+          for (const e of enemies) {
+            if (!e || e.hp <= 0) continue;
+            const dx = e.x - player.x, dy = e.y - player.y;
+            if ((dx*dx + dy*dy) <= r2) { count++; if (count >= need) break; }
+          }
+          fire = count >= need;
+          break;
+        }
+      }
+      if (!fire) continue;
+      // Apply effects
+      if (Array.isArray(t.effects)) {
+        for (const eff of t.effects) {
+          if (!eff || !eff.type) continue;
+          switch (eff.type) {
+            case 'area_push_slow': {
+              const anchor = (eff.anchor === 'self') ? c : player;
+              const ax = anchor.x, ay = anchor.y; const r = eff.radius || (t.radius || 24);
+              forEnemiesWithin(ax, ay, r, (e, dx, dy) => {
+                // Push away from player; direction sign mirrors legacy logic
+                const d = Math.hypot(dx, dy) || 1;
+                const px = (dx / d) * (eff.push || 0);
+                const py = (dy / d) * (eff.push || 0);
+                const solids = [player, ...enemies.filter(x => x !== e && x && x.hp > 0)];
+                moveWithCollision(e, px, py, solids);
+                const sd = Math.max(0, eff.slowDur || 0.4);
+                e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, sd);
+                e._veilSlow = Math.max(e._veilSlow || 0, Math.min(eff.slow || 0, COMPANION_BUFF_CAPS.slow));
+              });
+              break;
+            }
+            case 'area_slow_burn': {
+              const anchor = (eff.anchor === 'self') ? c : player;
+              const ax = anchor.x, ay = anchor.y; const r = eff.radius || (t.radius || 24);
+              forEnemiesWithin(ax, ay, r, (e) => {
+                e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, eff.slowDur || 1.5);
+                e._veilSlow = Math.max(e._veilSlow || 0, Math.min(eff.slow || 0.3, COMPANION_BUFF_CAPS.slow));
+                if (eff.burnDps) { e._burnTimer = Math.max(e._burnTimer || 0, eff.burnDur || 1.5); e._burnDps = Math.max(e._burnDps || 0, eff.burnDps); }
+              });
+              break;
+            }
+            case 'temp_buffs': {
+              const dur = Math.max(0, (eff.durationSec || t.durationSec || 0));
+              const b = eff.buffs || {};
+              if (typeof b.aspd === 'number') { runtime.tempAspdBonus = Math.max(runtime.tempAspdBonus || 0, b.aspd); runtime._tempAspdTimer = Math.max(runtime._tempAspdTimer || 0, dur); }
+              if (typeof b.dashCdr === 'number') { runtime.tempDashCdr = Math.max(runtime.tempDashCdr || 0, b.dashCdr); runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, dur); }
+              if (typeof b.crit === 'number') { runtime.tempCritBonus = Math.max(runtime.tempCritBonus || 0, b.crit); runtime._tempCritTimer = Math.max(runtime._tempCritTimer || 0, dur); }
+              if (typeof b.atk === 'number') { runtime.tempAtkBonus = Math.max(runtime.tempAtkBonus || 0, b.atk); runtime._tempAtkTimer = Math.max(runtime._tempAtkTimer || 0, dur); }
+              if (typeof b.range === 'number') { runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, b.range); runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, dur); }
+              if (typeof b.deflect === 'number') { runtime.tempDeflectBonus = Math.max(runtime.tempDeflectBonus || 0, b.deflect); runtime._tempDeflectTimer = Math.max(runtime._tempDeflectTimer || 0, dur); }
+              if (typeof b.touchDR === 'number') { runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, b.touchDR); runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, dur); }
+              break;
+            }
+            case 'heal_player': {
+              const amt = Math.max(0, eff.amount || 0);
+              player.hp = Math.min(player.maxHp, player.hp + amt);
+              break;
+            }
+            case 'reset_dash_cooldown': {
+              runtime._dashCooldown = 0; break;
+            }
+            case 'text': {
+              try { spawnFloatText(player.x + player.w/2, player.y - 12, eff.text || '', { color: eff.color || '#ffd166', life: 0.8 }); } catch {}
+              break;
+            }
+            case 'sfx': {
+              try { playSfx(eff.key || 'uiSelect'); } catch {}
+              break;
+            }
+            case 'sparkles': {
+              const count = Math.max(0, eff.count || 0);
+              for (let i = 0; i < count; i++) spawnSparkle(player.x + player.w/2 + (Math.random()*12-6), player.y - 6 + (Math.random()*8-4));
+              break;
+            }
+          }
+        }
+      }
+      gcd[t.id] = Math.max(0, t.cooldownSec || 0);
+    }
+  }
+  if (consumedDashCombo) runtime._dashComboJustTriggered = false;
 }
 
 // Enemy auras/triggers: compute player debuffs, enemy DR/regen, and short pulses

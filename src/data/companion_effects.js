@@ -36,11 +36,39 @@ export const companionEffectsByKey = {
       // Slipstream (passive): modest dash cooldown reduction
       { type: 'dashCdr', value: 0.15 },
     ],
+    // Legacy trigger metadata remains for UI; runtime uses triggers2 below
     triggers: {
       gust: { radius: 24, slow: 0.25, durationSec: 0.4, push: 14, cooldownSec: 10 },
       l8: { key: 'slipstream', name: 'Slipstream Field', cooldownSec: 12, durationSec: 2, desc: 'Dash triggers tailwind: dash CDR boost' },
       l10: { key: 'maelstrom', name: 'Maelstrom', cooldownSec: 32, durationSec: 1.5, desc: 'Radial knockback + heavy slow' },
     },
+    // Data-driven triggers
+    triggers2: [
+      {
+        id: 'hola_gust', when: 'proximity_enemies', radius: 24,
+        cooldownSec: 10, durationSec: 0.4,
+        effects: [
+          { type: 'area_push_slow', anchor: 'player', radius: 24, push: 14, slow: 0.25, slowDur: 0.4, mark: 'gust' },
+          { type: 'text', text: 'Gust!', color: '#a1e3ff' },
+          { type: 'sfx', key: 'gust' },
+        ],
+      },
+      {
+        id: 'hola_slipstream', when: 'on_dash_start', cooldownSec: 12, durationSec: 2.0,
+        effects: [
+          { type: 'temp_buffs', buffs: { dashCdr: 0.25 }, durationSec: 2.0 },
+          { type: 'text', text: 'Slipstream.', color: '#9ae6ff' },
+        ],
+      },
+      {
+        id: 'hola_maelstrom', when: 'density_enemies', radius: 64, minCount: 4, cooldownSec: 32, durationSec: 1.5,
+        effects: [
+          { type: 'area_push_slow', anchor: 'player', radius: 64, push: 26, slow: 0.35, slowDur: 1.5 },
+          { type: 'temp_buffs', buffs: { deflect: 0.15 }, durationSec: 1.5 },
+          { type: 'text', text: 'Maelstrom!', color: '#9ae6ff' },
+        ],
+      },
+    ],
   },
   oyin: {
     auras: [
@@ -49,11 +77,22 @@ export const companionEffectsByKey = {
       { type: 'dr', value: 1 },
       { type: 'crit', value: 0.05 },
     ],
-    // (Veil trigger handled in code under Oyin after swap)
     triggers: {
       l8: { key: 'veilAnchor', name: 'Veil Anchor', cooldownSec: 16, durationSec: 3, desc: 'Ranged hit creates slow+DR zone' },
       l10: { key: 'eclipse', name: 'Eclipse', cooldownSec: 45, durationSec: 2, desc: 'Global slow + minor DoT; player DR' },
     },
+    triggers2: [
+      {
+        id: 'oyin_rally', when: 'player_low_hp', hpThresh: 0.4,
+        cooldownSec: 20, durationSec: 5,
+        effects: [
+          { type: 'heal_player', amount: 2 },
+          { type: 'temp_buffs', buffs: { atk: 1 }, durationSec: 5 },
+          { type: 'text', text: 'Rally!', color: '#ffd166' },
+          { type: 'sfx', key: 'rally' },
+        ],
+      },
+    ],
   },
   twil: {
     auras: [
@@ -78,11 +117,47 @@ export const companionEffectsByKey = {
       // Water affinity: allow walking on water when in party
       { type: 'waterWalk' },
     ],
-    // Triggers can be added later (Slipstream, Tumble Up, etc.)
     triggers: {
       l8: { key: 'overclock', name: 'Overclock', cooldownSec: 16, durationSec: 3, desc: 'After Dash Combo: +ASPD & dash CDR' },
       l10: { key: 'symphony', name: 'Symphony', cooldownSec: 45, durationSec: 4, desc: 'Hyper: +ASPD +crit; reset dash CD' },
     },
+    triggers2: [
+      {
+        id: 'tin_slip', when: 'proximity_enemies', radius: 26, cooldownSec: 10, durationSec: 2.0,
+        effects: [
+          { type: 'area_push_slow', anchor: 'player', radius: 26, push: 10, slow: 0.15, slowDur: 0.4, mark: 'veil' },
+          { type: 'temp_buffs', buffs: { range: 2 }, durationSec: 2.0 },
+          { type: 'text', text: 'Slipstream!', color: '#a1e3ff' },
+          { type: 'sfx', key: 'slipstream' },
+        ],
+      },
+      {
+        id: 'tin_tumble', when: 'recent_hit_taken', cooldownSec: 20, durationSec: 3,
+        effects: [
+          { type: 'heal_player', amount: 1 },
+          { type: 'temp_buffs', buffs: { atk: 1 }, durationSec: 3 },
+          { type: 'text', text: 'Tumble Up!', color: '#ffd166' },
+          { type: 'sfx', key: 'tumbleUp' },
+        ],
+      },
+      {
+        id: 'tin_overclock', when: 'on_dash_combo', cooldownSec: 16, durationSec: 3,
+        effects: [
+          { type: 'temp_buffs', buffs: { aspd: 0.25, dashCdr: 0.3 }, durationSec: 3 },
+          { type: 'text', text: 'Overclock!', color: '#9ae6ff' },
+          { type: 'sfx', key: 'slipstream' },
+        ],
+      },
+      {
+        id: 'tin_symphony', when: 'on_dash_combo', cooldownSec: 45, durationSec: 4,
+        effects: [
+          { type: 'temp_buffs', buffs: { aspd: 0.5, crit: 0.10 }, durationSec: 4 },
+          { type: 'reset_dash_cooldown' },
+          { type: 'text', text: 'Symphony!', color: '#ffd166' },
+          { type: 'sfx', key: 'tumbleUp' },
+        ],
+      },
+    ],
   },
   urn: {
     auras: [
@@ -90,11 +165,22 @@ export const companionEffectsByKey = {
       { type: 'regen', value: 0.1 },
     ],
     triggers: {
-      // Burst heal when HP dips low
       cheer: { hpThresh: 0.5, heal: 3, radius: 80, cooldownSec: 12 },
       l8: { key: 'beaconSurge', name: 'Beacon Surge', cooldownSec: 20, durationSec: 3, desc: 'Low HP pulse heal + +ASPD' },
       l10: { key: 'secondWind', name: 'Second Wind', cooldownSec: 999, durationSec: 1.2, desc: 'Per-level revive at 1 HP' },
     },
+    triggers2: [
+      {
+        id: 'urn_cheer', when: 'player_low_hp', hpThresh: 0.5, cooldownSec: 12, durationSec: 3.5,
+        effects: [
+          { type: 'heal_player', amount: 3 },
+          { type: 'temp_buffs', buffs: { aspd: 0.25 }, durationSec: 3.5 },
+          { type: 'sparkles', count: 8 },
+          { type: 'text', text: 'Cheer!', color: '#8effc1' },
+          { type: 'sfx', key: 'cheer' },
+        ],
+      },
+    ],
   },
   varabella: {
     auras: [
