@@ -424,7 +424,17 @@ export function applyPendingRestore() {
     } catch {}
     // World deltas
     applyGateStates(data);
-    if (Array.isArray(data.openedChests)) { for (const o of obstacles) if (o && o.type==='chest' && o.id && data.openedChests.includes(o.id)) o.opened = true; }
+    if (Array.isArray(data.openedChests)) {
+      // Mark opened states and remove opened chest obstacles from the world
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        if (!o || o.type !== 'chest' || !o.id) continue;
+        if (data.openedChests.includes(o.id)) {
+          o.opened = true;
+          obstacles.splice(i, 1);
+        }
+      }
+    }
     if (Array.isArray(data.brokenBreakables)) {
       for (let i = obstacles.length - 1; i >= 0; i--) { const o = obstacles[i]; if (o && (o.type==='barrel'||o.type==='crate') && o.id && data.brokenBreakables.includes(o.id)) obstacles.splice(i,1); }
     }
