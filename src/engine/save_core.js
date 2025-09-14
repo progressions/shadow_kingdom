@@ -114,6 +114,14 @@ export function serializeSave() {
     })(),
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
     companions: companions.map(c => serializeCompanionEntity(c)),
+    // Torch bearer state (companion index + remaining burn)
+    torch: (function(){
+      try {
+        const idx = runtime._torchBearerRef ? companions.indexOf(runtime._torchBearerRef) : -1;
+        if (idx >= 0) return { bearerIndex: idx, burnMs: Math.max(0, Math.floor(runtime._torchBurnMs || 0)) };
+      } catch {}
+      return { bearerIndex: -1, burnMs: 0 };
+    })(),
     npcs: npcs.map(n => serializeNpcEntity(n)),
     playerInv: player.inventory || null,
     world: { w: world.w, h: world.h },
@@ -388,6 +396,23 @@ export function applyPendingRestore() {
     if (Array.isArray(data.npcs)) {
       for (const n of data.npcs) { try { spawnNpcFromRecord(n); } catch {} }
     }
+    // Torch bearer (companion index) restore
+    try {
+      const torch = data.torch || null;
+      if (torch && typeof torch.bearerIndex === 'number' && torch.bearerIndex >= 0) {
+        const comp = companions[torch.bearerIndex] || null;
+        if (comp) {
+          runtime._torchBearerRef = comp;
+          runtime._torchBurnMs = Math.max(0, Math.floor(torch.burnMs || 0));
+          import('./lighting.js').then(m => {
+            try {
+              const node = m.addLightNode({ x: comp.x + comp.w/2, y: comp.y + comp.h/2, level: m.MAX_LIGHT_LEVEL, radius: 6, enabled: true });
+              runtime._torchLightNode = node;
+            } catch {}
+          }).catch(()=>{});
+        }
+      }
+    } catch {}
     // World deltas
     applyGateStates(data);
     if (Array.isArray(data.openedChests)) { for (const o of obstacles) if (o && o.type==='chest' && o.id && data.openedChests.includes(o.id)) o.opened = true; }
@@ -612,6 +637,13 @@ function normalizeSave(s) {
       melee: { rightHandId: m.rightHandId || null, leftHandId: m.leftHandId || null },
       ranged: { rightHandId: r.rightHandId || null },
     };
+  }
+  // Normalize torch bearer
+  if (!out.torch || typeof out.torch !== 'object') {
+    out.torch = { bearerIndex: -1, burnMs: 0 };
+  } else {
+    out.torch.bearerIndex = (typeof out.torch.bearerIndex === 'number') ? Math.max(-1, Math.floor(out.torch.bearerIndex)) : -1;
+    out.torch.burnMs = Math.max(0, Math.floor(out.torch.burnMs || 0));
   }
   return out;
 }
