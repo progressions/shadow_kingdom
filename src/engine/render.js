@@ -810,6 +810,10 @@ export function render(terrainBitmap, obstacles) {
       const want = `Arrows: ${arrows}`;
       if (ammoEl.textContent !== want) ammoEl.textContent = want;
       ammoEl.classList.toggle('muted', arrows === 0);
+      try {
+        const pulsing = typeof runtime._ammoPulseUntil === 'number' && (runtime._timeSec || 0) < runtime._ammoPulseUntil;
+        ammoEl.classList.toggle('pulse', !!pulsing);
+      } catch {}
     }
     const torchEl = document.getElementById('hud-torch');
     if (torchEl) {

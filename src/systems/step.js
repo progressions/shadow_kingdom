@@ -2120,6 +2120,7 @@ export function step(dt) {
           addItemToInventory(player.inventory, { id: 'arrow_basic', name: picked.name || 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: addQty });
           showBanner(`Arrows +${addQty}`);
           playSfx('pickup');
+          try { runtime._ammoPulseUntil = Math.max(runtime._ammoPulseUntil || 0, (runtime._timeSec || 0) + 0.9); } catch {}
           for (let k = 0; k < 6; k++) spawnSparkle(cx + (Math.random()*4-2), cy + (Math.random()*4-2));
           continue;
         }

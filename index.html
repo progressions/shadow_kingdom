@@ -262,6 +262,9 @@
       #hud-top-left { display: grid; gap: 2px; }
       #hud-top-left .hud-label { font: 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; color: #eaeaea; opacity: 0.95; text-shadow: 0 1px 0 #000; }
       #hud-top-left .muted { color: #a8c6ff; }
+      /* Ammo pulse on pickup */
+      #hud-top-left #hud-ammo.pulse { color: #ffd166; text-shadow: 0 0 8px rgba(255,209,102,0.9), 0 1px 0 #000; animation: ammoPulse 0.6s ease-out; }
+      @keyframes ammoPulse { 0%{ transform: scale(1.0) } 35%{ transform: scale(1.08) } 100%{ transform: scale(1.0) } }
 
       /* Level title overlay */
       #level-title {
