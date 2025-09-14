@@ -2959,98 +2959,12 @@ function handleCompanionTriggers(dt) {
 
   // Tin Tumble Up handled by generic triggers
 
-  // Nellis Mourner's Veil: heavier slow when multiple enemies nearby
-  if (has('nellis')) {
-    let nearby = 0;
-    for (const e of enemies) {
-      if (e.hp <= 0) continue;
-      const dx = e.x - player.x, dy = e.y - player.y;
-      if ((dx*dx + dy*dy) <= (40*40)) { nearby++; if (nearby >= 2) break; }
-    }
-    const m = multFor('nellis');
-    const r = 36 * (1 + (m - 1) * 0.4);
-    const dur = 0.4 * m;
-    const slow = Math.min(0.6, 0.35 * m);
-    const cd = 11 / (1 + (m - 1) * 0.5);
-    if (nearby >= 2 && (cds.nellisVeil || 0) <= 0) {
-      for (const e of enemies) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (r*r)) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, dur); e._veilSlow = slow; }
-      }
-      cds.nellisVeil = cd;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil.', { color: '#a1e3ff', life: 0.8 });
-      try { playSfx('mournerVeil'); } catch {}
-    }
-  }
+  // Nellis Mourner's Veil handled by generic triggers
 
-  // Nellis Beacon: short range buff when enemies are near
-  if (has('nellis')) {
-    const m = multFor('nellis');
-    const range = Math.min(3, 2 * m);
-    const dur = 3 * m;
-    const cd = 9 / (1 + (m - 1) * 0.5);
-    if ((cds.nellisBeacon || 0) <= 0) {
-      let any = false;
-      for (const e of enemies) { if (e.hp > 0) { const dx = e.x - player.x, dy = e.y - player.y; if ((dx*dx + dy*dy) <= (140*140)) { any = true; break; } } }
-      if (any) {
-        runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, range);
-        runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, dur);
-        cds.nellisBeacon = cd;
-        spawnFloatText(player.x + player.w/2, player.y - 12, 'Beacon.', { color: '#9ae6ff', life: 0.8 });
-        try { playSfx('beacon'); } catch {}
-      }
-    }
-  }
+  // Nellis Beacon handled by generic triggers
 
-  // Nellis Keep the Line: when HP low, DR boost and small enemy slow
-  if (has('nellis')) {
-    const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
-    const m = multFor('nellis');
-    const dr = Math.min(2, 1 * m);
-    const dur = 4 * m;
-    const cd = 18 / (1 + (m - 1) * 0.5);
-    const slow = Math.min(0.25, 0.2 * m);
-    if ((cds.nellisLine || 0) <= 0 && player.hp > 0 && hpRatio <= (0.5 + (m - 1) * 0.05)) {
-      // Apply DR via tempAtkBonus? DR is in combatBuffs; we can temporarily add to touchDR via runtime.tempTouchDr
-      runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, dr);
-      runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, dur);
-      // Slight slow around player
-      for (const e of enemies) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (40*40)) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, 0.3 * m); e._veilSlow = slow; }
-      }
-      cds.nellisLine = cd;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Keep the Line.', { color: '#8ab4ff', life: 0.8 });
-      try { playSfx('keepLine'); } catch {}
-    }
-  }
-  // Oyin (swapped) Dust Veil: if 2+ enemies are close, apply heavy slow briefly
-  if (has('oyin')) {
-    let nearby = 0;
-    for (const e of enemies) {
-      if (e.hp <= 0) continue;
-      const dx = e.x - player.x, dy = e.y - player.y;
-      if ((dx*dx + dy*dy) <= (40*40)) nearby++;
-      if (nearby >= 2) break;
-    }
-    const m = multFor('oyin');
-    const r = 40 * (1 + (m - 1) * 0.5);
-    const dur = 0.4 * m;
-    const slow = Math.min(0.6, 0.5 * m);
-    const cd = 12 / (1 + (m - 1) * 0.5);
-    if (nearby >= 2 && (cds.twilDust || 0) <= 0) {
-      for (const e of enemies) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - player.x, dy = e.y - player.y;
-        if ((dx*dx + dy*dy) <= (r*r)) { e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, dur); e._veilSlow = slow; }
-      }
-      cds.twilDust = cd;
-      spawnFloatText(player.x + player.w/2, player.y - 12, 'Veil!', { color: '#a1e3ff', life: 0.8 });
-      try { playSfx('veil'); } catch {}
-    }
-  }
+  // Nellis Keep the Line handled by generic triggers
+  // Oyin Dust Veil handled by generic triggers
 }
 
 // Data-driven companion triggers: evaluate generic conditions and apply effects

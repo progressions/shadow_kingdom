@@ -102,6 +102,8 @@ export const companionEffectsByKey = {
           { type: 'sfx', key: 'rally' },
         ],
       },
+      // Dust Veil: if 2+ enemies close, apply heavy short slow around player
+      { id: 'oyin_dust', when: 'density_enemies', radius: 40, minCount: 2, cooldownSec: 12, durationSec: 0.4, effects: [ { type: 'area_slow', radius: 40, slow: 0.35, slowDur: 0.4 }, { type: 'text', text: 'Dust Veil.', color: '#a1e3ff' } ] },
     ],
   },
   twil: {
@@ -228,6 +230,12 @@ export const companionEffectsByKey = {
     triggers2: [
       { id: 'nellis_phalanx', when: 'density_enemies', minAffinity: 8, radius: 48, minCount: 2, cooldownSec: 20, durationSec: 3, effects: [ { type: 'temp_buffs', buffs: { touchDR: 2 }, durationSec: 3 }, { type: 'text', text: 'Phalanx.', color: '#8ab4ff' } ] },
       { id: 'nellis_bulwark', when: 'density_enemies', minAffinity: 10, radius: 80, minCount: 3, cooldownSec: 45, durationSec: 3, effects: [ { type: 'temp_buffs', buffs: { rangedDR: 3, touchDR: 1 }, durationSec: 3 }, { type: 'text', text: 'Bulwark!', color: '#8ab4ff' } ] },
+      // Mourner's Veil: heavier slow when 2+ enemies are near (short pulse)
+      { id: 'nellis_veil', when: 'density_enemies', radius: 40, minCount: 2, cooldownSec: 11, durationSec: 0.4, effects: [ { type: 'area_slow', radius: 36, slow: 0.35, slowDur: 0.4 }, { type: 'text', text: 'Veil.', color: '#a1e3ff' }, { type: 'sfx', key: 'mournerVeil' } ] },
+      // Beacon: short range buff when enemies are near
+      { id: 'nellis_beacon', when: 'proximity_enemies', radius: 140, cooldownSec: 9, durationSec: 3, effects: [ { type: 'temp_buffs', buffs: { range: 2 }, durationSec: 3 }, { type: 'text', text: 'Beacon.', color: '#9ae6ff' }, { type: 'sfx', key: 'beacon' } ] },
+      // Keep the Line: on low HP, DR boost and small close-range slow
+      { id: 'nellis_line', when: 'player_low_hp', hpThresh: 0.5, cooldownSec: 18, durationSec: 4, effects: [ { type: 'temp_buffs', buffs: { touchDR: 1 }, durationSec: 4 }, { type: 'area_slow', radius: 40, slow: 0.2, slowDur: 0.3 }, { type: 'text', text: 'Keep the Line.', color: '#8ab4ff' }, { type: 'sfx', key: 'keepLine' } ] },
     ],
   },
   cowsill: {
