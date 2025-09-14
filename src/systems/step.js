@@ -2844,7 +2844,7 @@ function handleCompanionTriggers(dt) {
   };
   const hasAffinity = (key, min) => companions.some(c => (c.name || '').toLowerCase().includes(key) && (c.affinity || 0) >= min);
   // Canopy shield trigger
-  if (has('canopy')) {
+  if (false && has('canopy')) {
     const base = companionEffectsByKey.canopy?.triggers?.shield || { hpThresh: 0.4, cooldownSec: 12, durationSec: 6 };
     const m = multFor('canopy');
     const eff = {
@@ -2870,8 +2870,8 @@ function handleCompanionTriggers(dt) {
 
   // Hola Slipstream handled by generic triggers
 
-  // Canopy Affinity 5 — Dash Mend: on dash start, heal a small amount (cooldown)
-  if (hasAffinity('canopy', 5)) {
+  // Canopy Affinity 5 — Dash Mend handled by generic triggers
+  if (false && hasAffinity('canopy', 5)) {
     const justDashed = (runtime._dashJustStartedAtSec || 0) > 0 && Math.abs((runtime._timeSec || 0) - runtime._dashJustStartedAtSec) < 0.05;
     if ((cds.canopyDashHeal || 0) <= 0 && justDashed) {
       const heal = 1;
@@ -2897,8 +2897,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Snake L10 — Constriction: root nearest elite briefly and apply heavy DoT
-  if (hasAffinity('snake', 10)) {
+  // Snake L10 — Constriction handled by generic triggers
+  if (false && hasAffinity('snake', 10)) {
     if ((cds.snakeConstriction || 0) <= 0) {
       let nearest = null, nd2 = Infinity;
       for (const e of enemies) {
@@ -2917,8 +2917,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Canopy L8 — Aegis Surge: low HP + density → DR + small sustain
-  if (hasAffinity('canopy', 8)) {
+  // Canopy L8 — Aegis Surge handled by generic triggers
+  if (false && hasAffinity('canopy', 8)) {
     const hp = player.hp / Math.max(1, player.maxHp||10);
     let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(72*72)) d++; } }
     if ((cds.canopyAegis || 0) <= 0 && (hp < 0.4 || (runtime._recentPlayerHitTimer||0) > 0) && d >= 2) {
@@ -2932,8 +2932,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Canopy L10 — Guardian Veil: brief near-invulnerability
-  if (hasAffinity('canopy', 10)) {
+  // Canopy L10 — Guardian Veil handled by generic triggers
+  if (false && hasAffinity('canopy', 10)) {
     let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(80*80)) d++; } }
     if ((cds.canopyVeil || 0) <= 0 && d >= 3 && !runtime.shieldActive) {
       runtime.shieldActive = true; runtime.shieldTimer = 1.5;
@@ -2943,8 +2943,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Yorna L8 — Expose Weakness: Dash Combo or recent crit → local armor shred (lower enemy DR)
-  if (hasAffinity('yorna', 8)) {
+  // Yorna L8 — Expose handled by generic triggers
+  if (false && hasAffinity('yorna', 8)) {
     const dash = !!(runtime._dashComboJustTriggered); const crit = (runtime._recentPlayerCritTimer||0) > 0;
     if ((cds.yornaExpose || 0) <= 0 && (dash || crit)) {
       for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy) <= (60*60)) { e._tempDr = Math.min(e._tempDr || 0, -2); e._tempDrTimer = Math.max(e._tempDrTimer||0, 4.0); } } }
@@ -2953,8 +2953,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Yorna L10 — Execution Window: brief AP + true damage against low-HP enemies
-  if (hasAffinity('yorna', 10)) {
+  // Yorna L10 — Execution handled by generic triggers
+  if (false && hasAffinity('yorna', 10)) {
     if ((cds.yornaExecute || 0) <= 0 && ((runtime._dashComboJustTriggered||false) || (runtime._recentPlayerCritTimer||0) > 0)) {
       runtime.tempAPBonus = Math.max(runtime.tempAPBonus || 0, 2);
       runtime.tempTrueDamage = Math.max(runtime.tempTrueDamage || 0, 1);
@@ -2965,8 +2965,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Varabella L8 — Perfect Angle: detect alignment → next shots pierce + AP briefly
-  if (hasAffinity('varabella', 8)) {
+  // Varabella L8 — Perfect Angle handled by generic triggers
+  if (false && hasAffinity('varabella', 8)) {
     if ((cds.varaPerfect || 0) <= 0) {
       // Simple heuristic: if two enemies near share a similar angle from the player
       const near = enemies.filter(e => e && e.hp>0).map(e => ({e, dx: e.x - player.x, dy: e.y - player.y})).filter(o => (o.dx*o.dx + o.dy*o.dy) <= (120*120));
@@ -2992,8 +2992,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Nellis L10 — Bulwark: temporary frontal protection (modeled as DR boosts)
-  if (hasAffinity('nellis', 10)) {
+  // Nellis L10 — Bulwark handled by generic triggers
+  if (false && hasAffinity('nellis', 10)) {
     let d = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(80*80)) d++; } }
     if ((cds.nellisBulwark || 0) <= 0 && d >= 3) {
       runtime.tempRangedDr = Math.max(runtime.tempRangedDr || 0, 3);
@@ -3005,8 +3005,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Nellis L8 — Phalanx: 2+ enemies near → +touchDR for 3s
-  if (hasAffinity('nellis', 8)) {
+  // Nellis L8 — Phalanx handled by generic triggers
+  if (false && hasAffinity('nellis', 8)) {
     if ((cds.nellisPhalanx || 0) <= 0) {
       let nearby = 0; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(48*48)) { nearby++; if (nearby>=2) break; } } }
       if (nearby >= 2) {
@@ -3018,8 +3018,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Urn L8 — Beacon Surge: low HP or recent hits → pulse heal + +ASPD
-  if (hasAffinity('urn', 8)) {
+  // Urn L8 — Beacon Surge handled by generic triggers
+  if (false && hasAffinity('urn', 8)) {
     const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
     let density = 0; for (const e of enemies) { if (e.hp > 0) { const dx = e.x - player.x, dy = e.y - player.y; if ((dx*dx + dy*dy) <= (80*80)) density++; } }
     if ((cds.urnBeaconSurge || 0) <= 0 && (hpRatio < 0.35 || (runtime._recentPlayerHitTimer||0) > 0) && density >= 2) {
@@ -3032,8 +3032,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Varabella L10 — Time Dilation: on crit or Dash Combo + density → slow enemies; boost shots
-  if (hasAffinity('varabella', 10)) {
+  // Varabella L10 — Time Dilation handled by generic triggers
+  if (false && hasAffinity('varabella', 10)) {
     const density = enemies.reduce((n,e)=> n + (e.hp>0 && ((e.x-player.x)**2 + (e.y-player.y)**2) <= (120*120) ? 1 : 0), 0);
     const critRecently = (runtime._recentPlayerCritTimer || 0) > 0;
     const dashCombo = !!(runtime._dashComboJustTriggered);
@@ -3077,8 +3077,8 @@ function handleCompanionTriggers(dt) {
     }
   }
 
-  // Snake L8 — Venom Cloud: periodic slow+DoT around player when ready
-  if (hasAffinity('snake', 8)) {
+  // Snake L8 — Venom Cloud handled by generic triggers
+  if (false && hasAffinity('snake', 8)) {
     if ((cds.snakeVenom || 0) <= 0) {
       let any = false; for (const e of enemies) { if (e.hp>0) { const dx=e.x-player.x, dy=e.y-player.y; if ((dx*dx+dy*dy)<=(52*52)) { any=true; break; } } }
       if (any) {
@@ -3121,8 +3121,8 @@ function handleCompanionTriggers(dt) {
 
   // Urn Cheer handled by generic triggers
 
-  // Varabella Call the Angle: brief ATK + range window when enemies nearby
-  if (has('varabella')) {
+  // Varabella Call the Angle handled by generic triggers
+  if (false && has('varabella')) {
     const base = companionEffectsByKey.varabella?.triggers?.angle || { atk: 1, range: 2, durationSec: 3, cooldownSec: 9, proximity: 140 };
     const m = multFor('varabella');
     const eff = {
@@ -3293,9 +3293,27 @@ function processGenericCompanionTriggers(dt) {
           fire = anyEnemyWithin(ax, ay, r);
           break;
         }
+        case 'density_enemies': {
+          const r = t.radius || 64; const need = Math.max(1, t.minCount || 1);
+          const r2 = r * r; let count = 0;
+          for (const e of enemies) {
+            if (!e || e.hp <= 0) continue;
+            const dx = e.x - player.x, dy = e.y - player.y;
+            if ((dx*dx + dy*dy) <= r2) { count++; if (count >= need) break; }
+          }
+          const okDensity = count >= need;
+          const needDashOrCrit = !!t.requireDashOrCrit;
+          const needLowHpOrRecent = !!t.requireLowHpOrRecent;
+          const dashOrCrit = (!!(runtime._dashComboJustTriggered)) || ((runtime._recentPlayerCritTimer || 0) > 0);
+          const lowHpOrRecent = ((player.hp / Math.max(1, player.maxHp || 10)) < (t.hpThresh || 0.35)) || ((runtime._recentPlayerHitTimer || 0) > 0);
+          fire = okDensity && (!needDashOrCrit || dashOrCrit) && (!needLowHpOrRecent || lowHpOrRecent);
+          if (fire && needDashOrCrit) { consumedDashCombo = consumedDashCombo || !!(runtime._dashComboJustTriggered); runtime._recentPlayerCritTimer = 0; }
+          break;
+        }
         case 'player_low_hp': {
           const hpRatio = player.hp / Math.max(1, player.maxHp || 10);
           fire = hpRatio <= (t.hpThresh || 0.5);
+          if (!fire && t.allowRecentHit && (runtime._recentPlayerHitTimer || 0) > 0) fire = true;
           break;
         }
         case 'recent_hit_taken': {
@@ -3313,15 +3331,26 @@ function processGenericCompanionTriggers(dt) {
           fire = (at > 0) && (Math.abs(now - at) < 0.05);
           break;
         }
-        case 'density_enemies': {
-          const r = t.radius || 64; const need = Math.max(1, t.minCount || 1);
-          const r2 = r * r; let count = 0;
-          for (const e of enemies) {
-            if (!e || e.hp <= 0) continue;
-            const dx = e.x - player.x, dy = e.y - player.y;
-            if ((dx*dx + dy*dy) <= r2) { count++; if (count >= need) break; }
+        case 'dash_or_crit': {
+          fire = (!!(runtime._dashComboJustTriggered)) || ((runtime._recentPlayerCritTimer || 0) > 0);
+          if (fire) { consumedDashCombo = consumedDashCombo || !!(runtime._dashComboJustTriggered); runtime._recentPlayerCritTimer = 0; }
+          break;
+        }
+        case 'aligned_enemies': {
+          const R = t.radius || 120; const R2 = R * R; const eps = (typeof t.angleEpsilon === 'number') ? t.angleEpsilon : 0.2;
+          const near = enemies.filter(e => e && e.hp>0).map(e => ({e, dx: e.x - player.x, dy: e.y - player.y})).filter(o => (o.dx*o.dx + o.dy*o.dy) <= R2);
+          if (near.length >= 2) {
+            let aligned = false;
+            for (let i=0;i<Math.min(near.length,6)&&!aligned;i++){
+              for (let j=i+1;j<Math.min(near.length,7);j++){
+                const a = near[i], b = near[j];
+                const ca = Math.atan2(a.dy, a.dx), cb = Math.atan2(b.dy, b.dx);
+                const da = Math.abs(ca - cb); const dAng = Math.min(da, Math.abs((Math.PI*2) - da));
+                if (dAng < eps) { aligned = true; break; }
+              }
+            }
+            fire = aligned;
           }
-          fire = count >= need;
           break;
         }
       }
@@ -3347,6 +3376,16 @@ function processGenericCompanionTriggers(dt) {
               });
               break;
             }
+            case 'area_slow': {
+              const anchor = (eff.anchor === 'self') ? c : player;
+              const ax = anchor.x, ay = anchor.y; const r = eff.radius || (t.radius || 24);
+              forEnemiesWithin(ax, ay, r, (e) => {
+                const sd = Math.max(0, eff.slowDur || t.durationSec || 1.5);
+                e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, sd);
+                e._veilSlow = Math.max(e._veilSlow || 0, Math.min(eff.slow || 0.25, COMPANION_BUFF_CAPS.slow));
+              });
+              break;
+            }
             case 'area_slow_burn': {
               const anchor = (eff.anchor === 'self') ? c : player;
               const ax = anchor.x, ay = anchor.y; const r = eff.radius || (t.radius || 24);
@@ -3354,6 +3393,16 @@ function processGenericCompanionTriggers(dt) {
                 e._veilSlowTimer = Math.max(e._veilSlowTimer || 0, eff.slowDur || 1.5);
                 e._veilSlow = Math.max(e._veilSlow || 0, Math.min(eff.slow || 0.3, COMPANION_BUFF_CAPS.slow));
                 if (eff.burnDps) { e._burnTimer = Math.max(e._burnTimer || 0, eff.burnDur || 1.5); e._burnDps = Math.max(e._burnDps || 0, eff.burnDps); }
+              });
+              break;
+            }
+            case 'area_enemy_temp_dr': {
+              const r = eff.radius || (t.radius || 60);
+              forEnemiesWithin(player.x, player.y, r, (e) => {
+                const dur = Math.max(0, eff.durationSec || t.durationSec || 2.0);
+                const amt = Math.min(0, eff.amount || 0); // negative to reduce DR
+                e._tempDr = Math.min(e._tempDr || 0, amt);
+                e._tempDrTimer = Math.max(e._tempDrTimer || 0, dur);
               });
               break;
             }
@@ -3367,6 +3416,23 @@ function processGenericCompanionTriggers(dt) {
               if (typeof b.range === 'number') { runtime.tempRangeBonus = Math.max(runtime.tempRangeBonus || 0, b.range); runtime._tempRangeTimer = Math.max(runtime._tempRangeTimer || 0, dur); }
               if (typeof b.deflect === 'number') { runtime.tempDeflectBonus = Math.max(runtime.tempDeflectBonus || 0, b.deflect); runtime._tempDeflectTimer = Math.max(runtime._tempDeflectTimer || 0, dur); }
               if (typeof b.touchDR === 'number') { runtime.tempTouchDr = Math.max(runtime.tempTouchDr || 0, b.touchDR); runtime._tempTouchDrTimer = Math.max(runtime._tempTouchDrTimer || 0, dur); }
+              break;
+            }
+            case 'temp_stats': {
+              const dur = Math.max(0, (eff.durationSec || t.durationSec || 0));
+              if (typeof eff.ap === 'number') { runtime.tempAPBonus = Math.max(runtime.tempAPBonus || 0, eff.ap); runtime._tempApTimer = Math.max(runtime._tempApTimer || 0, dur); }
+              if (typeof eff.true === 'number') { runtime.tempTrueDamage = Math.max(runtime.tempTrueDamage || 0, eff.true); runtime._tempTrueTimer = Math.max(runtime._tempTrueTimer || 0, dur); }
+              break;
+            }
+            case 'temp_shot': {
+              const dur = Math.max(0, (eff.durationSec || t.durationSec || 0));
+              if (typeof eff.pierce === 'number') { runtime._tempPierceBonus = Math.max(runtime._tempPierceBonus || 0, eff.pierce); runtime._tempPierceTimer = Math.max(runtime._tempPierceTimer || 0, dur); }
+              if (typeof eff.ap === 'number') { runtime.tempAPBonus = Math.max(runtime.tempAPBonus || 0, eff.ap); runtime._tempApTimer = Math.max(runtime._tempApTimer || 0, dur); }
+              break;
+            }
+            case 'shield': {
+              const dur = Math.max(0, (eff.durationSec || t.durationSec || 0));
+              runtime.shieldActive = true; runtime.shieldTimer = dur;
               break;
             }
             case 'heal_player': {

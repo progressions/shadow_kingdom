@@ -13,6 +13,12 @@ export const companionEffectsByKey = {
       l8: { key: 'aegis', name: 'Aegis Surge', cooldownSec: 18, durationSec: 3, desc: 'Bubble: +DR, small regen, KB resist' },
       l10: { key: 'veil', name: 'Guardian Veil', cooldownSec: 40, durationSec: 1.5, desc: 'Near-invuln (block one hit)' },
     },
+    triggers2: [
+      { id: 'canopy_shield', when: 'player_low_hp', cooldownSec: 12, durationSec: 6, hpThresh: 0.4, effects: [ { type: 'shield', durationSec: 6 }, { type: 'text', text: 'Shield!', color: '#8ab4ff' }, { type: 'sfx', key: 'shield' } ] },
+      { id: 'canopy_aegis', when: 'recent_hit_taken', minAffinity: 8, cooldownSec: 18, durationSec: 3, effects: [ { type: 'temp_buffs', buffs: { touchDR: 2 }, durationSec: 3 }, { type: 'heal_player', amount: 1 }, { type: 'text', text: 'Aegis!', color: '#8ab4ff' }, { type: 'sfx', key: 'shield' } ] },
+      { id: 'canopy_dash_mend', when: 'on_dash_start', minAffinity: 5, cooldownSec: 6, effects: [ { type: 'heal_player', amount: 1 }, { type: 'text', text: '+1', color: '#62e563' } ] },
+      { id: 'canopy_veil', when: 'density_enemies', minAffinity: 10, radius: 80, minCount: 3, cooldownSec: 40, durationSec: 1.5, effects: [ { type: 'shield', durationSec: 1.5 }, { type: 'text', text: 'Guardian Veil!', color: '#8ab4ff' }, { type: 'sfx', key: 'shield' } ] },
+    ],
   },
   yorna: {
     auras: [
@@ -24,6 +30,10 @@ export const companionEffectsByKey = {
       l8: { key: 'expose', name: 'Expose Weakness', cooldownSec: 14, durationSec: 4, desc: 'Armor shred aura on Dash/Crit' },
       l10: { key: 'execute', name: 'Execution Window', cooldownSec: 35, durationSec: 2, desc: 'AP+true vs low HP targets' },
     },
+    triggers2: [
+      { id: 'yorna_expose', when: 'dash_or_crit', minAffinity: 8, cooldownSec: 14, durationSec: 4, radius: 60, effects: [ { type: 'area_enemy_temp_dr', amount: -2, durationSec: 4 }, { type: 'text', text: 'Expose!', color: '#ffd166' } ] },
+      { id: 'yorna_execute', when: 'dash_or_crit', minAffinity: 10, cooldownSec: 35, durationSec: 2, effects: [ { type: 'temp_stats', ap: 2, true: 1, durationSec: 2 }, { type: 'text', text: 'Execute!', color: '#ffd166' } ] },
+    ],
   },
   hola: {
     auras: [
@@ -180,6 +190,10 @@ export const companionEffectsByKey = {
           { type: 'sfx', key: 'cheer' },
         ],
       },
+      {
+        id: 'urn_beacon', when: 'density_enemies', minAffinity: 8, radius: 80, minCount: 2, requireLowHpOrRecent: true, cooldownSec: 20, durationSec: 3,
+        effects: [ { type: 'heal_player', amount: 4 }, { type: 'temp_buffs', buffs: { aspd: 0.10 }, durationSec: 3.0 }, { type: 'text', text: 'Beacon Surge!', color: '#9ae6ff' }, { type: 'sfx', key: 'beacon' } ],
+      },
     ],
   },
   varabella: {
@@ -195,6 +209,11 @@ export const companionEffectsByKey = {
       l8: { key: 'perfectAngle', name: 'Perfect Angle', cooldownSec: 14, durationSec: 3, desc: 'Next attack pierces + AP on alignment' },
       l10: { key: 'timeDilation', name: 'Time Dilation', cooldownSec: 40, durationSec: 2, desc: 'Enemy slow; your shots pierce + crit' },
     },
+    triggers2: [
+      { id: 'varabella_angle', when: 'proximity_enemies', cooldownSec: 9, durationSec: 3, radius: 140, effects: [ { type: 'temp_buffs', buffs: { atk: 1, range: 2 }, durationSec: 3 }, { type: 'text', text: 'Angle!', color: '#ffd166' }, { type: 'sfx', key: 'angle' } ] },
+      { id: 'varabella_perfect', when: 'aligned_enemies', minAffinity: 8, cooldownSec: 14, durationSec: 3, radius: 120, angleEpsilon: 0.2, effects: [ { type: 'temp_shot', pierce: 1, ap: 1, durationSec: 3 }, { type: 'text', text: 'Perfect Angle.', color: '#ffd166' } ] },
+      { id: 'varabella_time', when: 'density_enemies', minAffinity: 10, radius: 120, minCount: 3, requireDashOrCrit: true, cooldownSec: 40, durationSec: 2, effects: [ { type: 'area_slow', radius: 120, slow: 0.25, slowDur: 2 }, { type: 'temp_buffs', buffs: { crit: 0.20 }, durationSec: 2 }, { type: 'temp_shot', pierce: 1, durationSec: 2 }, { type: 'text', text: 'Time Dilation!', color: '#ffd166' } ] },
+    ],
   },
   nellis: {
     auras: [
@@ -206,6 +225,10 @@ export const companionEffectsByKey = {
       l8: { key: 'phalanx', name: 'Phalanx', cooldownSec: 20, durationSec: 3, desc: '2+ enemies near → +touchDR & KB resist' },
       l10: { key: 'bulwark', name: 'Bulwark', cooldownSec: 45, durationSec: 3, desc: 'Frontal barrier blocks projectiles' },
     },
+    triggers2: [
+      { id: 'nellis_phalanx', when: 'density_enemies', minAffinity: 8, radius: 48, minCount: 2, cooldownSec: 20, durationSec: 3, effects: [ { type: 'temp_buffs', buffs: { touchDR: 2 }, durationSec: 3 }, { type: 'text', text: 'Phalanx.', color: '#8ab4ff' } ] },
+      { id: 'nellis_bulwark', when: 'density_enemies', minAffinity: 10, radius: 80, minCount: 3, cooldownSec: 45, durationSec: 3, effects: [ { type: 'temp_buffs', buffs: { rangedDR: 3, touchDR: 1 }, durationSec: 3 }, { type: 'text', text: 'Bulwark!', color: '#8ab4ff' } ] },
+    ],
   },
   cowsill: {
     auras: [
@@ -236,6 +259,10 @@ export const companionEffectsByKey = {
       l8: { key: 'venomCloud', name: 'Venom Cloud', cooldownSec: 18, durationSec: 2, desc: '2s slow + poison DoT around player' },
       l10: { key: 'constriction', name: 'Constriction', cooldownSec: 35, durationSec: 1, desc: 'Root elite or slow boss + heavy DoT' },
     },
+    triggers2: [
+      { id: 'snake_venom', when: 'proximity_enemies', minAffinity: 8, radius: 52, cooldownSec: 18, durationSec: 2, effects: [ { type: 'area_slow_burn', radius: 52, slow: 0.15, slowDur: 2.0, burnDps: 0.5, burnDur: 1.5 }, { type: 'text', text: 'Venom Cloud.', color: '#9ae66f' } ] },
+      { id: 'snake_constriction', when: 'density_enemies', minAffinity: 10, radius: 52, minCount: 1, cooldownSec: 35, durationSec: 2, effects: [ { type: 'area_slow_burn', radius: 52, slow: 0.35, slowDur: 2.0, burnDps: 0.8, burnDur: 2.0 }, { type: 'text', text: 'Constriction.', color: '#9ae66f' } ] },
+    ],
   },
 };
 
