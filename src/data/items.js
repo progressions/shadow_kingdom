@@ -40,6 +40,8 @@ export const sampleItems = [
   { id: 'key_temple',    name: 'Temple Key',    slot: 'misc',       keyId: 'key_temple' },
   // Quest item (fetch/deliver): Canopy — Sister's Ribbon
   { id: 'relic_canopy',  name: "Sister's Ribbon", slot: 'misc',     keyId: 'relic_canopy' },
+  // Quest items (multi-fetch): simple herbs/supplies
+  { id: 'herb_reed',     name: 'Reed Herb',      slot: 'misc',       stackable: true, maxQty: 9, qty: 1 },
 ];
 
 export function cloneItem(item) {

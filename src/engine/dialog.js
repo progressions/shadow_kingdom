@@ -846,6 +846,32 @@ function handleStartQuest(data) {
         } catch {}
       }).catch(()=>{});
       try { showBanner('Quest started: Return the Ribbon — Find and place it'); } catch {}
+    } else if (id === 'canopy_gather_herbs') {
+      // Multi-Fetch: Canopy — Gather 5 Reed Herbs
+      import('./state.js').then(m => {
+        const { player, spawnPickup } = m;
+        import('../data/loot.js').then(L => {
+          try {
+            const pts = [ [28,0], [-26,6], [0,22], [18,-18], [-20,-20] ];
+            for (const [ox, oy] of pts) {
+              const it = L.itemById('herb_reed');
+              if (it) spawnPickup(Math.round(player.x + ox), Math.round(player.y + oy), it);
+            }
+          } catch {}
+        }).catch(()=>{});
+        try {
+          if (!runtime.questMeta) runtime.questMeta = {};
+          runtime.questMeta['canopy_gather_herbs'] = {
+            collectItemId: 'herb_reed',
+            target: 5,
+            counterKey: 'canopy_gather_herbs_collected',
+            progressLabel: 'Gather Reeds',
+            clearBanner: 'Quest updated: Gather Reeds — cleared'
+          };
+        } catch {}
+      }).catch(()=>{});
+      runtime.questCounters['canopy_gather_herbs_collected'] = 0;
+      try { showBanner('Quest started: Gather Reeds — 0/5'); } catch {}
     }
     // Yorna: Cut the Knot — spawn two featured targets
   if (id === 'yorna_knot') {
@@ -1059,6 +1085,28 @@ function handleStartQuest(data) {
       }).catch(()=>{});
       runtime.questCounters['snake_den_remaining'] = 3;
       try { showBanner('Quest started: Clear the Den — 3 pests'); } catch {}
+    } else if (id === 'twil_scout_path') {
+      // Survey/Scout: Twil — step through 3 marked zones
+      try {
+        const px = player.x + player.w/2;
+        const py = player.y + player.h/2;
+        const zones = [
+          { x: Math.round(px + 180), y: Math.round(py), r: 28, flag: 'twil_scout_path_a' },
+          { x: Math.round(px),       y: Math.round(py - 160), r: 28, flag: 'twil_scout_path_b' },
+          { x: Math.round(px - 180), y: Math.round(py + 140), r: 28, flag: 'twil_scout_path_c' },
+        ];
+        if (!runtime.questMeta) runtime.questMeta = {};
+        runtime.questMeta['twil_scout_path'] = {
+          zones,
+          target: 3,
+          counterKey: 'twil_scout_path_steps',
+          progressLabel: 'Scout the Trail',
+          clearBanner: 'Quest updated: Scout the Trail — cleared'
+        };
+        if (!runtime.questCounters) runtime.questCounters = {};
+        runtime.questCounters['twil_scout_path_steps'] = 0;
+      } catch {}
+      try { showBanner('Quest started: Scout the Trail — 0/3'); } catch {}
     } else if (id === 'hola_find_yorna') {
       // Level 1 Hola quest: point to Yorna's location; quest clears on recruiting Yorna
       try {
