@@ -1078,6 +1078,7 @@ function rolesForCompanion(name) {
   if (key.includes('tin')) {
     return [
       { cls: 'as', label: 'AS', title: 'Tempo (Attack Speed)' },
+      { cls: 'ww', label: 'Ww', title: 'Water Walk' },
     ];
   }
   if (key.includes('nellis')) {

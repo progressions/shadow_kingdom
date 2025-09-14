@@ -621,6 +621,8 @@ export const runtime = {
   },
   // Pathfinding flow field (coarse, tile-based)
   _flow: { dist: null, w: 0, h: 0, lastBuildAt: 0, lastPlayerTx: -1, lastPlayerTy: -1, dirty: true },
+  // Party-wide auras/toggles derived from companions
+  partyAuras: { waterWalk: false },
 
   // --- Player dash (double-tap WASD) ---
   // Recent tap timestamps by key (e.g., 'w','a','s','d') in seconds

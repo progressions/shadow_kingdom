@@ -33,6 +33,15 @@ function moveWithCollision(ent, dx, dy, solids = []) {
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
       if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
+      // Water walking aura: if Tin is in party (Level 3), player/companions can walk on water
+      try {
+        const ww = !!(runtime?.partyAuras?.waterWalk);
+        if (ww && o.type === 'water') {
+          const isPlayer = (ent === player);
+          const isComp = companions && companions.includes ? companions.includes(ent) : false;
+          if (isPlayer || isComp) continue;
+        }
+      } catch {}
       if (rectsIntersect(rect, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
@@ -60,6 +69,15 @@ function moveWithCollision(ent, dx, dy, solids = []) {
       if (o.type === 'gate' && o.locked === false) continue;
       // non-blocking obstacle types
       if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood') continue;
+      // Water walking aura
+      try {
+        const ww = !!(runtime?.partyAuras?.waterWalk);
+        if (ww && o.type === 'water') {
+          const isPlayer = (ent === player);
+          const isComp = companions && companions.includes ? companions.includes(ent) : false;
+          if (isPlayer || isComp) continue;
+        }
+      } catch {}
       if (rectsIntersect(rect, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
@@ -749,6 +767,12 @@ export function step(dt) {
   // Aggregate companion auras and process companion triggers before combat/movement
   applyCompanionAuras(dt);
   handleCompanionTriggers(dt);
+  // Party auras derived from presence (e.g., Tin water-walk on any level)
+  try {
+    const hasTin = companions.some(c => (c.name || '').toLowerCase().includes('tin'));
+    runtime.partyAuras = runtime.partyAuras || {};
+    runtime.partyAuras.waterWalk = !!hasTin;
+  } catch {}
   // Apply enemy auras and triggers (player debuffs, enemy DR/regen) before movement/combat
   applyEnemyAurasAndTriggers(dt);
 
