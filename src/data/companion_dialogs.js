@@ -28,16 +28,16 @@ export const companionDialogs = {
           { label: 'Breath and Bandages', requires: { flag: 'canopy_triage_started', not: true }, next: 'quest_intro' },
           { label: 'Turn in: Breath and Bandages', requires: { flag: 'canopy_triage_cleared', missingFlag: 'canopy_triage_done' }, next: 'quest_turnin' },
           // Level 2 storyline
-          { label: 'Ribbon in the Dust (L2)', requires: { hasFlag: 'level2_reached', flag: 'canopy_sister2_started', not: true }, next: 'sister_l2_intro' },
+          { label: 'Ribbon in the Dust (L2)', requires: { level: 2, flag: 'canopy_sister2_started', not: true }, next: 'sister_l2_intro' },
           { label: 'Turn in: Ribbon in the Dust', requires: { flag: 'canopy_sister2_cleared', missingFlag: 'canopy_sister2_done' }, next: 'sister_l2_turnin' },
           // Level 3 storyline
-          { label: 'Reeds and Echoes (L3)', requires: { hasFlag: 'level3_reached', flag: 'canopy_sister3_started', not: true }, next: 'sister_l3_intro' },
+          { label: 'Reeds and Echoes (L3)', requires: { level: 3, flag: 'canopy_sister3_started', not: true }, next: 'sister_l3_intro' },
           { label: 'Turn in: Reeds and Echoes', requires: { flag: 'canopy_sister3_cleared', missingFlag: 'canopy_sister3_done' }, next: 'sister_l3_turnin' },
           // Fetch/Deliver example (Level 2): Return the Ribbon
-          { label: 'Return the Ribbon (L2)', requires: { hasFlag: 'level2_reached', flag: 'canopy_fetch_ribbon_started', not: true }, next: 'fetch_ribbon_intro' },
+          { label: 'Return the Ribbon (L2)', requires: { level: 2, flag: 'canopy_fetch_ribbon_started', not: true }, next: 'fetch_ribbon_intro' },
           { label: 'Turn in: Return the Ribbon', requires: { flag: 'canopy_fetch_ribbon_cleared', missingFlag: 'canopy_fetch_ribbon_done' }, next: 'fetch_ribbon_turnin' },
           // Level 4: Ruined City quest
-          { label: 'Stitch the Streets (L4)', requires: { hasFlag: 'level4_reached', flag: 'canopy_streets4_started', not: true }, next: 'streets_l4_intro' },
+          { label: 'Stitch the Streets (L4)', requires: { level: 4, flag: 'canopy_streets4_started', not: true }, next: 'streets_l4_intro' },
           { label: 'Turn in: Stitch the Streets', requires: { flag: 'canopy_streets4_cleared', missingFlag: 'canopy_streets4_done' }, next: 'streets_l4_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
@@ -256,9 +256,9 @@ export const companionDialogs = {
           // Quest entries
           { label: 'Cut the Knot', requires: { flag: 'yorna_knot_started', not: true }, next: 'quest_intro' },
           { label: 'Turn in: Cut the Knot', requires: { flag: 'yorna_knot_cleared', missingFlag: 'yorna_knot_done' }, next: 'quest_turnin' },
-          { label: 'Shatter the Ring (L2)', requires: { hasFlag: 'level2_reached', flag: 'yorna_ring_started', not: true }, next: 'ring_intro' },
+          { label: 'Shatter the Ring (L2)', requires: { level: 2, flag: 'yorna_ring_started', not: true }, next: 'ring_intro' },
           { label: 'Turn in: Shatter the Ring', requires: { flag: 'yorna_ring_cleared', missingFlag: 'yorna_ring_done' }, next: 'ring_turnin' },
-          { label: 'Hold the Causeway (L3)', requires: { hasFlag: 'level3_reached', flag: 'yorna_causeway_started', not: true }, next: 'causeway_intro' },
+          { label: 'Hold the Causeway (L3)', requires: { level: 3, flag: 'yorna_causeway_started', not: true }, next: 'causeway_intro' },
           { label: 'Turn in: Hold the Causeway', requires: { flag: 'yorna_causeway_cleared', missingFlag: 'yorna_causeway_done' }, next: 'causeway_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
@@ -456,9 +456,9 @@ export const companionDialogs = {
           // Quest entries
           { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
           { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared', missingFlag: 'hola_practice_done' }, next: 'quest_turnin' },
-          { label: 'Break the Silence (L2)', requires: { hasFlag: 'level2_reached', flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
+          { label: 'Break the Silence (L2)', requires: { level: 2, flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
           { label: 'Turn in: Break the Silence', requires: { flag: 'hola_silence_cleared', missingFlag: 'hola_silence_done' }, next: 'silence_turnin' },
-          { label: 'Breath Over Bog (L3)', requires: { hasFlag: 'level3_reached', flag: 'hola_breath_bog_started', not: true }, next: 'bog_intro' },
+          { label: 'Breath Over Bog (L3)', requires: { level: 3, flag: 'hola_breath_bog_started', not: true }, next: 'bog_intro' },
           { label: 'Turn in: Breath Over Bog', requires: { flag: 'hola_breath_bog_cleared', missingFlag: 'hola_breath_bog_done' }, next: 'bog_turnin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
@@ -499,9 +499,9 @@ export const companionDialogs = {
         choices: [
           { label: 'Find Her Voice', requires: { flag: 'hola_practice_started', not: true }, next: 'quest_intro' },
           { label: 'Turn in: Find Her Voice', requires: { flag: 'hola_practice_cleared', missingFlag: 'hola_practice_done' }, next: 'quest_turnin' },
-          { label: 'Break the Silence (L2)', requires: { hasFlag: 'level2_reached', flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
+          { label: 'Break the Silence (L2)', requires: { level: 2, flag: 'hola_silence_started', not: true }, next: 'silence_intro' },
           { label: 'Turn in: Break the Silence', requires: { flag: 'hola_silence_cleared', missingFlag: 'hola_silence_done' }, next: 'silence_turnin' },
-          { label: 'Breath Over Bog (L3)', requires: { hasFlag: 'level3_reached', flag: 'hola_breath_bog_started', not: true }, next: 'bog_intro' },
+          { label: 'Breath Over Bog (L3)', requires: { level: 3, flag: 'hola_breath_bog_started', not: true }, next: 'bog_intro' },
           { label: 'Turn in: Breath Over Bog', requires: { flag: 'hola_breath_bog_cleared', missingFlag: 'hola_breath_bog_done' }, next: 'bog_turnin' },
           { label: 'Back', next: 'root' },
         ],
@@ -637,7 +637,7 @@ export const companionDialogs = {
           // Quest entries (movement/control now)
           { label: 'Trace the Footprints', requires: { flag: 'twil_trace_started', not: true }, next: 'twil_trace_intro_oyin' },
           { label: 'Turn in: Trace the Footprints', requires: { flag: 'twil_trace_cleared', missingFlag: 'twil_trace_done' }, next: 'twil_trace_turnin_oyin' },
-          { label: 'Cut the Wake (L3)', requires: { hasFlag: 'level3_reached', flag: 'twil_wake_started', not: true }, next: 'twil_wake_intro_oyin' },
+          { label: 'Cut the Wake (L3)', requires: { level: 3, flag: 'twil_wake_started', not: true }, next: 'twil_wake_intro_oyin' },
           { label: 'Turn in: Cut the Wake', requires: { flag: 'twil_wake_cleared', missingFlag: 'twil_wake_done' }, next: 'twil_wake_turnin_oyin' },
           { label: 'Back to companions', action: 'companion_back' },
         ],
