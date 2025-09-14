@@ -58,3 +58,11 @@ In certain situations, especially when personalities clash under pressure, the r
 - **Twil's** cocky speed could intimidate or frustrate the hesitant **Hola**.
 
 These conflicts create opportunities for the player to intervene and mediate, strengthening their bond with the involved companions and shaping the party's dynamic.
+
+Level 2 Feud Example (Canopy ↔ Yorna)
+- Setup: Entering Level 2 with both in the party triggers a VN scene. The tone is direct, personal, and grounded — no metaphors/idioms.
+- Sample beats:
+  - Yorna: "Chief, she slows us. We push or we bleed. Pick."
+  - Canopy: "My Lord, charge blind and you lose people. I won’t help with that."
+  - Player chooses who stays. The choice is final until a later truce.
+- Aftermath: The unchosen one refuses to join while the rival is present until respect is earned. Keep lines short and literal when expressing refusal.

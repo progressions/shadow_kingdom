@@ -493,6 +493,58 @@ export function selectChoice(index) {
     exitChat(runtime);
     return;
   }
+  if (choice.action === 'feud_keep_canopy' || choice.action === 'feud_keep_yorna') {
+    // Resolve Level 2 feud by keeping one and dismissing the other
+    try {
+      const lower = (s) => String(s || '').toLowerCase();
+      const findBy = (key) => companions.find(c => lower(c?.name).includes(key));
+      const canopy = findBy('canopy');
+      const yorna = findBy('yorna');
+      const dismiss = (comp) => {
+        if (!comp) return;
+        // Convert companion back into an NPC near their current position (nudge to nearest free tile)
+        const spot = findNearbyFreeSpot(comp.x, comp.y, comp.w, comp.h);
+        const nx = spot ? spot.x : comp.x;
+        const ny = spot ? spot.y : comp.y;
+        const npc = spawnNpc(nx, ny, comp.dir || 'down', {
+          name: comp.name || 'Companion',
+          sheet: comp.sheet || null,
+          portrait: comp.portraitSrc || null,
+          affinity: (typeof comp.affinity === 'number') ? comp.affinity : undefined,
+        });
+        // Attach appropriate dialog so you can re-recruit them later
+        const key = lower(npc.name);
+        if (key.includes('canopy')) setNpcDialog(npc, canopyDialog);
+        else if (key.includes('yorna')) setNpcDialog(npc, yornaDialog);
+        else if (key.includes('hola')) setNpcDialog(npc, holaDialog);
+        // Remove from party
+        removeCompanion(comp);
+        updatePartyUI(companions);
+        showBanner(`${comp.name || 'Companion'} left your party.`);
+      };
+      if (choice.action === 'feud_keep_canopy') {
+        // Yorna takes it personally: apply a larger negative affinity
+        try { handleAffinityAdd({ target: 'yorna', amount: -1.0 }); } catch {}
+        dismiss(yorna);
+        // Follow-up VN line
+        const actor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
+        // Mark flags
+        try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_yorna_feud_active'] = true; runtime.questFlags['canopy_yorna_feud_resolved'] = true; } catch {}
+        startPrompt(actor, "Yorna: Fine. Call me when you want to move.\nCanopy: My Lord, I’ll keep you standing.", [ { label: 'Continue', action: 'vn_continue' } ]);
+        return;
+      }
+      if (choice.action === 'feud_keep_yorna') {
+        // Canopy is hurt but steadier: smaller negative affinity
+        try { handleAffinityAdd({ target: 'canopy', amount: -0.6 }); } catch {}
+        dismiss(canopy);
+        const actor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
+        try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['canopy_yorna_feud_active'] = true; runtime.questFlags['canopy_yorna_feud_resolved'] = true; } catch {}
+        startPrompt(actor, "Canopy: I won’t stand behind that pace. I’ll step back.\nYorna: Good. We move now.", [ { label: 'Continue', action: 'vn_continue' } ]);
+        return;
+      }
+    } catch {}
+    return;
+  }
   if (choice.action === 'companion_select') {
     const idx = typeof choice.data === 'number' ? choice.data : -1;
     const comp = companions[idx];

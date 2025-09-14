@@ -7,7 +7,7 @@ import { makeSpriteSheet, sheetForName, makeSnakeSpriteSheet } from './sprites.j
 import { setMusicLocation } from './audio.js';
 import { spawnEnemy, spawnNpc, addItemToInventory, spawnPickup } from './state.js';
 import { TILE } from './constants.js';
-import { setNpcDialog } from './dialog.js';
+import { setNpcDialog, startDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
 import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
@@ -622,6 +622,52 @@ export function loadLevel2() {
   const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', dialogId: 'twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/level02/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
   // Attach basic recruit dialogs
   import('../data/dialogs.js').then(mod => { setNpcDialog(oyin, mod.oyinDialog); setNpcDialog(twil, mod.twilDialog); }).catch(()=>{});
+
+  // Level 2 Party Feud: Canopy ↔ Yorna — force a strategic choice if both are present
+  (function maybeStartCanopyYornaFeud() {
+    try {
+      const flags = (runtime.questFlags ||= {});
+      if (flags['canopy_yorna_feud_resolved']) return; // already decided
+      // Find party companions by name
+      const findBy = (key) => companions.find(c => (c?.name || '').toLowerCase().includes(key));
+      const canopyComp = findBy('canopy');
+      const yornaComp = findBy('yorna');
+      if (!canopyComp || !yornaComp) return;
+      // Mark feud active (informational)
+      flags['canopy_yorna_feud_active'] = true;
+      // Build a small VN tree with two choices that dismiss one companion, then confirm
+      const vnActor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
+      const tree = {
+        start: 'root',
+        nodes: {
+          root: {
+            text: "Yorna: Chief, she slows us. We push or we bleed. Pick.\nCanopy: My Lord, charge blind and you lose people. I won’t help with that.",
+            choices: [
+              { label: 'Keep Canopy (Healer · Regeneration · Shield)', action: 'feud_keep_canopy' },
+              { label: 'Keep Yorna (Frontliner · ATK · Reach)', action: 'feud_keep_yorna' },
+            ],
+          },
+          kept_canopy: {
+            text: "Yorna: Fine. Call me when you want to move.\nCanopy: My Lord, I’ll keep you standing.",
+            choices: [ { label: 'Continue', action: 'set_flag', data: { key: 'canopy_yorna_feud_resolved' }, next: 'end' } ],
+          },
+          kept_yorna: {
+            text: "Canopy: I won’t stand behind that pace. I’ll step back.\nYorna: Good. We move now.",
+            choices: [ { label: 'Continue', action: 'set_flag', data: { key: 'canopy_yorna_feud_resolved' }, next: 'end' } ],
+          },
+          end: {
+            text: '',
+            choices: [ { label: 'Continue', action: 'vn_continue' } ],
+          },
+        },
+      };
+      // Lock overlay so the player must choose; exitChat will unlock
+      runtime.lockOverlay = true;
+      // Start the VN using a synthetic actor object (not added to world)
+      const actor = { name: vnActor.name, portraitSrc: vnActor.portraitSrc, dialog: tree };
+      startDialog(actor);
+    } catch {}
+  })();
 
   return terrain;
 }

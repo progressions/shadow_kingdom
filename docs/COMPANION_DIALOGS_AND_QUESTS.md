@@ -155,3 +155,54 @@ Appendix: Quick Reference
   - UI hint (optional): `src/engine/ui.js`
   - Level gating flag (optional): `src/engine/levels.js`
 
+---
+
+9) Level 2 Feud — Canopy vs Yorna (Join/Dismiss Flow)
+
+Goal
+- Teach strategic choice via party composition: Canopy (protection) vs Yorna (aggression). Push the player toward recruiting Oyin/Twil as counters to Nethra.
+
+Event
+- Trigger: On `level2_reached`, if both Canopy and Yorna are in `companions` and no prior resolution, queue a short VN where they clash; the player must choose who stays.
+- Outcome: The chosen companion remains; the other is dismissed using the existing `dismiss_companion` action.
+
+State & Flags
+- `canopy_yorna_feud_active`: set when the event begins.
+- `canopy_yorna_choice`: `'canopy' | 'yorna'` set on selection.
+- `canopy_yorna_feud_resolved`: set after dismissal and VN close.
+- Truce (later): `canopy_yorna_respect` allows both to join together again and removes refusal gates.
+
+Dialog Gating (join/refusal)
+- While feud unresolved:
+  - Canopy’s Join requires Yorna not in party: `requires: { partyMissing: 'yorna' }`.
+  - Yorna’s Join requires Canopy not in party: `requires: { partyMissing: 'canopy' }`.
+- Provide an alternate refusal node gated by `requires: { partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }` (and vice‑versa):
+
+Example (pseudo‑nodes)
+```
+// Inside Canopy tree
+{ label: 'Yes, join me.', requires: { partyMissing: 'yorna' }, action: 'join_party' },
+{ label: 'We need to cool this first', requires: { partyHas: 'yorna', missingFlag: 'canopy_yorna_respect' }, next: 'canopy_refuses_while_yorna' },
+
+// Inside Yorna tree
+{ label: 'Yes, join me.', requires: { partyMissing: 'canopy' }, action: 'join_party' },
+{ label: 'We settle this later', requires: { partyHas: 'canopy', missingFlag: 'canopy_yorna_respect' }, next: 'yorna_refuses_while_canopy' },
+```
+
+VN Choice Wiring (sketch)
+- Build a small VN tree with two choices. On select, call the existing flow with concrete `data` refs:
+```
+{ label: 'Keep Canopy',  action: 'dismiss_companion', data: <yornaRef>,  next: 'vn_done' }
+{ label: 'Keep Yorna',   action: 'dismiss_companion', data: <canopyRef>, next: 'vn_done' }
+```
+- After the action, set flags and call `updatePartyUI(companions)`; VN closes to resume play.
+
+Affinity Penalty (on dismissal)
+- Apply a one‑time negative affinity to the dismissed companion:
+  - Yorna: −1.0 (takes it more personally)
+  - Canopy: −0.6 (steadier reaction)
+- Persist by copying the updated affinity onto the spawned NPC so re‑recruiting preserves the state.
+
+Notes
+- `dismiss_companion` in `src/engine/dialog.js` supports passing the exact companion object in `data`.
+- All flags live in `runtime.questFlags` and are already persisted by the save system.

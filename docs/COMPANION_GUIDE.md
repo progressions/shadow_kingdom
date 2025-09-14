@@ -3,6 +3,13 @@
 ## Overview
 Companions are recruitable NPCs who follow the player, provide passive auras, and trigger special abilities during combat. Each companion has unique personality traits, visual appearance, and combat specializations. Effects scale with affinity (1-10).
 
+### Party Rules and Conflicts (New)
+- Level 2 Feud — Canopy ↔ Yorna:
+  - On first entering Level 2 with both in party, a VN scene plays. You must choose which one stays; the other is dismissed (same as using Dismiss).
+  - While the feud is unresolved, they refuse to join if the rival is currently in the party. This leaves one open slot and nudges you to recruit Oyin or Twil.
+  - Later content can grant `canopy_yorna_respect` (a truce), allowing both to ride together again.
+- Strategy signal: The Level 2 boss (Nethra) applies −1 melee range; Oyin’s +1 range aura cancels it, and Twil’s slows reduce gust pressure. This teaches party counter‑picking.
+
 ### Address Styles (Summary)
 | Companion  | How They Address You |
 |------------|-----------------------|
@@ -107,6 +114,15 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 - **Dust Veil**: When 2+ enemies are within 60px, applies 40% slow to all nearby enemies for 0.8 seconds (6s cooldown)
 
 **Quest Line:** Scouting missions and tracking
+
+---
+
+### Level 2: Party Conflict — Canopy vs Yorna
+- Trigger: Enter Level 2 with both Canopy and Yorna; a VN scene plays where they clash over approach (protection vs aggression).
+- Choice: Keep Canopy or Keep Yorna. The unchosen one is dismissed immediately.
+- Rule: Until a later truce (`canopy_yorna_respect`), Canopy will not join if Yorna is in the party, and vice‑versa.
+- Intent: Leave one slot open to encourage recruiting Oyin and/or Twil; both offer strong counters to Nethra’s kit (range penalty + gust windows).
+- Affinity: Dismissing Yorna applies a larger negative affinity (−1.0). Dismissing Canopy applies a smaller negative affinity (−0.6). The penalty is preserved if you re‑recruit them later.
 
 ---
 

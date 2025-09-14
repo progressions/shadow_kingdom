@@ -96,3 +96,7 @@ export const introTriads = {
 - `delta` values override temperament defaults for VN intros.
 - `flag` is used with `affinity_add` to prevent double‑granting via talk intros.
 - Defer option is tracked via a suggested `<name>_intro_deferred` flag if needed; VN seen is already persisted via `runtime.vnSeen`.
+
+Feud/Truce Reference (integration with temperament)
+- During the Level 2 feud (Canopy ↔ Yorna), join actions should be gated by party composition until `canopy_yorna_respect` is earned.
+- While together without respect, a soft cap on positive affinity may apply between the two (see engine chemistry dampeners) — the truce flag lifts this cap.
