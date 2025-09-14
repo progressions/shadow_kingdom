@@ -54,14 +54,14 @@ export const companionEffectsByKey = {
         ],
       },
       {
-        id: 'hola_slipstream', when: 'on_dash_start', cooldownSec: 12, durationSec: 2.0,
+        id: 'hola_slipstream', when: 'on_dash_start', minAffinity: 8, cooldownSec: 12, durationSec: 2.0,
         effects: [
           { type: 'temp_buffs', buffs: { dashCdr: 0.25 }, durationSec: 2.0 },
           { type: 'text', text: 'Slipstream.', color: '#9ae6ff' },
         ],
       },
       {
-        id: 'hola_maelstrom', when: 'density_enemies', radius: 64, minCount: 4, cooldownSec: 32, durationSec: 1.5,
+        id: 'hola_maelstrom', when: 'density_enemies', minAffinity: 10, radius: 64, minCount: 4, cooldownSec: 32, durationSec: 1.5,
         effects: [
           { type: 'area_push_slow', anchor: 'player', radius: 64, push: 26, slow: 0.35, slowDur: 1.5 },
           { type: 'temp_buffs', buffs: { deflect: 0.15 }, durationSec: 1.5 },
@@ -141,7 +141,7 @@ export const companionEffectsByKey = {
         ],
       },
       {
-        id: 'tin_overclock', when: 'on_dash_combo', cooldownSec: 16, durationSec: 3,
+        id: 'tin_overclock', when: 'on_dash_combo', minAffinity: 8, cooldownSec: 16, durationSec: 3,
         effects: [
           { type: 'temp_buffs', buffs: { aspd: 0.25, dashCdr: 0.3 }, durationSec: 3 },
           { type: 'text', text: 'Overclock!', color: '#9ae6ff' },
@@ -149,7 +149,7 @@ export const companionEffectsByKey = {
         ],
       },
       {
-        id: 'tin_symphony', when: 'on_dash_combo', cooldownSec: 45, durationSec: 4,
+        id: 'tin_symphony', when: 'on_dash_combo', minAffinity: 10, cooldownSec: 45, durationSec: 4,
         effects: [
           { type: 'temp_buffs', buffs: { aspd: 0.5, crit: 0.10 }, durationSec: 4 },
           { type: 'reset_dash_cooldown' },

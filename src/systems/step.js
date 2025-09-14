@@ -3278,6 +3278,9 @@ function processGenericCompanionTriggers(dt) {
     if (!def || !Array.isArray(def.triggers2) || def.triggers2.length === 0) continue;
     for (const t of def.triggers2) {
       if (!t || !t.id) continue;
+      // Affinity gating (per-companion)
+      const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
+      if (typeof t.minAffinity === 'number' && aff < t.minAffinity) continue;
       const gcd = runtime._genericCds || (runtime._genericCds = {});
       if ((gcd[t.id] || 0) > 0) continue; // on cooldown
       // Evaluate condition
