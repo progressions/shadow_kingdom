@@ -83,6 +83,8 @@ export function buildTerrainBitmap(world, theme = 'default') {
 // Cached repeating pattern for lava speckles
 let _lavaPat = null;
 let _lavaPatSize = 32;
+let _rockPat = null;
+let _rockPatSize = 32;
 function ensureLavaPattern(ctx) {
   if (_lavaPat) return _lavaPat;
   const size = _lavaPatSize;
@@ -117,6 +119,42 @@ function ensureLavaPattern(ctx) {
   }
   try { _lavaPat = ctx.createPattern(can, 'repeat'); } catch (_) { _lavaPat = null; }
   return _lavaPat;
+}
+
+// Cached repeating pattern for rock texture
+function ensureRockPattern(ctx) {
+  if (_rockPat) return _rockPat;
+  const size = _rockPatSize;
+  const can = (typeof OffscreenCanvas !== 'undefined')
+    ? new OffscreenCanvas(size, size)
+    : Object.assign(document.createElement('canvas'), { width: size, height: size });
+  if (!can) return null;
+  if (!can.width) can.width = size;
+  if (!can.height) can.height = size;
+  const g = can.getContext('2d');
+  if (!g) return null;
+  g.clearRect(0, 0, size, size);
+  // Subtle darker speckles
+  const dots = 46;
+  for (let i = 0; i < dots; i++) {
+    const r = (i * 1103515245 + 12345) & 0x7fffffff;
+    const rx = (r % size);
+    const ry = ((r >> 9) % size);
+    const w = 1 + ((r >> 16) % 2);
+    const h = 1 + ((r >> 20) % 2);
+    g.fillStyle = 'rgba(20, 20, 20, 0.22)';
+    g.fillRect(rx, ry, w, h);
+  }
+  // A few lighter flecks
+  for (let i = 0; i < 12; i++) {
+    const r = (i * 1664525 + 1013904223) & 0x7fffffff;
+    const rx = (r % size);
+    const ry = ((r >> 8) % size);
+    g.fillStyle = 'rgba(230, 230, 230, 0.16)';
+    g.fillRect(rx, ry, 1, 1);
+  }
+  try { _rockPat = ctx.createPattern(can, 'repeat'); } catch (_) { _rockPat = null; }
+  return _rockPat;
 }
 
 // Cached repeating pattern for water speckles
@@ -282,8 +320,20 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillStyle = '#2f7a42'; ctx.fillRect(sx, sy - 2, o.w, 6);
       ctx.fillStyle = '#6e4b2a'; ctx.fillRect(sx + (o.w/2 - 2)|0, sy + 6, 4, o.h - 6);
     } else if (o.type === 'rock') {
-      ctx.fillStyle = '#6f6f6f'; ctx.fillRect(sx, sy, o.w, o.h);
-      ctx.fillStyle = '#9a9a9a'; ctx.fillRect(sx + 2, sy + 2, o.w - 4, o.h - 4);
+      // Rock outcrop: borderless block with subtle speckle texture
+      ctx.fillStyle = '#6f6f6f';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      const pat = ensureRockPattern(ctx);
+      if (pat) {
+        ctx.save();
+        // Anchor texture to world space for continuity across adjacent placements
+        ctx.translate(-camera.x, -camera.y);
+        ctx.fillStyle = pat;
+        ctx.globalAlpha = 0.45;
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+      }
     } else if (o.type === 'wall') {
       // Stone wall segment
       ctx.fillStyle = '#4f4f57'; ctx.fillRect(sx, sy, o.w, o.h);
