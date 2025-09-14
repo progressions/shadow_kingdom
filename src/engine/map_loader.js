@@ -55,17 +55,24 @@ function mergeVerticalRuns(runs, mergeableTypes) {
 function buildObstaclesFromGrid(grid, legend) {
   obstacles.length = 0;
   const h = world.tileH, w = world.tileW;
+  // Optional region packing for large water areas (reduces rectangle count)
+  const packWater = (legend && Object.prototype.hasOwnProperty.call(legend, 'packWater')) ? !!legend.packWater : true;
   // Fast pass: gather horizontal runs for mergeable types, then merge vertically
-  const mergeable = new Set(['wall', 'water', 'gate', 'wood', 'rock']);
+  const mergeable = new Set(packWater ? ['wall', 'gate', 'wood', 'rock'] : ['wall', 'water', 'gate', 'wood', 'rock']);
   const rows = [];
   for (let y = 0; y < h; y++) {
     const row = new Array(w);
     for (let x = 0; x < w; x++) row[x] = grid[y*w + x];
     addMergedRowRuns(y, row, mergeable, rows);
   }
-  const rects = mergeVerticalRuns(rows, mergeable);
-  // Draw order: water first, then wood (bridge), then walls/gates
-  const pri = (t) => (t === 'water') ? 0 : (t === 'wood') ? 1 : (t === 'wall') ? 2 : (t === 'gate') ? 3 : 9;
+  let rects = mergeVerticalRuns(rows, mergeable);
+  // If packing water, add region-packed rectangles now (in tile units)
+  if (packWater) {
+    const waterRects = packRectanglesForType(grid, 'water', w, h);
+    rects = rects.concat(waterRects.map(r => ({ ...r, type: 'water' })));
+  }
+  // Draw order: water first, then wood (bridge), then walls/gates, then rocks
+  const pri = (t) => (t === 'water') ? 0 : (t === 'wood') ? 1 : (t === 'wall') ? 2 : (t === 'gate') ? 3 : (t === 'rock') ? 4 : 9;
   rects.sort((a, b) => pri(a.type) - pri(b.type));
   for (const r of rects) {
     const type = r.type;
@@ -84,6 +91,42 @@ function buildObstaclesFromGrid(grid, legend) {
       }
     }
   }
+}
+
+// Greedy rectangle packing for a given tile type. Produces rectangles in tile units.
+function packRectanglesForType(grid, type, w, h) {
+  const rects = [];
+  const seen = new Uint8Array(w * h);
+  const idx = (x, y) => y * w + x;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = idx(x, y);
+      if (seen[i]) continue;
+      if (grid[i] !== type) continue;
+      // Max width along this row until not matching or seen
+      let maxW = 0;
+      while ((x + maxW) < w) {
+        const j = idx(x + maxW, y);
+        if (seen[j] || grid[j] !== type) break;
+        maxW++;
+      }
+      // Max height while each subsequent row has the full width of matching tiles
+      let maxH = 1;
+      outer: for (let yy = y + 1; yy < h; yy++) {
+        for (let xx = x; xx < x + maxW; xx++) {
+          const j = idx(xx, yy);
+          if (seen[j] || grid[j] !== type) { break outer; }
+        }
+        maxH++;
+      }
+      // Mark region as seen and record rectangle (tile units)
+      for (let yy = y; yy < y + maxH; yy++) {
+        for (let xx = x; xx < x + maxW; xx++) seen[idx(xx, yy)] = 1;
+      }
+      rects.push({ x, y, w: maxW, h: maxH });
+    }
+  }
+  return rects;
 }
 
 // Returns Promise<HTMLCanvasElement|ImageBitmap> terrain
