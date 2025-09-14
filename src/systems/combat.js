@@ -313,22 +313,7 @@ export function handleAttacks(dt) {
             if (echoed > 0) { cds.cowsillEncore = 45; }
           }
         } catch {}
-        // Twil (swapped): Kindle DoT (fiery strikes) and quest tracking
-        if (hasTwil) {
-          e._burnTimer = Math.max(e._burnTimer || 0, 1.5);
-          e._burnDps = Math.max(e._burnDps || 0, 0.4);
-          try {
-            if (runtime.questFlags && runtime.questFlags['twil_fuse_started'] && !runtime.questFlags['twil_fuse_cleared']) {
-              if (!e._questKindled) {
-                e._questKindled = true;
-                if (!runtime.questCounters) runtime.questCounters = {};
-                const n = (runtime.questCounters['twil_fuse_kindled'] || 0) + 1;
-                runtime.questCounters['twil_fuse_kindled'] = n;
-                if (n >= 3) { runtime.questFlags['twil_fuse_cleared'] = true; showBanner('Quest updated: Light the Fuse — cleared'); }
-              }
-            }
-          } catch {}
-        }
+        // Twil melee ignite/quest tracking moved to generic triggers
         // Yorna Echo Strike (bonus damage on hit with cooldown)
         const hasYorna = companions.some(c => (c.name || '').toLowerCase().includes('yorna'));
         if (hasYorna) {

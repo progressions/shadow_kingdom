@@ -134,6 +134,9 @@ export const companionEffectsByKey = {
       l10: { key: 'symphony', name: 'Symphony', cooldownSec: 45, durationSec: 4, desc: 'Hyper: +ASPD +crit; reset dash CD' },
     },
     triggers2: [
+      // Quest: Light the Fuse — count kindles on melee or projectile hit (3→cleared)
+      { id: 'twil_fuse_flare_count', when: 'on_melee_hit', requiresFlag: 'twil_fuse_started', missingFlag: 'twil_fuse_cleared', cooldownSec: 0.15, effects: [ { type: 'quest_counter', key: 'twil_fuse_kindled', inc: 1, clearAt: 3, setFlagOnClear: 'twil_fuse_cleared', bannerOnClear: 'Quest updated: Light the Fuse — cleared' } ] },
+      { id: 'twil_fuse_brand_count', when: 'on_projectile_hit', requiresFlag: 'twil_fuse_started', missingFlag: 'twil_fuse_cleared', cooldownSec: 0.15, effects: [ { type: 'quest_counter', key: 'twil_fuse_kindled', inc: 1, clearAt: 3, setFlagOnClear: 'twil_fuse_cleared', bannerOnClear: 'Quest updated: Light the Fuse — cleared' } ] },
       // Flare Chain: on melee hit, ignite nearby enemies lightly
       { id: 'twil_flare', when: 'on_melee_hit', cooldownSec: 12, durationSec: 1.2, effects: [ { type: 'area_slow_burn', radius: 28, slow: 0.0, slowDur: 0.0, burnDps: 0.4, burnDur: 1.5 }, { type: 'text', text: 'Flare!', color: '#ff9a3d' } ] },
       // Fire arrows: on projectile hit, add a brief burn to the target

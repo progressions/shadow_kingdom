@@ -2954,6 +2954,12 @@ function processGenericCompanionTriggers(dt) {
     if (!def || !Array.isArray(def.triggers2) || def.triggers2.length === 0) continue;
     for (const t of def.triggers2) {
       if (!t || !t.id) continue;
+      // Optional quest flag gating
+      try {
+        const flags = runtime.questFlags || {};
+        if (t.requiresFlag && !flags[t.requiresFlag]) continue;
+        if (t.missingFlag && flags[t.missingFlag]) continue;
+      } catch {}
       // Affinity gating (per-companion)
       const aff = (typeof c.affinity === 'number') ? c.affinity : 2;
       if (typeof t.minAffinity === 'number' && aff < t.minAffinity) continue;
@@ -3310,3 +3316,22 @@ function tryWarpNear(leader, follower) {
   }
   return false;
 }
+            case 'quest_counter': {
+              try {
+                const k = String(eff.key || '').trim();
+                if (!k) break;
+                if (!runtime.questCounters) runtime.questCounters = {};
+                const prev = Number(runtime.questCounters[k] || 0);
+                const inc = Number(eff.inc || 1);
+                const next = prev + inc;
+                runtime.questCounters[k] = next;
+                const clearAt = Number(eff.clearAt || 0);
+                if (clearAt > 0 && next >= clearAt) {
+                  const setFlag = String(eff.setFlagOnClear || '').trim();
+                  if (setFlag) { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags[setFlag] = true; }
+                  const banner = eff.bannerOnClear || null;
+                  if (banner) { try { import('../engine/ui.js').then(u => u.showBanner && u.showBanner(banner)); } catch {} }
+                }
+              } catch {}
+              break;
+            }
