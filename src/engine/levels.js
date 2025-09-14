@@ -645,7 +645,14 @@ export function loadLevel2() {
         start: 'root',
         nodes: {
           root: {
-            text: "Yorna: Chief, she slows us. We push or we bleed. Pick.\nCanopy: My Lord, charge blind and you lose people. I won’t help with that.",
+            text: (
+              "The tension between Yorna and Canopy has been building for miles. " +
+              "Every decision has become a quiet struggle. Yorna pushes the pace, her frustration clear in her clipped movements. " +
+              "Canopy urges caution, her disapproval shown in steady, deliberate slowness.\n\n" +
+              "Now, they have stopped. The argument is no longer quiet.\n\n" +
+              "Yorna: Chief, she is too slow. If we wait, we will be surrounded. We must attack now. You have to choose.\n" +
+              "Canopy: My Lord, to attack without knowing what is there is a mistake. We will lose people. I cannot support a plan that is so careless."
+            ),
             choices: [
               { label: 'Keep Canopy (Healer · Regeneration · Shield)', action: 'feud_keep_canopy' },
               { label: 'Keep Yorna (Frontliner · ATK · Reach)', action: 'feud_keep_yorna' },
