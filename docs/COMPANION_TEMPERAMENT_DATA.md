@@ -29,7 +29,7 @@ export const introTriads = {
     defer: { label: "We’ll talk later, Canopy." },
   },
   yorna: {
-    match: { label: "We take the key, drop Vast—fall in.", delta: 0.2, flag: 'yorna_intro_encourage' },
+    match: { label: "Let’s get the key and kill Vast. Keep up.", delta: 0.2, flag: 'yorna_intro_encourage' },
     clash: { label: "Hang back and patch me up, alright?", delta: -0.15 },
     defer: { label: "Not now, Yorna." },
   },

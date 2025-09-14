@@ -41,6 +41,7 @@ Companions are recruitable NPCs who follow the player, provide passive auras, an
 
 **Triggers:**
 - **Shield**: Activates at 40% HP, lasts 6 seconds (12s cooldown)
+- **Dash Mend (Affinity 5+)**: When you dash, heal 1 HP (6s cooldown)
 
 **Quest Line:** Finding clues about her missing sister across multiple levels
 

@@ -618,7 +618,7 @@ export const runtime = {
   _dashDurationDefault: 0.14,
   _dashSpeedDefault: 340, // px/sec
   _dashDoubleTapWindow: 0.25, // seconds between taps to trigger dash
-  _dashCooldownDefault: 1.10, // seconds after a dash before another can start (longer base)
+  _dashCooldownDefault: 2.20, // seconds after a dash before another can start (doubled)
 
   // --- Dash Combo (dash -> attack) ---
   _dashComboReadyUntil: 0,     // timeSec deadline when a dash-attack will count as a combo

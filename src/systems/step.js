@@ -2641,6 +2641,7 @@ function handleCompanionTriggers(dt) {
   // Cooldowns tick
   cds.yornaEcho = Math.max(0, (cds.yornaEcho || 0) - dt);
   cds.canopyShield = Math.max(0, (cds.canopyShield || 0) - dt);
+  cds.canopyDashHeal = Math.max(0, (cds.canopyDashHeal || 0) - dt);
   cds.holaGust = Math.max(0, (cds.holaGust || 0) - dt);
   cds.oyinRally = Math.max(0, (cds.oyinRally || 0) - dt);
   cds.twilDust = Math.max(0, (cds.twilDust || 0) - dt);
@@ -2816,6 +2817,18 @@ function handleCompanionTriggers(dt) {
       runtime._tempDashCdrTimer = Math.max(runtime._tempDashCdrTimer || 0, 2.0);
       cds.holaSlipstream = 12;
       spawnFloatText(player.x + player.w/2, player.y - 12, 'Slipstream.', { color: '#9ae6ff', life: 0.7 });
+    }
+  }
+
+  // Canopy Affinity 5 — Dash Mend: on dash start, heal a small amount (cooldown)
+  if (hasAffinity('canopy', 5)) {
+    const justDashed = (runtime._dashJustStartedAtSec || 0) > 0 && Math.abs((runtime._timeSec || 0) - runtime._dashJustStartedAtSec) < 0.05;
+    if ((cds.canopyDashHeal || 0) <= 0 && justDashed) {
+      const heal = 1;
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      cds.canopyDashHeal = 6; // seconds
+      spawnFloatText(player.x + player.w/2, player.y - 12, '+1', { color: '#62e563', life: 0.7 });
+      try { playSfx('potion'); } catch {}
     }
   }
 
