@@ -175,7 +175,7 @@ export async function applyPngMap(url, legend) {
         let tForGrid = null;
         switch (type) {
           case 'grass': tForGrid = null; break;
-          case 'wood':  tForGrid = null; break; // passable floor, not an obstacle
+          case 'wood':  tForGrid = 'wood'; break; // passable floor, rendered as bridge planks
           case 'wall':
           case 'water':
           case 'rock':
