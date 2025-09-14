@@ -12,6 +12,7 @@ Ignore the initial integer, those indexes are for development. Use the hex code 
 33 - db4161 - key guardian spawn point
 54 - ebebeb - player spawn
 21 - 8a8a00 - wood (passable, not an obstacle)
+11 - a2ffcb - torch node (emits light)
 
 Level 1 only -
 
