@@ -1,4 +1,5 @@
 import { TILE } from './constants.js';
+import { runtime } from './state.js';
 
 export function noise2D(ix, iy, seed = 1337) {
   const s = Math.sin((ix * 127.1 + iy * 311.7 + seed) * 0.017) * 43758.5453;
@@ -77,6 +78,83 @@ export function buildTerrainBitmap(world, theme = 'default') {
   }
   if (typeof off.transferToImageBitmap === 'function') { try { return off.transferToImageBitmap(); } catch (_) {} }
   return off;
+}
+
+// Cached repeating pattern for lava speckles
+let _lavaPat = null;
+let _lavaPatSize = 32;
+function ensureLavaPattern(ctx) {
+  if (_lavaPat) return _lavaPat;
+  const size = _lavaPatSize;
+  const can = (typeof OffscreenCanvas !== 'undefined')
+    ? new OffscreenCanvas(size, size)
+    : Object.assign(document.createElement('canvas'), { width: size, height: size });
+  if (!can) return null;
+  if (!can.width) can.width = size;
+  if (!can.height) can.height = size;
+  const g = can.getContext('2d');
+  if (!g) return null;
+  g.clearRect(0, 0, size, size);
+  // Subtle red speckles with slight alpha
+  const dots = 42;
+  for (let i = 0; i < dots; i++) {
+    // Random-but-stable distribution using a simple LCG
+    const r = (i * 1103515245 + 12345) & 0x7fffffff;
+    const rx = (r % size);
+    const ry = ((r >> 8) % size);
+    const w = 1 + ((r >> 16) % 2); // 1-2 px
+    const h = 1 + ((r >> 20) % 2);
+    g.fillStyle = 'rgba(200, 16, 0, 0.35)';
+    g.fillRect(rx, ry, w, h);
+  }
+  // A few brighter flecks
+  for (let i = 0; i < 10; i++) {
+    const r = (i * 1664525 + 1013904223) & 0x7fffffff;
+    const rx = (r % size);
+    const ry = ((r >> 9) % size);
+    g.fillStyle = 'rgba(255, 48, 0, 0.25)';
+    g.fillRect(rx, ry, 1, 1);
+  }
+  try { _lavaPat = ctx.createPattern(can, 'repeat'); } catch (_) { _lavaPat = null; }
+  return _lavaPat;
+}
+
+// Cached repeating pattern for water speckles
+let _waterPat = null;
+let _waterPatSize = 32;
+function ensureWaterPattern(ctx) {
+  if (_waterPat) return _waterPat;
+  const size = _waterPatSize;
+  const can = (typeof OffscreenCanvas !== 'undefined')
+    ? new OffscreenCanvas(size, size)
+    : Object.assign(document.createElement('canvas'), { width: size, height: size });
+  if (!can) return null;
+  if (!can.width) can.width = size;
+  if (!can.height) can.height = size;
+  const g = can.getContext('2d');
+  if (!g) return null;
+  g.clearRect(0, 0, size, size);
+  // Darker blue speckles
+  const dots = 40;
+  for (let i = 0; i < dots; i++) {
+    const r = (i * 2654435761 + 1013904223) & 0x7fffffff; // LCG
+    const rx = (r % size);
+    const ry = ((r >> 9) % size);
+    const w = 1 + ((r >> 16) % 2);
+    const h = 1 + ((r >> 20) % 2);
+    g.fillStyle = 'rgba(10, 30, 60, 0.30)';
+    g.fillRect(rx, ry, w, h);
+  }
+  // A few deeper flecks
+  for (let i = 0; i < 10; i++) {
+    const r = (i * 1103515245 + 12345) & 0x7fffffff;
+    const rx = (r % size);
+    const ry = ((r >> 8) % size);
+    g.fillStyle = 'rgba(0, 18, 36, 0.22)';
+    g.fillRect(rx, ry, 1, 1);
+  }
+  try { _waterPat = ctx.createPattern(can, 'repeat'); } catch (_) { _waterPat = null; }
+  return _waterPat;
 }
 
 export function drawGrid(ctx, world, camera) {
@@ -288,10 +366,22 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillStyle = '#6b4a2a'; ctx.fillRect(sx, sy + o.h/3, o.w, o.h/3);
       ctx.strokeStyle = '#3a2414'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + o.h/3 + 0.5, o.w - 1, o.h/3 - 1);
     } else if (o.type === 'water') {
-      // Deep water pool (blocking)
+      // Deep water pool (blocking): solid blue base + subtle darker speckles with gentle drift
       ctx.fillStyle = '#1e4461';
       ctx.fillRect(sx, sy, o.w, o.h);
-      ctx.strokeStyle = '#0d2233'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      const pat = ensureWaterPattern(ctx);
+      if (pat) {
+        const t = (typeof runtime?._timeSec === 'number') ? runtime._timeSec : (performance.now ? performance.now() / 1000 : 0);
+        const ox = Math.sin(t * 0.18) * 2;
+        const oy = Math.cos(t * 0.22) * 2;
+        ctx.save();
+        ctx.translate(-camera.x + ox, -camera.y + oy);
+        ctx.fillStyle = pat;
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+      }
     } else if (o.type === 'mud') {
       // Mud (slow zone, non-blocking)
       ctx.fillStyle = '#5a3e24cc';
@@ -303,13 +393,24 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillRect(sx, sy, o.w, o.h);
       ctx.strokeStyle = '#a14a00'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
     } else if (o.type === 'lava') {
-      // Lava (strong burn zone, non-blocking)
-      const grad = ctx.createLinearGradient(sx, sy, sx + o.w, sy + o.h);
-      grad.addColorStop(0, '#ff3b00cc');
-      grad.addColorStop(1, '#ffb300cc');
-      ctx.fillStyle = grad;
+      // Lava (strong burn zone, non-blocking): solid orange base + animated red speckles
+      ctx.fillStyle = '#ff7a00cc';
       ctx.fillRect(sx, sy, o.w, o.h);
-      ctx.strokeStyle = '#7a1100'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // Overlay a subtle moving speckle pattern, anchored to world coordinates
+      const pat = ensureLavaPattern(ctx);
+      if (pat) {
+        const t = (typeof runtime?._timeSec === 'number') ? runtime._timeSec : (performance.now ? performance.now() / 1000 : 0);
+        const ox = Math.sin(t * 0.35) * 2; // slight drift
+        const oy = Math.cos(t * 0.27) * 2;
+        ctx.save();
+        // Align pattern to world space so it looks continuous across tiles
+        ctx.translate(-camera.x + ox, -camera.y + oy);
+        ctx.fillStyle = pat;
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+      }
     } else if (o.type === 'marble') {
       // White marble wall (blocking)
       ctx.fillStyle = '#e9e9ef';
