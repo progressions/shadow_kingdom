@@ -103,12 +103,8 @@ export async function applyPngMap(url, legend) {
     // Resize world to match the map
     world.tileW = width;
     world.tileH = height;
-    // Reset dynamic arrays
-    enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
-    // Place player near center
-    player.x = Math.floor(world.w / 2);
-    player.y = Math.floor(world.h / 2);
-    for (let i = 0; i < companions.length; i++) { const c = companions[i]; if (!c) continue; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
+    // Reset only obstacles/visual detritus; keep enemies/NPCs to preserve vanilla behavior/spawns
+    obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0;
     // Read pixels
     const off = document.createElement('canvas');
     off.width = width; off.height = height;
@@ -116,15 +112,10 @@ export async function applyPngMap(url, legend) {
     g.imageSmoothingEnabled = false;
     g.drawImage(img, 0, 0);
     const data = g.getImageData(0, 0, width, height).data;
-    // Map pixels -> type grid and collect special markers
+    // Map pixels -> type grid (structural) and optionally collect enemy spawns from the map.
     const map = legend && legend.colors ? legend.colors : {};
     const grid = new Array(width * height);
-    // Collections
-    let playerSpawn = null;
-    const npcSpawns = []; // { type: 'canopy'|'yorna'|'hola', x, y }
-    const chestSpawns = []; // { id, itemId, x, y }
-    const breakables = []; // { type: 'barrel', x, y }
-    const enemySpawns = []; // { kind: 'mook'|'featured'|'boss'|'featured_ranged'|'guardian', x, y }
+    const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss', x, y }
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
@@ -147,93 +138,47 @@ export async function applyPngMap(url, legend) {
             tForGrid = null; break;
         }
         grid[y*width + x] = tForGrid;
-        // Collect markers for entities and props
+        // Optional enemy spawn markers defined in the map
         switch (type) {
-          case 'player_spawn':
-            playerSpawn = playerSpawn || { x, y };
-            break;
-          case 'canopy_spawn':
-            npcSpawns.push({ who: 'canopy', x, y });
-            break;
-          case 'yorna_spawn':
-            npcSpawns.push({ who: 'yorna', x, y });
-            break;
-          case 'hola_spawn':
-            npcSpawns.push({ who: 'hola', x, y });
-            break;
-          case 'chest_dagger':
-            chestSpawns.push({ id: 'chest_l1_weapon', itemId: 'dagger', x, y });
-            break;
-          case 'chest_bow':
-            chestSpawns.push({ id: 'chest_l1_bow', itemId: 'bow_wood', x, y });
-            break;
-          case 'barrel':
-            breakables.push({ type: 'barrel', x, y });
-            break;
-          case 'spawn_mook':
-            enemySpawns.push({ kind: 'mook', x, y });
-            break;
-          case 'spawn_featured_ranged':
-            enemySpawns.push({ kind: 'featured_ranged', x, y });
-            break;
-          case 'spawn_guardian':
-            enemySpawns.push({ kind: 'guardian', x, y });
-            break;
-          case 'spawn_boss':
-            enemySpawns.push({ kind: 'boss', x, y });
-            break;
+          case 'spawn_mook': enemySpawns.push({ kind: 'mook', x, y }); break;
+          case 'spawn_featured_ranged': enemySpawns.push({ kind: 'featured_ranged', x, y }); break;
+          case 'spawn_guardian': enemySpawns.push({ kind: 'guardian', x, y }); break;
+          case 'spawn_boss': enemySpawns.push({ kind: 'boss', x, y }); break;
         }
       }
     }
     // Build obstacles from the grid
     buildObstaclesFromGrid(grid, legend);
-    // Player spawn override
-    if (playerSpawn) {
-      player.x = Math.floor(playerSpawn.x * TILE);
-      player.y = Math.floor(playerSpawn.y * TILE);
-    }
-    // Re-fan companions around player
-    for (let i = 0; i < companions.length; i++) { const c = companions[i]; if (!c) continue; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
 
-    // Place chests (fixed items)
-    for (const c of chestSpawns) {
-      obstacles.push({ x: c.x * TILE, y: c.y * TILE, w: 12, h: 10, type: 'chest', id: c.id, fixedItemId: c.itemId, opened: false, locked: false });
-    }
-    // Place breakables
-    let brkIdx = 0;
-    for (const b2 of breakables) {
-      const id = `brk_l1_${brkIdx++}`;
-      obstacles.push({ x: b2.x * TILE, y: b2.y * TILE, w: 12, h: 12, type: 'barrel', id, hp: 2 });
-    }
-    // Spawn NPCs (Level 1)
-    for (const s of npcSpawns) {
-      const px = s.x * TILE, py = s.y * TILE;
-      if (s.who === 'canopy') {
-        const n = spawnNpc(px, py, 'right', { name: 'Canopy', portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4', dialogId: 'canopy', sheet: sheetForName('Canopy') });
-        try { setNpcDialog(n, canopyDialog); } catch {}
-      } else if (s.who === 'yorna') {
-        const n = spawnNpc(px, py, 'down', { name: 'Yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', dialogId: 'yorna', sheet: sheetForName('Yorna') });
-        try { setNpcDialog(n, yornaDialog); } catch {}
-      } else if (s.who === 'hola') {
-        const n = spawnNpc(px, py, 'left', { name: 'Hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', dialogId: 'hola', sheet: sheetForName('Hola') });
-        try { setNpcDialog(n, holaDialog); } catch {}
+    // If the map defines any enemy spawns, replace the current enemies with the map-defined set
+    if (enemySpawns.length > 0) {
+      enemies.length = 0;
+      for (const s of enemySpawns) {
+        const ex = s.x * TILE, ey = s.y * TILE;
+        if (s.kind === 'mook') {
+          spawnEnemy(ex, ey, 'mook', { name: 'Greenwood Bandit' });
+        } else if (s.kind === 'featured_ranged') {
+          spawnEnemy(ex, ey, 'featured', { name: 'Bandit Lieutenant', hp: 12, dmg: 6, ranged: true, shootRange: 160, shootCooldown: 1.0, projectileSpeed: 200, projectileDamage: 3, aimError: 0.03 });
+        } else if (s.kind === 'guardian') {
+          // Key guardian stats aligned with Level 1 (tough featured foe)
+          spawnEnemy(ex, ey, 'featured', {
+            name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze',
+            hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
+            vnOnSight: { text: introTexts.gorg },
+            portrait: 'assets/portraits/level01/Gorg/Gorg.mp4',
+          });
+        } else if (s.kind === 'boss') {
+          // Boss Vast with full VN portrait set and intro, like Level 1
+          spawnEnemy(ex, ey, 'boss', {
+            name: 'Vast', vnId: 'enemy:vast',
+            portrait: 'assets/portraits/level01/Vast/Vast video.mp4',
+            portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4',
+            portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4',
+            onDefeatNextLevel: 2,
+            vnOnSight: { text: introTexts.vast },
+          });
+        }
       }
-    }
-    // Spawn enemies
-    for (const s of enemySpawns) {
-      const ex = s.x * TILE, ey = s.y * TILE;
-      if (s.kind === 'mook') spawnEnemy(ex, ey, 'mook', { name: 'Greenwood Bandit' });
-      else if (s.kind === 'featured_ranged') spawnEnemy(ex, ey, 'featured', { name: 'Archer', ranged: true, shootRange: 140, shootCooldown: 1.4, aimError: 0.12 });
-      else if (s.kind === 'guardian') {
-        // Key guardian stats aligned with Level 1 (tough featured foe)
-        spawnEnemy(ex, ey, 'featured', {
-          name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze',
-          hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
-          vnOnSight: { text: introTexts.gorg },
-          portrait: 'assets/portraits/level01/Gorg/Gorg.mp4',
-        });
-      }
-      else if (s.kind === 'boss') spawnEnemy(ex, ey, 'boss', { name: 'Boss' });
     }
 
     // Build a terrain bitmap using existing generator (default theme)
