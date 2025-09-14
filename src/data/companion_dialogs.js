@@ -896,7 +896,7 @@ export const companionDialogs = {
         ],
       },
       bond6: {
-        text: 'Tin: My Lord, water lies. If you look a step ahead, it tells the truth.',
+        text: "Don't trust the still water. If you watch where the ripples are, you can see the safe path, My Lord.",
         choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'tin_bond6_reward' }, next: 'bond_menu' } ],
       },
       bond8: {

@@ -118,7 +118,7 @@ export const holaDialog = {
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_hola' }, next: 'post_l5_hola' },
         { label: 'Yes, please join.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
-        { label: 'Any leads?', requires: { missingFlag: 'hola_find_yorna_started' }, next: 'hint_yorna' },
+        { label: 'Any leads?', requires: { level: 1, missingFlag: 'hola_find_yorna_started', partyMissing: 'yorna' }, next: 'hint_yorna' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'You\'re doing fine. Stay close and speak up if you need.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'hola_intro_encourage' }, next: 'after_aff' },
         { label: 'Practice a formation (Affinity 7+)', requires: { target: 'active', min: 7.0 }, next: 'bond' },
@@ -133,7 +133,7 @@ export const holaDialog = {
       text: "Hola: My Lord, I give you breathing room. I slow enemies around you and shove crowds back so you can breathe. I also soften the little bumps that chip at you.",
       choices: [
         { label: 'Alright, join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
-        { label: 'Any leads?', requires: { missingFlag: 'hola_find_yorna_started' }, next: 'hint_yorna' },
+        { label: 'Any leads?', requires: { level: 1, missingFlag: 'hola_find_yorna_started', partyMissing: 'yorna' }, next: 'hint_yorna' },
         { label: 'Maybe later.', action: 'end' },
       ],
     },
@@ -141,7 +141,7 @@ export const holaDialog = {
       text: 'Hola: My Lord, okay… I\'ll try to keep pace. Thank you.',
       choices: [
         { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
-        { label: 'Any leads?', requires: { missingFlag: 'hola_find_yorna_started' }, next: 'hint_yorna' },
+        { label: 'Any leads?', requires: { level: 1, missingFlag: 'hola_find_yorna_started', partyMissing: 'yorna' }, next: 'hint_yorna' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],
@@ -150,7 +150,7 @@ export const holaDialog = {
       text: 'Hola: My Lord, that helps. If we keep it simple, I\'ll be ready.',
       choices: [
         { label: 'Join me.', action: 'join_party', hint: 'Control · Slow · Push (Gust)' },
-        { label: 'Any leads?', requires: { missingFlag: 'hola_find_yorna_started' }, next: 'hint_yorna' },
+        { label: 'Any leads?', requires: { level: 1, missingFlag: 'hola_find_yorna_started', partyMissing: 'yorna' }, next: 'hint_yorna' },
         { label: 'What can you do for us?', next: 'about' },
         { label: 'Later.', action: 'end' }
       ],

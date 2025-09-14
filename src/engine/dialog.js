@@ -720,6 +720,13 @@ function meetsRequirement(req) {
       if (typeof req.min === 'number' && aff < req.min) return false;
       if (typeof req.max === 'number' && aff > req.max) return false;
     }
+    // Level gate (exact match or one of)
+    if (typeof req.level === 'number') {
+      if ((runtime.currentLevel || 1) !== req.level) return false;
+    } else if (Array.isArray(req.level)) {
+      const lv = (runtime.currentLevel || 1);
+      if (!req.level.includes(lv)) return false;
+    }
     // Flag gate
     if (req.flag) {
       const has = !!(runtime.questFlags && runtime.questFlags[req.flag]);
@@ -747,6 +754,12 @@ function meetsRequirement(req) {
       const list = Array.isArray(req.partyHasAny) ? req.partyHasAny : [req.partyHasAny];
       const hasAny = list.some(nm => companions.some(c => (c.name || '').toLowerCase().includes(String(nm || '').toLowerCase())));
       if (!hasAny) return false;
+    }
+    // Party missing (all listed must be absent)
+    if (req.partyMissing) {
+      const list = Array.isArray(req.partyMissing) ? req.partyMissing : [req.partyMissing];
+      const allAbsent = list.every(nm => !companions.some(c => (c.name || '').toLowerCase().includes(String(nm || '').toLowerCase())));
+      if (!allAbsent) return false;
     }
     return true;
   } catch { return true; }
