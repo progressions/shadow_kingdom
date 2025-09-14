@@ -440,29 +440,8 @@ export function step(dt) {
                 }
               }
             } catch {}
-            // Twil (swapped): fire arrows kindle quest progress for Light the Fuse
-            try {
-              const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
-              if (hasTwil) {
-                if (runtime.questFlags && runtime.questFlags['twil_fuse_started'] && !runtime.questFlags['twil_fuse_cleared']) {
-                  if (!e._questKindled) {
-                    e._questKindled = true;
-                    if (!runtime.questCounters) runtime.questCounters = {};
-                    const n = (runtime.questCounters['twil_fuse_kindled'] || 0) + 1;
-                    runtime.questCounters['twil_fuse_kindled'] = n;
-                    if (n >= 3) { runtime.questFlags['twil_fuse_cleared'] = true; showBanner('Quest updated: Light the Fuse — cleared'); }
-                  }
-                }
-              }
-            } catch {}
-            // Twil (swapped): fire arrows add a brief burn DoT
-            try {
-              const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
-              if (hasTwil) {
-                e._burnTimer = Math.max(e._burnTimer || 0, 1.2);
-                e._burnDps = Math.max(e._burnDps || 0, 0.35);
-              }
-            } catch {}
+            // Store recent projectile hit for generic triggers (e.g., Twil Flare/Brand)
+            try { runtime._lastProjTarget = e; runtime._recentProjHitTimer = Math.max(runtime._recentProjHitTimer || 0, 0.05); } catch {}
             // Knockback from projectile dir (reduced for elites; further reduced if braced/advancing)
             const dvx = p.vx, dvy = p.vy; const mag = Math.hypot(dvx, dvy) || 1;
             const kind2 = String(e.kind || 'mook').toLowerCase();
@@ -2823,6 +2802,11 @@ function handleCompanionTriggers(dt) {
   try {
     processGenericCompanionTriggers(dt);
   } catch {}
+  // Decay recent event timers for generic triggers
+  try {
+    if ((runtime._recentProjHitTimer || 0) > 0) runtime._recentProjHitTimer = Math.max(0, (runtime._recentProjHitTimer || 0) - dt);
+    if ((runtime._recentMeleeHitTimer || 0) > 0) runtime._recentMeleeHitTimer = Math.max(0, (runtime._recentMeleeHitTimer || 0) - dt);
+  } catch {}
 
   // Presence checks and affinity multiplier
   const has = (key) => companions.some(c => (c.name || '').toLowerCase().includes(key));
@@ -2890,33 +2874,7 @@ function handleCompanionTriggers(dt) {
 
   // Varabella L10 — Time Dilation handled by generic triggers
 
-  // Twil L10 — Detonate Brand: if a burning enemy is present, detonate for small AoE and clear burns
-  if (hasAffinity('twil', 10)) {
-    const cds = runtime.companionCDs || (runtime.companionCDs = {});
-    if ((cds.twilDetonate || 0) <= 0) {
-      // Find a target with sustained burn
-      let target = null;
-      for (const e of enemies) {
-        if (!e || e.hp <= 0) continue;
-        const burning = (e._burnTimer || 0) > 1.2 && (e._burnDps || 0) >= 0.4;
-        if (burning) { target = e; break; }
-      }
-      if (target) {
-        const cx = target.x, cy = target.y;
-        for (const t of enemies) {
-          if (!t || t.hp <= 0) continue;
-          const dx = (t.x - cx), dy = (t.y - cy);
-          if ((dx*dx + dy*dy) <= (28*28)) {
-            t.hp -= 3; // small AoE burst
-            // Clear burn on detonated target
-            if (t === target) { t._burnTimer = 0; t._burnDps = 0; }
-          }
-        }
-        cds.twilDetonate = 40;
-        spawnFloatText(target.x + target.w/2, target.y - 12, 'Detonate!', { color: '#ff9a3d', life: 0.9 });
-      }
-    }
-  }
+  // Twil L10 — Detonate Brand handled by generic triggers
 
   // Snake L8 — Venom Cloud handled by generic triggers
 
@@ -3004,6 +2962,12 @@ function processGenericCompanionTriggers(dt) {
       // Evaluate condition
       let fire = false;
       switch (t.when) {
+        case 'on_melee_hit': {
+          fire = (runtime._recentMeleeHitTimer || 0) > 0; break;
+        }
+        case 'on_projectile_hit': {
+          fire = (runtime._recentProjHitTimer || 0) > 0; break;
+        }
         case 'proximity_enemies': {
           const anchor = (t.anchor === 'self') ? c : player;
           const ax = anchor.x, ay = anchor.y;
@@ -3078,6 +3042,40 @@ function processGenericCompanionTriggers(dt) {
         for (const eff of t.effects) {
           if (!eff || !eff.type) continue;
           switch (eff.type) {
+            case 'target_burn': {
+              const tgt = runtime._lastProjTarget || null;
+              if (tgt && tgt.hp > 0) {
+                const dur = Math.max(0, eff.burnDur || t.durationSec || 1.2);
+                const dps = Math.max(0, eff.burnDps || 0.35);
+                tgt._burnTimer = Math.max(tgt._burnTimer || 0, dur);
+                tgt._burnDps = Math.max(tgt._burnDps || 0, dps);
+              }
+              break;
+            }
+            case 'detonate_burn': {
+              // Find a burning enemy near the player within radius (default 140)
+              const R = eff.radius || 140; const R2 = R * R;
+              let target = null;
+              for (const e of enemies) {
+                if (!e || e.hp <= 0) continue;
+                if ((e._burnTimer || 0) > (eff.burnMinDur || 1.0) && (e._burnDps || 0) >= (eff.burnMinDps || 0.3)) {
+                  const dx = e.x - player.x, dy = e.y - player.y;
+                  if ((dx*dx + dy*dy) <= R2) { target = e; break; }
+                }
+              }
+              if (target) {
+                const cx = target.x, cy = target.y;
+                const aoeR = eff.aoeRadius || 28; const aoeR2 = aoeR * aoeR;
+                const dmg = Math.max(0, eff.damage || 3);
+                for (const t2 of enemies) {
+                  if (!t2 || t2.hp <= 0) continue;
+                  const dx = (t2.x - cx), dy = (t2.y - cy);
+                  if ((dx*dx + dy*dy) <= aoeR2) { t2.hp -= dmg; if (eff.clearOnPrimary && t2 === target) { t2._burnTimer = 0; t2._burnDps = 0; } }
+                }
+                try { spawnFloatText(cx + (target.w||12)/2, cy - 12, eff.label || 'Detonate!', { color: eff.color || '#ff9a3d', life: 0.9 }); } catch {}
+              }
+              break;
+            }
             case 'area_push_slow': {
               const anchor = (eff.anchor === 'self') ? c : player;
               const ax = anchor.x, ay = anchor.y; const r = eff.radius || (t.radius || 24);

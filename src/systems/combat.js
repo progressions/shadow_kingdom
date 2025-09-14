@@ -664,3 +664,10 @@ export function tryInteract() {
   }
   return false;
 }
+    // Generic trigger: mark recent melee hit if any enemy is within the hitbox
+    try {
+      for (const e of enemies) {
+        if (!e || e.hp <= 0) continue;
+        if (rectsIntersect(hb, e)) { runtime._recentMeleeHitTimer = Math.max(runtime._recentMeleeHitTimer || 0, 0.05); break; }
+      }
+    } catch {}

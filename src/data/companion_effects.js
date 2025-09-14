@@ -134,6 +134,10 @@ export const companionEffectsByKey = {
       l10: { key: 'symphony', name: 'Symphony', cooldownSec: 45, durationSec: 4, desc: 'Hyper: +ASPD +crit; reset dash CD' },
     },
     triggers2: [
+      // Flare Chain: on melee hit, ignite nearby enemies lightly
+      { id: 'twil_flare', when: 'on_melee_hit', cooldownSec: 12, durationSec: 1.2, effects: [ { type: 'area_slow_burn', radius: 28, slow: 0.0, slowDur: 0.0, burnDps: 0.4, burnDur: 1.5 }, { type: 'text', text: 'Flare!', color: '#ff9a3d' } ] },
+      // Fire arrows: on projectile hit, add a brief burn to the target
+      { id: 'twil_brand', when: 'on_projectile_hit', cooldownSec: 0.2, effects: [ { type: 'target_burn', burnDps: 0.35, burnDur: 1.2 } ] },
       {
         id: 'tin_slip', when: 'proximity_enemies', radius: 26, cooldownSec: 10, durationSec: 2.0,
         effects: [
@@ -169,6 +173,8 @@ export const companionEffectsByKey = {
           { type: 'sfx', key: 'tumbleUp' },
         ],
       },
+      // Detonate Brand (L10): if a burning enemy present, detonate for small AoE; clear burn on primary
+      { id: 'twil_detonate', when: 'density_enemies', minAffinity: 10, radius: 180, minCount: 1, cooldownSec: 40, effects: [ { type: 'detonate_burn', radius: 180, aoeRadius: 28, damage: 3, clearOnPrimary: true, label: 'Detonate!', color: '#ff9a3d' } ] },
     ],
   },
   urn: {
