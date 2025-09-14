@@ -102,6 +102,16 @@ export function serializeSave() {
     at: Date.now(),
     currentLevel: runtime.currentLevel || 1,
     rng,
+    loadouts: (function(){
+      try {
+        const LO = runtime._loadouts || {};
+        const melee = LO.melee || {}; const ranged = LO.ranged || {};
+        return {
+          melee: { rightHandId: melee.rightHandId || null, leftHandId: melee.leftHandId || null },
+          ranged: { rightHandId: ranged.rightHandId || null },
+        };
+      } catch { return null; }
+    })(),
     player: { x: player.x, y: player.y, hp: player.hp, dir: player.dir, level: player.level||1, xp: player.xp||0 },
     companions: companions.map(c => serializeCompanionEntity(c)),
     npcs: npcs.map(n => serializeNpcEntity(n)),
@@ -354,6 +364,16 @@ export function applyPendingRestore() {
     runtime.questFlags = {}; (data.questFlags||[]).forEach(k => runtime.questFlags[k]=true);
     runtime.questCounters = {}; Object.assign(runtime.questCounters, data.questCounters||{});
     runtime.questMeta = {}; Object.assign(runtime.questMeta, data.questMeta||{});
+    // Loadouts (melee/ranged)
+    try {
+      const LO = data.loadouts || null;
+      if (LO && typeof LO === 'object') {
+        runtime._loadouts = {
+          melee: { rightHandId: LO.melee?.rightHandId || null, leftHandId: LO.melee?.leftHandId || null },
+          ranged: { rightHandId: LO.ranged?.rightHandId || null },
+        };
+      }
+    } catch {}
     // Feature toggles
     runtime.snakeMode = !!data.snakeMode;
     // Companions
@@ -581,6 +601,16 @@ function normalizeSave(s) {
       active: s.active !== false,
       disabled: !!s.disabled,
     }));
+  }
+  // Normalize loadouts
+  if (!out.loadouts || typeof out.loadouts !== 'object') {
+    out.loadouts = { melee: { rightHandId: null, leftHandId: null }, ranged: { rightHandId: null } };
+  } else {
+    const m = out.loadouts.melee || {}; const r = out.loadouts.ranged || {};
+    out.loadouts = {
+      melee: { rightHandId: m.rightHandId || null, leftHandId: m.leftHandId || null },
+      ranged: { rightHandId: r.rightHandId || null },
+    };
   }
   return out;
 }
