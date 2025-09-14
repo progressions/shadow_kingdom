@@ -163,7 +163,7 @@ export async function applyPngMap(url, legend) {
     const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss'|'leashed_mook'|'leashed_featured'|'leashed_featured_ranged', x, y }
     let playerSpawn = null; // { x, y }
     const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola'|'oyin'|'twil', x, y }
-    const chestSpawns = []; // { id, itemId, x, y }
+    const chestSpawns = []; // { id?, itemId?, lootTier?, x, y }
     const breakables = [];  // { type: 'barrel', x, y }
     const torchNodes = [];  // { x, y }
     const hazards = [];     // { type: 'lava'|'fire'|'mud', x, y }
@@ -202,6 +202,7 @@ export async function applyPngMap(url, legend) {
           // Props
           case 'chest_dagger': chestSpawns.push({ id: 'chest_l1_weapon', itemId: 'dagger',   x, y }); break;
           case 'chest_bow':    chestSpawns.push({ id: 'chest_l1_bow',    itemId: 'bow_wood', x, y }); break;
+          case 'chest':        chestSpawns.push({ lootTier: 'common', x, y }); break;
           case 'barrel':       breakables.push({ type: 'barrel', x, y }); break;
           case 'torch_node':   torchNodes.push({ x, y }); break;
           case 'lava':         hazards.push({ type: 'lava', x, y }); break;
@@ -243,7 +244,10 @@ export async function applyPngMap(url, legend) {
 
     // Place chests and barrels (props)
     for (const c of chestSpawns) {
-      obstacles.push({ x: c.x * TILE, y: c.y * TILE, w: 12, h: 10, type: 'chest', id: c.id, fixedItemId: c.itemId, opened: false, locked: false });
+      const id = c.id || `ch_png_${c.x}_${c.y}`;
+      const base = { x: c.x * TILE, y: c.y * TILE, w: 12, h: 10, type: 'chest', id, opened: false, locked: false };
+      if (c.itemId) obstacles.push({ ...base, fixedItemId: c.itemId });
+      else obstacles.push({ ...base, lootTier: c.lootTier || 'common' });
     }
     let brkIdx = 0;
     for (const b2 of breakables) {

@@ -16,3 +16,5 @@ Level 2 - Desert
 12 - 59c135 - Leashed ranged featured foe
 13 - 14a02e -  Oyin
 15 - 24523b - Twil
+56 - 92dcba - barrel
+57 - cdf7e2 - chest

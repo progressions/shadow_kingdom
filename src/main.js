@@ -101,6 +101,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
           '59c135': { type: 'spawn_leashed_featured_ranged' },
           '14a02e': { type: 'oyin_spawn' },
           '24523b': { type: 'twil_spawn' },
+          // props
+          '92dcba': { type: 'barrel' },
+          'cdf7e2': { type: 'chest' },
         },
       };
       const M = await import('./engine/map_loader.js');
