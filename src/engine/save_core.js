@@ -205,6 +205,14 @@ function serializeEnemyEntity(e) {
     hitCooldown: e.hitCooldown || 0.8,
     source: e.source || null,
     createdAt: e.createdAt || null,
+    // Leash/guardian behavior persistence for dynamic enemies
+    guardian: !!e.guardian,
+    leashed: !!e.leashed,
+    leashRadius: (typeof e.leashRadius === 'number') ? e.leashRadius : undefined,
+    guardianRegen: (typeof e.guardianRegen === 'number') ? e.guardianRegen : undefined,
+    homeX: (typeof e.homeX === 'number') ? e.homeX : undefined,
+    homeY: (typeof e.homeY === 'number') ? e.homeY : undefined,
+    aggroRadius: (typeof e.aggroRadius === 'number') ? e.aggroRadius : undefined,
   };
 }
 
@@ -249,6 +257,14 @@ function spawnEnemyFromRecord(d) {
     vnOnSight: null,
     source: d.source || null,
     createdAt: d.createdAt || null,
+    // Guardian/leash flags
+    guardian: !!d.guardian,
+    leashed: !!d.leashed,
+    leashRadius: (typeof d.leashRadius === 'number') ? d.leashRadius : undefined,
+    guardianRegen: (typeof d.guardianRegen === 'number') ? d.guardianRegen : undefined,
+    homeX: (typeof d.homeX === 'number') ? d.homeX : Math.round(x + w/2),
+    homeY: (typeof d.homeY === 'number') ? d.homeY : Math.round(y + h/2),
+    aggroRadius: (typeof d.aggroRadius === 'number') ? d.aggroRadius : undefined,
   });
 }
 

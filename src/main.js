@@ -35,6 +35,7 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
         'a2a2a2': { type: 'rock' },
         '386d00': { type: 'tree' },
         '4161fb': { type: 'water' },
+        'a2ffcb': { type: 'torch_node' },
         // Structures / gates
         '794100': { type: 'gate' },
         // Spawns & markers
@@ -49,6 +50,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
         'ff61b2': { type: 'spawn_featured_ranged' },
         'db4161': { type: 'spawn_guardian' },
         'b21030': { type: 'spawn_boss' },
+        'db41c3': { type: 'spawn_leashed_mook' },
+        'f361ff': { type: 'spawn_leashed_featured' },
+        'e3b2ff': { type: 'spawn_leashed_featured_ranged' },
       },
     };
     const M = await import('./engine/map_loader.js');

@@ -338,6 +338,29 @@ export function drawObstacles(ctx, obstacles, camera) {
       ctx.fillStyle = grd;
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
+    } else if (o.type === 'torch_node') {
+      // Fixed torch prop: blocking, emits light (light node added on placement). Draw like dropped torch icon.
+      // Base stand shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(sx + (o.w/2 - 4)|0, sy + o.h - 2, 8, 2);
+      // Handle
+      ctx.fillStyle = '#8b5a2b';
+      const hx = sx + (o.w/2 - 1)|0; const hy = sy + Math.max(0, o.h - 6);
+      ctx.fillRect(hx, hy, 2, 6);
+      // Flame (two layers)
+      ctx.beginPath(); ctx.fillStyle = '#ffcc66';
+      ctx.arc(hx + 1, hy - 1.5, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.fillStyle = '#ffa41a';
+      ctx.arc(hx + 1, hy - 2.8, 2, 0, Math.PI * 2); ctx.fill();
+      // Subtle glow
+      ctx.save();
+      const glowR = Math.max(6, Math.min(10, Math.floor(Math.max(o.w, o.h))));
+      const gx = sx + o.w / 2, gy = sy + o.h / 2;
+      const g = ctx.createRadialGradient(gx, gy, glowR * 0.2, gx, gy, glowR);
+      g.addColorStop(0, 'rgba(255,196,102,0.22)');
+      g.addColorStop(1, 'rgba(255,196,102,0.02)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, glowR, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
   }
 }

@@ -1104,7 +1104,31 @@ export function step(dt) {
       const aggroR = (typeof e.aggroRadius === 'number') ? e.aggroRadius : baseAggro;
       const aggroR2 = aggroR * aggroR;
       let dx, dy;
-      if (dist2 <= aggroR2) {
+
+      // Guardian leash logic: only engage if the player is within both aggro radius and leash from guardian's home.
+      const isGuardian = !!e.guardian;
+      const isLeashed = !!e.leashed;
+      const isLeashedType = isGuardian || isLeashed;
+      // Ensure home is initialized to spawn center
+      if (isLeashedType && (typeof e.homeX !== 'number' || typeof e.homeY !== 'number')) {
+        e.homeX = Math.round(e.x + e.w/2);
+        e.homeY = Math.round(e.y + e.h/2);
+      }
+      const hx = (typeof e.homeX === 'number') ? e.homeX : ex;
+      const hy = (typeof e.homeY === 'number') ? e.homeY : ey;
+      const phx = pxp - hx, phy = pyp - hy;
+      const distPlayerHome2 = phx*phx + phy*phy;
+      // Default leash: slightly larger than aggro or a sensible floor
+      const defaultLeash = Math.max(200, aggroR + 40);
+      const leashR = isLeashedType ? (typeof e.leashRadius === 'number' ? e.leashRadius : defaultLeash) : 0;
+      const leashR2 = leashR * leashR;
+      // Decide if we should engage/chase this frame
+      let shouldChase = (dist2 <= aggroR2);
+      if (isLeashedType) {
+        if (distPlayerHome2 > leashR2) shouldChase = false;
+      }
+
+      if (shouldChase) {
         // Chase player (base heading)
         const d = Math.hypot(ddx, ddy) || 1; dx = ddx / d; dy = ddy / d;
         // Flow-field base guidance (blend with direct heading; do not fully override)
@@ -1342,18 +1366,50 @@ export function step(dt) {
       } else {
         // Wander: pick a direction for a short duration, sometimes pause
         e._aggro = false;
-        e._wanderTimer = Math.max(0, (e._wanderTimer || 0) - dt);
-        if ((e._wanderTimer || 0) <= 0) {
-          e._wanderTimer = 0.9 + Math.random() * 1.6; // 0.9–2.5s
-          e._wanderPause = Math.random() < 0.22;      // brief idle sometimes
-          // Small chance to bias wandering away from hazards by nudging current facing
-          const baseAng = Math.atan2(ddy, ddx) + (Math.random() * 1.8 - 0.9);
-          e._wanderAngle = (typeof e._wanderAngle === 'number' && Math.random() < 0.4)
-            ? (e._wanderAngle + (Math.random() * 1.2 - 0.6))
-            : baseAng;
+        if (isLeashedType) {
+          // If too far from home, return; otherwise orbit home in small circles
+          const ehx = ex - hx, ehy = ey - hy;
+          const distHome = Math.hypot(ehx, ehy);
+          const atHome = distHome <= 10;
+          // Mark returning state if we were engaged recently or outside a tighter home band
+          if (!atHome) {
+            // Return to home
+            const n = distHome || 1; dx = (-ehx) / n; dy = (-ehy) / n;
+          } else {
+            // Orbit home: small circle
+            e._orbitAng = (typeof e._orbitAng === 'number') ? e._orbitAng : (Math.random() * Math.PI * 2);
+            e._orbitRad = (typeof e._orbitRad === 'number') ? e._orbitRad : (12 + Math.random() * 10);
+            e._orbitSpd = (typeof e._orbitSpd === 'number') ? e._orbitSpd : 1.2; // radians/sec
+            e._orbitAng += e._orbitSpd * dt;
+            const tx = hx + Math.cos(e._orbitAng) * e._orbitRad;
+            const ty = hy + Math.sin(e._orbitAng) * e._orbitRad;
+            const tdx = (tx - ex), tdy = (ty - ey);
+            const n = Math.hypot(tdx, tdy) || 1; dx = tdx / n; dy = tdy / n;
+            // Passive healing only for guardians (not generic leashed)
+            if (isGuardian) {
+              if (e.hp > 0 && (e.maxHp || e.hp) > 0 && e.hp < (e.maxHp || e.hp)) {
+                const regen = (typeof e.guardianRegen === 'number') ? e.guardianRegen : 0.6; // HP/sec
+                e.hp = Math.min(e.maxHp || e.hp, e.hp + regen * dt);
+                // Occasional sparkle to visualize healing
+                if (Math.random() < 1.2 * dt) { try { spawnSparkle(e.x + e.w/2, e.y - 6); } catch {} }
+              }
+            }
+          }
+        } else {
+          // Default wander
+          e._wanderTimer = Math.max(0, (e._wanderTimer || 0) - dt);
+          if ((e._wanderTimer || 0) <= 0) {
+            e._wanderTimer = 0.9 + Math.random() * 1.6; // 0.9–2.5s
+            e._wanderPause = Math.random() < 0.22;      // brief idle sometimes
+            // Small chance to bias wandering away from hazards by nudging current facing
+            const baseAng = Math.atan2(ddy, ddx) + (Math.random() * 1.8 - 0.9);
+            e._wanderAngle = (typeof e._wanderAngle === 'number' && Math.random() < 0.4)
+              ? (e._wanderAngle + (Math.random() * 1.2 - 0.6))
+              : baseAng;
+          }
+          if (e._wanderPause) { dx = 0; dy = 0; }
+          else { dx = Math.cos(e._wanderAngle || 0); dy = Math.sin(e._wanderAngle || 0); }
         }
-        if (e._wanderPause) { dx = 0; dy = 0; }
-        else { dx = Math.cos(e._wanderAngle || 0); dy = Math.sin(e._wanderAngle || 0); }
       }
       const oldX = e.x, oldY = e.y;
       const slowMul = (e._slowMul || 1);
@@ -1449,6 +1505,19 @@ export function step(dt) {
       }
 
       // Temporary enemy speed boost from triggers
+      // Guardian leash clamp: if a guardian has strayed beyond leash, steer back toward home
+      if (isLeashedType) {
+        const hx2 = (typeof e.homeX === 'number') ? e.homeX : ex;
+        const hy2 = (typeof e.homeY === 'number') ? e.homeY : ey;
+        const distHomeNow = Math.hypot(ex - hx2, ey - hy2);
+        const leash = (typeof e.leashRadius === 'number') ? e.leashRadius : Math.max(200, aggroR + 40);
+        if (distHomeNow > leash + 10) {
+          const tx = hx2 - ex, ty = hy2 - ey; const n = Math.hypot(tx, ty) || 1;
+          best = { x: tx / n, y: ty / n };
+        }
+      }
+
+      // Movement speed composition
       const spdBoost = (e._speedBoostTimer && e._speedBoostTimer > 0) ? (e._speedBoostFactor || 1) : 1;
       const jukeMult = (e._jukeTimer && e._jukeTimer > 0) ? (e._jukeMult || 1) : 1;
       const dashTeleMul = (e._dashTelegraph && e._dashTelegraph > 0) ? 0.4 : 1; // slow slightly during telegraph

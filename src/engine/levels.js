@@ -153,6 +153,7 @@ export function loadLevel1() {
     const gorgY = Math.round(cyw - TILE * 4);  // above top wall, safely outside
     const gorg = spawnEnemy(gorgX, gorgY, 'featured', {
       name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', vnOnSight: { text: introTexts.gorg }, portrait: 'assets/portraits/level01/Gorg/Gorg.mp4', sheet: gorgSheet, sheetPalette: gorgPalette,
+      guardian: true,
       hp: 40, dmg: 6, hitCooldown: 0.65,
     });
     // Reduce early aggro so the player can meet companions before Gorg notices
@@ -599,6 +600,7 @@ export function loadLevel2() {
       portrait: 'assets/portraits/level02/Aarg/Aarg.mp4',
       vnOnSight: { text: introTexts.aarg },
       guaranteedDropId: 'key_nethra',
+      guardian: true,
       // Level 2 key guardian: buffed stats
       hp: 52,
       dmg: 7,
@@ -734,6 +736,7 @@ export function loadLevel3() {
     name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', 
     vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', 
     sheet: wightSheet, sheetPalette: wightPalette, 
+    guardian: true,
     hp: 64, dmg: 8, hitCooldown: 0.55,  // Level 3 key guardian buff (tougher featured foe)
   });
   // Two normal featured foes near Wight
@@ -892,6 +895,7 @@ export function loadLevel4() {
     portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
     vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
     guaranteedDropId: 'key_sigil', 
+    guardian: true,
     hp: 76, dmg: 9, hitCooldown: 0.5,  // Level 4 key guardian buff (tougher featured foe)
     sheetPalette: blurbPalette,
   });
@@ -1073,6 +1077,7 @@ export function loadLevel5() {
     portraitDefeated: 'assets/portraits/level05/Fana/Fana.mp4',  // Shows normal Fana when defeated
     vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: I must... protect the temple... Vorthak commands...', lock: true, preDelaySec: 0.8 },
     guaranteedDropId: 'key_temple',  // Boss gate key
+    guardian: true,
     hp: 92, dmg: 11, hitCooldown: 0.45,  // Level 5 key guardian buff (tougher featured foe)
   });
   // Two normal featured foes near Fana

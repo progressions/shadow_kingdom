@@ -323,6 +323,16 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     onDefeatNextLevel: (typeof opts.onDefeatNextLevel === 'number') ? opts.onDefeatNextLevel : null,
     // Optional quest linkage
     questId: opts.questId || null,
+    // Guardian behavior: leashed to spawn/home, heals when home
+    guardian: !!opts.guardian,
+    // Non-guardian leash (no regen): when true, enemy is leashed to spawn/home
+    leashed: !!opts.leashed,
+    // Record home position (center) for any enemy; used by guardian logic
+    homeX: Math.round((x || 0) + ((w || 12) / 2)),
+    homeY: Math.round((y || 0) + ((h || 16) / 2)),
+    // Optional leash radius/heal rate overrides
+    leashRadius: (typeof opts.leashRadius === 'number') ? Math.max(40, opts.leashRadius) : undefined,
+    guardianRegen: (typeof opts.guardianRegen === 'number') ? Math.max(0, opts.guardianRegen) : undefined,
     // Optional sprite scale for rendering (1 = 16x16, 2 = 32x32)
     spriteScale: (typeof opts.spriteScale === 'number') ? Math.max(0.5, Math.min(4, opts.spriteScale)) : 1,
     source: opts.source || null,

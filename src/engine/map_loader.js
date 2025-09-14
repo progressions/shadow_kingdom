@@ -1,5 +1,6 @@
 import { TILE } from './constants.js';
 import { world, player, enemies, npcs, companions, obstacles, corpses, stains, floaters, sparkles, spawners, runtime, spawnEnemy, spawnNpc } from './state.js';
+import { addLightNode, clearLightNodes, MAX_LIGHT_LEVEL } from './lighting.js';
 import { buildTerrainBitmap } from './terrain.js';
 import { sheetForName } from './sprites.js';
 import { rebuildObstacleIndex } from './spatial_index.js';
@@ -159,11 +160,12 @@ export async function applyPngMap(url, legend) {
     // Map pixels -> type grid (structural) and optionally collect enemy spawns from the map.
     const map = legend && legend.colors ? legend.colors : {};
     const grid = new Array(width * height);
-    const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss', x, y }
+    const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss'|'leashed_mook'|'leashed_featured'|'leashed_featured_ranged', x, y }
     let playerSpawn = null; // { x, y }
     const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola', x, y }
     const chestSpawns = []; // { id, itemId, x, y }
     const breakables = [];  // { type: 'barrel', x, y }
+    const torchNodes = [];  // { x, y }
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
@@ -197,16 +199,23 @@ export async function applyPngMap(url, legend) {
           case 'chest_dagger': chestSpawns.push({ id: 'chest_l1_weapon', itemId: 'dagger',   x, y }); break;
           case 'chest_bow':    chestSpawns.push({ id: 'chest_l1_bow',    itemId: 'bow_wood', x, y }); break;
           case 'barrel':       breakables.push({ type: 'barrel', x, y }); break;
+          case 'torch_node':   torchNodes.push({ x, y }); break;
           // Enemies
           case 'spawn_mook': enemySpawns.push({ kind: 'mook', x, y }); break;
           case 'spawn_featured_ranged': enemySpawns.push({ kind: 'featured_ranged', x, y }); break;
           case 'spawn_guardian': enemySpawns.push({ kind: 'guardian', x, y }); break;
           case 'spawn_boss': enemySpawns.push({ kind: 'boss', x, y }); break;
+          case 'spawn_leashed_mook': enemySpawns.push({ kind: 'leashed_mook', x, y }); break;
+          case 'spawn_leashed_featured': enemySpawns.push({ kind: 'leashed_featured', x, y }); break;
+          case 'spawn_leashed_featured_ranged': enemySpawns.push({ kind: 'leashed_featured_ranged', x, y }); break;
         }
       }
     }
     // Build obstacles from the grid
     buildObstaclesFromGrid(grid, legend);
+
+    // Clear any previous authored light nodes to avoid duplication when applying maps repeatedly
+    try { clearLightNodes(); } catch {}
 
     // Player spawn override (tile origin)
     if (playerSpawn) {
@@ -226,6 +235,13 @@ export async function applyPngMap(url, legend) {
       obstacles.push({ x: b2.x * TILE, y: b2.y * TILE, w: 12, h: 12, type: 'barrel', id, hp: 2 });
     }
 
+    // Place torch nodes (blocking props) and add static light sources
+    for (const t of torchNodes) {
+      const px = t.x * TILE, py = t.y * TILE;
+      obstacles.push({ x: px, y: py, w: 10, h: 10, type: 'torch_node', blocksAttacks: true });
+      try { addLightNode({ x: px + 5, y: py + 5, level: MAX_LIGHT_LEVEL, radius: 6, enabled: true }); } catch {}
+    }
+
     // If the map defines any enemy spawns, replace the current enemies with the map-defined set
     if (enemySpawns.length > 0) {
       enemies.length = 0;
@@ -239,6 +255,7 @@ export async function applyPngMap(url, legend) {
           // Key guardian stats aligned with Level 1 (tough featured foe)
           spawnEnemy(ex, ey, 'featured', {
             name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze',
+            guardian: true,
             hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
             vnOnSight: { text: introTexts.gorg },
             portrait: 'assets/portraits/level01/Gorg/Gorg.mp4',
@@ -252,6 +269,15 @@ export async function applyPngMap(url, legend) {
             portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4',
             onDefeatNextLevel: 2,
             vnOnSight: { text: introTexts.vast },
+          });
+        } else if (s.kind === 'leashed_mook') {
+          spawnEnemy(ex, ey, 'mook', { name: 'Greenwood Bandit', leashed: true, aggroRadius: 160 });
+        } else if (s.kind === 'leashed_featured') {
+          spawnEnemy(ex, ey, 'featured', { name: 'Featured Foe', leashed: true, aggroRadius: 180 });
+        } else if (s.kind === 'leashed_featured_ranged') {
+          spawnEnemy(ex, ey, 'featured', {
+            name: 'Bandit Lieutenant', leashed: true, aggroRadius: 180,
+            hp: 12, dmg: 6, ranged: true, shootRange: 160, shootCooldown: 1.0, projectileSpeed: 200, projectileDamage: 3, aimError: 0.03,
           });
         }
       }
