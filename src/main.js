@@ -314,6 +314,7 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
             portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4',
             portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4',
             portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4',
+            vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' },
             onDefeatNextLevel: 6,
             hp: 100, dmg: 15, speed: 18, hitCooldown: 0.55, ap: 5,
           },
