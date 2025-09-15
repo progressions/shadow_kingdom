@@ -377,3 +377,90 @@ export function showUniqueObstacleTilesPage(opts = {}) {
 
 try { window.exportUniqueObstacleTilesPNG = exportUniqueObstacleTilesPNG; } catch {}
 try { window.showUniqueObstacleTilesPage = showUniqueObstacleTilesPage; } catch {}
+
+// --- Strict 16x16 tiles atlas (no padding/labels) ---
+// Builds a compact atlas where each tile is exactly 16x16 and tiles are packed edge-to-edge.
+// This is intended for tileset creation workflows.
+
+function drawObstacleTile16(type) {
+  const TILE_SZ = 16;
+  const key = String(type || '').toLowerCase();
+  const can = document.createElement('canvas');
+  can.width = TILE_SZ; can.height = TILE_SZ;
+  const g = can.getContext('2d'); g.imageSmoothingEnabled = false;
+  const cam = { x: 0, y: 0, w: TILE_SZ, h: TILE_SZ };
+  const o = { x: 0, y: 0, w: TILE_SZ, h: TILE_SZ, type: key, locked: true };
+  // Special-cases where drawObstacles would skip or overdraw
+  if (key === 'tree_trunk') {
+    g.clearRect(0, 0, TILE_SZ, TILE_SZ);
+    g.fillStyle = '#6e4b2a';
+    g.fillRect((TILE_SZ/2 - 2)|0, 6, 4, TILE_SZ - 6);
+    return can;
+  }
+  if (key === 'tree_canopy') {
+    g.clearRect(0, 0, TILE_SZ, TILE_SZ);
+    // Two canopy bands near top
+    g.fillStyle = '#245f33'; g.fillRect(2, 0, TILE_SZ - 4, 8);
+    g.fillStyle = '#2f7a42'; g.fillRect(3, 4, TILE_SZ - 6, 6);
+    return can;
+  }
+  if (key === 'rock') {
+    g.clearRect(0, 0, TILE_SZ, TILE_SZ);
+    // Simple rock blob approximation with outline
+    g.fillStyle = '#6f6f6f';
+    g.fillRect(3, 5, 10, 8);
+    g.strokeStyle = '#2a2a2e'; g.lineWidth = 1; g.strokeRect(3.5, 5.5, 9, 7);
+    return can;
+  }
+  // Freeze animated patterns for deterministic tiles
+  const oldT = runtime && runtime._timeSec;
+  try { if (runtime) runtime._timeSec = 0; } catch {}
+  try { drawObstacles(g, [o], cam); } catch {}
+  try { if (runtime) runtime._timeSec = oldT; } catch {}
+  return can;
+}
+
+export function exportObstacleTiles16PNG(filename, opts = {}) {
+  try {
+    const TILE_SZ = 16;
+    const used = new Set();
+    for (const o of obstacles) { if (!o || !o.type) continue; used.add(String(o.type).toLowerCase()); }
+    // Include split tree variants for tiling if any trees exist
+    if (used.has('tree')) { used.add('tree_trunk'); used.add('tree_canopy'); used.delete('tree'); }
+    const types = Array.from(used).sort();
+    if (!types.length) { console.warn('[Tiles16] No obstacle types found'); return false; }
+    // Pre-render tiles
+    const tiles = types.map(t => ({ type: t, canvas: drawObstacleTile16(t) }));
+    // Layout: compact grid with no padding; columns configurable (default: near-square)
+    const cols = Math.max(1, Number.isFinite(opts.columns) ? Math.floor(opts.columns) : Math.ceil(Math.sqrt(tiles.length)));
+    const rows = Math.ceil(tiles.length / cols);
+    const atlas = document.createElement('canvas');
+    atlas.width = cols * TILE_SZ; atlas.height = rows * TILE_SZ;
+    const g = atlas.getContext('2d'); g.imageSmoothingEnabled = false;
+    g.clearRect(0, 0, atlas.width, atlas.height);
+    tiles.forEach((t, i) => {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      const dx = c * TILE_SZ;
+      const dy = r * TILE_SZ;
+      try { g.drawImage(t.canvas, dx, dy); } catch {}
+    });
+    const lvl = (runtime?.currentLevel || 1) | 0;
+    const name = filename || `level_${lvl}_tiles16.png`;
+    atlas.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    }, 'image/png');
+    return true;
+  } catch (e) {
+    console.error('[Tiles16] Export failed', e);
+    return false;
+  }
+}
+
+try { window.exportObstacleTiles16PNG = exportObstacleTiles16PNG; } catch {}
