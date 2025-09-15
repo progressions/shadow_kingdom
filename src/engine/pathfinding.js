@@ -16,9 +16,9 @@ function buildBlockedAndHazardGrids() {
   for (const o of obstacles) {
     if (!o) continue;
     if (o.type === 'gate' && o.locked === false) continue; // opened gates do not block
-    // Non-blocking types
+    // Non-blocking types for movement (bridges, reeds, torch posts)
     // Decorative/pass-through only; movement should collide with barrels/boxes/chests, so do NOT skip them here
-    if (o.type === 'wood' || o.type === 'reed') continue;
+    if (o.type === 'wood' || o.type === 'reed' || o.type === 'torch_node') continue;
     const x1 = Math.max(0, Math.floor(o.x / TILE));
     const y1 = Math.max(0, Math.floor(o.y / TILE));
     const x2 = Math.min(w - 1, Math.floor((o.x + o.w - 1) / TILE));

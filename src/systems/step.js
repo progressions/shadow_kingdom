@@ -32,8 +32,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     for (const o of candX) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
-      // non-blocking obstacle types
-      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'reed') continue;
+      // non-blocking obstacle types (pass-through): hazards, bridges, reeds, torch posts
+      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'reed' || o.type === 'torch_node') continue;
       // Water walking aura: if Tin is in party (Level 3), player/companions can walk on water
       try {
         const ww = !!(runtime?.partyAuras?.waterWalk);
@@ -70,8 +70,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
     for (const o of candY) {
       if (!o) continue;
       if (o.type === 'gate' && o.locked === false) continue;
-      // non-blocking obstacle types
-      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'reed') continue;
+      // non-blocking obstacle types (pass-through)
+      if (o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'reed' || o.type === 'torch_node') continue;
       // Water walking aura
       try {
         const ww = !!(runtime?.partyAuras?.waterWalk);
