@@ -42,10 +42,14 @@ export const introTexts = {
     "The marsh hushes. At the island's heart, a figure raises a reed crown and the water stills. Her voice is moon‑thin over the bog.\n" +
     "\nLuula: \"Step light, wanderer. The marsh remembers every footfall… and it will remember yours.\"",
 
-  // Level 4 — Ruined City personalities
+  // Featured guardians — thematic but level-agnostic intros
   blurb:
-    "Something heaves between fallen arches—a grotesque, green bulk wobbling with each wet breath. Grease-slick skin and greedy eyes fix on the prize at his waist: an iron sigil on a chain.\n" +
-    "\nBlurb: \"Hhhrrk… pretty little sigil. Mine. You want it? Come take it.\"",
+    "Something heaves from the muck—a grotesque, green bulk wobbling with each wet breath. Grease‑slick skin and greedy eyes fix on the prize at his waist: a key on a chain. The emptiness in his gaze smells of someone else’s will.\n" +
+    "\nBlurb: \"Hhhrrk… pretty little key. Mine. Urathar says keep. You want it? Come take it.\"",
+
+  wight:
+    "A bone‑white figure drifts into view, bleached and hollow. The way it moves feels practiced—and absent. Whatever it was, Urathar has broken it and left a shell that obeys.\n" +
+    "\nWight: \"Orders bind. The master speaks… and you fall.\"",
 
   vanificia:
     "White hair falls like frost over a black dress as she steps into the ruined plaza. Every motion is measured, every glance a verdict. Dust hangs, waiting for her sentence.\n" +

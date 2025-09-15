@@ -137,9 +137,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
           guardian: {
             kind: 'featured',
             opts: {
-              name: 'Blurb', vnId: 'enemy:blurb',
-              portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
-              vnOnSight: { text: introTexts.blurb },
+              name: 'Wight', vnId: 'enemy:wight',
+              portrait: 'assets/portraits/level03/Wight/Wight.mp4',
+              vnOnSight: { text: introTexts.wight },
               guaranteedDropId: 'key_sigil',
               guardian: true,
               hp: 76, dmg: 9, hitCooldown: 0.5,
@@ -218,9 +218,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
           guardian: {
             kind: 'featured',
             opts: {
-              name: 'Wight', vnId: 'enemy:wight',
-              portrait: 'assets/portraits/level03/Wight/Wight.mp4',
-              vnOnSight: { text: introTexts.wight },
+              name: 'Blurb', vnId: 'enemy:blurb',
+              portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
+              vnOnSight: { text: introTexts.blurb },
               guaranteedDropId: 'key_reed',
               guardian: true,
               hp: 64, dmg: 8, hitCooldown: 0.55,

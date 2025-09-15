@@ -722,26 +722,27 @@ export function loadLevel3() {
   obstacles.push({ x: Math.round(player.x + TILE * 12), y: Math.round(player.y - TILE * 8), w: 12, h: 12, type: 'barrel', id: 'brk_l3_a', hp: 2 });
   obstacles.push({ x: Math.round(player.x - TILE * 10), y: Math.round(player.y + TILE * 14), w: 12, h: 12, type: 'crate', id: 'brk_l3_b', hp: 2 });
 
-  // Featured foe: Wight — drops Reed Key (bone-white override like Gorg/Aarg)
+  // Featured foe: Blurb — drops Reed Key (green grotesque override)
   const wx = player.x + 180, wy = player.y - 120;
-  const wightPalette = {
-    skin: '#f5f5f5',
-    hair: '#e6e6e6',
-    shirt: '#cfcfcf',
-    pants: '#9e9e9e',
-    outline: '#000000',
+  const blurbPaletteL3 = {
+    // Green grotesque tinting, similar to Gorg/Aarg style overrides
+    skin: '#6fdd6f',
+    hair: '#0a2a0a',
     longHair: false,
     dress: false,
+    shirt: '#4caf50',
+    pants: '#2e7d32',
+    outline: '#000000'
   };
-  const wightSheet = makeSpriteSheet(wightPalette);
-  spawnEnemy(wx, wy, 'featured', { 
-    name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', 
-    vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_reed', 
-    sheet: wightSheet, sheetPalette: wightPalette, 
+  const blurbSheetL3 = makeSpriteSheet(blurbPaletteL3);
+  spawnEnemy(wx, wy, 'featured', {
+    name: 'Blurb', vnId: 'enemy:blurb', portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
+    vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… mine!' }, guaranteedDropId: 'key_reed',
+    sheet: blurbSheetL3, sheetPalette: blurbPaletteL3,
     guardian: true,
     hp: 64, dmg: 8, hitCooldown: 0.55,  // Level 3 key guardian buff (tougher featured foe)
   });
-  // Two normal featured foes near Wight
+  // Two normal featured foes near Blurb
   spawnEnemy(wx - 36, wy + 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
   spawnEnemy(wx + 28, wy - 18, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
 
@@ -858,31 +859,30 @@ export function loadLevel4() {
   }
   // Map-authored spawners will be applied via the PNG legend; no manual spawners here.
 
-  // Featured foe: Blurb — drops City Sigil Key
-  const blurbX = player.x - 200, blurbY = player.y - 120;
-  const blurbPalette = {
-    // Green grotesque tinting, similar to Gorg/Aarg/Wight style overrides
-    skin: '#6fdd6f',
-    hair: '#0a2a0a',
+  // Featured foe: Wight — drops City Sigil Key
+  const wightX = player.x - 200, wightY = player.y - 120;
+  const wightPaletteL4 = {
+    skin: '#f5f5f5',
+    hair: '#e6e6e6',
+    shirt: '#cfcfcf',
+    pants: '#9e9e9e',
+    outline: '#000000',
     longHair: false,
     dress: false,
-    shirt: '#4caf50',
-    pants: '#2e7d32',
-    outline: '#000000'
   };
-  const blurbSheet = makeSpriteSheet(blurbPalette);
-  spawnEnemy(blurbX, blurbY, 'featured', {
-    name: 'Blurb', vnId: 'enemy:blurb', sheet: blurbSheet,
-    portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
-    vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… key mine!' },
-    guaranteedDropId: 'key_sigil', 
+  const wightSheetL4 = makeSpriteSheet(wightPaletteL4);
+  spawnEnemy(wightX, wightY, 'featured', {
+    name: 'Wight', vnId: 'enemy:wight', sheet: wightSheetL4,
+    portrait: 'assets/portraits/level03/Wight/Wight.mp4',
+    vnOnSight: { text: (introTexts && introTexts.wight) || 'Wight: …' },
+    guaranteedDropId: 'key_sigil',
     guardian: true,
     hp: 76, dmg: 9, hitCooldown: 0.5,  // Level 4 key guardian buff (tougher featured foe)
-    sheetPalette: blurbPalette,
+    sheetPalette: wightPaletteL4,
   });
-  // Two normal featured foes near Blurb
-  spawnEnemy(blurbX - 32, blurbY + 12, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
-  spawnEnemy(blurbX + 34, blurbY - 14, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
+  // Two normal featured foes near Wight
+  spawnEnemy(wightX - 32, wightY + 12, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
+  spawnEnemy(wightX + 34, wightY - 14, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
 
   // Boss arena (city plaza) with a top gate requiring Iron Sigil
   const rw = TILE * 12, rh = TILE * 8, t = 8;

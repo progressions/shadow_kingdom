@@ -358,6 +358,17 @@ export const urnDialog = {
         { label: 'Quests', next: 'quests' },
         { label: 'Not right now.', action: 'end' },
       ],
+      variants: [
+        {
+          requires: { hasFlag: 'varabella_find_urn_started', missingFlag: 'varabella_find_urn_cleared' },
+          text: "Varabella: Urn! You're safe.\nUrn: Varabella! I heard fighting. I hid when the attack started—I thought they'd find me.\nVarabella: The danger's past. You're safe now. (She turns to you.) Thank you.",
+          choices: [ { label: 'You\'re safe now.', action: 'set_flag', data: { key: 'varabella_find_urn_cleared' }, next: 'after_reunion' } ],
+        },
+      ],
+    },
+    after_reunion: {
+      text: "Urn: I can help—if you want me. And… thank you for finding me.",
+      choices: [ { label: 'Join me.', action: 'join_party', hint: 'Support · Small Heals · Cheer' }, { label: 'Tell me what you can do.', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
     post_l5_urn: {
       text: "Urn: The stone feels warm again. People can breathe here. Urathar's not done breaking, but we can be louder than he is.",
@@ -521,6 +532,8 @@ export const varabellaDialog = {
     quests: {
       text: 'Varabella: Boss man, clear sightlines, clean exits. Pick one.',
       choices: [
+        { label: 'Find Urn (Level 4)', requires: { hasFlag: 'level4_reached', missingFlag: 'varabella_find_urn_started' }, next: 'varabella_find_urn_intro' },
+        { label: 'Turn in: Find Urn', requires: { flag: 'varabella_find_urn_cleared', missingFlag: 'varabella_find_urn_done' }, next: 'varabella_find_urn_turnin' },
         { label: 'Cut the Crossfire (Level 4)', requires: { hasFlag: 'level4_reached', missingFlag: 'varabella_crossfire_started' }, next: 'varabella_crossfire_intro' },
         { label: 'Turn in: Cut the Crossfire', requires: { flag: 'varabella_crossfire_cleared' }, next: 'varabella_crossfire_turnin' },
         // Future quest hooks
@@ -528,6 +541,28 @@ export const varabellaDialog = {
         { label: 'Watch the Wires (Level 7)', requires: { hasFlag: 'level7_reached', missingFlag: 'varabella_wires7_started' }, next: 'varabella_wires7_locked' },
         { label: 'Back', action: 'end' },
       ],
+    },
+    varabella_find_urn_intro: {
+      text: 'Varabella: You handle yourself. I need that strength. My sister—Urn—ran when the attack hit. We headed toward the old quarters in the southeast. She\'s hiding there somewhere.',
+      choices: [
+        { label: 'Start: Find Urn', action: 'start_quest', data: { id: 'varabella_find_urn' }, next: 'varabella_find_urn_started' },
+        { label: 'Back', next: 'quests' },
+      ],
+    },
+    varabella_find_urn_started: {
+      text: 'Varabella: We start in the southeast. I\'ll point the lanes—stay tight.',
+      choices: [ { label: 'Okay', action: 'end' } ],
+    },
+    varabella_find_urn_turnin: {
+      text: 'Varabella: She\'s safe. You got us there. I owe you for that.',
+      choices: [
+        { label: 'Stay with me. (Join party)', action: 'join_party', hint: 'Angles · Extended Reach' },
+        { label: 'We\'ll cross paths later. (Affinity +0.8)', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'varabella_find_urn_reward' }, next: 'varabella_find_urn_done' },
+      ],
+    },
+    varabella_find_urn_done: {
+      text: 'Varabella: Good work. Streets still need clearing.',
+      choices: [ { label: 'Back', action: 'set_flag', data: { key: 'varabella_find_urn_done' }, next: 'quests' } ],
     },
     varabella_crossfire_intro: {
       text: 'Varabella: Boss man, captains set crossfire in the alleys. Break three posts and the lanes breathe.',

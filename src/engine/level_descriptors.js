@@ -16,13 +16,13 @@ export const LEVEL_DESCRIPTORS = {
     gates: ['marsh_gate'],
     chests: ['chest_l3_helm'],
     breakables: ['brk_l3_a', 'brk_l3_b'],
-    uniqueActors: ['enemy:luula', 'enemy:wight'],
+    uniqueActors: ['enemy:luula', 'enemy:blurb'],
   },
   4: {
     gates: ['city_gate'],
     chests: [],
     breakables: [],
-    uniqueActors: ['enemy:vanificia', 'enemy:blurb'],
+    uniqueActors: ['enemy:vanificia', 'enemy:wight'],
   },
   5: {
     gates: ['temple_gate'],

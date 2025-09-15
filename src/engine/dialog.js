@@ -1024,6 +1024,16 @@ function handleSetFlag(data) {
     if (!key) return;
     if (!runtime.questFlags) runtime.questFlags = {};
     runtime.questFlags[key] = true;
+    // Special: clearing Find Urn quest should remove the Urn marker immediately
+    if (key === 'varabella_find_urn_cleared') {
+      try {
+        for (const n of npcs) {
+          const nm = String(n?.name || '').toLowerCase();
+          if (nm.includes('urn') && n.questId === 'varabella_find_urn') { delete n.questId; }
+        }
+      } catch {}
+      try { showBanner('Quest updated: Find Urn — reunited'); } catch {}
+    }
   } catch {}
 }
 
@@ -1322,6 +1332,15 @@ function handleStartQuest(data) {
         }
       } catch {}
       try { showBanner('Quest started: Find Yorna — Talk to her'); } catch {}
+    } else if (id === 'varabella_find_urn') {
+      // Level 4 Varabella quest: point to Urn's location; clears on talking to Urn (or recruiting her)
+      try {
+        for (const n of npcs) {
+          const nm = String(n?.name || '').toLowerCase();
+          if (nm.includes('urn')) { n.questId = 'varabella_find_urn'; break; }
+        }
+      } catch {}
+      try { showBanner('Quest started: Find Urn — Talk to her'); } catch {}
     }
     // Refresh quest indicators shortly after starting a quest
     try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
