@@ -32,6 +32,7 @@ export function buildTerrainBitmap(world, theme = 'default') {
       if (theme === 'desert') { baseColor = '#c2b280'; dirtColor = '#a6906a'; waterColor = '#6fa3c9'; }
       if (theme === 'marsh') { baseColor = '#3b4a3a'; dirtColor = '#5a5b45'; waterColor = '#2a4f6d'; }
       if (theme === 'city')   { baseColor = '#3b3b3f'; dirtColor = '#57575e'; waterColor = '#2a4f6d'; }
+      if (theme === 'temple') { baseColor = '#2e2e2f'; dirtColor = '#4a4a4c'; waterColor = '#3a3a3c'; }
       let color = baseColor;
       if (tt === 'water') color = waterColor; else if (tt === 'dirt') color = dirtColor;
       const n3 = noise2D(tx * 1.7, ty * 1.3, 99);
@@ -56,6 +57,14 @@ export function buildTerrainBitmap(world, theme = 'default') {
         // cracked stone speckles
         if (n3 > 0.55 && tt !== 'water') {
           g.fillStyle = '#2a2a2e';
+          const px = (tx * TILE) + (n1 * TILE) | 0;
+          const py = (ty * TILE) + (n2 * TILE) | 0;
+          g.fillRect(px, py, 1, 1);
+        }
+      } else if (theme === 'temple') {
+        // Stone floor: subtle grey speckles, no blues
+        if (n3 > 0.55 && tt !== 'water') {
+          g.fillStyle = '#444446';
           const px = (tx * TILE) + (n1 * TILE) | 0;
           const py = (ty * TILE) + (n2 * TILE) | 0;
           g.fillRect(px, py, 1, 1);
@@ -639,6 +648,23 @@ export function drawObstacles(ctx, obstacles, camera) {
       // subtle gold vein
       ctx.fillStyle = '#d4b967';
       for (let x = 2; x < o.w - 2; x += 12) ctx.fillRect(sx + x, sy + 2, 1, Math.max(1, o.h - 4));
+    } else if (o.type === 'gold_wall') {
+      // Gold-inlaid wall (blocking)
+      ctx.fillStyle = '#b3a14f';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#7a6a2a'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // Inlay stripes
+      ctx.fillStyle = '#d4b967';
+      for (let y = 2; y < o.h - 2; y += 10) ctx.fillRect(sx + 2, sy + y, Math.max(1, o.w - 4), 1);
+    } else if (o.type === 'wood_wall') {
+      // Wooden wall (blocking) — thicker, solid planks
+      ctx.fillStyle = '#f4d29c';
+      ctx.fillRect(sx, sy, o.w, o.h);
+      ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, o.w - 1, o.h - 1);
+      // plank lines
+      ctx.fillStyle = '#caa36f';
+      const step = 6;
+      for (let y = 0; y < o.h; y += step) ctx.fillRect(sx + 1, sy + y, o.w - 2, 1);
     } else if (o.type === 'column') {
       // Golden column (non-blocking by default unless blocksAttacks is set)
       const r = Math.max(4, Math.min(10, Math.floor(Math.min(o.w, o.h) / 2)));

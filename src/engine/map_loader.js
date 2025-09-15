@@ -60,7 +60,7 @@ function buildObstaclesFromGrid(grid, legend) {
   // Optional region packing for large water areas (reduces rectangle count)
   const packWater = (legend && Object.prototype.hasOwnProperty.call(legend, 'packWater')) ? !!legend.packWater : true;
   // Fast pass: gather horizontal runs for mergeable types, then merge vertically
-  const mergeable = new Set(packWater ? ['wall', 'gate', 'wood', 'rock'] : ['wall', 'water', 'gate', 'wood', 'rock']);
+  const mergeable = new Set(packWater ? ['wall', 'gate', 'wood', 'rock', 'marble', 'gold_wall', 'wood_wall'] : ['wall', 'water', 'gate', 'wood', 'rock', 'marble', 'gold_wall', 'wood_wall']);
   const rows = [];
   for (let y = 0; y < h; y++) {
     const row = new Array(w);
@@ -74,11 +74,11 @@ function buildObstaclesFromGrid(grid, legend) {
     rects = rects.concat(waterRects.map(r => ({ ...r, type: 'water' })));
   }
   // Draw order: water first, then wood (bridge), then walls/gates, then rocks
-  const pri = (t) => (t === 'water') ? 0 : (t === 'wood') ? 1 : (t === 'wall') ? 2 : (t === 'gate') ? 3 : (t === 'rock') ? 4 : 9;
+  const pri = (t) => (t === 'water') ? 0 : (t === 'wood') ? 1 : (t === 'wall' || t === 'wood_wall' || t === 'marble' || t === 'gold_wall') ? 2 : (t === 'gate') ? 3 : (t === 'rock') ? 4 : 9;
   rects.sort((a, b) => pri(a.type) - pri(b.type));
   for (const r of rects) {
     const type = r.type;
-    const o = { x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type, blocksAttacks: (type === 'wall' || (type === 'gate')) };
+    const o = { x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type, blocksAttacks: (type === 'wall' || type === 'marble' || type === 'gold_wall' || type === 'wood_wall' || (type === 'gate')) };
     if (type === 'gate') { o.locked = true; o.id = o.id || 'castle_gate'; o.keyId = o.keyId || 'castle_gate'; }
     obstacles.push(o);
   }
@@ -188,6 +188,9 @@ export async function applyPngMap(url, legend) {
           case 'cactus':
           case 'gate':
           case 'reed':
+          case 'marble':
+          case 'gold_wall':
+          case 'wood_wall':
             tForGrid = type; break;
           default:
             tForGrid = null; break;
@@ -225,6 +228,7 @@ export async function applyPngMap(url, legend) {
           case 'spawner_featured':  spawnerFeatureds.push({ x, y }); break;
           case 'tin_spawn':    npcSpawns.push({ who: 'tin', x, y }); break;
           case 'nellis_spawn': npcSpawns.push({ who: 'nellis', x, y }); break;
+          case 'cowsill_spawn': npcSpawns.push({ who: 'cowsill', x, y }); break;
         }
       }
     }
@@ -272,6 +276,10 @@ export async function applyPngMap(url, legend) {
           return (kind === 'mook')
             ? { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 }
             : { kind: 'featured', name: 'City Brute', hp: 18, dmg: 7 };
+        } else if (lvl === 5) {
+          return (kind === 'mook')
+            ? { kind: 'mook', name: 'Temple Guard', hp: 12, dmg: 7 }
+            : { kind: 'featured', name: 'Temple Sentinel', hp: 22, dmg: 9 };
         }
         return (kind === 'mook') ? { kind: 'mook', name: 'Bandit' } : { kind: 'featured', name: 'Featured Foe' };
       };
@@ -408,6 +416,7 @@ export async function applyPngMap(url, legend) {
         varabella: { name: 'Varabella', dir: 'down',  portrait: 'assets/portraits/level04/Varabella/Varabella.mp4',  dialogId: 'varabella', sheet: 'Varabella' },
         tin:       { name: 'Tin',       dir: 'right', portrait: 'assets/portraits/level03/Tin/Tin.mp4',              dialogId: 'tin',       sheet: 'Tin' },
         nellis:    { name: 'Nellis',    dir: 'left',  portrait: 'assets/portraits/level03/Nellis/Nellis.mp4',        dialogId: 'nellis',    sheet: 'Nellis' },
+        cowsill:   { name: 'Cowsill',   dir: 'down',  portrait: 'assets/portraits/level05/Cowsill/Cowsill.mp4',      dialogId: 'cowsill',   sheet: 'Cowsill' },
       };
       const inParty = (name) => {
         try { return companions.some(c => c && (c.name||'').toLowerCase() === String(name||'').toLowerCase()); } catch { return false; }

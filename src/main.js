@@ -284,6 +284,85 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
   setInterval(tick, 300);
 })();
 
+// Apply Level 5 PNG map when Level 5 loads (100x85 temple heart map)
+(function watchForL5Png(){
+  let applied = false;
+  const tick = async () => {
+    try {
+      if (applied) return;
+      if ((runtime.currentLevel || 1) !== 5) return;
+      applied = true;
+      const url = 'assets/maps/level_5.png';
+      const legend = {
+        theme: 'temple',
+        gate: { id: 'temple_gate', keyId: 'key_temple' },
+        actors: {
+          guardian: {
+            kind: 'featured',
+            opts: {
+              name: 'Fana', vnId: 'enemy:fana',
+              portrait: 'assets/portraits/level05/Fana/Fana villain.mp4',
+              portraitDefeated: 'assets/portraits/level05/Fana/Fana.mp4',
+              vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: I must... protect the temple...' },
+              guaranteedDropId: 'key_temple', guardian: true,
+              hp: 92, dmg: 11, hitCooldown: 0.45,
+            }
+          },
+          boss: {
+            name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32,
+            portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4',
+            portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4',
+            portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4',
+            portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4',
+            onDefeatNextLevel: 6,
+            hp: 100, dmg: 15, speed: 18, hitCooldown: 0.55, ap: 5,
+          },
+        },
+        colors: {
+          // background temple floor
+          '122020': { type: 'stone_floor' },
+          // structures
+          '6d758d': { type: 'wall' },
+          'f4d29c': { type: 'wood_wall' },
+          'dae0ea': { type: 'marble' },
+          'b3b9d1': { type: 'gold_wall' },
+          'bb7547': { type: 'gate' },
+          // hazards / water
+          'b4202a': { type: 'lava' },
+          '249fde': { type: 'water' },
+          // spawns & markers
+          'ffffff': { type: 'player_spawn' },
+          'b9bffb': { type: 'spawn_guardian' },
+          'df3e23': { type: 'spawn_boss' },
+          'ffd541': { type: 'spawn_mook' },
+          'fffc40': { type: 'spawn_featured' },
+          'd6f264': { type: 'spawn_leashed_mook' },
+          '9cdb43': { type: 'spawn_leashed_featured' },
+          '59c135': { type: 'spawn_leashed_featured_ranged' },
+          // NPCs
+          '14a02e': { type: 'cowsill_spawn' },
+          // vegetation/props
+          '328464': { type: 'reed' },
+          '92dcba': { type: 'barrel' },
+          'cdf7e2': { type: 'chest' },
+          // torch nodes
+          'fef3c0': { type: 'torch_node' },
+          // spawners
+          'a08662': { type: 'spawner_mook' },
+          '796755': { type: 'spawner_featured' },
+        },
+      };
+      const M = await import('./engine/map_loader.js');
+      const t = await M.applyPngMap(url, legend);
+      if (t) {
+        terrain = t;
+        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+      }
+    } catch {}
+  };
+  setInterval(tick, 300);
+})();
+
 // Input and UI
 setupChatInputHandlers(runtime);
 initInput();
