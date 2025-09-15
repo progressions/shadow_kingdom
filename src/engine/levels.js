@@ -25,7 +25,7 @@ export function loadLevel1() {
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
   // Terrain and procedural obstacles
   const terrain = buildTerrainBitmap(world);
-  obstacles.push(...buildObstacles(world, player, enemies, npcs));
+  // PNG maps provide all geometry/props; do not add procedural obstacles here
   // Level 1 defaults: start dim and equip a torch
   (function initDarkStart() {
     try {
@@ -36,6 +36,8 @@ export function loadLevel1() {
       // Do not auto-equip; torches begin unlit in the inventory
     } catch {}
   })();
+  // PNG map (assets/maps/level_01.png) will populate the level; return base terrain only
+  return terrain;
 
   // Place some chests and breakables similar to start
   obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 4), w: 12, h: 10, type: 'chest', id: 'chest_l1_weapon', fixedItemId: 'dagger', opened: false, locked: false });
@@ -492,12 +494,11 @@ export function loadLevel2() {
   }
   // Build terrain + obstacles (desert theme)
   const terrain = buildTerrainBitmap(world, 'desert');
-  obstacles.push(...buildObstacles(world, player, enemies, npcs, 'desert'));
+  // PNG maps provide all geometry/props; no procedural obstacles
   // Level 2: full daylight — set bright ambient lighting
   try { import('./lighting.js').then(m => m.setAmbientLevel(8)).catch(()=>{}); } catch {}
-  // Environmental tiles: patches of mud (slow) and fire (burn) in the desert
-  obstacles.push({ x: Math.round(player.x + TILE * 8), y: Math.round(player.y + TILE * 6), w: TILE * 4, h: TILE * 2, type: 'mud' });
-  obstacles.push({ x: Math.round(player.x - TILE * 10), y: Math.round(player.y - TILE * 6), w: TILE * 3, h: TILE * 2, type: 'fire' });
+  // PNG map (assets/maps/level_2.png) will populate the level; return base terrain only
+  return terrain;
   // New spawns for level 2
   // Space enemies farther from the player spawn so the immediate vicinity is calmer
   // A few mook packs in an annulus 280–460px away from player
@@ -703,16 +704,9 @@ export function loadLevel3() {
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
   // Build marsh terrain and obstacles
   const terrain = buildTerrainBitmap(world, 'marsh');
-  obstacles.push(...buildObstacles(world, player, enemies, npcs, 'marsh'));
-  // Marsh mud pools near player
-  obstacles.push({ x: Math.round(player.x - TILE * 6), y: Math.round(player.y + TILE * 6), w: TILE * 5, h: TILE * 3, type: 'mud' });
-  // Add a few large water pools (blocking)
-  const pools = [
-    { x: player.x + 120, y: player.y - 60, w: TILE * 10, h: TILE * 6 },
-    { x: player.x - 200, y: player.y + 100, w: TILE * 12, h: TILE * 7 },
-    { x: player.x - 260, y: player.y - 140, w: TILE * 8, h: TILE * 5 },
-  ];
-  for (const p of pools) obstacles.push({ x: Math.max(0, Math.min(world.w - TILE, p.x)), y: Math.max(0, Math.min(world.h - TILE, p.y)), w: p.w, h: p.h, type: 'water', blocksAttacks: false });
+  // PNG maps provide all geometry/props; no procedural obstacles
+  // PNG map (assets/maps/level_3.png) will populate the level; return base terrain only
+  return terrain;
 
   // Spawns
   for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 }); }
@@ -846,9 +840,8 @@ export function loadLevel4() {
 
   // Build ruined city terrain
   const terrain = buildTerrainBitmap(world, 'city');
-  // We'll populate city obstacles from an authored JSON mask (assets/level4.json)
-  // City hazards: scattered fire tiles
-  obstacles.push({ x: Math.round(player.x + TILE * 6), y: Math.round(player.y - TILE * 8), w: TILE * 3, h: TILE * 2, type: 'fire' });
+  // PNG map (assets/maps/level_4.png) will populate the level; return base terrain only
+  return terrain;
 
   // Scatter a few enemy mooks around (off-camera)
   for (let k = 0; k < 6; k++) {
@@ -991,6 +984,8 @@ export function loadLevel5() {
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
 
   const terrain = buildTerrainBitmap(world, 'city');
+  // PNG map (assets/maps/level_5.png) will populate the level; return base terrain only
+  return terrain;
   
   // Add all temple walls from the map layout
   for (const wall of LEVEL5_TEMPLE_WALLS) {
