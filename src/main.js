@@ -77,9 +77,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
   const maxAttempts = 100; // Safety limit: ~30 seconds max
   const id = setInterval(async () => {
     try {
+      if ((runtime.currentLevel || 1) !== 2) return;
       attempts++;
       if (applied || attempts > maxAttempts) { clearInterval(id); return; }
-      if ((runtime.currentLevel || 1) !== 2) return;
       applied = true;
       const url = 'assets/maps/level_2.png';
       const legend = {
@@ -130,9 +130,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
   const maxAttempts = 100; // Safety limit
   const id = setInterval(async () => {
     try {
+      if ((runtime.currentLevel || 1) !== 4) return;
       attempts++;
       if (applied || attempts > maxAttempts) { clearInterval(id); return; }
-      if ((runtime.currentLevel || 1) !== 4) return;
       applied = true;
       const url = 'assets/maps/level_4.png';
       const legend = {
@@ -215,9 +215,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
   const maxAttempts = 100; // Safety limit
   const id = setInterval(async () => {
     try {
+      if ((runtime.currentLevel || 1) !== 3) return;
       attempts++;
       if (applied || attempts > maxAttempts) { clearInterval(id); return; }
-      if ((runtime.currentLevel || 1) !== 3) return;
       applied = true;
       const url = 'assets/maps/level_3.png';
       const legend = {
@@ -301,9 +301,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
   const maxAttempts = 100; // Safety limit
   const id = setInterval(async () => {
     try {
+      if ((runtime.currentLevel || 1) !== 5) return;
       attempts++;
       if (applied || attempts > maxAttempts) { clearInterval(id); return; }
-      if ((runtime.currentLevel || 1) !== 5) return;
       applied = true;
       const url = 'assets/maps/level_5.png';
       const legend = {
