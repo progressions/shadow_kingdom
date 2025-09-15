@@ -2,6 +2,7 @@
 // Usage in console: exportCurrentMapPNG() or exportCurrentMapPNG('level_02_base.png')
 import { world, obstacles, enemies, npcs, player, runtime } from '../engine/state.js';
 import { TILE } from '../engine/constants.js';
+import { buildTerrainBitmap, drawObstacles } from '../engine/terrain.js';
 
 function hexToRgb(hex) {
   const h = String(hex).replace(/^#/,'');
@@ -167,3 +168,212 @@ export function exportCurrentMapPNG(filename) {
 
 try { window.exportCurrentMapPNG = exportCurrentMapPNG; } catch {}
 
+// Export the full-resolution view (1px-per-pixel) of the current level.
+// Usage in console: exportCurrentFullViewPNG() or exportCurrentFullViewPNG('level_02_full.png')
+export function exportCurrentFullViewPNG(filename) {
+  try {
+    const W = world.w|0, H = world.h|0;
+    if (!(W > 0 && H > 0)) { console.warn('[MapExport] Invalid world size'); return null; }
+    const can = document.createElement('canvas');
+    can.width = W; can.height = H;
+    const g = can.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    // Pick terrain theme based on current level
+    const lvl = (runtime?.currentLevel || 1) | 0;
+    const themeByLevel = { 1: 'default', 2: 'desert', 3: 'marsh', 4: 'city', 5: 'city', 6: 'city' };
+    const theme = themeByLevel[lvl] || 'default';
+    // Draw terrain bitmap for the whole world
+    const terrain = buildTerrainBitmap(world, theme);
+    try { g.drawImage(terrain, 0, 0); } catch {}
+    // Draw all obstacles on top using a full-world camera
+    const fullCam = { x: 0, y: 0, w: W, h: H };
+    try { drawObstacles(g, obstacles, fullCam); } catch {}
+    // Export to PNG
+    const name = filename || `level_${lvl}_full.png`;
+    can.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    }, 'image/png');
+    return true;
+  } catch (e) {
+    console.error('[MapExport] Full-view export failed', e);
+    return false;
+  }
+}
+
+try { window.exportCurrentFullViewPNG = exportCurrentFullViewPNG; } catch {}
+
+// --- Unique obstacle tiles (transparent) atlas export ---
+// Build a transparent atlas of one representative sprite per unique obstacle type in the current level.
+// - Draws only obstacle shapes (no terrain background)
+// - Packs tiles into a simple grid with labels
+// Usage: exportUniqueObstacleTilesPNG() or showUniqueObstacleTilesPage()
+
+function specsForType(type) {
+  const t = String(type || '').toLowerCase();
+  const S = {
+    tree:        { w: 12, h: 12, pad: 4, extraTop: 6 },
+    rock:        { w: 10, h:  8, pad: 4 },
+    wall:        { w: 16, h: 16, pad: 3 },
+    gate:        { w: 24, h:  8, pad: 3 },
+    chest:       { w: 12, h: 10, pad: 3 },
+    barrel:      { w: 12, h: 12, pad: 3 },
+    crate:       { w: 12, h: 12, pad: 3 },
+    cactus:      { w: 12, h: 12, pad: 3 },
+    ruin:        { w: 10, h:  8, pad: 3 },
+    reed:        { w: 12, h: 12, pad: 3 },
+    log:         { w: 20, h: 10, pad: 3 },
+    water:       { w: 16, h: 16, pad: 3 },
+    mud:         { w: 16, h: 16, pad: 3 },
+    fire:        { w: 16, h: 16, pad: 3 },
+    lava:        { w: 16, h: 16, pad: 3 },
+    marble:      { w: 16, h: 16, pad: 3 },
+    gold_wall:   { w: 16, h: 16, pad: 3 },
+    wood_wall:   { w: 16, h: 16, pad: 3 },
+    column:      { w: 12, h: 12, pad: 3 },
+    sun:         { w: 16, h: 12, pad: 3 },
+    torch_node:  { w: 10, h: 12, pad: 3 },
+    wood:        { w: 24, h:  8, pad: 3 },
+    // Pseudo-entries: split tree into trunk/canopy for tileset authoring
+    tree_trunk:  { w: 12, h: 12, pad: 4 },
+    tree_canopy: { w: 16, h: 10, pad: 4 },
+  };
+  return S[t] || { w: 16, h: 16, pad: 3 };
+}
+
+function drawSingleObstacleTile(type) {
+  const key = String(type || '').toLowerCase();
+  const spec = specsForType(key);
+  const pad = Math.max(0, spec.pad || 0);
+  const extraTop = Math.max(0, spec.extraTop || 0);
+  // Tile size accounts for padding and any canopy overdraw
+  const tileW = spec.w + pad * 2;
+  const tileH = spec.h + pad * 2 + extraTop;
+  const can = document.createElement('canvas');
+  can.width = tileW; can.height = tileH;
+  const g = can.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  const cam = { x: 0, y: 0, w: tileW, h: tileH };
+  if (key === 'tree_trunk') {
+    // Render just the trunk with same style as drawObstacles()
+    // Trunk centered in the bottom portion of the nominal tree size
+    const sx = pad; const sy = pad; const w = spec.w; const h = spec.h;
+    g.fillStyle = '#6e4b2a';
+    g.fillRect(sx + ((w/2 - 2)|0), sy + 6, 4, h - 6);
+    return { canvas: can, w: tileW, h: tileH };
+  }
+  if (key === 'tree_canopy') {
+    // Two canopy layers only
+    const sx = pad; const sy = pad + extraTop - 6; const w = Math.max(spec.w, 12);
+    g.fillStyle = '#245f33'; g.fillRect(sx - 1, sy, w + 2, 8);
+    g.fillStyle = '#2f7a42'; g.fillRect(sx, sy + 4, w, 6);
+    return { canvas: can, w: tileW, h: tileH };
+  }
+  // Draw using drawObstacles() with a single obstacle instance
+  const ox = pad;
+  const oy = pad + (key === 'tree' ? extraTop : 0);
+  const obstacle = { x: ox, y: oy, w: spec.w, h: spec.h, type: key, locked: true };
+  try { drawObstacles(g, [obstacle], cam); } catch {}
+  return { canvas: can, w: tileW, h: tileH };
+}
+
+export function exportUniqueObstacleTilesPNG(filename, opts = {}) {
+  try {
+    // Determine unique obstacle types in current level
+    const used = new Set();
+    for (const o of obstacles) { if (!o || !o.type) continue; used.add(String(o.type).toLowerCase()); }
+    // If trees are present, also include trunk/canopy pseudo-tiles for convenience
+    if (used.has('tree')) { used.add('tree_trunk'); used.add('tree_canopy'); }
+    const types = Array.from(used).sort();
+    if (!types.length) { console.warn('[TilesAtlas] No obstacle types in this level'); return false; }
+    // Pre-render each tile
+    const tiles = types.map(t => ({ type: t, ...drawSingleObstacleTile(t) }));
+    const includeLabels = opts.includeLabels !== false;
+    const labelH = includeLabels ? 12 : 0;
+    // Grid layout
+    const cols = Math.max(1, Math.min(8, Number(opts.columns || 7)));
+    const gap = 8;
+    const maxW = Math.max(...tiles.map(t => t.w));
+    const maxH = Math.max(...tiles.map(t => t.h));
+    const cellW = maxW + gap;
+    const cellH = maxH + labelH + gap;
+    const rows = Math.ceil(tiles.length / cols);
+    const atlasW = cols * cellW + gap;
+    const atlasH = rows * cellH + gap;
+    const atlas = document.createElement('canvas');
+    atlas.width = atlasW; atlas.height = atlasH;
+    const g = atlas.getContext('2d'); g.imageSmoothingEnabled = false;
+    // Transparent background; draw tiles centered in their cells, with labels
+    g.clearRect(0, 0, atlasW, atlasH);
+    g.fillStyle = '#ddd'; g.font = '10px monospace'; g.textAlign = 'center'; g.textBaseline = 'top';
+    tiles.forEach((t, i) => {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      const cx = gap + c * cellW;
+      const cy = gap + r * cellH;
+      const dx = cx + Math.floor((cellW - t.w) / 2);
+      const dy = cy + Math.floor((cellH - labelH - t.h) / 2);
+      try { g.drawImage(t.canvas, dx, dy); } catch {}
+      if (includeLabels) {
+        const lx = cx + Math.floor(cellW / 2);
+        const ly = cy + cellH - labelH + 2;
+        // Text with subtle shadow for readability on transparency
+        g.fillStyle = 'rgba(0,0,0,0.65)'; g.fillText(t.type, lx + 1, ly + 1);
+        g.fillStyle = '#eaeaea'; g.fillText(t.type, lx, ly);
+      }
+    });
+    const lvl = (runtime?.currentLevel || 1) | 0;
+    const name = filename || `level_${lvl}_tiles.png`;
+    atlas.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    }, 'image/png');
+    return true;
+  } catch (e) {
+    console.error('[TilesAtlas] Export failed', e);
+    return false;
+  }
+}
+
+export function showUniqueObstacleTilesPage(opts = {}) {
+  try {
+    const used = new Set();
+    for (const o of obstacles) { if (!o || !o.type) continue; used.add(String(o.type).toLowerCase()); }
+    if (used.has('tree')) { used.add('tree_trunk'); used.add('tree_canopy'); }
+    const types = Array.from(used).sort();
+    if (!types.length) { alert('No obstacle types in this level'); return false; }
+    const win = window.open('', '_blank');
+    if (!win) { console.warn('Popup blocked'); return false; }
+    const doc = win.document;
+    doc.title = 'Unique Obstacle Tiles';
+    const style = doc.createElement('style');
+    style.textContent = `body{background:#111;color:#ddd;font:12px system-ui;padding:16px} .tile{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;margin:8px;padding:8px;background:#1a1a1a;border:1px solid #333;border-radius:8px} canvas{image-rendering:pixelated}`;
+    doc.head.appendChild(style);
+    const container = doc.createElement('div');
+    doc.body.appendChild(container);
+    for (const t of types) {
+      const card = doc.createElement('div'); card.className = 'tile';
+      const { canvas } = drawSingleObstacleTile(t);
+      const label = doc.createElement('div'); label.textContent = t; label.style.marginTop = '6px'; label.style.opacity = '0.9';
+      card.appendChild(canvas); card.appendChild(label);
+      container.appendChild(card);
+    }
+    return true;
+  } catch (e) {
+    console.error('[TilesAtlas] Page build failed', e);
+    return false;
+  }
+}
+
+try { window.exportUniqueObstacleTilesPNG = exportUniqueObstacleTilesPNG; } catch {}
+try { window.showUniqueObstacleTilesPage = showUniqueObstacleTilesPage; } catch {}
