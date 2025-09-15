@@ -26,3 +26,5 @@ Level 1 only -
 15 - a2f3a2 - chest with wooden bow
 42 - a271ff - Yorna spawn point
 43 - c3b2ff - Hola spawn point
+60 - a08662 - mook spawner (invisible; near; batch 1; cap 2)
+61 - 796755 - featured foe spawner (invisible; near; batch 1; cap 2)

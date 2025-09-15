@@ -18,4 +18,6 @@ Level 2 - Desert
 15 - 24523b - Twil
 56 - 92dcba - barrel
 57 - cdf7e2 - chest
+60 - a08662 - mook spawner (invisible; near; batch 1; cap 2)
+61 - 796755 - featured foe spawner (invisible; near; batch 1; cap 2)
   60 - a08662 - mook spawner (2 mooks at a time only)

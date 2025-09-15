@@ -256,7 +256,15 @@ export async function applyPngMap(url, legend) {
     try {
       const lvl = runtime.currentLevel || 1;
       const mkEnemy = (kind) => {
-        if (lvl === 3) {
+        if (lvl === 1) {
+          return (kind === 'mook')
+            ? { kind: 'mook', name: 'Greenwood Bandit' }
+            : { kind: 'featured', name: 'Woodland Brute', hp: 8, dmg: 4 };
+        } else if (lvl === 2) {
+          return (kind === 'mook')
+            ? { kind: 'mook', name: 'Urathar Scout', hp: 5, dmg: 4 }
+            : { kind: 'featured', name: 'Desert Marauder', hp: 12, dmg: 6 };
+        } else if (lvl === 3) {
           return (kind === 'mook')
             ? { kind: 'mook', name: 'Marsh Whisperer', hp: 7, dmg: 5 }
             : { kind: 'featured', name: 'Marsh Stalker', hp: 14, dmg: 6 };
