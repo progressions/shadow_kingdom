@@ -280,11 +280,19 @@ export function render(terrainBitmap, obstacles) {
   }
 
   const drawables = [];
-  for (const n of npcs) drawables.push({
-    x: n.x, y: n.y, w: n.w, h: n.h,
-    dir: n.dir, frame: n.animFrame, sheet: n.sheet || npcSheet,
-    spriteId: n.spriteId || null, spriteRef: n, spriteScale: n.spriteScale || 1,
-  });
+  // Skip rendering NPC duplicates for companions already in party
+  const isCompanionName = (name) => {
+    try { return companions.some(c => c && (c.name||'').toLowerCase() === String(name||'').toLowerCase()); } catch { return false; }
+  };
+  for (const n of npcs) {
+    if (!n) continue;
+    if (isCompanionName(n.name)) continue;
+    drawables.push({
+      x: n.x, y: n.y, w: n.w, h: n.h,
+      dir: n.dir, frame: n.animFrame, sheet: n.sheet || npcSheet,
+      spriteId: n.spriteId || null, spriteRef: n, spriteScale: n.spriteScale || 1,
+    });
+  }
   for (const c of companions) drawables.push({
     x: c.x, y: c.y, w: c.w, h: c.h,
     dir: c.dir, frame: c.animFrame, sheet: c.sheet || npcSheet,

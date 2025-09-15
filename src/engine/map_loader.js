@@ -6,7 +6,7 @@ import { sheetForName } from './sprites.js';
 import { rebuildObstacleIndex } from './spatial_index.js';
 import { setNpcDialog } from './dialog.js';
 import { introTexts } from '../data/intro_texts.js';
-import { canopyDialog, yornaDialog, holaDialog } from '../data/dialogs.js';
+// NPC dialogs will be attached via dynamic import to avoid large static imports here
 
 function rgbToHex(r, g, b) {
   const h = (n) => n.toString(16).padStart(2, '0');
@@ -397,36 +397,43 @@ export async function applyPngMap(url, legend) {
     // NPCs: if defined by map, replace existing NPCs
     if (npcSpawns.length > 0) {
       npcs.length = 0;
+      // Registry-driven NPC spawns (reduces long else-if chains)
+      const NPCS = {
+        canopy:    { name: 'Canopy',    dir: 'right', portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4',    dialogId: 'canopy',    sheet: 'Canopy' },
+        yorna:     { name: 'Yorna',     dir: 'down',  portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4',     dialogId: 'yorna',     sheet: 'Yorna' },
+        hola:      { name: 'Hola',      dir: 'left',  portrait: 'assets/portraits/level01/Hola/Hola video.mp4',      dialogId: 'hola',      sheet: 'Hola' },
+        oyin:      { name: 'Oyin',      dir: 'right', portrait: 'assets/portraits/level02/Oyin/Oyin.mp4',            dialogId: 'oyin',      sheet: 'Oyin' },
+        twil:      { name: 'Twil',      dir: 'left',  portrait: 'assets/portraits/level02/Twil/Twil.mp4',            dialogId: 'twil',      sheet: 'Twil' },
+        urn:       { name: 'Urn',       dir: 'up',    portrait: 'assets/portraits/level04/Urn/Urn.mp4',              dialogId: 'urn',       sheet: 'Urn' },
+        varabella: { name: 'Varabella', dir: 'down',  portrait: 'assets/portraits/level04/Varabella/Varabella.mp4',  dialogId: 'varabella', sheet: 'Varabella' },
+        tin:       { name: 'Tin',       dir: 'right', portrait: 'assets/portraits/level03/Tin/Tin.mp4',              dialogId: 'tin',       sheet: 'Tin' },
+        nellis:    { name: 'Nellis',    dir: 'left',  portrait: 'assets/portraits/level03/Nellis/Nellis.mp4',        dialogId: 'nellis',    sheet: 'Nellis' },
+      };
+      const inParty = (name) => {
+        try { return companions.some(c => c && (c.name||'').toLowerCase() === String(name||'').toLowerCase()); } catch { return false; }
+      };
+      const attachDialogById = (npc, dialogId) => {
+        try {
+          import('../data/dialogs.js').then(mod => {
+            const key = `${String(dialogId||'') }Dialog`;
+            const tree = mod[key];
+            if (tree) setNpcDialog(npc, tree);
+          }).catch(()=>{});
+        } catch {}
+      };
       for (const s of npcSpawns) {
         const px = s.x * TILE, py = s.y * TILE;
-        if (s.who === 'canopy') {
-          const n = spawnNpc(px, py, 'right', { name: 'Canopy', portrait: 'assets/portraits/level01/Canopy/Canopy video.mp4', dialogId: 'canopy', sheet: sheetForName('Canopy') });
-          try { setNpcDialog(n, canopyDialog); } catch {}
-        } else if (s.who === 'yorna') {
-          const n = spawnNpc(px, py, 'down', { name: 'Yorna', portrait: 'assets/portraits/level01/Yorna/Yorna video.mp4', dialogId: 'yorna', sheet: sheetForName('Yorna') });
-          try { setNpcDialog(n, yornaDialog); } catch {}
-        } else if (s.who === 'hola') {
-          const n = spawnNpc(px, py, 'left', { name: 'Hola', portrait: 'assets/portraits/level01/Hola/Hola video.mp4', dialogId: 'hola', sheet: sheetForName('Hola') });
-          try { setNpcDialog(n, holaDialog); } catch {}
-        } else if (s.who === 'oyin') {
-          const n = spawnNpc(px, py, 'right', { name: 'Oyin', portrait: 'assets/portraits/level02/Oyin/Oyin.mp4', dialogId: 'oyin', sheet: sheetForName('Oyin') });
-          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.oyinDialog); }); } catch {}
-        } else if (s.who === 'twil') {
-          const n = spawnNpc(px, py, 'left', { name: 'Twil', portrait: 'assets/portraits/level02/Twil/Twil.mp4', dialogId: 'twil', sheet: sheetForName('Twil') });
-          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.twilDialog); }); } catch {}
-        } else if (s.who === 'urn') {
-          const n = spawnNpc(px, py, 'up', { name: 'Urn', portrait: 'assets/portraits/level04/Urn/Urn.mp4', dialogId: 'urn', sheet: sheetForName('Urn') });
-          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.urnDialog); }); } catch {}
-        } else if (s.who === 'varabella') {
-          const n = spawnNpc(px, py, 'down', { name: 'Varabella', portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', dialogId: 'varabella', sheet: sheetForName('Varabella') });
-          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.varabellaDialog); }); } catch {}
-        } else if (s.who === 'tin') {
-          const n = spawnNpc(px, py, 'right', { name: 'Tin', portrait: 'assets/portraits/level03/Tin/Tin.mp4', dialogId: 'tin', sheet: sheetForName('Tin') });
-          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.tinDialog); }); } catch {}
-        } else if (s.who === 'nellis') {
-          const n = spawnNpc(px, py, 'left', { name: 'Nellis', portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', dialogId: 'nellis', sheet: sheetForName('Nellis') });
-          try { import('../data/dialogs.js').then(mod => { setNpcDialog(n, mod.nellisDialog); }); } catch {}
-        }
+        const key = String(s.who || '').toLowerCase();
+        const cfg = NPCS[key];
+        if (!cfg) continue;
+        if (inParty(cfg.name)) continue; // do not spawn an NPC duplicate if companion is in party
+        const n = spawnNpc(px, py, cfg.dir || 'down', {
+          name: cfg.name,
+          portrait: cfg.portrait || null,
+          dialogId: cfg.dialogId || key,
+          sheet: sheetForName(cfg.sheet || cfg.name),
+        });
+        attachDialogById(n, cfg.dialogId || key);
       }
     }
 
