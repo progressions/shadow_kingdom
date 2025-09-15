@@ -284,7 +284,7 @@ export async function applyPngMap(url, legend) {
         return (kind === 'mook') ? { kind: 'mook', name: 'Bandit' } : { kind: 'featured', name: 'Featured Foe' };
       };
       const addMapSpawner = (idBase, tx, ty, kind) => {
-        addSpawner({
+        const base = {
           id: `${idBase}_${tx}_${ty}`,
           x: tx * TILE,
           y: ty * TILE,
@@ -293,10 +293,18 @@ export async function applyPngMap(url, legend) {
           visible: false,
           enemy: mkEnemy(kind),
           batchSize: 1,
-          concurrentCap: 2,
           proximityMode: 'near',
           radiusPx: 200,
-        });
+        };
+        // Level 5 featured spawners: 1 at a time, 10s cooldown, max 6 total
+        if (lvl === 5 && kind === 'featured') {
+          base.intervalSec = 10;
+          base.concurrentCap = 1;
+          base.totalToSpawn = 6;
+        } else {
+          base.concurrentCap = 2;
+        }
+        addSpawner(base);
       };
       for (const p of spawnerMooks) addMapSpawner(`sp_map_mook_l${lvl}`, p.x, p.y, 'mook');
       for (const p of spawnerFeatureds) addMapSpawner(`sp_map_feat_l${lvl}`, p.x, p.y, 'featured');
