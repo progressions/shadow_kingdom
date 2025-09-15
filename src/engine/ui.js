@@ -63,6 +63,15 @@ export function showMusicTheme(label) {
 
 // Sidebar removed: VN overlay handles all dialog UI
 
+// Helper: fully unload a <video> element so the decoder/GPU resources are released
+function unloadVideo(el) {
+  try { if (!el) return; } catch { return; }
+  try { el.pause(); } catch {}
+  try { el.removeAttribute('src'); } catch {}
+  try { while (el.firstChild) el.removeChild(el.firstChild); } catch {}
+  try { el.load(); } catch {}
+}
+
 export function enterChat(runtime) {
   runtime.gameState = 'chat';
   runtime.keys.clear();
@@ -84,7 +93,7 @@ export function enterChat(runtime) {
         overlayVideo.style.display = '';
         try { overlayVideo.play().catch(()=>{}); } catch {}
       } else {
-        if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
+        if (overlayVideo) { unloadVideo(overlayVideo); overlayVideo.style.display = 'none'; }
         if (overlayImg) { overlayImg.src = addAssetVersion(npc.portraitSrc); overlayImg.style.display = ''; }
       }
       if (overlayName) overlayName.textContent = npc.name || 'NPC';
@@ -93,7 +102,7 @@ export function enterChat(runtime) {
       // Hide portrait area when there is no portrait (e.g., companion menus)
       if (vnPortraitBox) vnPortraitBox.style.display = 'none';
       if (overlayImg) { overlayImg.src = ''; overlayImg.style.display = 'none'; }
-      if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
+      if (overlayVideo) { unloadVideo(overlayVideo); overlayVideo.style.display = 'none'; }
       if (overlayName) overlayName.textContent = '';
       if (vnName) vnName.textContent = '';
     }
@@ -168,8 +177,8 @@ export function exitChat(runtime) {
   } else {
     camera.x = clampedX; camera.y = clampedY;
   }
-  // Stop any portrait video playback after exit
-  if (overlayVideo) { try { overlayVideo.pause(); } catch {}; overlayVideo.removeAttribute('src'); overlayVideo.style.display = 'none'; }
+  // Stop and fully unload any portrait video playback after exit
+  if (overlayVideo) { unloadVideo(overlayVideo); overlayVideo.style.display = 'none'; }
   // If there is a pending level change queued until after VN sequence, set it now
   try {
     if (typeof runtime._afterQueuePendingLevel === 'number' && runtime._afterQueuePendingLevel > 0) {
@@ -286,6 +295,24 @@ export function updateOverlayDim() {
 
 export function showTitleScreen() {
   if (!titleEl) return;
+  // If videos were unloaded previously, reattach sources
+  try {
+    if (titleBgVideo && !titleBgVideo.currentSrc && !titleBgVideo.src) {
+      titleBgVideo.loop = false;
+      titleBgVideo.autoplay = true;
+      titleBgVideo.muted = true;
+      titleBgVideo.playsInline = true;
+      titleBgVideo.src = addAssetVersion('assets/Trio w Logo Ultrawide.mp4');
+      try { titleBgVideo.load(); } catch {}
+    }
+    if (titleBgLoopVideo && !titleBgLoopVideo.currentSrc && !titleBgLoopVideo.src) {
+      titleBgLoopVideo.loop = true;
+      titleBgLoopVideo.muted = true;
+      titleBgLoopVideo.playsInline = true;
+      titleBgLoopVideo.src = addAssetVersion('assets/Trio Loop Palindrome HQ.mp4');
+      try { titleBgLoopVideo.load(); } catch {}
+    }
+  } catch {}
   titleEl.style.display = 'grid';
   // Fade-in menu after a short delay
   window.setTimeout(() => { try { if (titleMenuEl) titleMenuEl.classList.add('show'); } catch {} }, 400);
@@ -319,9 +346,9 @@ export function hideTitleScreen() {
   titleEl.style.display = 'none';
   try { if (titleMenuEl) titleMenuEl.classList.remove('show'); } catch {}
   disableTitleKeyHandlers();
-  // Pause any background title videos to stop decode/cpu when hidden
-  try { if (titleBgVideo) { titleBgVideo.pause(); } } catch {}
-  try { if (titleBgLoopVideo) { titleBgLoopVideo.pause(); } } catch {}
+  // Fully unload background title videos to release decoder/GPU when hidden
+  try { if (titleBgVideo) { unloadVideo(titleBgVideo); } } catch {}
+  try { if (titleBgLoopVideo) { unloadVideo(titleBgLoopVideo); } } catch {}
 }
 
 export function moveTitleFocus(delta) {
