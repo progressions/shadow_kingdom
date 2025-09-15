@@ -399,9 +399,9 @@ function drawObstacleTile16(type) {
   }
   if (key === 'tree_canopy') {
     g.clearRect(0, 0, TILE_SZ, TILE_SZ);
-    // Two canopy bands near top
-    g.fillStyle = '#245f33'; g.fillRect(2, 0, TILE_SZ - 4, 8);
-    g.fillStyle = '#2f7a42'; g.fillRect(3, 4, TILE_SZ - 6, 6);
+    // Canopy shaped to extend toward the bottom of the tile so it visually overlaps a trunk placed in the tile below (when layered above)
+    g.fillStyle = '#245f33'; g.fillRect(1, 2, TILE_SZ - 2, 12); // broader base
+    g.fillStyle = '#2f7a42'; g.fillRect(2, 6, TILE_SZ - 4, 8);  // highlight/lower fringe
     return can;
   }
   if (key === 'rock') {
