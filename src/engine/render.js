@@ -601,7 +601,7 @@ export function render(terrainBitmap, obstacles) {
         if (!o) return false;
         if (o.type === 'gate' && o.locked === false) return false; // open gates are see-through
         // Ignore non-sight-blockers
-        if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water' || o.type === 'reed') return false;
+        if (o.type === 'chest' || o.type === 'barrel' || o.type === 'box' || o.type === 'crate' || o.type === 'torch_node' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water' || o.type === 'reed') return false;
         return true;
       }
       function tileHasSightBlocker(tx, ty) {

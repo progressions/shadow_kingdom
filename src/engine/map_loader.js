@@ -310,7 +310,8 @@ export async function applyPngMap(url, legend) {
     // Place torch nodes (blocking props) and add static light sources
     for (const t of torchNodes) {
       const px = t.x * TILE, py = t.y * TILE;
-      obstacles.push({ x: px, y: py, w: 10, h: 10, type: 'torch_node', blocksAttacks: true });
+      // Torch nodes should not block projectiles/LoS
+      obstacles.push({ x: px, y: py, w: 10, h: 10, type: 'torch_node', blocksAttacks: false });
       try { addLightNode({ x: px + 5, y: py + 5, level: MAX_LIGHT_LEVEL, radius: 6, enabled: true }); } catch {}
     }
     // Hazards (lava/fire/mud) single-tile areas
