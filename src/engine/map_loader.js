@@ -1,5 +1,5 @@
 import { TILE } from './constants.js';
-import { world, player, enemies, npcs, companions, obstacles, corpses, stains, floaters, sparkles, spawners, runtime, spawnEnemy, spawnNpc } from './state.js';
+import { world, player, enemies, npcs, companions, obstacles, corpses, stains, floaters, sparkles, spawners, runtime, spawnEnemy, spawnNpc, addSpawner } from './state.js';
 import { addLightNode, clearLightNodes, MAX_LIGHT_LEVEL } from './lighting.js';
 import { buildTerrainBitmap } from './terrain.js';
 import { sheetForName } from './sprites.js';
@@ -161,6 +161,8 @@ export async function applyPngMap(url, legend) {
     const map = legend && legend.colors ? legend.colors : {};
     const grid = new Array(width * height);
     const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss'|'leashed_mook'|'leashed_featured'|'leashed_featured_ranged', x, y }
+    const spawnerMooks = [];     // { x, y }
+    const spawnerFeatureds = []; // { x, y }
     let playerSpawn = null; // { x, y }
     const npcSpawns = [];   // { who: 'canopy'|'yorna'|'hola'|'oyin'|'twil'|'urn'|'varabella', x, y }
     const chestSpawns = []; // { id?, itemId?, lootTier?, x, y }
@@ -218,6 +220,9 @@ export async function applyPngMap(url, legend) {
           case 'spawn_leashed_mook': enemySpawns.push({ kind: 'leashed_mook', x, y }); break;
           case 'spawn_leashed_featured': enemySpawns.push({ kind: 'leashed_featured', x, y }); break;
           case 'spawn_leashed_featured_ranged': enemySpawns.push({ kind: 'leashed_featured_ranged', x, y }); break;
+          // Spawners (map-authored)
+          case 'spawner_mook':      spawnerMooks.push({ x, y }); break;
+          case 'spawner_featured':  spawnerFeatureds.push({ x, y }); break;
           case 'tin_spawn':    npcSpawns.push({ who: 'tin', x, y }); break;
           case 'nellis_spawn': npcSpawns.push({ who: 'nellis', x, y }); break;
         }
@@ -246,6 +251,40 @@ export async function applyPngMap(url, legend) {
       // Re-fan companions around player
       for (let i = 0; i < companions.length; i++) { const c = companions[i]; if (!c) continue; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
     }
+
+    // Add invisible proximity spawners defined in the map
+    try {
+      const lvl = runtime.currentLevel || 1;
+      const mkEnemy = (kind) => {
+        if (lvl === 3) {
+          return (kind === 'mook')
+            ? { kind: 'mook', name: 'Marsh Whisperer', hp: 7, dmg: 5 }
+            : { kind: 'featured', name: 'Marsh Stalker', hp: 14, dmg: 6 };
+        } else if (lvl === 4) {
+          return (kind === 'mook')
+            ? { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 }
+            : { kind: 'featured', name: 'City Brute', hp: 18, dmg: 7 };
+        }
+        return (kind === 'mook') ? { kind: 'mook', name: 'Bandit' } : { kind: 'featured', name: 'Featured Foe' };
+      };
+      const addMapSpawner = (idBase, tx, ty, kind) => {
+        addSpawner({
+          id: `${idBase}_${tx}_${ty}`,
+          x: tx * TILE,
+          y: ty * TILE,
+          w: TILE,
+          h: TILE,
+          visible: false,
+          enemy: mkEnemy(kind),
+          batchSize: 1,
+          concurrentCap: 2,
+          proximityMode: 'near',
+          radiusPx: 200,
+        });
+      };
+      for (const p of spawnerMooks) addMapSpawner(`sp_map_mook_l${lvl}`, p.x, p.y, 'mook');
+      for (const p of spawnerFeatureds) addMapSpawner(`sp_map_feat_l${lvl}`, p.x, p.y, 'featured');
+    } catch {}
 
     // Place chests and barrels (props)
     for (const c of chestSpawns) {

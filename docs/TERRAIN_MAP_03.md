@@ -20,5 +20,7 @@ Level 3 - Marsh
   40 - 6d758d- Wall
   49 - b9bffb - Key guardian spawn
   53 - 23674e - tree
+  54 - 328464 - reeds
   56 - 92dcba - barrel
   57 - cdf7e2 - chest
+  60 - a08662 - mook spawner (2 mooks at a time only)

@@ -180,6 +180,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
           // NPCs
           '14a02e': { type: 'urn_spawn' },
           '24523b': { type: 'varabella_spawn' },
+          // Spawners
+          'a08662': { type: 'spawner_mook' },
+          '796755': { type: 'spawner_featured' },
           // Props
           '92dcba': { type: 'barrel' },
           'cdf7e2': { type: 'chest' },
@@ -257,6 +260,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
           // NPCs (companions)
           '14a02e': { type: 'tin_spawn' },
           '24523b': { type: 'nellis_spawn' },
+          // Spawners
+          'a08662': { type: 'spawner_mook' },
+          '796755': { type: 'spawner_featured' },
           // props
           '92dcba': { type: 'barrel' },
           'cdf7e2': { type: 'chest' },

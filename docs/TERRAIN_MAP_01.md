@@ -1,5 +1,3 @@
-# Terrain map
-
 Ignore the initial integer, those indexes are for development. Use the hex code to map the pixels to the tile.
 
 2 - 797979 - wall
@@ -19,6 +17,7 @@ Ignore the initial integer, those indexes are for development. Use the hex code 
 39.- e3b2ff - leashed ranged featured foe
 49 - 4161fb - water
 54 - ebebeb - player spawn
+  60 - a08662 - mook spawner (2 mooks at a time only)
 
 Level 1 only -
 

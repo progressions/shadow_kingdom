@@ -24,3 +24,4 @@ Level 4 - City
   56 - 92dcba - barrel
   57 - cdf7e2 - chest
   60 - a08662 - mook spawner (2 mooks at a time only)
+  61 - 796755 - featured foe spawner (2 featured foe at a time)
