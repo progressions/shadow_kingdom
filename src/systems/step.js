@@ -278,10 +278,27 @@ export function step(dt) {
       // Tick burn (ms)
       runtime._torchBurnMs = Math.max(0, (runtime._torchBurnMs || 0) - dt * 1000);
       if (runtime._torchBurnMs <= 0) {
-        node.enabled = false;
-        runtime._torchLightNode = null;
-        runtime._torchBearerRef = null;
-        showBanner('Torch burned out');
+        // Try to consume one torch from player's inventory to relight immediately
+        let relit = false;
+        try {
+          const inv = player?.inventory?.items || [];
+          const idx = inv.findIndex(s => s && s.stackable && s.id === 'torch' && (s.qty||0) > 0);
+          if (idx !== -1) {
+            inv[idx].qty = Math.max(0, (inv[idx].qty || 0) - 1);
+            if (inv[idx].qty <= 0) inv.splice(idx, 1);
+            runtime._torchBurnMs = 180000; // 3 minutes
+            node.enabled = true;
+            relit = true;
+          }
+        } catch {}
+        if (!relit) {
+          node.enabled = false;
+          runtime._torchLightNode = null;
+          runtime._torchBearerRef = null;
+          showBanner('Torch burned out');
+        } else {
+          showBanner('Lit a new torch');
+        }
       }
     }
   } catch {}
