@@ -68,13 +68,48 @@ export const introTexts = {
     "\nNellis: \"If you lead, I’ll keep the line. I can hold a light.\"",
 
   // Level 5 — Temple District
-  vorthak:
-    "The air tightens as something vast leans forward out of the temple's heart. White stone blushes with heat, and a molten voice spills into the hall. Behind him, Ell kneels in chains—pale and still, a warded circle holding her fast.\n" +
-    "\nVorthak: \"Aurelion's heart is mine, and the girl is my guarantee. Urathar wills it. Turn back, or burn.\"",
+  vorthak_intro_default: [
+    {
+      character: 'Vorthak',
+      line: "The Heart of this temple now belongs to Urathar. This girl is a gift. She will be broken, just like the other one.",
+    },
+    {
+      character: 'Ell',
+      line: "I will never serve you, monster! My sister will stop you!",
+      portrait: 'assets/portraits/level06/Ell/Ell.mp4',
+    },
+    {
+      character: 'Fana',
+      line: "He speaks the truth. He took my will. Now he will take hers. Please... you must not let him. Save her. Free us both.",
+      portrait: 'assets/portraits/level05/Fana/Fana.mp4',
+    },
+  ],
 
-  fana_enslaved:
-    "A young sorceress stands amid broken sigils, eyes unfocused, lips moving to someone else's words. Gold dust clings to tears she doesn't seem to notice.\n" +
-    "\nFana: \"Aurelion… I remember light, not chains. Vorthak speaks for Urathar. He says 'kneel', and my hands obey. Please… if you're brave—break this.\"",
+  vorthak_intro_with_canopy: [
+    {
+      character: 'Vorthak',
+      line: "The Heart of this temple now belongs to Urathar. This girl is a gift. She will be broken, just like the other one.",
+    },
+    {
+      character: 'Canopy',
+      line: "Ell! Let her go, Vorthak!",
+      portrait: 'assets/portraits/level01/Canopy/Canopy angry.png',
+    },
+    {
+      character: 'Vorthak',
+      line: "Ah, the sister. You have come to watch her fall. Good.",
+    },
+    {
+      character: 'Ell',
+      line: "Canopy! Help me!",
+      portrait: 'assets/portraits/level06/Ell/Ell.mp4',
+    },
+    {
+      character: 'Fana',
+      line: "He took my will. He will take hers. Please... you must save her. Free us both.",
+      portrait: 'assets/portraits/level05/Fana/Fana.mp4',
+    },
+  ],
 
   cowsill:
     "A bright-eyed warrior bounds forward, blonde hair catching the light as she spins her blade with practiced ease. Her black dress swirls as she moves, and her infectious energy seems to make the very air around her crackle with anticipation.\n" +

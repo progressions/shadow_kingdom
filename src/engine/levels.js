@@ -1083,7 +1083,14 @@ export function loadLevel5() {
     portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4',
     portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4',
     onDefeatNextLevel: 6,
-    vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' },
+    vnOnSight: {
+      lock: true, // Play before player can move
+      preDelaySec: 0.5,
+      get text() {
+        const hasCanopy = companions.some(c => c && !c.isDead && c.inParty && (c.name || '').toLowerCase().includes('canopy'));
+        return hasCanopy ? introTexts.vorthak_intro_with_canopy : introTexts.vorthak_intro_default;
+      }
+    },
   });
   spawnEnemy(cx - 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
   spawnEnemy(cx + 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
