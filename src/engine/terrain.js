@@ -326,7 +326,10 @@ function computeClusterPaths(cluster, gridStep = 2) {
     let cx = cur.x1, cy = cur.y1;
     const startKey = key(cx, cy);
     path.push([cx, cy]);
-    while (true) {
+    let iterations = 0;
+    const maxIterations = 1000; // Safety limit to prevent infinite loop
+    while (iterations < maxIterations) {
+      iterations++;
       used[curIdx] = true;
       cx = cur.x2; cy = cur.y2;
       path.push([cx, cy]);

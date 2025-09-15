@@ -48,6 +48,7 @@ const files = {
 };
 
 const cache = new Map();
+const MAX_AUDIO_CACHE_SIZE = 30; // Limit audio cache size
 
 // Music ducking state (for VN intro sting)
 let duckTimers = { restore: null };
@@ -64,7 +65,29 @@ let titleFanfare = null;
 
 function getAudio(path) {
   if (!path) return null;
-  if (cache.has(path)) return cache.get(path);
+  if (cache.has(path)) {
+    // Move to end (LRU behavior)
+    const existing = cache.get(path);
+    cache.delete(path);
+    cache.set(path, existing);
+    return existing;
+  }
+
+  // Enforce cache size limit (LRU eviction)
+  if (cache.size >= MAX_AUDIO_CACHE_SIZE) {
+    const firstKey = cache.keys().next().value;
+    const evicted = cache.get(firstKey);
+    cache.delete(firstKey);
+    // Clean up evicted audio
+    try {
+      if (evicted) {
+        evicted.pause();
+        evicted.src = '';
+        evicted.load();
+      }
+    } catch {}
+  }
+
   const a = new Audio(path);
   a.preload = 'auto';
   cache.set(path, a);

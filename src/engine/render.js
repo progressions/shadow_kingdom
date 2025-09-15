@@ -11,6 +11,7 @@ import { segmentIntersectsRect, rectsIntersect } from './utils.js';
 
 // Cached offscreen for sprite outlines
 let _olCan = null, _olCtx = null, _olW = 0, _olH = 0;
+const MAX_OUTLINE_SIZE = 256; // Cap size to prevent excessive memory usage
 
 // Defensive: ensure a value is a valid CanvasImageSource for drawImage
 function canDrawImage(img) {
@@ -29,21 +30,30 @@ function canDrawImage(img) {
 
 function drawBossOutline(img, sx, sy, sw, sh, dx, dy, dw, dh, color = '#ffd166') {
   if (!canDrawImage(img)) return;
+  // Cap size to prevent excessive memory usage
+  const cappedW = Math.min(dw, MAX_OUTLINE_SIZE);
+  const cappedH = Math.min(dh, MAX_OUTLINE_SIZE);
   // Ensure offscreen of correct size
-  if (!_olCan || _olW !== dw || _olH !== dh) {
+  if (!_olCan || _olW !== cappedW || _olH !== cappedH) {
+    // Clean up old canvas if it exists
+    if (_olCan) {
+      _olCtx = null;
+      _olCan.width = 1;
+      _olCan.height = 1;
+    }
     _olCan = document.createElement('canvas');
-    _olCan.width = dw; _olCan.height = dh;
+    _olCan.width = cappedW; _olCan.height = cappedH;
     _olCtx = _olCan.getContext('2d');
-    _olW = dw; _olH = dh;
+    _olW = cappedW; _olH = cappedH;
   } else {
     _olCtx.clearRect(0, 0, _olW, _olH);
   }
   // Draw sprite to offscreen and tint to a solid mask
   _olCtx.globalCompositeOperation = 'source-over';
-  _olCtx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+  _olCtx.drawImage(img, sx, sy, sw, sh, 0, 0, cappedW, cappedH);
   _olCtx.globalCompositeOperation = 'source-in';
   _olCtx.fillStyle = color;
-  _olCtx.fillRect(0, 0, dw, dh);
+  _olCtx.fillRect(0, 0, cappedW, cappedH);
   _olCtx.globalCompositeOperation = 'source-over';
   // Draw the tinted mask with a soft shadow to create a glow instead of a hard outline
   ctx.save();

@@ -73,9 +73,12 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
 // Apply Level 2 PNG map when Level 2 loads (120x70 desert map)
 (function watchForL2Png(){
   let applied = false;
+  let attempts = 0;
+  const maxAttempts = 100; // Safety limit: ~30 seconds max
   const id = setInterval(async () => {
     try {
-      if (applied) { clearInterval(id); return; }
+      attempts++;
+      if (applied || attempts > maxAttempts) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 2) return;
       applied = true;
       const url = 'assets/maps/level_2.png';
@@ -123,9 +126,12 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
 // Apply Level 4 PNG map when Level 4 loads (140x85 ruined city map)
 (function watchForL4Png(){
   let applied = false;
+  let attempts = 0;
+  const maxAttempts = 100; // Safety limit
   const id = setInterval(async () => {
     try {
-      if (applied) { clearInterval(id); return; }
+      attempts++;
+      if (applied || attempts > maxAttempts) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 4) return;
       applied = true;
       const url = 'assets/maps/level_4.png';
@@ -205,9 +211,12 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
 // Apply Level 3 PNG map when Level 3 loads (130x80 marsh map)
 (function watchForL3Png(){
   let applied = false;
+  let attempts = 0;
+  const maxAttempts = 100; // Safety limit
   const id = setInterval(async () => {
     try {
-      if (applied) { clearInterval(id); return; }
+      attempts++;
+      if (applied || attempts > maxAttempts) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 3) return;
       applied = true;
       const url = 'assets/maps/level_3.png';
@@ -288,9 +297,12 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
 // Apply Level 5 PNG map when Level 5 loads (100x85 temple heart map)
 (function watchForL5Png(){
   let applied = false;
+  let attempts = 0;
+  const maxAttempts = 100; // Safety limit
   const id = setInterval(async () => {
     try {
-      if (applied) { clearInterval(id); return; }
+      attempts++;
+      if (applied || attempts > maxAttempts) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 5) return;
       applied = true;
       const url = 'assets/maps/level_5.png';
@@ -460,11 +472,18 @@ showTitleScreen();
 // Main loop
 camera.w = canvas.width; camera.h = canvas.height;
 let last = performance.now();
+let animFrameId = null;
 function loop(now) {
+  // If the tab is hidden, stop the loop entirely to save resources
+  try {
+    if (typeof document !== 'undefined' && document.hidden) {
+      animFrameId = null;
+      return;
+    }
+  } catch {}
+
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
-  // If the tab is hidden, skip simulation/render to reduce CPU/memory churn
-  try { if (typeof document !== 'undefined' && document.hidden) { requestAnimationFrame(loop); return; } } catch {}
   step(dt);
   try { updateQuestHint(); } catch {}
   // Track render suspension, but still allow level swap/restore to proceed
@@ -494,15 +513,26 @@ function loop(now) {
   try { updateMinimap(); } catch {}
   // Keep overlay dim in sync with lighting while inventory/dialog overlay is open
   try { if (runtime.gameState === 'chat') { updateOverlayDim(); } } catch {}
-  requestAnimationFrame(loop);
+  animFrameId = requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
+animFrameId = requestAnimationFrame(loop);
 
-// Pause background work when tab visibility changes (defensive, pairs with loop guard)
+// Pause background work when tab visibility changes
 try {
   document.addEventListener('visibilitychange', () => {
-    // Reset timing baseline to avoid large dt on resume (clamped anyway)
-    try { last = performance.now(); } catch { last = Date.now(); }
+    if (document.hidden) {
+      // Tab is hidden - stop the loop
+      if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+      }
+    } else {
+      // Tab is visible again - restart the loop
+      last = performance.now();
+      if (!animFrameId) {
+        animFrameId = requestAnimationFrame(loop);
+      }
+    }
   });
 } catch {}
 

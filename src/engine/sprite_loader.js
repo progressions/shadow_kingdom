@@ -2,6 +2,7 @@
 // Usage: getSprite('assets/sprites/enemies/gorg') -> { image, meta }
 
 const _cache = new Map();
+const MAX_CACHE_SIZE = 50; // Limit cache size to prevent unbounded memory growth
 
 const __DEV_BUST = String(Date.now());
 
@@ -34,7 +35,29 @@ async function _loadJson(src) {
 
 export async function getSprite(spriteId) {
   if (!spriteId) return null;
-  if (_cache.has(spriteId)) return _cache.get(spriteId);
+  if (_cache.has(spriteId)) {
+    // Move to end (LRU behavior)
+    const existing = _cache.get(spriteId);
+    _cache.delete(spriteId);
+    _cache.set(spriteId, existing);
+    return existing;
+  }
+
+  // Enforce cache size limit (LRU eviction)
+  if (_cache.size >= MAX_CACHE_SIZE) {
+    const firstKey = _cache.keys().next().value;
+    const evicted = _cache.get(firstKey);
+    _cache.delete(firstKey);
+    // Clean up evicted image
+    try {
+      if (evicted && evicted.image && evicted.image.src) {
+        evicted.image.src = '';
+        evicted.image.onload = null;
+        evicted.image.onerror = null;
+      }
+    } catch {}
+  }
+
   const id = String(spriteId);
   const explicitPng = /\.png$/i.test(id);
   const explicitJson = /\.json$/i.test(id);
