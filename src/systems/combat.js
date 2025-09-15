@@ -21,9 +21,9 @@ export function startAttack() {
   player.attackTimer = 0;
   player.lastAttack = now;
   playSfx('attack');
-  // Small melee lunge (≈2px) in facing direction, with basic collision guard
+  // Melee lunge (visible ~8px) in facing direction, with basic collision guard
   try {
-    const step = 2;
+    const step = 8;
     let dx = 0, dy = 0;
     if (player.dir === 'left') dx = -step; else if (player.dir === 'right') dx = step;
     else if (player.dir === 'up') dy = -step; else dy = step;
@@ -56,6 +56,8 @@ export function startAttack() {
     } else if (dy !== 0) {
       if (canPlace(player.x, ny)) player.y = ny;
     }
+    // Briefly tick walk animation to make the lunge visible
+    try { runtime._lungeTimer = Math.max(runtime._lungeTimer || 0, 0.08); } catch {}
     try { markFlowDirty && markFlowDirty(); } catch {}
   } catch {}
   // Dash Combo: if dashing or within a short window after, empower this swing and apply vulnerability+lockout

@@ -237,6 +237,8 @@ export function step(dt) {
   // Decay dash-combo lockout and vulnerability timers
   try { if ((runtime._dashComboLockout || 0) > 0) runtime._dashComboLockout = Math.max(0, (runtime._dashComboLockout || 0) - dt); } catch {}
   try { if ((runtime._dashComboVulnTimer || 0) > 0) runtime._dashComboVulnTimer = Math.max(0, (runtime._dashComboVulnTimer || 0) - dt); } catch {}
+  // Decay lunge animation timer to tick walk frame briefly during melee lunge
+  try { if ((runtime._lungeTimer || 0) > 0) runtime._lungeTimer = Math.max(0, (runtime._lungeTimer || 0) - dt); } catch {}
 
   // Torch burnout: if a torch is equipped in left hand, tick down and consume on expiry
   try {
@@ -834,7 +836,7 @@ export function step(dt) {
     else if (dy !== 0) player.dir = dy < 0 ? 'up' : 'down';
   }
   // Anim state: bob while moving (fast) and idle (slow)
-  player.moving = dashActive || hasInput || hasKnock;
+  player.moving = dashActive || hasInput || hasKnock || (runtime._lungeTimer > 0);
   player.animTime += dt;
   const animThresh = player.moving ? 0.18 : 0.55; // slower idle bob
   if (player.animTime > animThresh) {
