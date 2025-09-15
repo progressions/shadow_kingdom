@@ -583,6 +583,44 @@ export function render(terrainBitmap, obstacles) {
     }
   }
 
+  // Player melee overlay: simple thrust rectangle extending beyond 16x16
+  try {
+    if (player && player.attacking) {
+      const dur = (typeof player.attackDuration === 'number') ? player.attackDuration : 0.18;
+      const t = (typeof player.attackTimer === 'number') ? player.attackTimer : 0;
+      // Show during the core of the swing
+      if (t >= dur * 0.2 && t <= dur * 0.8) {
+        const dir = String(player.dir || 'down');
+        const thickness = 3; // 2–3 px looks good
+        const length = 14;   // pixels beyond sprite bounds
+        const px = Math.round(player.x - camera.x);
+        const py = Math.round(player.y - camera.y);
+        let rx = 0, ry = 0, rw = 0, rh = 0;
+        if (dir === 'right') {
+          rx = px + player.w; ry = py + Math.round(player.h/2) - Math.floor(thickness/2);
+          rw = length; rh = thickness;
+        } else if (dir === 'left') {
+          rx = px - length; ry = py + Math.round(player.h/2) - Math.floor(thickness/2);
+          rw = length; rh = thickness;
+        } else if (dir === 'up') {
+          rx = px + Math.round(player.w/2) - Math.floor(thickness/2); ry = py - length;
+          rw = thickness; rh = length;
+        } else { // down
+          rx = px + Math.round(player.w/2) - Math.floor(thickness/2); ry = py + player.h;
+          rw = thickness; rh = length;
+        }
+        // Draw a bright rectangle with a thin outline
+        ctx.save();
+        ctx.fillStyle = '#e6e6e6';
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1;
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+        ctx.restore();
+      }
+    }
+  } catch {}
+
   // Fog of War (memory): darken tiles not yet seen; reveal per-tile via player's current LoS
   try {
     const fow = runtime?.fogOfWar || { enabled: false };
