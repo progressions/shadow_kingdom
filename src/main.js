@@ -253,6 +253,7 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
           'b4202a': { type: 'lava' },
           // spawns & markers
           'ffffff': { type: 'player_spawn' },
+          '20d6c7': { type: 'ell_spawn' },
           'b9bffb': { type: 'spawn_guardian' },
           'df3e23': { type: 'spawn_boss' },
           'ffd541': { type: 'spawn_mook' },

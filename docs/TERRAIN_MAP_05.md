@@ -10,9 +10,10 @@ Level 5 - Heart of the Temple
   12 - 59c135 - Leashed ranged featured foe
   13 - 14a02e -  Cowsill
   14 - 1a7a3e - Cactus
-  15 - 24523b - 
+  15 - 24523b - no companion
   16 - 122020 - background color - stone floor pattern
   19 - 249fde - water
+  20 - 20d6c7 - Ell spawn point
   22 - ffffff- Player spawn
   23 - fef3c0- torch node (emits light)
   33 - 71413b - wood (passable, not an obstacle)

@@ -228,6 +228,7 @@ export async function applyPngMap(url, legend) {
           case 'spawner_featured':  spawnerFeatureds.push({ x, y }); break;
           case 'tin_spawn':    npcSpawns.push({ who: 'tin', x, y }); break;
           case 'nellis_spawn': npcSpawns.push({ who: 'nellis', x, y }); break;
+          case 'ell_spawn':    npcSpawns.push({ who: 'ell', x, y }); break;
           case 'cowsill_spawn': npcSpawns.push({ who: 'cowsill', x, y }); break;
         }
       }
@@ -425,6 +426,7 @@ export async function applyPngMap(url, legend) {
         tin:       { name: 'Tin',       dir: 'right', portrait: 'assets/portraits/level03/Tin/Tin.mp4',              dialogId: 'tin',       sheet: 'Tin' },
         nellis:    { name: 'Nellis',    dir: 'left',  portrait: 'assets/portraits/level03/Nellis/Nellis.mp4',        dialogId: 'nellis',    sheet: 'Nellis' },
         cowsill:   { name: 'Cowsill',   dir: 'down',  portrait: 'assets/portraits/level05/Cowsill/Cowsill.mp4',      dialogId: 'cowsill',   sheet: 'Cowsill' },
+        ell:       { name: 'Ell',       dir: 'down',  portrait: 'assets/portraits/level06/Ell/Ell.mp4',              dialogId: 'ell',       sheet: 'Ell' },
       };
       const inParty = (name) => {
         try { return companions.some(c => c && (c.name||'').toLowerCase() === String(name||'').toLowerCase()); } catch { return false; }
@@ -450,7 +452,13 @@ export async function applyPngMap(url, legend) {
           dialogId: cfg.dialogId || key,
           sheet: sheetForName(cfg.sheet || cfg.name),
         });
-        attachDialogById(n, cfg.dialogId || key);
+        if (key === 'ell') {
+          // Simple one-line dialog while boss is alive
+          const tree = { start: 'root', nodes: { root: { text: 'Help me', choices: [ { label: 'Back', action: 'end' } ] } } };
+          try { setNpcDialog(n, tree); } catch {}
+        } else {
+          attachDialogById(n, cfg.dialogId || key);
+        }
       }
     }
 
