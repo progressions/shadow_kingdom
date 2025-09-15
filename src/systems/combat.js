@@ -1,5 +1,6 @@
-import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround, grantPartyXp } from '../engine/state.js';
+import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround, grantPartyXp, world } from '../engine/state.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
+import { queryObstaclesAABB } from '../engine/spatial_index.js';
 import { showBanner, showTargetInfo, showPersistentBanner, hideBanner } from '../engine/ui.js';
 import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
@@ -20,6 +21,43 @@ export function startAttack() {
   player.attackTimer = 0;
   player.lastAttack = now;
   playSfx('attack');
+  // Small melee lunge (≈2px) in facing direction, with basic collision guard
+  try {
+    const step = 2;
+    let dx = 0, dy = 0;
+    if (player.dir === 'left') dx = -step; else if (player.dir === 'right') dx = step;
+    else if (player.dir === 'up') dy = -step; else dy = step;
+    const nonBlockingTypes = new Set(['mud', 'fire', 'lava', 'wood', 'reed']);
+    const gateOpen = (o) => (o.type === 'gate' && o.locked === false);
+    const blocksMove = (o) => {
+      if (!o) return false;
+      if (gateOpen(o)) return false;
+      if (nonBlockingTypes.has(String(o.type||''))) return false;
+      if (o.type === 'water') {
+        try { if (runtime?.partyAuras?.waterWalk) return false; } catch {}
+      }
+      return true;
+    };
+    function canPlace(x, y) {
+      const rect = { x, y, w: player.w, h: player.h };
+      const cands = queryObstaclesAABB(x, y, player.w, player.h) || obstacles;
+      for (const o of cands) { if (!blocksMove(o)) continue; if (rectsIntersect(rect, o)) return false; }
+      // Clamp to world
+      if (x < 0 || y < 0 || x + player.w > world.w || y + player.h > world.h) return false;
+      return true;
+    }
+    const nx = player.x + dx, ny = player.y + dy;
+    if (dx !== 0 && dy !== 0) {
+      if (canPlace(nx, ny)) { player.x = nx; player.y = ny; }
+      else if (canPlace(nx, player.y)) { player.x = nx; }
+      else if (canPlace(player.x, ny)) { player.y = ny; }
+    } else if (dx !== 0) {
+      if (canPlace(nx, player.y)) player.x = nx;
+    } else if (dy !== 0) {
+      if (canPlace(player.x, ny)) player.y = ny;
+    }
+    try { markFlowDirty && markFlowDirty(); } catch {}
+  } catch {}
   // Dash Combo: if dashing or within a short window after, empower this swing and apply vulnerability+lockout
   try {
     const t = runtime._timeSec || 0;
