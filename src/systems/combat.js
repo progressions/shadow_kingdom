@@ -1,6 +1,6 @@
 import { player, enemies, npcs, companions, runtime, obstacles, itemsOnGround, grantPartyXp, world } from '../engine/state.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
-import { queryObstaclesAABB } from '../engine/spatial_index.js';
+import { queryObstaclesAABB, markObstacleIndexDirty } from '../engine/spatial_index.js';
 import { showBanner, showTargetInfo, showPersistentBanner, hideBanner } from '../engine/ui.js';
 import { companionEffectsByKey } from '../data/companion_effects.js';
 import { playSfx } from '../engine/audio.js';
@@ -159,6 +159,7 @@ export function handleAttacks(dt) {
             try { playSfx('uiOpen'); } catch {}
             const idx = obstacles.indexOf(o);
             if (idx !== -1) obstacles.splice(idx, 1);
+            try { markObstacleIndexDirty(); } catch {}
             // Tutorial flags similar to interact path
             try {
               if (!runtime.questFlags) runtime.questFlags = {};
@@ -183,12 +184,14 @@ export function handleAttacks(dt) {
           } else {
             const idx = obstacles.indexOf(o);
             if (idx !== -1) obstacles.splice(idx, 1);
+            try { markObstacleIndexDirty(); } catch {}
             try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
             showBanner('Empty chest');
           }
         } else {
           const idx = obstacles.indexOf(o);
           if (idx !== -1) obstacles.splice(idx, 1);
+          try { markObstacleIndexDirty(); } catch {}
           showBanner('Empty chest');
         }
         break; // open at most one chest per swing
@@ -212,6 +215,7 @@ export function handleAttacks(dt) {
         try { if (o.id) runtime.brokenBreakables[o.id] = true; } catch {}
         const idx = obstacles.indexOf(o);
         if (idx !== -1) obstacles.splice(idx, 1);
+        try { markObstacleIndexDirty(); } catch {}
         playSfx('break');
         try { import('../engine/pathfinding.js').then(m => m.markFlowDirty && m.markFlowDirty()).catch(()=>{}); } catch {}
       }
@@ -526,6 +530,12 @@ function tryUnlockGate(hb) {
   for (const o of obstacles) {
     if (!o || o.type !== 'gate') continue;
     if (o.locked === false) continue;
+    // Boss arena sealed gates cannot be reopened with keys
+    if (o.sealed) {
+      try { showBanner('Sealed — it won\'t budge'); } catch {}
+      try { playSfx('block'); } catch {}
+      continue;
+    }
     const r = { x: o.x, y: o.y, w: o.w, h: o.h };
     if (!rectsIntersect(hb, r)) continue;
     // Check key in player inventory
@@ -646,6 +656,7 @@ export function tryInteract() {
           // Remove chest immediately after opening
           const idx = obstacles.indexOf(o);
           if (idx !== -1) obstacles.splice(idx, 1);
+          try { markObstacleIndexDirty(); } catch {}
           // Tutorial: mark sword chest objective done
           try {
             if (!runtime.questFlags) runtime.questFlags = {};
@@ -675,6 +686,7 @@ export function tryInteract() {
           // No loot: remove the chest from the world immediately
           const idx = obstacles.indexOf(o);
           if (idx !== -1) obstacles.splice(idx, 1);
+          try { markObstacleIndexDirty(); } catch {}
           try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
           showBanner('Empty chest');
         }
@@ -682,6 +694,7 @@ export function tryInteract() {
         // Already opened (should have been removed), ensure removal
         const idx = obstacles.indexOf(o);
         if (idx !== -1) obstacles.splice(idx, 1);
+        try { markObstacleIndexDirty(); } catch {}
         showBanner('Empty chest');
       }
       return true;

@@ -47,9 +47,20 @@ export function initInput() {
       if (allowed && !e.repeat && !wasHeld) {
         const now = (typeof performance !== 'undefined' && performance.now) ? (performance.now() / 1000) : (Date.now() / 1000);
         const last = (runtime._dashLastTap && typeof runtime._dashLastTap[k] === 'number') ? runtime._dashLastTap[k] : -999;
-        const windowSec = (typeof runtime._dashDoubleTapWindow === 'number') ? runtime._dashDoubleTapWindow : 0.25;
+        // Slightly tighter double-tap window to reduce accidental dashes
+        const windowSec = (typeof runtime._dashDoubleTapWindow === 'number') ? runtime._dashDoubleTapWindow : 0.18;
+        // Guard against micro-bounce: require a minimal gap between taps
+        const minGap = (typeof runtime._dashMinTapIntervalSec === 'number') ? runtime._dashMinTapIntervalSec : 0.06;
+        // Do not allow dash if any other movement key is currently held (prevents accidental diagonals causing dash)
+        const othersHeld = (() => {
+          const moves = ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'];
+          let count = 0;
+          for (let i = 0; i < moves.length; i++) { const mk = moves[i]; if (mk !== k && runtime.keys.has(mk)) count++; }
+          return count;
+        })();
         const canDash = !runtime.paused && !runtime.gameOver && ((runtime._dashCooldown || 0) <= 0) && ((runtime._suppressInputTimer || 0) <= 0) && ((runtime._dashTimer || 0) <= 0);
-        if (canDash && (now - last) <= windowSec) {
+        const delta = now - last;
+        if (canDash && othersHeld === 0 && delta >= minGap && delta <= windowSec) {
           // Start dash in axis-aligned direction of the tapped key
           let vx = 0, vy = 0;
           if (k === 'w' || k === 'arrowup') vy = -1;
@@ -237,6 +248,12 @@ export function initInput() {
     }
   });
   window.addEventListener('keyup', (e) => {
+    try {
+      const now = (typeof performance !== 'undefined' && performance.now) ? (performance.now() / 1000) : (Date.now() / 1000);
+      const k = e.key.toLowerCase();
+      if (!runtime._lastKeyUpAt) runtime._lastKeyUpAt = {};
+      runtime._lastKeyUpAt[k] = now;
+    } catch {}
     runtime.keys.delete(e.key.toLowerCase());
     if (e.key.toLowerCase() === 'n') {
       // End peek; if no peek happened (or even if it did), cycle the persistent mode

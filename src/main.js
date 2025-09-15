@@ -10,7 +10,7 @@ import { step } from './systems/step.js';
 import { setNpcDialog, startPrompt, startSaveMenu } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
 import { introTexts } from './data/intro_texts.js';
-import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap, showPersistentBanner, hideBanner } from './engine/ui.js';
+import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap, showPersistentBanner, hideBanner, updateOverlayDim } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save_core.js';
 import { loadGame, getSaveMeta } from './engine/save.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
@@ -73,9 +73,9 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
 // Apply Level 2 PNG map when Level 2 loads (120x70 desert map)
 (function watchForL2Png(){
   let applied = false;
-  const tick = async () => {
+  const id = setInterval(async () => {
     try {
-      if (applied) return;
+      if (applied) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 2) return;
       applied = true;
       const url = 'assets/maps/level_2.png';
@@ -113,19 +113,19 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
       const t = await M.applyPngMap(url, legend);
       if (t) {
         terrain = t;
-        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+        try { initMinimap(); } catch {}
       }
+      clearInterval(id);
     } catch {}
-  };
-  setInterval(tick, 300);
+  }, 300);
 })();
 
 // Apply Level 4 PNG map when Level 4 loads (140x85 ruined city map)
 (function watchForL4Png(){
   let applied = false;
-  const tick = async () => {
+  const id = setInterval(async () => {
     try {
-      if (applied) return;
+      if (applied) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 4) return;
       applied = true;
       const url = 'assets/maps/level_4.png';
@@ -195,19 +195,19 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
       const t = await M.applyPngMap(url, legend);
       if (t) {
         terrain = t;
-        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+        try { initMinimap(); } catch {}
       }
+      clearInterval(id);
     } catch {}
-  };
-  setInterval(tick, 300);
+  }, 300);
 })();
 
 // Apply Level 3 PNG map when Level 3 loads (130x80 marsh map)
 (function watchForL3Png(){
   let applied = false;
-  const tick = async () => {
+  const id = setInterval(async () => {
     try {
-      if (applied) return;
+      if (applied) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 3) return;
       applied = true;
       const url = 'assets/maps/level_3.png';
@@ -278,19 +278,19 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
       const t = await M.applyPngMap(url, legend);
       if (t) {
         terrain = t;
-        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+        try { initMinimap(); } catch {}
       }
+      clearInterval(id);
     } catch {}
-  };
-  setInterval(tick, 300);
+  }, 300);
 })();
 
 // Apply Level 5 PNG map when Level 5 loads (100x85 temple heart map)
 (function watchForL5Png(){
   let applied = false;
-  const tick = async () => {
+  const id = setInterval(async () => {
     try {
-      if (applied) return;
+      if (applied) { clearInterval(id); return; }
       if ((runtime.currentLevel || 1) !== 5) return;
       applied = true;
       const url = 'assets/maps/level_5.png';
@@ -358,11 +358,11 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
       const t = await M.applyPngMap(url, legend);
       if (t) {
         terrain = t;
-        try { import('./engine/ui.js').then(u => u.initMinimap && u.initMinimap()).catch(()=>{}); } catch {}
+        try { initMinimap(); } catch {}
       }
+      clearInterval(id);
     } catch {}
-  };
-  setInterval(tick, 300);
+  }, 300);
 })();
 
 // Input and UI
@@ -463,6 +463,8 @@ let last = performance.now();
 function loop(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
+  // If the tab is hidden, skip simulation/render to reduce CPU/memory churn
+  try { if (typeof document !== 'undefined' && document.hidden) { requestAnimationFrame(loop); return; } } catch {}
   step(dt);
   try { updateQuestHint(); } catch {}
   // Track render suspension, but still allow level swap/restore to proceed
@@ -491,10 +493,18 @@ function loop(now) {
   if (!suspendRender) render(terrain, obstacles);
   try { updateMinimap(); } catch {}
   // Keep overlay dim in sync with lighting while inventory/dialog overlay is open
-  try { if (runtime.gameState === 'chat') { import('./engine/ui.js').then(u => u.updateOverlayDim && u.updateOverlayDim()).catch(()=>{}); } } catch {}
+  try { if (runtime.gameState === 'chat') { updateOverlayDim(); } } catch {}
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+// Pause background work when tab visibility changes (defensive, pairs with loop guard)
+try {
+  document.addEventListener('visibilitychange', () => {
+    // Reset timing baseline to avoid large dt on resume (clamped anyway)
+    try { last = performance.now(); } catch { last = Date.now(); }
+  });
+} catch {}
 
 // Debug helpers (call from browser console):
 try {

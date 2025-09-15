@@ -9,7 +9,7 @@ import { autoTurnInIfCleared } from '../engine/quests.js';
 import { clearFadeOverlay } from '../engine/ui.js';
 import { FRAMES_PER_DIR } from '../engine/constants.js';
 import { rectsIntersect, getEquipStats, segmentIntersectsRect } from '../engine/utils.js';
-import { queryObstaclesAABB, queryObstaclesSegment } from '../engine/spatial_index.js';
+import { queryObstaclesAABB, queryObstaclesSegment, markObstacleIndexDirty, rebuildObstacleIndex } from '../engine/spatial_index.js';
 import { sampleLightAtPx } from '../engine/lighting.js';
 import { handleAttacks, startRangedAttack as startRangedAttackFn } from './combat.js';
 import { startGameOver, startPrompt } from '../engine/dialog.js';
@@ -313,6 +313,8 @@ export function step(dt) {
   try { rebuildLighting(60); } catch {}
   // Rebuild pathfinding flow field on a throttle; dirty on player tile change or gate toggles
   try { rebuildFlowField(150); } catch {}
+  // If obstacle index was marked dirty (e.g., chest opened or barrel broken), rebuild once here
+  try { if (!runtime._obIndex) rebuildObstacleIndex(64); } catch {}
 
   // --- Projectiles tick ---
   if (Array.isArray(projectiles) && projectiles.length) {
@@ -380,6 +382,7 @@ export function step(dt) {
               } catch {}
               const idx = obstacles.indexOf(o);
               if (idx !== -1) obstacles.splice(idx, 1);
+              try { markObstacleIndexDirty(); } catch {}
               try { playSfx('break'); } catch {}
               try { import('../engine/pathfinding.js').then(m => m.markFlowDirty && m.markFlowDirty()).catch(()=>{}); } catch {}
             }
@@ -1159,7 +1162,7 @@ export function step(dt) {
             if (!o) continue;
             if (o.type === 'gate' && o.locked === false) continue; // see-through/open gates
             // Ignore non-sight-blockers
-            if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
+            if (o.type === 'chest' || o.type === 'barrel' || o.type === 'crate' || o.type === 'box' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
             if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losClear = false; break; }
           }
         } catch {}
@@ -1202,7 +1205,7 @@ export function step(dt) {
           if (!o) continue;
           if (o.type === 'gate' && o.locked === false) continue;
           // consider strong blockers; chest/mud/fire/lava are non-blocking for movement
-          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
+          if (o.type === 'chest' || o.type === 'barrel' || o.type === 'crate' || o.type === 'box' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
           if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { losBlockedWF = true; break; }
         }
           const flowDirNull = (() => { try { const d = sampleFlowDirAt(ex, ey); return !d || (d.x === 0 && d.y === 0); } catch { return true; } })();
@@ -1480,8 +1483,8 @@ export function step(dt) {
         for (const o of obstacles) {
           if (!o) continue;
           if (o.type === 'gate' && o.locked === false) continue;
-          // Ignore non-sight-blockers: chests, hazards, bridges, water
-          if (o.type === 'chest' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
+          // Ignore non-sight-blockers: chests, barrels/crates/boxes, hazards, bridges, water
+          if (o.type === 'chest' || o.type === 'barrel' || o.type === 'crate' || o.type === 'box' || o.type === 'mud' || o.type === 'fire' || o.type === 'lava' || o.type === 'wood' || o.type === 'water') continue;
           if (segmentIntersectsRect(ex2, ey2, px2, py2, o)) { blocked = true; break; }
         }
         losClearToPlayer = !blocked;
@@ -2477,6 +2480,8 @@ export function step(dt) {
           if (runtime._vorthakGateRelockTimer === 0) {
             gate.locked = true;
             gate.blocksAttacks = true;
+            // Mark as sealed so keys can no longer open it
+            gate.sealed = true;
             runtime._vorthakGateRelocked = true;
             // Small camera shake to sell the slam
             runtime.shakeTimer = Math.max(runtime.shakeTimer || 0, 0.35);

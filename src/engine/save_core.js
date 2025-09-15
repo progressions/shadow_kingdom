@@ -1,5 +1,6 @@
 // Save System — deterministic deltas + unique actor status
 import { player, companions, npcs, obstacles, itemsOnGround, world, enemies, runtime, spawnCompanion, spawnNpc, spawners, addSpawner } from './state.js';
+import { rebuildObstacleIndex } from './spatial_index.js';
 import { updatePartyUI, showBanner } from './ui.js';
 import { makeSpriteSheet, sheetForName, enemyMookSheet, enemyFeaturedSheet, enemyBossSheet } from './sprites.js';
 import { descriptorForLevel } from './level_descriptors.js';
@@ -15,7 +16,8 @@ function gatherGateStates() {
   const states = {};
   for (const o of obstacles) {
     if (!o || o.type !== 'gate' || !o.id) continue;
-    states[o.id] = (o.locked === false) ? 'unlocked' : 'locked';
+    // Persist a sealed state explicitly so it cannot be reopened after reload
+    states[o.id] = (o.sealed === true) ? 'sealed' : ((o.locked === false) ? 'unlocked' : 'locked');
   }
   return states;
 }
@@ -194,8 +196,16 @@ function applyGateStates(data) {
     if (!o || o.type !== 'gate' || !o.id) continue;
     const st = gs[o.id];
     if (!st) continue;
-    o.locked = (st === 'unlocked') ? false : true;
-    if (st === 'unlocked') o.blocksAttacks = false;
+    if (st === 'sealed') {
+      o.locked = true;
+      o.blocksAttacks = true;
+      o.sealed = true;
+    } else {
+      o.locked = (st === 'unlocked') ? false : true;
+      if (st === 'unlocked') o.blocksAttacks = false;
+      // Clear sealed flag if not sealed in save
+      if (o.sealed) o.sealed = false;
+    }
   }
 }
 
@@ -613,6 +623,7 @@ export function applyPendingRestore() {
     } catch {}
 
     showBanner('Game loaded');
+    try { rebuildObstacleIndex(64); } catch {}
     // Restore fog-of-war seen grid for this level
     try {
       const f = data.fow || null;

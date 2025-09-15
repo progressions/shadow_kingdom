@@ -100,6 +100,43 @@ async function testEnemyIntroAfterLoadById(slot = 8) {
   return report;
 }
 
+async function testTempleGateSealed() {
+  const report = { name: 'TempleGateSealed', ok: false, details: '' };
+  try {
+    const ok = await goToLevel(5);
+    if (!ok) throw new Error('Failed to load Level 5');
+    // Ensure we have the temple key in inventory
+    const S = await import('../engine/state.js');
+    const { player, obstacles } = S;
+    const Items = await import('../data/items.js');
+    const key = (Items.items || []).find(it => it && it.id === 'key_temple');
+    if (!player.inventory) player.inventory = { items: [], equipped: {} };
+    const inv = player.inventory.items;
+    if (!inv.find(it => it && it.id === 'key_temple')) inv.push({ ...key });
+    // Locate the temple gate
+    const gate = obstacles.find(o => o && o.type === 'gate' && (o.keyId === 'key_temple' || o.id === 'temple_gate'));
+    if (!gate) throw new Error('Temple gate not found');
+    // Simulate a sealed state
+    gate.locked = true; gate.blocksAttacks = true; gate.sealed = true;
+    // Place player adjacent to the gate and swing
+    player.x = Math.max(0, Math.round(gate.x - player.w - 2));
+    player.y = Math.round(gate.y + gate.h/2 - player.h/2);
+    player.dir = 'right';
+    const C = await import('../systems/combat.js');
+    // Trigger an attack and process hit timing
+    C.startAttack();
+    // Advance enough time to land the hitbox
+    C.handleAttacks(0.3);
+    // Expect the gate to remain locked because it's sealed
+    if (gate.locked === false) throw new Error('Sealed gate was unlocked by key');
+    report.ok = true; report.details = 'Sealed gate resists key unlock';
+  } catch (e) {
+    report.ok = false; report.details = String(e && e.message || e);
+  }
+  console.log(`[TEST] ${report.name}: ${report.ok ? 'OK' : 'FAIL'} — ${report.details}`);
+  return report;
+}
+
 async function testVnIntroCooldown() {
   const report = { name: 'VnIntroCooldown', ok: false, details: '' };
   try {
@@ -289,6 +326,7 @@ async function testSnapshotRoundTrip() {
     window.testWorldDeltasOrder = testWorldDeltasOrder;
     window.testRngDeterminism = testRngDeterminism;
     window.testAtomicWriteRecovery = testAtomicWriteRecovery;
+    window.testTempleGateSealed = testTempleGateSealed;
     window.runLightSaveTests = async function() {
     const r0 = await testSnapshotRoundTrip();
     const r1 = await testOpenedChestPersistence(9);
@@ -298,8 +336,9 @@ async function testSnapshotRoundTrip() {
     const r5 = await testWorldDeltasOrder(6);
     const r6 = await testRngDeterminism(5);
     const r7 = await testAtomicWriteRecovery(4);
-    const ok = r0.ok && r1.ok && r2.ok && r3.ok && r4.ok && r5.ok && r6.ok && r7.ok;
+    const r8 = await testTempleGateSealed();
+    const ok = r0.ok && r1.ok && r2.ok && r3.ok && r4.ok && r5.ok && r6.ok && r7.ok && r8.ok;
     console.log(`[TEST] Summary: ${ok ? 'OK' : 'FAIL'}`);
-    return { ok, results: [r0, r1, r2, r3, r4, r5, r6, r7] };
+    return { ok, results: [r0, r1, r2, r3, r4, r5, r6, r7, r8] };
   };
 } catch {}

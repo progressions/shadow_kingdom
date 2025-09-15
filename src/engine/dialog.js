@@ -158,8 +158,6 @@ function timeAgo(ts) {
 // Debug menu
 export function startDebugMenu() {
   const choices = [
-    { label: 'Test: VN Intro Cooldown', action: 'debug_run_vn' },
-    { label: 'Test: Enemy Intro After Load (vnId)', action: 'debug_run_enemy_intro' },
     { label: 'Lighting: Ambient 0 (Dark)', action: 'light_ambient', data: 0 },
     { label: 'Lighting: Ambient 4 (Dim)', action: 'light_ambient', data: 4 },
     { label: 'Lighting: Ambient 8 (Bright)', action: 'light_ambient', data: 8 },
@@ -195,6 +193,7 @@ export function renderCurrentNode() {
       const deferChoice = { label: String(triad.defer?.label || 'Not right now.'), action: 'vn_intro_defer', data: { flag: deferFlag } };
       const matchFirst = (typeof triad.matchFirst === 'boolean') ? triad.matchFirst : true;
       const choices = matchFirst ? [ matchChoice, clashChoice, deferChoice ] : [ clashChoice, matchChoice, deferChoice ];
+      try { runtime.activeDialog._resolved = { nodeId, choices }; } catch {}
       setOverlayDialog(node.text || '', choices);
       return;
     }
@@ -231,6 +230,80 @@ export function renderCurrentNode() {
       }
     }
   } catch {}
+  // Helpers to resolve quest ids for Start and Turn-In entries (used only for sorting)
+  function questIdForStartChoice(ch) {
+    if (!ch) return null;
+    if (ch.action === 'start_quest' && ch.data && ch.data.id) return String(ch.data.id);
+    if (ch.next && tree && tree.nodes && tree.nodes[ch.next]) {
+      const n2 = tree.nodes[ch.next];
+      const q = Array.isArray(n2.choices) ? n2.choices.find(cc => cc && cc.action === 'start_quest' && cc.data && cc.data.id) : null;
+      if (q) return String(q.data.id);
+    }
+    return null;
+  }
+  function baseFromFlag(flag) {
+    try {
+      const s = String(flag || '');
+      const m = s.match(/^(.*)_(reward|done|cleared|turnin|turn_in)$/);
+      return m ? m[1] : null;
+    } catch { return null; }
+  }
+  function questIdFromNodeTurnIn(nid, depth = 0) {
+    try {
+      if (!nid || !tree || !tree.nodes) return null;
+      const n = tree.nodes[nid];
+      if (!n) return null;
+      const choices = Array.isArray(n.choices) ? n.choices : [];
+      for (const c of choices) {
+        if (!c) continue;
+        if (c.action === 'affinity_add' && c.data && c.data.flag) {
+          const b = baseFromFlag(c.data.flag); if (b) return b;
+        }
+        if (c.action === 'set_flag' && c.data && c.data.key) {
+          const b = baseFromFlag(c.data.key); if (b) return b;
+        }
+      }
+      if (depth < 2) {
+        for (const c of choices) {
+          if (c && c.next) { const r = questIdFromNodeTurnIn(c.next, depth + 1); if (r) return r; }
+        }
+      }
+    } catch {}
+    return null;
+  }
+  function questIdForTurnInChoice(ch) {
+    try {
+      if (!ch) return null;
+      // Prefer requires.flags on the choice itself (e.g., { flag: 'xxx_cleared', missingFlag: 'xxx_done' })
+      const req = ch.requires || {};
+      if (req && typeof req === 'object') {
+        if (req.flag) { const b = baseFromFlag(req.flag); if (b) return b; }
+        if (req.missingFlag) { const b = baseFromFlag(req.missingFlag); if (b) return b; }
+      }
+      // Fallback: inspect the target node for *_reward/_done flags
+      if (ch.next) return questIdFromNodeTurnIn(ch.next, 0);
+      return null;
+    } catch { return null; }
+  }
+
+  // No decoration of labels — show authored quest names as-is.
+  // Sort companion dialog choices so priority quest entries appear first.
+  // Priority order: Turn-In quests first, then New quests, then everything else.
+  // "New" = directly starts a quest or leads to a node that offers start_quest.
+  // "Turn-In" = resolved via target node flags or legacy label heuristic.
+  try {
+    const looksNew = (ch) => !!questIdForStartChoice(ch);
+    const looksTurnIn = (ch) => !!questIdForTurnInChoice(ch) || (function(){ try { const lbl = String(ch && ch.label || '').trim().toLowerCase(); return lbl.startsWith('turn in') || lbl.startsWith('turn-in'); } catch { return false; } })();
+    // Stable-ish: partition rather than full sort to preserve original order within groups
+    const turnins = []; const news = []; const rest = [];
+    for (const ch of effectiveChoices) {
+      if (looksTurnIn(ch)) turnins.push(ch);
+      else if (looksNew(ch)) news.push(ch);
+      else rest.push(ch);
+    }
+    effectiveChoices = turnins.concat(news, rest);
+  } catch {}
+  try { runtime.activeDialog._resolved = { nodeId, choices: effectiveChoices }; } catch {}
   setOverlayDialog(effectiveText, effectiveChoices);
   // Sidebar placeholder removed; VN overlay displays choices
 }
@@ -238,7 +311,8 @@ export function renderCurrentNode() {
 export function selectChoice(index) {
   if (!runtime.activeDialog) return;
   const { tree } = runtime.activeDialog;
-  const node = tree.nodes[runtime.activeDialog.nodeId];
+  const nodeId = runtime.activeDialog.nodeId;
+  const node = tree.nodes[nodeId];
   if (!node || !node.choices) return;
   // Special handling: if this is a companion intro node with a temperament triad,
   // rebuild the same triad choices used in renderCurrentNode so indices match.
@@ -335,11 +409,21 @@ export function selectChoice(index) {
       // If out-of-range or unrecognized, fall through to normal flow
     }
   } catch {}
-  // Apply the same filter as render to maintain index mapping
-  const rawChoices = node.choices || [];
-  const choices = [];
-  for (const ch of rawChoices) { if (!ch || !ch.requires || meetsRequirement(ch.requires)) choices.push(ch); }
-  const choice = choices[index];
+  // Use the resolved/visible choices (sorted/filtered) to keep index mapping with the UI
+  let choice = null;
+  try {
+    const r = runtime.activeDialog._resolved;
+    if (r && r.nodeId === nodeId && Array.isArray(r.choices)) {
+      choice = r.choices[index];
+    }
+  } catch {}
+  if (!choice) {
+    // Fallback: filter like render (without special sorting) if resolved mapping missing
+    const rawChoices = node.choices || [];
+    const choices = [];
+    for (const ch of rawChoices) { if (!ch || !ch.requires || meetsRequirement(ch.requires)) choices.push(ch); }
+    choice = choices[index];
+  }
   if (!choice) return;
   // No turn-based battle actions; only VN/inventory/save actions are handled.
   if (choice.action === 'end') { endDialog(); exitChat(runtime); return; }

@@ -312,6 +312,9 @@ export function hideTitleScreen() {
   titleEl.style.display = 'none';
   try { if (titleMenuEl) titleMenuEl.classList.remove('show'); } catch {}
   disableTitleKeyHandlers();
+  // Pause any background title videos to stop decode/cpu when hidden
+  try { if (titleBgVideo) { titleBgVideo.pause(); } } catch {}
+  try { if (titleBgLoopVideo) { titleBgLoopVideo.pause(); } } catch {}
 }
 
 export function moveTitleFocus(delta) {
@@ -409,10 +412,10 @@ export function setOverlayDialog(text, choices) {
           const show = (runtime?.uiSettings?.questIndicators || 'normal') !== 'off';
           if (show && runtime.activeDialog && runtime.activeDialog.tree) {
             const tree = runtime.activeDialog.tree;
-            // Turn-In detection by label
+            // Turn-In detection by label or by presence of start_quest in target node
             const low = label.toLowerCase();
             let suffix = '';
-            if (low.startsWith('turn in')) {
+            if (low.startsWith('turn in') || low.startsWith('turn-in')) {
               suffix = ' (Turn-In)';
             } else if (c && c.action === 'start_quest') {
               suffix = ' (New)';

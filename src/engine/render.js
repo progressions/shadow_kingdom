@@ -1040,6 +1040,19 @@ export function render(terrainBitmap, obstacles) {
   // Tutorial markers (e.g., Level 1 sword chest)
   drawTutorialMarkers(obstacles);
   
+  // Keep the "Now Playing" music label positioned just below the HUD panel dynamically
+  try {
+    const hud = document.getElementById('hud-panel');
+    const mt = document.getElementById('music-theme');
+    if (hud && mt) {
+      const desiredTop = Math.max(0, Math.round((hud.offsetTop || 0) + (hud.offsetHeight || 0) + 8));
+      if (mt._lastTop !== desiredTop) {
+        mt.style.top = `${desiredTop}px`;
+        mt._lastTop = desiredTop;
+      }
+    }
+  } catch {}
+  
   // Update coordinate display in HTML
   const coordsEl = document.getElementById('coords');
   if (coordsEl) {

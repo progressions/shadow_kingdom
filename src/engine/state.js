@@ -635,7 +635,8 @@ export const runtime = {
   // Tunables
   _dashDurationDefault: 0.14,
   _dashSpeedDefault: 340, // px/sec
-  _dashDoubleTapWindow: 0.25, // seconds between taps to trigger dash
+  _dashDoubleTapWindow: 0.18, // seconds between taps to trigger dash (tighter to prevent accidents)
+  _dashMinTapIntervalSec: 0.06, // minimum time between taps to count as a double-tap
   _dashCooldownDefault: 2.20, // seconds after a dash before another can start (doubled)
 
   // --- Dash Combo (dash -> attack) ---
