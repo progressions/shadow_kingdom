@@ -96,7 +96,7 @@ Companions have their own rivalries and affections, which create a dynamic socia
     - **Rival:** Varabella (By-the-book doctrine vs. cynical pragmatism).
     - **Affection:** Yorna (Mutual respect for each other's power as frontline warriors).
 
-### **Fana** (New Companion)
+### **Fana**
 - **Appearance:** Dark hair, elegant attire.
 - **Personality:** A powerful sorceress, grateful and relieved after being freed from Vorthak's enslavement. She is rediscovering her own will and can be hesitant, but her magical power is immense.
 - **Quest Line:** Her story is about reclaiming her identity and magical heritage. Her quests involve hunting down other enslaved mages or recovering artifacts of her order that Vorthak stole.

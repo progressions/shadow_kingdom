@@ -39,6 +39,13 @@ let _miniFog = null;       // offscreen fog layer
 let _miniFogImage = null;  // ImageData for fog compositing
 let _visited = null;       // Uint8Array flags per tile
 let _miniW = 0, _miniH = 0;
+// Minimap incremental update caches
+let _miniLastCam = { x0: -1, y0: -1, x1: -1, y1: -1 };
+let _miniLastPlayer = { tx: -1, ty: -1 };
+let _miniVisitedDirty = false;
+let _miniFogLastSec = 0;
+// Gate fog compositing to at most ~every 2 frames (≈33ms at 60fps)
+let _miniFogIntervalSec = 1 / 30;
 let _titleKeyHandler = null;
 let _titleFocusIndex = 0;
 let _titleButtons = [];
@@ -727,6 +734,11 @@ export function initMinimap() {
   _miniFog.width = _miniW; _miniFog.height = _miniH;
   _miniFogImage = _miniFog.getContext('2d').createImageData(_miniW, _miniH);
   _visited = new Uint8Array(_miniW * _miniH);
+  // Reset incremental caches
+  _miniLastCam = { x0: -1, y0: -1, x1: -1, y1: -1 };
+  _miniLastPlayer = { tx: -1, ty: -1 };
+  _miniVisitedDirty = true;
+  _miniFogLastSec = 0;
 
   const bctx = _miniBase.getContext('2d');
   // Base floor tint
@@ -780,34 +792,49 @@ export function updateMinimap() {
   }
   // Reveal by camera view and a small radius around player
   try {
-    const x0 = Math.max(0, Math.floor(camera.x / TILE));
-    const y0 = Math.max(0, Math.floor(camera.y / TILE));
-    const x1 = Math.min(_miniW - 1, Math.ceil((camera.x + camera.w) / TILE));
-    const y1 = Math.min(_miniH - 1, Math.ceil((camera.y + camera.h) / TILE));
-    for (let y = y0; y <= y1; y++) {
-      let idx = y * _miniW + x0;
-      for (let x = x0; x <= x1; x++, idx++) _visited[idx] = 1;
+    const cx0 = Math.max(0, Math.floor(camera.x / TILE));
+    const cy0 = Math.max(0, Math.floor(camera.y / TILE));
+    const cx1 = Math.min(_miniW - 1, Math.ceil((camera.x + camera.w) / TILE));
+    const cy1 = Math.min(_miniH - 1, Math.ceil((camera.y + camera.h) / TILE));
+    // Update visited only if camera tile rect changed
+    if (cx0 !== _miniLastCam.x0 || cy0 !== _miniLastCam.y0 || cx1 !== _miniLastCam.x1 || cy1 !== _miniLastCam.y1) {
+      for (let y = cy0; y <= cy1; y++) {
+        let idx = y * _miniW + cx0;
+        for (let x = cx0; x <= cx1; x++, idx++) _visited[idx] = 1;
+      }
+      _miniLastCam = { x0: cx0, y0: cy0, x1: cx1, y1: cy1 };
+      _miniVisitedDirty = true;
     }
-    const px = Math.max(0, Math.min(_miniW-1, Math.floor(player.x / TILE)));
-    const py = Math.max(0, Math.min(_miniH-1, Math.floor(player.y / TILE)));
-    const r = 4;
-    for (let dy = -r; dy <= r; dy++) {
-      const yy = py + dy; if (yy < 0 || yy >= _miniH) continue;
-      const from = Math.max(0, px - r), to = Math.min(_miniW-1, px + r);
-      let idx = yy * _miniW + from;
-      for (let x = from; x <= to; x++, idx++) _visited[idx] = 1;
+    // Reveal small radius around the player only if player tile changed
+    const ptx = Math.max(0, Math.min(_miniW-1, Math.floor(player.x / TILE)));
+    const pty = Math.max(0, Math.min(_miniH-1, Math.floor(player.y / TILE)));
+    if (ptx !== _miniLastPlayer.tx || pty !== _miniLastPlayer.ty) {
+      const r = 4;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = pty + dy; if (yy < 0 || yy >= _miniH) continue;
+        const from = Math.max(0, ptx - r), to = Math.min(_miniW-1, ptx + r);
+        let idx = yy * _miniW + from;
+        for (let x = from; x <= to; x++, idx++) _visited[idx] = 1;
+      }
+      _miniLastPlayer = { tx: ptx, ty: pty };
+      _miniVisitedDirty = true;
     }
   } catch {}
 
   // Fog compositing
-  const data = _miniFogImage.data;
-  const n = _miniW * _miniH;
-  for (let i = 0, di = 0; i < n; i++, di += 4) {
-    const seen = _visited[i] === 1;
-    data[di+0] = 0; data[di+1] = 0; data[di+2] = 0; data[di+3] = seen ? 0 : 180;
+  const nowSec = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance && performance.now ? performance.now()/1000 : Date.now()/1000);
+  if (_miniVisitedDirty && (nowSec - _miniFogLastSec) >= _miniFogIntervalSec) {
+    const data = _miniFogImage.data;
+    const n = _miniW * _miniH;
+    for (let i = 0, di = 0; i < n; i++, di += 4) {
+      const seen = _visited[i] === 1;
+      data[di+0] = 0; data[di+1] = 0; data[di+2] = 0; data[di+3] = seen ? 0 : 180;
+    }
+    const fctx = _miniFog.getContext('2d');
+    fctx.putImageData(_miniFogImage, 0, 0);
+    _miniVisitedDirty = false;
+    _miniFogLastSec = nowSec;
   }
-  const fctx = _miniFog.getContext('2d');
-  fctx.putImageData(_miniFogImage, 0, 0);
 
   // Compose
   const ctx = minimapEl.getContext('2d');
