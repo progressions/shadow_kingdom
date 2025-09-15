@@ -26,6 +26,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
   if (dx !== 0) {
     let newX = ent.x + dx;
     const rect = { x: newX, y: ent.y, w: ent.w, h: ent.h };
+    const pad = 1; // small inset to ease 1-tile corridors
     // Nearby blocking obstacles only
     const candX = queryObstaclesAABB(newX, ent.y, ent.w, ent.h);
     for (const o of candX) {
@@ -42,7 +43,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
           if (isPlayer || isComp) continue;
         }
       } catch {}
-      if (rectsIntersect(rect, o)) {
+      const rInset = { x: rect.x + pad, y: rect.y + pad, w: rect.w - pad*2, h: rect.h - pad*2 };
+      if (rectsIntersect(rInset, o)) {
         if (dx > 0) newX = Math.min(newX, o.x - ent.w);
         else newX = Math.max(newX, o.x + o.w);
         rect.x = newX;
@@ -63,6 +65,7 @@ function moveWithCollision(ent, dx, dy, solids = []) {
   if (dy !== 0) {
     let newY = ent.y + dy;
     const rect = { x: ent.x, y: newY, w: ent.w, h: ent.h };
+    const pad = 1;
     const candY = queryObstaclesAABB(ent.x, newY, ent.w, ent.h);
     for (const o of candY) {
       if (!o) continue;
@@ -78,7 +81,8 @@ function moveWithCollision(ent, dx, dy, solids = []) {
           if (isPlayer || isComp) continue;
         }
       } catch {}
-      if (rectsIntersect(rect, o)) {
+      const rInset = { x: rect.x + pad, y: rect.y + pad, w: rect.w - pad*2, h: rect.h - pad*2 };
+      if (rectsIntersect(rInset, o)) {
         if (dy > 0) newY = Math.min(newY, o.y - ent.h);
         else newY = Math.max(newY, o.y + o.h);
         rect.y = newY;
