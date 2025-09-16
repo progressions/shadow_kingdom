@@ -93,6 +93,34 @@ export function startCompanionAction(comp) {
   ]);
 }
 
+export function openCompanionTalk(comp) {
+  if (!comp) return;
+  const key = ((comp?.name) || '').toLowerCase();
+  const tree = companionDialogs[key];
+  if (tree) {
+    runtime.activeNpc = comp;
+    runtime.activeDialog = { tree, nodeId: tree.start || 'root' };
+    enterChat(runtime);
+    renderCurrentNode();
+  } else {
+    startPrompt(comp, `${comp?.name || 'Companion'}: Let's keep moving.`, [
+      { label: 'Back to companions', action: 'companion_back' },
+      { label: 'Close', action: 'end' },
+    ]);
+  }
+  try {
+    if ((runtime.musicMode || 'normal') === 'normal') {
+      showMusicTheme(`Companion: ${comp?.name || 'Companion'}`);
+    }
+  } catch {}
+}
+
+function scheduleCompanionTalk(comp, delay = 150) {
+  if (!comp) return;
+  const list = runtime._queuedCompanionTalks || (runtime._queuedCompanionTalks = []);
+  list.push({ comp, delay: Math.max(0, delay) });
+}
+
 function torchBark(comp) {
   const name = (comp?.name || '').toLowerCase();
   const aff = (typeof comp?.affinity === 'number') ? comp.affinity : 5;
@@ -377,7 +405,7 @@ export function selectChoice(index) {
               startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
               return;
             }
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
+      const newComp = spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
       updatePartyUI(companions);
@@ -462,7 +490,7 @@ export function selectChoice(index) {
         startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
         return;
       }
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
+      const newComp = spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
       updatePartyUI(companions);
@@ -483,6 +511,7 @@ export function selectChoice(index) {
           hideBanner();
         }
       } catch {}
+      endDialog(); exitChat(runtime); scheduleCompanionTalk(newComp); return;
     }
     endDialog(); exitChat(runtime); return;
   }
@@ -492,6 +521,7 @@ export function selectChoice(index) {
   }
   if (choice.action === 'join_party') {
     const npc = runtime.activeNpc;
+    let newComp = null;
     if (npc) {
       // Enforce party size limit
       if (companions.length >= 3) {
@@ -502,7 +532,7 @@ export function selectChoice(index) {
         return;
       }
       // Spawn as companion; preserve external sprite if present
-      spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
+      newComp = spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
       // Remove NPC from world
       const idx = npcs.indexOf(npc);
       if (idx !== -1) npcs.splice(idx, 1);
@@ -524,6 +554,7 @@ export function selectChoice(index) {
     }
     endDialog();
     exitChat(runtime);
+    if (newComp) scheduleCompanionTalk(newComp);
     return;
   }
   if (choice.action === 'companion_torch_start') {
@@ -596,7 +627,7 @@ export function selectChoice(index) {
     } catch {}
     removeCompanion(comp);
     // Recruit the active NPC into the now-free slot
-    spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
+    const newComp = spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
     const ni = npcs.indexOf(npc); if (ni !== -1) npcs.splice(ni, 1);
     updatePartyUI(companions);
     showBanner(`${npc.name || 'Companion'} joined your party!`);
@@ -624,6 +655,7 @@ export function selectChoice(index) {
     } catch {}
     endDialog();
     exitChat(runtime);
+    if (newComp) scheduleCompanionTalk(newComp);
     return;
   }
   if (choice.action === 'dismiss_companion') {
@@ -720,23 +752,7 @@ export function selectChoice(index) {
   }
   if (choice.action === 'companion_talk') {
     const comp = choice.data || runtime.activeNpc;
-    // Open companion-specific dialog tree if defined
-    const key = ((comp?.name) || '').toLowerCase();
-    const tree = companionDialogs[key];
-    if (tree) {
-      runtime.activeNpc = comp;
-      runtime.activeDialog = { tree, nodeId: tree.start || 'root' };
-      enterChat(runtime);
-      renderCurrentNode();
-    } else {
-      // Fallback simple line
-      startPrompt(comp, `${comp?.name || 'Companion'}: Let's keep moving.`, [
-        { label: 'Back to companions', action: 'companion_back' },
-        { label: 'Close', action: 'end' },
-      ]);
-    }
-    // If peaceful, show the companion theme label (actual spotlighting depends on audio system)
-    try { if ((runtime.musicMode || 'normal') === 'normal') showMusicTheme(`Companion: ${comp?.name || 'Companion'}`); } catch {}
+    openCompanionTalk(comp);
     return;
   }
   if (choice.action === 'companion_back') {

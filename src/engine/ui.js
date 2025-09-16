@@ -139,7 +139,6 @@ export function exitChat(runtime) {
     if (Array.isArray(runtime._queuedVNs) && runtime._queuedVNs.length > 0) {
       const next = runtime._queuedVNs.shift();
       if (next && next.text) {
-        // If the next queued VN requests a pan, schedule a camera pan to the actor and show the VN after
         if (next.pan && next.actor && typeof next.actor.x === 'number' && typeof next.actor.y === 'number') {
           const toX = Math.round(next.actor.x + (next.actor.w || 12)/2 - camera.w/2);
           const toY = Math.round(next.actor.y + (next.actor.h || 16)/2 - camera.h/2);
@@ -160,6 +159,20 @@ export function exitChat(runtime) {
             mod.startPrompt(actor, next.text, choices);
           }).catch(()=>{});
         }
+        return;
+      }
+    }
+  } catch {}
+  try {
+    if (Array.isArray(runtime._queuedCompanionTalks) && runtime._queuedCompanionTalks.length > 0) {
+      const next = runtime._queuedCompanionTalks.shift();
+      if (next && next.comp) {
+        const delay = Math.max(0, next.delay || 0);
+        setTimeout(() => {
+          import('./dialog.js').then(mod => {
+            if (mod.openCompanionTalk) mod.openCompanionTalk(next.comp);
+          }).catch(()=>{});
+        }, delay);
         return;
       }
     }

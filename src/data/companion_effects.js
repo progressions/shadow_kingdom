@@ -287,13 +287,13 @@ export const companionEffectsByKey = {
 export const COMPANION_BUFF_CAPS = {
   atk: 3,      // higher max attack bonus from auras
   dr: 3,       // higher max damage reduction from auras
-  regen: 0.6,  // HP per second (increased sustain ceiling)
+  regen: 1,  // HP per second (increased sustain ceiling)
   range: 4,    // pixels (slightly longer reach stacking)
   touchDR: 2,  // stronger mitigation vs touch/contact damage
   rangedDR: 5, // strong mitigation vs ranged/projectile damage
-  deflect: 0.6, // up to 60% chance to deflect a projectile entering the wind aura
-  slow: 0.35,  // 35% max slow from stacked auras/triggers
-  aspd: 0.75,  // up to +75% attack speed from stacked sources
-  crit: 0.25,  // up to +25% absolute crit chance from auras
+  deflect: 1, // up to 60% chance to deflect a projectile entering the wind aura
+  slow: 0.5,  // 35% max slow from stacked auras/triggers
+  aspd: 1,  // up to +75% attack speed from stacked sources
+  crit: 0.35,  // up to +25% absolute crit chance from auras
   dashCdr: 0.75, // dash cooldown reduction factor used as (cd / (1 + dashCdr))
 };
