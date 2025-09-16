@@ -140,7 +140,7 @@ Below are complete, representative payloads you can use to sanity‑check saves/
   "player": { "x": 800, "y": 520, "hp": 10, "dir": "down", "level": 1, "xp": 6 },
   "enemies": [
     { "x": 972, "y": 522, "dir": "left", "kind": "mook", "name": "Mook", "hp": 3, "maxHp": 3, "touchDamage": 3, "speed": 10, "w": 12, "h": 16, "spriteScale": 1 },
-    { "x": 1120, "y": 560, "dir": "down", "kind": "featured", "name": "Gorg", "hp": 16, "maxHp": 16, "touchDamage": 5, "speed": 11, "portrait": "assets/portraits/Gorg/Gorg.mp4", "guaranteedDropId": "key_bronze", "w": 12, "h": 16, "spriteScale": 1 }
+    { "x": 1120, "y": 560, "dir": "down", "kind": "featured", "name": "Gorg", "hp": 16, "maxHp": 16, "touchDamage": 5, "speed": 11, "portrait": "assets/portraits/Gorg/Gorg.mp4", "guaranteedDropId": "key_bronze", "w": 12, "h": 16, "spriteScale": 1, "ranged": true, "shootRange": 200, "shootCooldown": 1.6, "projectileSpeed": 220, "projectileDamage": 4, "aimError": 0.04 }
   ],
   "companions": [],
   "npcs": [

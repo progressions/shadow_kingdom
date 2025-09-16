@@ -365,6 +365,7 @@ export async function applyPngMap(url, legend) {
             spawnEnemy(ex, ey, 'featured', {
               name: 'Aarg', vnId: 'enemy:aarg', guaranteedDropId: 'key_nethra', guardian: true,
               hp: 52, dmg: 7, hitCooldown: 0.6, aggroRadius: 180,
+              ranged: true, shootRange: 220, shootCooldown: 1.4, projectileSpeed: 240, projectileDamage: 5, aimError: 0.035,
               vnOnSight: { text: introTexts.aarg },
               portrait: 'assets/portraits/level02/Aarg/Aarg.mp4',
             });
@@ -373,6 +374,7 @@ export async function applyPngMap(url, legend) {
             spawnEnemy(ex, ey, 'featured', {
               name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', guardian: true,
               hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
+              ranged: true, shootRange: 200, shootCooldown: 1.6, projectileSpeed: 220, projectileDamage: 4, aimError: 0.04,
               vnOnSight: { text: introTexts.gorg },
               portrait: 'assets/portraits/level01/Gorg/Gorg.mp4',
             });

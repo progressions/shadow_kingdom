@@ -35,7 +35,7 @@ export function serializeSave() {
     if (!key || !uniques.has(key)) continue;
     if (e.hp > 0) {
       // Store pose + core combat fields at top-level for loader simplicity
-      uniqueActors[key] = {
+      const rec = {
         state: 'alive',
         x: e.x, y: e.y,
         dir: e.dir || 'down',
@@ -46,6 +46,15 @@ export function serializeSave() {
         spriteScale: e.spriteScale || 1,
         sheetPalette: e.sheetPalette || null,
       };
+      if (e && e.ranged) {
+        rec.ranged = true;
+        if (typeof e.shootRange === 'number') rec.shootRange = e.shootRange;
+        if (typeof e.shootCooldown === 'number') rec.shootCooldown = e.shootCooldown;
+        if (typeof e.projectileSpeed === 'number') rec.projectileSpeed = e.projectileSpeed;
+        if (typeof e.projectileDamage === 'number') rec.projectileDamage = e.projectileDamage;
+        if (typeof e.aimError === 'number') rec.aimError = e.aimError;
+      }
+      uniqueActors[key] = rec;
     } else {
       uniqueActors[key] = { state: 'defeated' };
     }
@@ -211,7 +220,7 @@ function applyGateStates(data) {
 
 // --- Helpers to serialize/restore enemy entities ---
 function serializeEnemyEntity(e) {
-  return {
+  const rec = {
     id: e.id || null,
     spriteId: e.spriteId || null,
     kind: e.kind || 'mook',
@@ -246,6 +255,15 @@ function serializeEnemyEntity(e) {
     requiresLoS: (typeof e.requiresLoS === 'boolean') ? e.requiresLoS : undefined,
     losMemorySec: (typeof e.losMemorySec === 'number') ? e.losMemorySec : undefined,
   };
+  if (e && e.ranged) {
+    rec.ranged = true;
+    if (typeof e.shootRange === 'number') rec.shootRange = e.shootRange;
+    if (typeof e.shootCooldown === 'number') rec.shootCooldown = e.shootCooldown;
+    if (typeof e.projectileSpeed === 'number') rec.projectileSpeed = e.projectileSpeed;
+    if (typeof e.projectileDamage === 'number') rec.projectileDamage = e.projectileDamage;
+    if (typeof e.aimError === 'number') rec.aimError = e.aimError;
+  }
+  return rec;
 }
 
 function spawnEnemyFromRecord(d) {
@@ -300,6 +318,13 @@ function spawnEnemyFromRecord(d) {
     // LoS tuning (defaults match runtime defaults)
     requiresLoS: (typeof d.requiresLoS === 'boolean') ? d.requiresLoS : true,
     losMemorySec: (typeof d.losMemorySec === 'number') ? Math.max(0, d.losMemorySec) : 0.8,
+    // Ranged combat
+    ranged: !!d.ranged,
+    shootRange: (typeof d.shootRange === 'number') ? Math.max(12, d.shootRange) : 120,
+    shootCooldown: (typeof d.shootCooldown === 'number') ? Math.max(0.2, d.shootCooldown) : 1.2,
+    projectileSpeed: (typeof d.projectileSpeed === 'number') ? Math.max(40, d.projectileSpeed) : 160,
+    projectileDamage: (typeof d.projectileDamage === 'number') ? Math.max(1, d.projectileDamage) : 2,
+    aimError: (typeof d.aimError === 'number') ? Math.max(0, d.aimError) : 0,
   });
 }
 
@@ -545,6 +570,14 @@ export function applyPendingRestore() {
         if (typeof st.touchDamage === 'number') ent.touchDamage = st.touchDamage;
         if (typeof st.spriteScale === 'number') ent.spriteScale = st.spriteScale;
         if (st.sheetPalette) { try { ent.sheetPalette = st.sheetPalette; ent.sheet = makeSpriteSheet(st.sheetPalette); } catch {} }
+        if (typeof st.ranged === 'boolean') ent.ranged = st.ranged;
+        if (ent.ranged) {
+          if (typeof st.shootRange === 'number') ent.shootRange = Math.max(12, st.shootRange);
+          if (typeof st.shootCooldown === 'number') ent.shootCooldown = Math.max(0.2, st.shootCooldown);
+          if (typeof st.projectileSpeed === 'number') ent.projectileSpeed = Math.max(40, st.projectileSpeed);
+          if (typeof st.projectileDamage === 'number') ent.projectileDamage = Math.max(1, st.projectileDamage);
+          if (typeof st.aimError === 'number') ent.aimError = Math.max(0, st.aimError);
+        }
         continue;
       }
       if (st.state === 'alive' && !ent) {
@@ -565,6 +598,12 @@ export function applyPendingRestore() {
           h: (typeof st.h === 'number') ? st.h : 16,
           spriteScale: (typeof st.spriteScale === 'number') ? st.spriteScale : (kind === 'boss' ? 2 : 1),
           sheetPalette: st.sheetPalette || null,
+          ranged: st.ranged === true,
+          shootRange: (typeof st.shootRange === 'number') ? st.shootRange : undefined,
+          shootCooldown: (typeof st.shootCooldown === 'number') ? st.shootCooldown : undefined,
+          projectileSpeed: (typeof st.projectileSpeed === 'number') ? st.projectileSpeed : undefined,
+          projectileDamage: (typeof st.projectileDamage === 'number') ? st.projectileDamage : undefined,
+          aimError: (typeof st.aimError === 'number') ? st.aimError : undefined,
         };
         try { spawnEnemyFromRecord(rec); } catch {}
       }
@@ -721,14 +760,32 @@ export function normalizeSave(s) {
   out.affinityFlags = uniq(out.affinityFlags);
   out.questFlags = uniq(out.questFlags);
   if (Array.isArray(out.dynamicEnemies)) {
-    out.dynamicEnemies = out.dynamicEnemies.map(e => ({
-      ...e,
-      x: clamp(Math.round(e.x|0), 0, Math.max(0, W-1)),
-      y: clamp(Math.round(e.y|0), 0, Math.max(0, H-1)),
-      dir: e.dir || 'down',
-      hp: Math.max(0, e.hp|0),
-      spriteScale: (typeof e.spriteScale === 'number') ? e.spriteScale : 1,
-    }));
+    out.dynamicEnemies = out.dynamicEnemies.map(e => {
+      const ranged = e.ranged === true;
+      const next = {
+        ...e,
+        x: clamp(Math.round(e.x|0), 0, Math.max(0, W-1)),
+        y: clamp(Math.round(e.y|0), 0, Math.max(0, H-1)),
+        dir: e.dir || 'down',
+        hp: Math.max(0, e.hp|0),
+        spriteScale: (typeof e.spriteScale === 'number') ? e.spriteScale : 1,
+        ranged,
+      };
+      if (ranged) {
+        next.shootRange = (typeof e.shootRange === 'number') ? Math.max(12, e.shootRange) : 120;
+        next.shootCooldown = (typeof e.shootCooldown === 'number') ? Math.max(0.2, e.shootCooldown) : 1.2;
+        next.projectileSpeed = (typeof e.projectileSpeed === 'number') ? Math.max(40, e.projectileSpeed) : 160;
+        next.projectileDamage = (typeof e.projectileDamage === 'number') ? Math.max(1, e.projectileDamage) : 2;
+        next.aimError = (typeof e.aimError === 'number') ? Math.max(0, e.aimError) : 0;
+      } else {
+        delete next.shootRange;
+        delete next.shootCooldown;
+        delete next.projectileSpeed;
+        delete next.projectileDamage;
+        delete next.aimError;
+      }
+      return next;
+    });
   }
   if (out.uniqueActors && typeof out.uniqueActors === 'object') {
     for (const k of Object.keys(out.uniqueActors)) {
@@ -739,6 +796,20 @@ export function normalizeSave(s) {
       if (!u.dir) u.dir = 'down';
       if (typeof u.hp === 'number') u.hp = Math.max(0, u.hp|0);
       if (typeof u.spriteScale !== 'number') u.spriteScale = 1;
+      u.ranged = u.ranged === true;
+      if (u.ranged) {
+        u.shootRange = (typeof u.shootRange === 'number') ? Math.max(12, u.shootRange) : 120;
+        u.shootCooldown = (typeof u.shootCooldown === 'number') ? Math.max(0.2, u.shootCooldown) : 1.2;
+        u.projectileSpeed = (typeof u.projectileSpeed === 'number') ? Math.max(40, u.projectileSpeed) : 160;
+        u.projectileDamage = (typeof u.projectileDamage === 'number') ? Math.max(1, u.projectileDamage) : 2;
+        u.aimError = (typeof u.aimError === 'number') ? Math.max(0, u.aimError) : 0;
+      } else {
+        delete u.shootRange;
+        delete u.shootCooldown;
+        delete u.projectileSpeed;
+        delete u.projectileDamage;
+        delete u.aimError;
+      }
     }
   }
   // Normalize spawners

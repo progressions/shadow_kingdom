@@ -64,8 +64,11 @@ describe('save_core.normalizeSave', () => {
     expect(out.dynamicEnemies[0].dir).toBe('down');
     expect(out.dynamicEnemies[0].hp).toBe(0);
     expect(out.dynamicEnemies[0].spriteScale).toBe(1);
+    expect(out.dynamicEnemies[0].ranged).toBe(false);
+    expect(out.dynamicEnemies[0].shootRange).toBeUndefined();
     expect(out.dynamicEnemies[1].x).toBe(199);
     expect(out.dynamicEnemies[1].y).toBe(0);
+    expect(out.dynamicEnemies[1].ranged).toBe(false);
 
     // Unique actors clamped
     expect(out.uniqueActors['enemy:boss'].x).toBe(0);
@@ -73,6 +76,8 @@ describe('save_core.normalizeSave', () => {
     expect(out.uniqueActors['enemy:boss'].dir).toBe('down');
     expect(out.uniqueActors['enemy:boss'].hp).toBe(0);
     expect(out.uniqueActors['enemy:boss'].spriteScale).toBe(1);
+    expect(out.uniqueActors['enemy:boss'].ranged).toBe(false);
+    expect(out.uniqueActors['enemy:boss'].shootRange).toBeUndefined();
 
     // Spawners normalized
     const sp = out.spawners[0];
