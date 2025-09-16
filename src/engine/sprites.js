@@ -1,5 +1,54 @@
 import { SPRITE_SIZE, DIRECTIONS, FRAMES_PER_DIR } from './constants.js';
 
+const canopyCompanionDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAAQCAYAAADpunr5AAAAzElEQVR4nO2TsQ2DMBREPQhFJBrqDOE5MgbjUFMzBHU2SMUE6SIFXFiyZSeW/3d8wfZJ1/HE554Q4s/yvPfvby2dhwc9AJqHBz2Afu4x283Fw2OO5fuIGL4JICSlAA7fBBx9bavVqgQMcoLYMg/Ww6tbKAI4AuECuKEK9AmIGTCVwNMLoOYXAqr8A6hpAsDRB1/l4rQJyJBUAqi8jzMb4osR0A2j0zMI4PLwqJHUof3l5jRGAFWg771mQ3z1Arg8VwCXLyKfBOR4d6yAHeWFKQo6nMCXAAAAAElFTkSuQmCC';
+let canopyCompanionSheet = null;
+
+function getCanopyCompanionSheet() {
+  if (canopyCompanionSheet) return canopyCompanionSheet;
+  const w = SPRITE_SIZE * FRAMES_PER_DIR;
+  const h = SPRITE_SIZE * DIRECTIONS.length;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  function drawFrames(img) {
+    ctx.clearRect(0, 0, w, h);
+    const copy = (sx, sy, dx, dy) => {
+      ctx.drawImage(img, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+    };
+    // Frame order on source strip: 0-1 right/down, 2-3 left, 4-5 up
+    // Dest layout expects directions rows: down, left, right, up
+    // Down uses right-facing frames
+    copy(0, 0, 0, 0);        // down frame 0 (right idle)
+    copy(16, 0, SPRITE_SIZE, 0); // down frame 1 (right bob)
+    // Left row
+    copy(32, 0, 0, SPRITE_SIZE);
+    copy(48, 0, SPRITE_SIZE, SPRITE_SIZE);
+    // Right row – reuse right/down frames
+    copy(0, 0, 0, SPRITE_SIZE * 2);
+    copy(16, 0, SPRITE_SIZE, SPRITE_SIZE * 2);
+    // Up row
+    copy(64, 0, 0, SPRITE_SIZE * 3);
+    copy(80, 0, SPRITE_SIZE, SPRITE_SIZE * 3);
+  }
+
+  const img = new Image();
+  img.decoding = 'async';
+  img.onload = () => {
+    try { drawFrames(img); } catch (err) { console.error('Failed drawing canopy sprite', err); }
+  };
+  img.onerror = (err) => { console.error('Error loading canopy sprite data', err); };
+  img.src = canopyCompanionDataUrl;
+  if (img.complete && img.naturalWidth) {
+    img.onload?.(new Event('load'));
+  }
+
+  canopyCompanionSheet = canvas;
+  return canopyCompanionSheet;
+}
+
 export function makeSpriteSheet(paletteOverrides = {}) {
   const cols = FRAMES_PER_DIR;
   const rows = DIRECTIONS.length;
@@ -240,7 +289,7 @@ export function sheetForName(name) {
   // Non-humanoid: Snake companion/NPC
   if (key.includes('snek') || key.includes('snake') || key.includes('smek')) return makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
   // Level 1 canonical palettes - with feminine shape
-  if (key.includes('canopy')) return makeSpriteSheet({ hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true });
+  if (key.includes('canopy')) return getCanopyCompanionSheet();
   if (key.includes('yorna'))  return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true });
   if (key.includes('hola'))   return makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0', feminineShape: true });
   // Level 2 companions
