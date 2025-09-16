@@ -270,12 +270,24 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   // - featured: +1 (little)
   // - key guardians (featured with guaranteedDropId): +1 more
   // - bosses: +2 (bit more)
-  let finalSpeed = cfg.speed;
-  if (T === 'mook') finalSpeed += 1;
-  if (T === 'featured') finalSpeed += 1;
-  if (T === 'boss') finalSpeed += 2;
-  if (opts.guaranteedDropId) finalSpeed += 1;
+  let baseSpeed = cfg.speed;
+  if (T === 'mook') baseSpeed += 1;
+  if (T === 'featured') baseSpeed += 1;
+  if (T === 'boss') baseSpeed += 2;
+  if (opts.guaranteedDropId) baseSpeed += 1;
+  if (typeof opts.speed === 'number') {
+    baseSpeed = Math.max(1, opts.speed);
+  } else if (typeof opts.speedMul === 'number') {
+    const mul = Math.max(0.2, opts.speedMul);
+    baseSpeed = Math.max(1, baseSpeed * mul);
+  }
 
+  const lvl = Math.max(1, Number(runtime.currentLevel || opts.level || 1));
+  const bossSpeedMul = (T === 'boss') ? (1 + 0.02 * lvl) : 1;
+  const finalSpeed = Math.max(1, baseSpeed * bossSpeedMul);
+  const baseHitCooldown = (typeof opts.hitCooldown === 'number') ? Math.max(0.1, opts.hitCooldown) : 0.8;
+  const bossCdMul = (T === 'boss') ? Math.max(0.6, 1 - 0.03 * lvl) : 1;
+  const finalHitCooldown = Math.max(0.1, baseHitCooldown * bossCdMul);
   const ent = {
     spriteId: opts.spriteId || null,
     id: opts.id || (`de_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
@@ -292,7 +304,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     maxHp: hp,
     touchDamage: dmg,
     hitTimer: 0,
-    hitCooldown: 0.8,
+    hitCooldown: finalHitCooldown,
     knockbackX: 0,
     knockbackY: 0,
     avoidSign: Math.random() < 0.5 ? 1 : -1,

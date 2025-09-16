@@ -1,18 +1,13 @@
 import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime, spawners } from './state.js';
-import { buildObstacles, buildTerrainBitmap, tileType } from './terrain.js';
-import { LEVEL4_CITY_WALL_RECTS, LEVEL4_SIZE } from '../data/level4_city_walls.js';
-import { LEVEL5_CITY_WALL_RECTS, LEVEL5_SIZE } from '../data/level5_city_walls.js';
-import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_WALLS, LEVEL5_TEMPLE_FEATURES, findSafeSpawn } from '../data/level5_temple_layout.js';
-import { makeSpriteSheet, sheetForName, makeSnakeSpriteSheet } from './sprites.js';
+import { buildTerrainBitmap } from './terrain.js';
+import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_FEATURES } from '../data/level5_temple_layout.js';
+import { makeSpriteSheet, sheetForName } from './sprites.js';
 import { setMusicLocation } from './audio.js';
-import { spawnEnemy, spawnNpc, addItemToInventory, spawnPickup } from './state.js';
+import { spawnNpc, addItemToInventory } from './state.js';
 import { TILE } from './constants.js';
 import { setNpcDialog, startDialog } from './dialog.js';
 import { canopyDialog, yornaDialog, holaDialog, snakeDialog } from '../data/dialogs.js';
-import { clearArenaInteriorAndGate } from './arena.js';
 import { introTexts } from '../data/intro_texts.js';
-import { rectsIntersect } from './utils.js';
-import { rebuildObstacleIndex } from './spatial_index.js';
 
 // Level 1: Greenwood — initial world (moved from main.js to support load route)
 export function loadLevel1() {
@@ -68,158 +63,20 @@ export function loadLevel2() {
   }
   // Build terrain + obstacles (desert theme)
   const terrain = buildTerrainBitmap(world, 'desert');
-  // If a PNG map is present, it will override geometry/props asynchronously.
-  // Keep procedural fallback so gameplay works when PNG load fails (e.g., file://, CORS, or cache).
   // Level 2: full daylight — set bright ambient lighting
   try { import('./lighting.js').then(m => m.setAmbientLevel(8)).catch(()=>{}); } catch {}
-  // PNG map (assets/maps/level_2.png) will populate the level; no procedural fallback
-  return terrain;
-  // New spawns for level 2
-  // Space enemies farther from the player spawn so the immediate vicinity is calmer
-  // A few mook packs in an annulus 280–460px away from player
-  for (let k = 0; k < 6; k++) {
-    const ang = Math.random() * Math.PI * 2;
-    const r = 280 + Math.random() * 180; // 280–460 px
-    const bx = Math.round(player.x + Math.cos(ang) * r);
-    const by = Math.round(player.y + Math.sin(ang) * r);
-    // Level 2 mooks: modest HP bump + small dmg bump
-    spawnEnemy(bx, by, 'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
-  }
-  // Two featured foes, also well outside the initial camera view
-  spawnEnemy(player.x + 320, player.y - 220, 'featured', { hp: 12, dmg: 6 });
-  spawnEnemy(player.x - 340, player.y + 240, 'featured', { hp: 12, dmg: 6 });
-  // Enemy spawner — trickle of Urathar Scouts near the dunes (invisible)
-  // Approx coords: center ~ (player.x + 360, player.y - 200)
-  import('./state.js').then(m => {
-    m.addSpawner({
-      id: 'l2_dunes_trickle', visible: false,
-      x: Math.round(player.x + 360), y: Math.round(player.y - 200), w: 24, h: 16,
-      enemy: { kind: 'mook', name: 'Urathar Scout', hp: 5, dmg: 4 },
-      batchSize: 1, intervalSec: 9, initialDelaySec: 8, jitterSec: 1.0,
-      totalToSpawn: 3, concurrentCap: 1,
-      proximityMode: 'near', radiusPx: 200,
-    });
-  }).catch(()=>{});
 
-  // Chests and breakables (desert) — spaced around player
-  obstacles.push({ x: Math.round(player.x + TILE * 14), y: Math.round(player.y - TILE * 10), w: 12, h: 10, type: 'chest', id: 'chest_l2_armor', fixedItemId: 'armor_chain', opened: false, locked: false });
-  // Guaranteed arrow cache near an early chest in Level 2
-  try { spawnPickup(Math.round(player.x + TILE * 14 + 14), Math.round(player.y - TILE * 10 + 8), { id: 'arrow_basic', name: 'Arrows', slot: 'misc', stackable: true, maxQty: 25, qty: 12 }); } catch {}
-  obstacles.push({ x: Math.round(player.x - TILE * 18), y: Math.round(player.y + TILE * 8), w: 12, h: 12, type: 'barrel', id: 'brk_l2_a', hp: 2 });
-  obstacles.push({ x: Math.round(player.x + TILE * 10), y: Math.round(player.y + TILE * 12), w: 12, h: 12, type: 'crate', id: 'brk_l2_b', hp: 2 });
-  // Fetch/Delivery quest pedestal: keyed to Sister's Ribbon (relic_canopy)
-  obstacles.push({ x: Math.round(player.x + TILE * 8), y: Math.round(player.y - TILE * 14), w: 20, h: 8, type: 'gate', id: 'ribbon_pedestal', keyId: 'relic_canopy', locked: true, blocksAttacks: true, name: 'Ribbon Pedestal' });
-
-  // Boss arena (ruins ring) and Nethra spawn
-  const rw = TILE * 12, rh = TILE * 8, t = 8;
-  const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 220));
-  const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 180));
-  const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
-  // Top wall with a central gap for the gate
-  const gapW = 24;
-  const gapX = rx + (rw - gapW) / 2;
-  // Clear any procedural obstacles inside the arena footprint and at the gate opening
-  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
-  // left and right top segments
-  add(rx, ry, gapX - rx, t);
-  add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t);
-  // bottom, left, right walls
-  add(rx, ry + rh - t, rw, t);
-  add(rx, ry, t, rh);
-  add(rx + rw - t, ry, t, rh);
-  // Locked gate spans the gap; requires key_nethra
-  obstacles.push({ x: gapX, y: ry, w: gapW, h: t, type: 'gate', id: 'nethra_gate', keyId: 'key_nethra', locked: true, blocksAttacks: true });
-  const cx = rx + rw/2 - 6;
-  const cy = ry + rh/2 - 8;
-  spawnEnemy(cx, cy, 'boss', {
-    name: 'Nethra', vnId: 'enemy:nethra',
-    portrait: 'assets/portraits/level02/Nethra/Nethra.mp4',
-    portraitPowered: 'assets/portraits/level02/Nethra/Nethra powered.mp4',
-    portraitDefeated: 'assets/portraits/level02/Nethra/Nethra defeated.mp4',
-    onDefeatNextLevel: 3,
-    // Level 2 boss: buffed stats
-    hp: 50,
-    dmg: 9,
-    speed: 12,
-    hitCooldown: 0.7,
-    vnOnSight: { text: introTexts.nethra },
-    ap: 2,
-  });
-  // Boss arena adds: 4 mooks + 2 featured foes inside the arena
-  // Weaker mook archer in L2: slower shots, longer cooldown, moderate damage
-  spawnEnemy(cx - 24, cy,      'mook', { name: 'Urathar Scout (Archer)', hp: 5, dmg: 4, ranged: true, shootRange: 150, shootCooldown: 1.8, projectileSpeed: 180, projectileDamage: 2, aimError: 0.07 });
-  spawnEnemy(cx + 24, cy,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
-  spawnEnemy(cx, cy - 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
-  spawnEnemy(cx, cy + 24,      'mook', { name: 'Urathar Scout', hp: 5, dmg: 4 });
-  spawnEnemy(cx - 34, cy - 18, 'featured', { name: 'Desert Enforcer', hp: 14, dmg: 6 });
-  spawnEnemy(cx + 34, cy + 18, 'featured', { name: 'Desert Enforcer', hp: 14, dmg: 6 });
-  // Aarg — blue serpent featured foe outside, holding the ruin gate key (fully blue-tinted like Gorg was fully red)
-  const aargPalette = {
-    skin: '#6fb3ff',
-    hair: '#0a1b4a',
-    longHair: false,
-    dress: true,
-    dressColor: '#274b9a',
-    shirt: '#7aa6ff',
-    pants: '#1b2e5a',
-    outline: '#000000',
-  };
-  const aargSheet = makeSpriteSheet(aargPalette);
-  spawnEnemy(
-    rx + rw/2 - 20,
-    ry - TILE * 4,
-    'featured',
-    {
-      name: 'Aarg', vnId: 'enemy:aarg',
-      sheet: aargSheet,
-      sheetPalette: aargPalette,
-      portrait: 'assets/portraits/level02/Aarg/Aarg.mp4',
-      vnOnSight: { text: introTexts.aarg },
-      guaranteedDropId: 'key_nethra',
-      guardian: true,
-      // Level 2 key guardian: buffed stats
-      hp: 52,
-      dmg: 7,
-      hitCooldown: 0.6,
-    }
-  );
-  // Two normal featured foes near Aarg
-  spawnEnemy(rx + rw/2 - 56, ry - TILE * 3, 'featured', { name: 'Desert Marauder', hp: 12, dmg: 6 });
-  spawnEnemy(rx + rw/2 + 20, ry - TILE * 5, 'featured', { name: 'Desert Marauder', hp: 12, dmg: 6 });
-  // Player remains at initial center spawn; companions already placed near player above
-
-  // New recruitable companions for level 2: Oyin and Twil
-  // Appearances: Oyin (blonde hair, green dress), Twil (red hair, black dress)
-  const oyinPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9', feminineShape: true };
-  const twilPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true };
-  const oyinSheet = makeSpriteSheet(oyinPalette);
-  const twilSheet = makeSpriteSheet(twilPalette);
-  // Place Oyin/Twil away from initial camera so VN intros don't trigger immediately
-  const off = 240; // px offset to ensure out of view (camera ~160x90 half extents)
-  const oyinX = Math.max(0, Math.min(world.w - 12, player.x - off));
-  const oyinY = Math.max(0, Math.min(world.h - 16, player.y - off)); // upper-left quadrant
-  const twilX = Math.max(0, Math.min(world.w - 12, player.x - off));
-  const twilY = Math.max(0, Math.min(world.h - 16, player.y + off)); // lower-left quadrant
-  const oyin = spawnNpc(oyinX, oyinY, 'right', { name: 'Oyin', dialogId: 'oyin', sheet: oyinSheet, sheetPalette: oyinPalette, portrait: 'assets/portraits/level02/Oyin/Oyin.mp4', vnOnSight: { text: introTexts.oyin } });
-  const twil = spawnNpc(twilX, twilY, 'left', { name: 'Twil', dialogId: 'twil', sheet: twilSheet, sheetPalette: twilPalette, portrait: 'assets/portraits/level02/Twil/Twil.mp4', vnOnSight: { text: introTexts.twil } });
-  // Attach basic recruit dialogs
-  import('../data/dialogs.js').then(mod => { setNpcDialog(oyin, mod.oyinDialog); setNpcDialog(twil, mod.twilDialog); }).catch(()=>{});
-  // Recompute quest indicators after Level 2 spawns/dialogs
-  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
-
-  // Level 2 Party Feud: Canopy ↔ Yorna — force a strategic choice if both are present
+  // Trigger Level 2 feud (Canopy ↔ Yorna) immediately after companions are repositioned
   (function maybeStartCanopyYornaFeud() {
     try {
       const flags = (runtime.questFlags ||= {});
       if (flags['canopy_yorna_feud_resolved']) return; // already decided
-      // Find party companions by name
-      const findBy = (key) => companions.find(c => (c?.name || '').toLowerCase().includes(key));
+      const lower = (s) => String(s || '').toLowerCase();
+      const findBy = (key) => companions.find(c => lower(c?.name).includes(key));
       const canopyComp = findBy('canopy');
       const yornaComp = findBy('yorna');
       if (!canopyComp || !yornaComp) return;
-      // Mark feud active (informational)
       flags['canopy_yorna_feud_active'] = true;
-      // Build a small VN tree with two choices that dismiss one companion, then confirm
       const vnActor = { name: 'Canopy & Yorna', portraitSrc: 'assets/portraits/level02/Canopy Yorna/Canopy Yorna.mp4' };
       const tree = {
         start: 'root',
@@ -252,13 +109,14 @@ export function loadLevel2() {
           },
         },
       };
-      // Lock overlay so the player must choose; exitChat will unlock
       runtime.lockOverlay = true;
-      // Start the VN using a synthetic actor object (not added to world)
       const actor = { name: vnActor.name, portraitSrc: vnActor.portraitSrc, dialog: tree };
       startDialog(actor);
     } catch {}
   })();
+
+  // Recompute quest indicators (NPCs will be placed via the map legend)
+  try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
 
   return terrain;
 }
@@ -277,122 +135,8 @@ export function loadLevel3() {
   player.x = Math.floor(world.w / 2);
   player.y = Math.floor(world.h / 2);
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
-  // Build marsh terrain and obstacles
   const terrain = buildTerrainBitmap(world, 'marsh');
-  // PNG map (assets/maps/level_3.png) will populate the level; no procedural fallback
-  return terrain;
-
-  // Spawns
-  for (let k = 0; k < 6; k++) { const bx = Math.round(player.x + (Math.random() * 400 - 200)); const by = Math.round(player.y + (Math.random() * 300 - 150)); spawnEnemy(bx, by, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 }); }
-
-  // Chests and breakables (marsh) — spaced around player
-  obstacles.push({ x: Math.round(player.x - TILE * 16), y: Math.round(player.y - TILE * 12), w: 12, h: 10, type: 'chest', id: 'chest_l3_helm', fixedItemId: 'helm_iron', opened: false, locked: false });
-  obstacles.push({ x: Math.round(player.x + TILE * 12), y: Math.round(player.y - TILE * 8), w: 12, h: 12, type: 'barrel', id: 'brk_l3_a', hp: 2 });
-  obstacles.push({ x: Math.round(player.x - TILE * 10), y: Math.round(player.y + TILE * 14), w: 12, h: 12, type: 'crate', id: 'brk_l3_b', hp: 2 });
-
-  // Featured foe: Blurb — drops Reed Key (green grotesque override)
-  const wx = player.x + 180, wy = player.y - 120;
-  const blurbPaletteL3 = {
-    // Green grotesque tinting, similar to Gorg/Aarg style overrides
-    skin: '#6fdd6f',
-    hair: '#0a2a0a',
-    longHair: false,
-    dress: false,
-    shirt: '#4caf50',
-    pants: '#2e7d32',
-    outline: '#000000'
-  };
-  const blurbSheetL3 = makeSpriteSheet(blurbPaletteL3);
-  spawnEnemy(wx, wy, 'featured', {
-    name: 'Blurb', vnId: 'enemy:blurb', portrait: 'assets/portraits/level04/Blurb/Blurb.mp4',
-    vnOnSight: { text: (introTexts && introTexts.blurb) || 'Blurb: Glub-glub… mine!' }, guaranteedDropId: 'key_reed',
-    sheet: blurbSheetL3, sheetPalette: blurbPaletteL3,
-    guardian: true,
-    hp: 64, dmg: 8, hitCooldown: 0.55,  // Level 3 key guardian buff (tougher featured foe)
-  });
-  // Two normal featured foes near Blurb
-  spawnEnemy(wx - 36, wy + 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
-  spawnEnemy(wx + 28, wy - 18, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
-
-  // Boss arena (island with gate requiring Reed Key)
-  const rw = TILE * 12, rh = TILE * 8, t = 8; const rx = Math.max(TILE * 6, Math.min(world.w - rw - TILE * 6, player.x + 260)); const ry = Math.max(TILE * 6, Math.min(world.h - rh - TILE * 6, player.y + 160));
-  const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
-  const gapW = 24; const gapX = rx + (rw - gapW) / 2;
-  // Clear any procedural obstacles inside the arena footprint and at the gate opening
-  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
-  add(rx, ry + rh - t, rw, t); add(rx, ry, t, rh); add(rx + rw - t, ry, t, rh); // bottom, left, right
-  // Top splits around gate
-  add(rx, ry, gapX - rx, t); add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t);
-  obstacles.push({ x: gapX, y: ry, w: gapW, h: t, type: 'gate', id: 'marsh_gate', keyId: 'key_reed', locked: true, blocksAttacks: true });
-  // Boss spawn: Luula inside the arena (blue hair, black dress)
-  const cx = rx + rw/2 - 6;
-  const cy = ry + rh/2 - 8;
-  const luulaSheet = makeSpriteSheet({
-    hair: '#6fb7ff',
-    longHair: true,
-    dress: true,
-    dressColor: '#1a1a1a',
-    shirt: '#4a4a4a',
-    outline: '#000000',
-  });
-  spawnEnemy(cx, cy, 'boss', {
-    name: 'Luula', vnId: 'enemy:luula',
-    vnOnSight: { text: introTexts.luula },
-    sheet: luulaSheet,
-    portrait: 'assets/portraits/level03/Luula/Luula.mp4',
-    portraitPowered: 'assets/portraits/level03/Luula/Luula powered.mp4',
-    portraitDefeated: 'assets/portraits/level03/Luula/Luula defeated.mp4',
-    onDefeatNextLevel: 4,
-    hp: 65,
-    dmg: 11,
-    speed: 14,
-    hitCooldown: 0.65,  // Level 3 boss buff
-    ap: 2,
-  });
-  // Boss arena adds: 5 mooks + 2 featured foes inside the arena
-  spawnEnemy(cx - 26, cy,        'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
-  spawnEnemy(cx + 26, cy,        'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
-  spawnEnemy(cx,        cy - 26, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
-  spawnEnemy(cx,        cy + 26, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
-  spawnEnemy(cx - 18,   cy - 18, 'mook', { name: 'Marsh Whisperer', hp: 7, dmg: 5 });
-  spawnEnemy(cx - 34,   cy + 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
-  spawnEnemy(cx + 34,   cy - 16, 'featured', { name: 'Marsh Stalker', hp: 14, dmg: 6 });
-
-  // Recruitable NPCs: Tin & Nellis
-  const tinPalette = { hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true };
-  const nellisPalette = { hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0', feminineShape: true };
-  const tinSheet = makeSpriteSheet(tinPalette);
-  const nellisSheet = makeSpriteSheet(nellisPalette);
-  // Move Tin further from spawn and avoid water tiles
-  (function placeTinSafe() {
-    // Desired offset away from player spawn
-    const desired = { x: player.x - 220, y: player.y - 180 };
-    const toTile = (val) => Math.max(0, Math.floor(val / TILE));
-    let best = { x: desired.x, y: desired.y };
-    // Spiral search for a non-water, in-bounds tile near desired
-    const startTx = toTile(desired.x), startTy = toTile(desired.y);
-    let found = null;
-    for (let r = 0; r <= 30 && !found; r++) {
-      for (let dy = -r; dy <= r && !found; dy++) {
-        for (let dx = -r; dx <= r && !found; dx++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-          const tx = startTx + dx, ty = startTy + dy;
-          if (tx < 0 || ty < 0 || tx >= world.tileW || ty >= world.tileH) continue;
-          if (tileType(tx, ty) === 'water') continue;
-          const px = tx * TILE + (TILE - 12) / 2;
-          const py = ty * TILE + (TILE - 16) / 2;
-          found = { x: px|0, y: py|0 };
-        }
-      }
-    }
-    if (!found) found = best;
-    spawnNpc(found.x, found.y, 'right', { name: 'Tin', dialogId: 'tin', sheet: tinSheet, sheetPalette: tinPalette, portrait: 'assets/portraits/level03/Tin/Tin.mp4', vnOnSight: { text: introTexts.tin } });
-  })();
-  const nel = spawnNpc(player.x + 100, player.y + 140, 'left', { name: 'Nellis', dialogId: 'nellis', sheet: nellisSheet, sheetPalette: nellisPalette, portrait: 'assets/portraits/level03/Nellis/Nellis.mp4', vnOnSight: { text: introTexts.nellis } });
-  import('../data/dialogs.js').then(mod => { if (mod.tinDialog) setNpcDialog(tin, mod.tinDialog); if (mod.nellisDialog) setNpcDialog(nel, mod.nellisDialog); }).catch(()=>{});
-  // Recompute quest indicators after Level 3 spawns/dialogs
   try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
-
   return terrain;
 }
 
@@ -405,142 +149,12 @@ export function loadLevel4() {
   try { import('./lighting.js').then(m => m.setAmbientLevel(0)).catch(()=>{}); } catch {}
   // Mark progression flag for gating dialog/quests
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level4_reached'] = true; } catch {}
-  // Clear dynamic arrays
   enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
-  // Place player near center and gather companions near
   player.x = Math.floor(world.w / 2);
   player.y = Math.floor(world.h / 2);
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
-
-  // Build ruined city terrain
   const terrain = buildTerrainBitmap(world, 'city');
-  // PNG map (assets/maps/level_4.png) will populate the level; no procedural fallback
-  return terrain;
-
-  // Scatter a few enemy mooks around (off-camera)
-  for (let k = 0; k < 6; k++) {
-    const bx = Math.round(player.x + (Math.random() * 400 - 200));
-    const by = Math.round(player.y + (Math.random() * 300 - 150));
-    // Level 4 mooks: larger HP bump
-    spawnEnemy(bx, by, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  }
-  // Map-authored spawners will be applied via the PNG legend; no manual spawners here.
-
-  // Featured foe: Wight — drops City Sigil Key
-  const wightX = player.x - 200, wightY = player.y - 120;
-  const wightPaletteL4 = {
-    skin: '#f5f5f5',
-    hair: '#e6e6e6',
-    shirt: '#cfcfcf',
-    pants: '#9e9e9e',
-    outline: '#000000',
-    longHair: false,
-    dress: false,
-  };
-  const wightSheetL4 = makeSpriteSheet(wightPaletteL4);
-  spawnEnemy(wightX, wightY, 'featured', {
-    name: 'Wight', vnId: 'enemy:wight', sheet: wightSheetL4,
-    portrait: 'assets/portraits/level03/Wight/Wight.mp4',
-    vnOnSight: { text: (introTexts && introTexts.wight) || 'Wight: …' },
-    guaranteedDropId: 'key_sigil',
-    guardian: true,
-    hp: 76, dmg: 9, hitCooldown: 0.5,  // Level 4 key guardian buff (tougher featured foe)
-    sheetPalette: wightPaletteL4,
-  });
-  // Two normal featured foes near Wight
-  spawnEnemy(wightX - 32, wightY + 12, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
-  spawnEnemy(wightX + 34, wightY - 14, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
-
-  // Boss arena (city plaza) with a top gate requiring Iron Sigil
-  const rw = TILE * 12, rh = TILE * 8, t = 8;
-  // Fixed position near coordinates (92, 51)
-  const rx = 86 * TILE;  // Position arena around x:86-98
-  const ry = 48 * TILE;  // Position arena around y:48-56
-  const add = (x,y,w,h,type='wall',extra={}) => obstacles.push(Object.assign({ x, y, w, h, type, blocksAttacks: type==='wall' }, extra));
-  const gapW = 24; const gapX = rx + (rw - gapW) / 2;
-  // Clear any procedural obstacles inside the arena footprint and at the gate opening
-  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
-  // Build walls with a gap for the gate
-  add(rx, ry + rh - t, rw, t); // bottom
-  add(rx, ry, t, rh);          // left
-  add(rx + rw - t, ry, t, rh); // right
-  add(rx, ry, gapX - rx, t);   // top-left
-  add(gapX + gapW, ry, (rx + rw) - (gapX + gapW), t); // top-right
-  // Locked gate requires key_sigil — single entry point only
-  obstacles.push({ x: gapX, y: ry, w: gapW, h: t, type: 'gate', id: 'city_gate', keyId: 'key_sigil', locked: true, blocksAttacks: true });
-
-  // Boss: Vanificia inside arena
-  const cx = rx + rw/2 - 6; const cy = ry + rh/2 - 8;
-  const vaniSheet = makeSpriteSheet({ hair: '#8a3dff', longHair: true, dress: true, dressColor: '#2a123a', shirt: '#4a2a6b', outline: '#000000' });
-  spawnEnemy(cx, cy, 'boss', {
-    name: 'Vanificia', vnId: 'enemy:vanificia', sheet: vaniSheet,
-    vnOnSight: { text: (introTexts && introTexts.vanificia) || 'Vanificia: You trespass in Urathar\'s city. Kneel, or be unmade.' },
-    portrait: 'assets/portraits/level04/Vanificia/Vanificia.mp4',
-    portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4',
-    portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4',
-    hp: 80,
-    dmg: 13,
-    speed: 16,
-    hitCooldown: 0.6,  // Level 4 boss buff
-    onDefeatNextLevel: 5,
-    ap: 3,
-  });
-  // Boss arena adds: 6 mooks + 2 featured foes inside the arena
-  spawnEnemy(cx - 26, cy,        'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  spawnEnemy(cx + 26, cy,        'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  spawnEnemy(cx,        cy - 26, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  spawnEnemy(cx,        cy + 26, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  spawnEnemy(cx - 18,   cy - 18, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  spawnEnemy(cx + 18,   cy + 18, 'mook', { name: 'Urathar Soldier', hp: 9, dmg: 6 });
-  spawnEnemy(cx - 36,   cy + 16, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
-  spawnEnemy(cx + 36,   cy - 16, 'featured', { name: 'City Brute', hp: 18, dmg: 7 });
-
-  
-
-  // Synchronous: add hard-coded wall rectangles from data (tiles -> pixels)
-  for (const r of LEVEL4_CITY_WALL_RECTS) {
-    obstacles.push({ x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type: 'wall', blocksAttacks: true });
-  }
-  // Re-clear arena and spawn safety after adding walls
-  clearArenaInteriorAndGate(obstacles, { x: rx, y: ry, w: rw, h: rh }, t, { x: gapX, y: ry, w: gapW, h: t });
-  const spawnSafe = { x: player.x - TILE * 5, y: player.y - TILE * 5, w: TILE * 10, h: TILE * 10 };
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const o = obstacles[i]; if (!o) continue;
-    if (o.type !== 'wall') continue;
-    const inter = !(o.x + o.w <= spawnSafe.x || o.x >= spawnSafe.x + spawnSafe.w || o.y + o.h <= spawnSafe.y || o.y >= spawnSafe.y + spawnSafe.h);
-    if (inter) obstacles.splice(i, 1);
-  }
-
-  // Recruitable NPCs: Urn & Varabella
-  const urnPalette = { hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0', feminineShape: true };
-  const varaPalette = { hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true };
-  const urnSheet = makeSpriteSheet(urnPalette);
-  const varaSheet = makeSpriteSheet(varaPalette);
-  const urn = spawnNpc(player.x - 140, player.y + 100, 'up', { name: 'Urn', dialogId: 'urn', sheet: urnSheet, sheetPalette: urnPalette, portrait: 'assets/portraits/level04/Urn/Urn.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.urn) || 'Urn: If you lead, I can keep pace.' } });
-  let vara;
-  // Place Varabella; avoid spawning on fire/lava tiles
-  (function placeVarabella() {
-    const start = { x: player.x + 140, y: player.y - 120 };
-    const rect = (x,y) => ({ x, y, w: 12, h: 16 });
-    const overlapsHazard = (r) => obstacles.some(o => (o.type === 'fire' || o.type === 'lava') && !(r.x + r.w <= o.x || r.x >= o.x + o.w || r.y + r.h <= o.y || r.y >= o.y + o.h));
-    const candidates = [
-      { x: start.x, y: start.y },
-      { x: start.x + TILE * 4, y: start.y },
-      { x: start.x - TILE * 4, y: start.y },
-      { x: start.x, y: start.y + TILE * 4 },
-      { x: start.x, y: start.y - TILE * 4 },
-      { x: start.x + TILE * 4, y: start.y + TILE * 4 },
-      { x: start.x - TILE * 4, y: start.y + TILE * 4 },
-      { x: start.x + TILE * 4, y: start.y - TILE * 4 },
-      { x: start.x - TILE * 4, y: start.y - TILE * 4 },
-    ];
-    let spot = candidates.find(p => !overlapsHazard(rect(p.x, p.y))) || start;
-    vara = spawnNpc(spot.x, spot.y, 'down', { name: 'Varabella', dialogId: 'varabella', sheet: varaSheet, sheetPalette: varaPalette, portrait: 'assets/portraits/level04/Varabella/Varabella.mp4', affinity: 5, vnOnSight: { text: (introTexts && introTexts.varabella) || 'Varabella: Need a sharper eye and a steadier hand?' } });
-  })();
-  import('../data/dialogs.js').then(mod => { if (mod.urnDialog) setNpcDialog(urn, mod.urnDialog); if (mod.varabellaDialog) setNpcDialog(vara, mod.varabellaDialog); }).catch(()=>{});
-  // Recompute quest indicators after Level 4 spawns/dialogs
   try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
-
   return terrain;
 }
 
@@ -550,215 +164,12 @@ export function loadLevel5() {
   world.tileH = LEVEL5_TEMPLE_SIZE.tileH;
   try { if (!runtime.questFlags) runtime.questFlags = {}; runtime.questFlags['level5_reached'] = true; } catch {}
   enemies.length = 0; npcs.length = 0; obstacles.length = 0; corpses.length = 0; stains.length = 0; floaters.length = 0; sparkles.length = 0; spawners.length = 0;
-
-  // Spawn player in top-left entrance room
   const spawnPoint = LEVEL5_TEMPLE_FEATURES.playerSpawn;
   player.x = spawnPoint.x * TILE;
   player.y = spawnPoint.y * TILE;
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
-
   const terrain = buildTerrainBitmap(world, 'city');
-  // PNG map (assets/maps/level_5.png) will populate the level; no procedural fallback
-  return terrain;
-  
-  // Add all temple walls from the map layout
-  for (const wall of LEVEL5_TEMPLE_WALLS) {
-    obstacles.push({
-      x: wall.x * TILE,
-      y: wall.y * TILE,
-      w: wall.w * TILE,
-      h: wall.h * TILE,
-      type: 'wall',
-      blocksAttacks: true
-    });
-  }
-  
-  // Add water pool as a hazard
-  const water = LEVEL5_TEMPLE_FEATURES.waterPool;
-  obstacles.push({
-    x: water.x * TILE,
-    y: water.y * TILE,
-    w: water.w * TILE,
-    h: water.h * TILE,
-    type: 'water',
-    blocksAttacks: true
-  });
-  
-  // Add gates between rooms
-  for (const gate of LEVEL5_TEMPLE_FEATURES.gates) {
-    obstacles.push({
-      x: gate.x * TILE,
-      y: gate.y * TILE,
-      w: gate.w * TILE,
-      h: gate.h * TILE,
-      type: 'gate',
-      id: gate.keyId,
-      keyId: gate.keyId,
-      locked: gate.locked !== false,
-      blocksAttacks: true
-    });
-  }
-
-  // Enemy spawner — temple guard reinforcements (invisible), continuous when near
-  // Center approx near central corridor: (player.x + 220, player.y + 120)
-  import('./state.js').then(m => {
-    m.addSpawner({
-      id: 'l5_temple_guards', visible: false,
-      x: Math.round(player.x + 220), y: Math.round(player.y + 120), w: 28, h: 18,
-      enemy: { kind: 'mook', name: 'Temple Guard', hp: 12, dmg: 7 },
-      batchSize: 2, intervalSec: 10, initialDelaySec: 6, jitterSec: 1.5,
-      // infinite total; limit concurrent to avoid floods
-      concurrentCap: 6,
-      proximityMode: 'near', radiusPx: 220,
-    });
-  }).catch(()=>{});
-
-  // Add some fire hazards in corridors
-  obstacles.push({ x: 55 * TILE, y: 50 * TILE, w: TILE * 2, h: TILE * 2, type: 'fire' });
-  obstacles.push({ x: 100 * TILE, y: 48 * TILE, w: TILE * 2, h: TILE * 2, type: 'fire' });
-  
-  // Key guardian: Fana (enslaved sorceress); drops the first temple key
-  // Place in the middle-right room
-  const fanaSpawn = findSafeSpawn(105, 52);
-  const kgx = fanaSpawn.x * TILE, kgy = fanaSpawn.y * TILE;
-  spawnEnemy(kgx, kgy, 'featured', {
-    name: 'Fana', vnId: 'enemy:fana',
-    portrait: 'assets/portraits/level05/Fana/Fana villain.mp4',
-    portraitDefeated: 'assets/portraits/level05/Fana/Fana.mp4',  // Shows normal Fana when defeated
-    vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: I must... protect the temple... Vorthak commands...', lock: true, preDelaySec: 0.8 },
-    guaranteedDropId: 'key_temple',  // Boss gate key
-    guardian: true,
-    hp: 92, dmg: 11, hitCooldown: 0.45,  // Level 5 key guardian buff (tougher featured foe)
-  });
-  // Two normal featured foes near Fana
-  spawnEnemy(kgx - TILE * 2, kgy + TILE * 1, 'featured', { name: 'Temple Sentinel', hp: 22, dmg: 9 });
-  spawnEnemy(kgx + TILE * 2, kgy - TILE * 1, 'featured', { name: 'Temple Sentinel', hp: 22, dmg: 9 });
-
-  // Additional featured foe in the central pillar room
-  const sentinelSpawn = findSafeSpawn(65, 16);
-  const ff2x = sentinelSpawn.x * TILE, ff2y = sentinelSpawn.y * TILE;
-  spawnEnemy(ff2x, ff2y, 'featured', { name: 'Temple Sentinel', hp: 30, dmg: 9 });
-
-  // Boss Vorthak (2x visual scale) in the bottom-right boss arena
-  const bossLoc = LEVEL5_TEMPLE_FEATURES.bossLocation;
-  const cx = bossLoc.x * TILE; const cy = bossLoc.y * TILE;
-  spawnEnemy(cx, cy, 'boss', {
-    name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32, 
-    hp: 100, dmg: 15, speed: 18, hitCooldown: 0.55,  // Level 5 boss buff (reduced dmg)
-    ap: 5,
-    // Boss portraits for VN overlays
-    portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4',
-    portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4',
-    portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4',
-    portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4',
-    onDefeatNextLevel: 6,
-    vnOnSight: {
-      lock: true, // Play before player can move
-      preDelaySec: 0.5,
-      get text() {
-        const hasCanopy = companions.some(c => c && !c.isDead && c.inParty && (c.name || '').toLowerCase().includes('canopy'));
-        return hasCanopy ? introTexts.vorthak_intro_with_canopy : introTexts.vorthak_intro_default;
-      }
-    },
-  });
-  spawnEnemy(cx - 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
-  spawnEnemy(cx + 28, cy,      'mook', { name: 'Temple Guard', hp: 10, dmg: 7 });
-
-  // Boss arena mook spawner (proximity-activated)
-  import('./state.js').then(m => {
-    m.addSpawner({
-      id: 'l5_boss_arena_mooks', visible: false,
-      x: Math.round(cx - 24), y: Math.round(cy - 16), w: 48, h: 32,
-      enemy: { kind: 'mook', name: 'Temple Guard', hp: 12, dmg: 7 },
-      batchSize: 2, intervalSec: 8, initialDelaySec: 2, jitterSec: 1.2,
-      // infinite waves, but cap concurrency in arena
-      concurrentCap: 4,
-      proximityMode: 'near', radiusPx: 140,
-    });
-  }).catch(()=>{});
-
-  // Spawn enemies in designated zones
-  (function addMooks() {
-    for (const zone of LEVEL5_TEMPLE_FEATURES.enemyZones) {
-      // Spawn 3-5 mooks per zone for more challenge
-      const count = 3 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < count; i++) {
-        const x = zone.x + Math.floor(Math.random() * zone.w);
-        const y = zone.y + Math.floor(Math.random() * zone.h);
-        const safePos = findSafeSpawn(x, y);
-        spawnEnemy(safePos.x * TILE, safePos.y * TILE, 'mook', { name: 'Temple Guard', hp: 12, dmg: 7 });
-      }
-    }
-    
-    // Add extra wandering temple guards
-    const extraGuards = [
-      { x: 35, y: 45 }, { x: 85, y: 30 }, { x: 115, y: 25 },
-      { x: 25, y: 60 }, { x: 95, y: 70 }, { x: 125, y: 55 },
-      { x: 50, y: 90 }, { x: 70, y: 45 }, { x: 40, y: 25 }
-    ];
-    for (const pos of extraGuards) {
-      const safePos = findSafeSpawn(pos.x, pos.y);
-      spawnEnemy(safePos.x * TILE, safePos.y * TILE, 'mook', { name: 'Temple Guard', hp: 14, dmg: 7 });
-    }
-  })();
-
-  // High-quality loot chests
-  // Chest 1: Master Sword - hidden in top-right room
-  obstacles.push({
-    x: 118 * TILE, y: 12 * TILE, w: TILE, h: TILE,
-    type: 'chest', id: 'chest_l5_sword', fixedItemId: 'master_sword', opened: false, locked: false
-  });
-  
-  // Chest 2: Plate Mail - in bottom-left stairs room
-  obstacles.push({
-    x: 20 * TILE, y: 85 * TILE, w: TILE, h: TILE,
-    type: 'chest', id: 'chest_l5_armor', fixedItemId: 'plate_mail', opened: false, locked: false
-  });
-  
-  // Chest 3: Plate Boots - near water room
-  obstacles.push({
-    x: 165 * TILE, y: 55 * TILE, w: TILE, h: TILE,
-    type: 'chest', id: 'chest_l5_boots', fixedItemId: 'plate_boots', opened: false, locked: false
-  });
-  
-  // Chest 4: Heavy Shield - in central corridor
-  obstacles.push({
-    x: 60 * TILE, y: 60 * TILE, w: TILE, h: TILE,
-    type: 'chest', id: 'chest_l5_shield', fixedItemId: 'heavy_shield', opened: false, locked: false
-  });
-  
-  // Barrels scattered throughout
-  obstacles.push({ x: 15 * TILE, y: 10 * TILE, w: TILE, h: TILE, type: 'barrel' });
-  obstacles.push({ x: 75 * TILE, y: 35 * TILE, w: TILE, h: TILE, type: 'barrel' });
-  obstacles.push({ x: 105 * TILE, y: 50 * TILE, w: TILE, h: TILE, type: 'barrel' });
-  obstacles.push({ x: 55 * TILE, y: 85 * TILE, w: TILE, h: TILE, type: 'barrel' });
-  
-  // Boxes for cover and exploration
-  obstacles.push({ x: 58 * TILE, y: 14 * TILE, w: TILE, h: TILE, type: 'box' });
-  obstacles.push({ x: 95 * TILE, y: 45 * TILE, w: TILE, h: TILE, type: 'box' });
-  obstacles.push({ x: 35 * TILE, y: 75 * TILE, w: TILE, h: TILE, type: 'box' });
-
-  // Recruitable NPC: Cowsill — use canonical palette (bright blonde + black dress, feminine)
-  const cowsillSheet = sheetForName('cowsill');
-  // Place Cowsill in the bottom-center safe room
-  const cowsillSpawn = LEVEL5_TEMPLE_FEATURES.npcSpawns[2]; // Third NPC spawn point
-  const cowsillX = cowsillSpawn.x * TILE;
-  const cowsillY = cowsillSpawn.y * TILE;
-  const cowsill = spawnNpc(cowsillX, cowsillY, 'down', { 
-    name: 'Cowsill', 
-    dialogId: 'cowsill', 
-    sheet: cowsillSheet, 
-    portrait: 'assets/portraits/level05/Cowsill/Cowsill.mp4',
-    affinity: 5,
-    vnOnSight: { text: (introTexts && introTexts.cowsill) || 'Cowsill: "Hey there! Need a strike partner? Together we hit twice as hard!"' }
-  });
-  import('../data/dialogs.js').then(mod => { 
-    if (mod.cowsillDialog) setNpcDialog(cowsill, mod.cowsillDialog); 
-  }).catch(()=>{});
-
-  // Recompute quest indicators after Level 5 spawns/dialogs
   try { import('./quest_indicators.js').then(m => m.recomputeQuestIndicators && m.recomputeQuestIndicators()); } catch {}
-
   return terrain;
 }
 

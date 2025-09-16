@@ -45,7 +45,7 @@ export const enemyEffectsByKey = {
   wight: {
     // Tougher key guardian: add baseline DR
     auras: {
-      dr: 1,
+      dr: 1.6,
       regen: 0.05,
       regenNear: { radius: 100, mult: 2.0 },
       weakenRange: 1, weakenRadius: 100,

@@ -79,7 +79,7 @@ function buildObstaclesFromGrid(grid, legend) {
   rects.sort((a, b) => pri(a.type) - pri(b.type));
   for (const r of rects) {
     const type = r.type;
-    const o = { x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type, blocksAttacks: (type === 'wall' || type === 'marble' || type === 'gold_wall' || type === 'wood_wall' || (type === 'gate')) };
+    const o = { x: r.x * TILE, y: r.y * TILE, w: r.w * TILE, h: r.h * TILE, type, blocksAttacks: (type === 'wall' || type === 'marble' || type === 'gold_wall' || type === 'wood_wall' || type === 'rock' || (type === 'gate')) };
     if (type === 'gate') { o.locked = true; o.id = o.id || 'castle_gate'; o.keyId = o.keyId || 'castle_gate'; }
     obstacles.push(o);
   }
@@ -392,7 +392,7 @@ export async function applyPngMap(url, legend) {
               portraitPowered: 'assets/portraits/level02/Nethra/Nethra powered.mp4',
               portraitDefeated: 'assets/portraits/level02/Nethra/Nethra defeated.mp4',
               onDefeatNextLevel: 3,
-              hp: 50, dmg: 9, speed: 12, hitCooldown: 0.7,
+              hp: 50, dmg: 8, speed: 12, hitCooldown: 0.7,
               vnOnSight: { text: introTexts.nethra },
               ap: 2,
             });

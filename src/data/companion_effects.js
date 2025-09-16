@@ -40,7 +40,7 @@ export const companionEffectsByKey = {
       { type: 'slow', value: 0.2, radius: 48, anchor: 'player' },
       { type: 'touchDR', value: 1 },
       // Wind ward: strong resistance to ranged/projectile damage
-      { type: 'rangedDR', value: 3 },
+      { type: 'rangedDR', value: 3.3 },
       // Wind deflection: chance to deflect incoming projectiles near the player
       { type: 'deflect', value: 0.35, radius: 56, anchor: 'player' },
       // Slipstream (passive): modest dash cooldown reduction

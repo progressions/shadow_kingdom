@@ -53,7 +53,7 @@ This document specifies the aura/trigger system for enemies (starting with key g
     - Snap Gust: if player within 30px, push 12px + 0.20 slow for 0.3s (10s CD).
 
 - Wight (Level 3) — Grave Hunger
-  - Auras: regen 0.05 HP/s (0.10 HP/s within 100px); player range −1 within 100px.
+  - Auras: DR +1.6; regen 0.05 HP/s (0.10 HP/s within 100px); player range −1 within 100px.
   - Triggers:
     - Grasp: if player within 36px, apply 0.30 slow for 0.4s (9s CD).
 

@@ -142,7 +142,7 @@ export const LEVEL_LEGENDS = {
       tolerance: 14,
       tolerantTypes: ['grass'],
       actors: {
-        guardian: { kind: 'featured', opts: { name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_sigil', guardian: true, hp: 76, dmg: 9, hitCooldown: 0.5 } },
+        guardian: { kind: 'featured', opts: { name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_sigil', guardian: true, hp: 76, dmg: 11, hitCooldown: 0.55, speed: 9, w: 14, h: 18 } },
         boss: { name: 'Vanificia', vnId: 'enemy:vanificia', portrait: 'assets/portraits/level04/Vanificia/Vanificia.mp4', portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4', portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4', vnOnSight: { text: introTexts.vanificia }, onDefeatNextLevel: 5, hp: 80, dmg: 13, speed: 16, hitCooldown: 0.6, ap: 3 },
       },
       colors: {
