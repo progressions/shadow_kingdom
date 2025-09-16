@@ -300,34 +300,12 @@ export async function applyPngMap(url, legend) {
     // Clear any previous authored light nodes to avoid duplication when applying maps repeatedly
     try { clearLightNodes(); } catch {}
 
-    // Player spawn override (tile origin) with safety: ensure a passable tile
-    (function placePlayerSafely(){
-      const w = world.tileW, h = world.tileH;
-      const idx = (x,y) => y*w + x;
-      const isPassable = (t) => (t == null) || (t === 'wood') || (t === 'stone_floor');
-      let sx = (playerSpawn ? playerSpawn.x : Math.floor(w/2))|0;
-      let sy = (playerSpawn ? playerSpawn.y : Math.floor(h/2))|0;
-      sx = Math.max(0, Math.min(w-1, sx));
-      sy = Math.max(0, Math.min(h-1, sy));
-      if (!isPassable(grid[idx(sx, sy)])) {
-        let found = null;
-        const maxR = 50;
-        for (let r = 1; r <= maxR && !found; r++) {
-          for (let dy = -r; dy <= r && !found; dy++) {
-            for (let dx = -r; dx <= r && !found; dx++) {
-              if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-              const tx = sx + dx, ty = sy + dy;
-              if (tx < 0 || ty < 0 || tx >= w || ty >= h) continue;
-              if (isPassable(grid[idx(tx, ty)])) { found = { x: tx, y: ty }; }
-            }
-          }
-        }
-        if (found) { sx = found.x; sy = found.y; }
-      }
-      player.x = Math.floor(sx * TILE);
-      player.y = Math.floor(sy * TILE);
+    // Player spawn override (tile origin) — authoritatively use map-defined spawn
+    if (playerSpawn) {
+      player.x = Math.floor(playerSpawn.x * TILE);
+      player.y = Math.floor(playerSpawn.y * TILE);
       for (let i = 0; i < companions.length; i++) { const c = companions[i]; if (!c) continue; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
-    })();
+    }
 
     // Add invisible proximity spawners defined in the map
     try {
