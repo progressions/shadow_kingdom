@@ -290,7 +290,7 @@ export const COMPANION_BUFF_CAPS = {
   regen: 0.6,  // HP per second (increased sustain ceiling)
   range: 4,    // pixels (slightly longer reach stacking)
   touchDR: 2,  // stronger mitigation vs touch/contact damage
-  rangedDR: 4, // strong mitigation vs ranged/projectile damage
+  rangedDR: 5, // strong mitigation vs ranged/projectile damage
   deflect: 0.6, // up to 60% chance to deflect a projectile entering the wind aura
   slow: 0.35,  // 35% max slow from stacked auras/triggers
   aspd: 0.75,  // up to +75% attack speed from stacked sources
