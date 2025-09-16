@@ -163,20 +163,7 @@ export function exitChat(runtime) {
       }
     }
   } catch {}
-  try {
-    if (Array.isArray(runtime._queuedCompanionTalks) && runtime._queuedCompanionTalks.length > 0) {
-      const next = runtime._queuedCompanionTalks.shift();
-      if (next && next.comp) {
-        const delay = Math.max(0, next.delay || 0);
-        setTimeout(() => {
-          import('./dialog.js').then(mod => {
-            if (mod.openCompanionTalk) mod.openCompanionTalk(next.comp);
-          }).catch(()=>{});
-        }, delay);
-        return;
-      }
-    }
-  } catch {}
+  // Companion talks now open immediately after recruitment; no queued handling required.
   // Smooth pan back to player after VN exits
   const toX = Math.round(player.x + player.w/2 - camera.w/2);
   const toY = Math.round(player.y + player.h/2 - camera.h/2);

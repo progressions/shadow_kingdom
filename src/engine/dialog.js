@@ -115,12 +115,6 @@ export function openCompanionTalk(comp) {
   } catch {}
 }
 
-function scheduleCompanionTalk(comp, delay = 150) {
-  if (!comp) return;
-  const list = runtime._queuedCompanionTalks || (runtime._queuedCompanionTalks = []);
-  list.push({ comp, delay: Math.max(0, delay) });
-}
-
 function torchBark(comp) {
   const name = (comp?.name || '').toLowerCase();
   const aff = (typeof comp?.affinity === 'number') ? comp.affinity : 5;
@@ -324,11 +318,8 @@ export function renderCurrentNode() {
     const looksTurnIn = (ch) => !!questIdForTurnInChoice(ch);
     const looksBack = (ch) => {
       const action = String(ch?.action || '').toLowerCase();
-      if (action === 'companion_back' || action === 'end') return true;
-      const lbl = String(ch?.label || '').trim().toLowerCase();
-      return lbl === 'back' || lbl === 'cancel' || lbl === 'never mind';
+      return action === 'companion_back' || action === 'end';
     };
-    // Stable-ish: partition rather than full sort to preserve original order within groups
     const turnins = []; const news = []; const rest = []; const backs = [];
     for (const ch of effectiveChoices) {
       if (looksTurnIn(ch)) turnins.push(ch);
@@ -338,7 +329,7 @@ export function renderCurrentNode() {
     }
     effectiveChoices = turnins.concat(news, rest, backs);
   } catch {}
-  try { runtime.activeDialog._resolved = { nodeId, choices: effectiveChoices }; } catch {}
+  try { runtime.activeDialog._resolved = { nodeId, choices: effectiveChoices.slice() }; } catch {}
   setOverlayDialog(effectiveText, effectiveChoices);
   // Sidebar placeholder removed; VN overlay displays choices
 }
@@ -380,6 +371,7 @@ export function selectChoice(index) {
             handleAffinityAdd({ target: 'active', amount: delta, flag: flag || undefined });
           }
           const npc = runtime.activeNpc;
+          let newComp = null;
           if (npc) {
             // Feud gating: Yorna ↔ Canopy cannot join together until truce
             try {
@@ -405,42 +397,49 @@ export function selectChoice(index) {
               startPrompt(npc, `${npc.name || 'Companion'}: Your party is full. Who should I replace?`, choices);
               return;
             }
-      const newComp = spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
-      const idx = npcs.indexOf(npc);
-      if (idx !== -1) npcs.splice(idx, 1);
-      updatePartyUI(companions);
-      const joinMsg = `${npc.name || 'Companion'} joined your party!`;
-      const delay = (delta !== 0) ? 900 : 0;
-      if (delay > 0) setTimeout(() => { try { showBanner(joinMsg); } catch {} }, delay);
-      else showBanner(joinMsg);
-      try {
-        const nm = String(npc.name || '').toLowerCase();
-        const id = String(npc.dialogId || '').toLowerCase();
-        if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
-        playSfx('partyJoin');
-        // Hola quest: Find Yorna — grant reward on recruiting Yorna
-        if (nm.includes('yorna')) {
-          if (!runtime.questFlags) runtime.questFlags = {};
-          if (runtime.questFlags['hola_find_yorna_started'] && !runtime.questFlags['hola_find_yorna_cleared']) {
-            runtime.questFlags['hola_find_yorna_cleared'] = true;
-            import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('hola_find_yorna')).catch(()=>{});
+            newComp = spawnCompanion(npc.x, npc.y, npc.sheet || null, { spriteId: npc.spriteId || null, name: npc.name || 'Companion', portrait: npc.portraitSrc, affinity: (typeof npc.affinity === 'number') ? npc.affinity : ((String(npc.name||'').toLowerCase()==='codex') ? 5 : 3) });
+            const idx = npcs.indexOf(npc);
+            if (idx !== -1) npcs.splice(idx, 1);
+            updatePartyUI(companions);
+            const joinMsg = `${npc.name || 'Companion'} joined your party!`;
+            const delay = (delta !== 0) ? 900 : 0;
+            if (delay > 0) setTimeout(() => { try { showBanner(joinMsg); } catch {} }, delay);
+            else showBanner(joinMsg);
+            try {
+              const nm = String(npc.name || '').toLowerCase();
+              const id = String(npc.dialogId || '').toLowerCase();
+              if (nm.includes('snake') || nm.includes('snek') || id === 'snake') playSfx('hiss');
+              playSfx('partyJoin');
+              // Hola quest: Find Yorna — grant reward on recruiting Yorna
+              if (nm.includes('yorna')) {
+                if (!runtime.questFlags) runtime.questFlags = {};
+                if (runtime.questFlags['hola_find_yorna_started'] && !runtime.questFlags['hola_find_yorna_cleared']) {
+                  runtime.questFlags['hola_find_yorna_cleared'] = true;
+                  import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('hola_find_yorna')).catch(()=>{});
+                }
+              }
+              if (!runtime.questFlags) runtime.questFlags = {};
+              if (nm.includes('hola')) {
+                if (runtime.questFlags['yorna_find_hola_started'] && !runtime.questFlags['yorna_find_hola_cleared']) {
+                  runtime.questFlags['yorna_find_hola_cleared'] = true;
+                  import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('yorna_find_hola')).catch(()=>{});
+                }
+              }
+              if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
+                runtime.questFlags['tutorial_save_canopy_done'] = true;
+                runtime.questFlags['tutorial_save_canopy'] = false;
+                hideBanner();
+              }
+            } catch {}
           }
-        }
-        if (!runtime.questFlags) runtime.questFlags = {};
-        if (nm.includes('hola')) {
-          if (runtime.questFlags['yorna_find_hola_started'] && !runtime.questFlags['yorna_find_hola_cleared']) {
-            runtime.questFlags['yorna_find_hola_cleared'] = true;
-            import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('yorna_find_hola')).catch(()=>{});
+          endDialog();
+          if (newComp) {
+            exitChat(runtime);
+            openCompanionTalk(newComp);
+            return;
           }
-        }
-        if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
-          runtime.questFlags['tutorial_save_canopy_done'] = true;
-          runtime.questFlags['tutorial_save_canopy'] = false;
-          hideBanner();
-        }
-      } catch {}
-          }
-          endDialog(); exitChat(runtime); return;
+          exitChat(runtime);
+          return;
         }
         if (choice.action === 'vn_intro_defer') {
           try { if (choice?.data?.flag) handleSetFlag({ key: String(choice.data.flag) }); } catch {}
@@ -511,7 +510,10 @@ export function selectChoice(index) {
           hideBanner();
         }
       } catch {}
-      endDialog(); exitChat(runtime); scheduleCompanionTalk(newComp); return;
+      endDialog();
+      exitChat(runtime);
+      if (newComp) { openCompanionTalk(newComp); }
+      return;
     }
     endDialog(); exitChat(runtime); return;
   }
@@ -554,7 +556,7 @@ export function selectChoice(index) {
     }
     endDialog();
     exitChat(runtime);
-    if (newComp) scheduleCompanionTalk(newComp);
+    if (newComp) openCompanionTalk(newComp);
     return;
   }
   if (choice.action === 'companion_torch_start') {
@@ -655,7 +657,7 @@ export function selectChoice(index) {
     } catch {}
     endDialog();
     exitChat(runtime);
-    if (newComp) scheduleCompanionTalk(newComp);
+    if (newComp) openCompanionTalk(newComp);
     return;
   }
   if (choice.action === 'dismiss_companion') {
@@ -1010,6 +1012,7 @@ function handleAffinityAdd(data) {
     const amt = (typeof data?.amount === 'number') ? data.amount : 0;
     const tgt = data?.target || 'active';
     const flag = data?.flag || null;
+    const questFlag = data?.questFlag ? String(data.questFlag) : '';
     if (flag && runtime.affinityFlags && runtime.affinityFlags[flag]) return; // already applied
     const ent = resolveEntityForAffinity(tgt);
     if (!ent) return;
@@ -1039,7 +1042,14 @@ function handleAffinityAdd(data) {
       }
     } catch {}
     ent.affinity = Math.max(1, Math.min(10, (typeof ent.affinity === 'number' ? ent.affinity : 5) + delta));
-    if (flag) runtime.affinityFlags[flag] = true;
+    if (questFlag) {
+      if (!runtime.questFlags) runtime.questFlags = {};
+      runtime.questFlags[questFlag] = true;
+    }
+    if (flag) {
+      if (!runtime.affinityFlags) runtime.affinityFlags = {};
+      runtime.affinityFlags[flag] = true;
+    }
     // Feedback
     try { const shown = Math.round(delta * 100) / 100; if (shown !== 0) showBanner(`${ent.name || 'Companion'} affinity ${delta >= 0 ? '+' : ''}${shown}`); } catch {}
     // Refresh party UI so hearts/values reflect the new affinity immediately

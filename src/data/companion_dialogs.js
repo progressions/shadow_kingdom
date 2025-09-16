@@ -19,7 +19,7 @@ export const companionDialogs = {
         choices: [
           { label: 'Can you watch over us?', next: 'support' },
           { label: 'How are you holding up?', next: 'mood' },
-          { label: 'Tell me about your sister.', next: 'sister_chat' },
+          { label: 'Tell me about your sister.', requires: { missingFlag: 'canopy_sister_promise_done' }, next: 'sister_promise_intro' },
           // Bond entries (show only when available)
           { label: 'Open up', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
           { label: 'Share a memory (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
@@ -93,20 +93,37 @@ export const companionDialogs = {
           { label: 'Back', action: 'companion_back' },
         ]
       },
-      // Sister storyline chats (non-quest, small affinity bumps)
-      sister_chat: {
-        text: "Canopy: Her name is Ell. We got split when Urathar's line cut the valley. I keep catching the same ribbon color in crowds… then it isn't her.",
+      sister_promise_intro: {
+        text: "Canopy: Ell is still out there. I keep seeing her ribbon in the crowds. Every time it isn’t her, it feels like slipping on the same stone twice.",
         choices: [
-          { label: 'We will find her. I promise.', action: 'affinity_add', data: { target: 'active', amount: 0.5, flag: 'canopy_aff_sister_promise' }, next: 'sister_chat_more' },
-          { label: 'Tell me what to look for.', action: 'affinity_add', data: { target: 'active', amount: 0.3, flag: 'canopy_aff_sister_look' }, next: 'sister_chat_more' },
-          { label: 'Back', next: 'root' },
+          { label: 'We\'ll take the search slow.', action: 'start_quest', data: { id: 'canopy_sister_promise' }, next: 'sister_promise_steps' },
+          { label: 'If you lead, I\'ll follow.', action: 'start_quest', data: { id: 'canopy_sister_promise' }, next: 'sister_promise_follow' },
+          { label: 'Maybe later.', action: 'companion_back' },
         ]
       },
-      sister_chat_more: {
-        text: "Canopy: She has a reed-stitched ribbon... and a laugh that fills the whole forest. Finding her is everything to me. Thank you for helping me look, My Lord. It... it means more than I can say.",
-        choices: [ { label: 'We will.', next: 'root' } ]
+      sister_promise_steps: {
+        text: "Canopy: Slow… I can do slow. I just need to keep breathing. Five counts in, five counts out. Ell used to tap my shoulder when I rushed.",
+        choices: [
+          { label: 'Tell me more about her.', next: 'sister_promise_more' },
+        ]
       },
-
+      sister_promise_follow: {
+        text: "Canopy: I will. I won\'t lose the thread this time. If you stay at my side, the shadows feel thinner.",
+        choices: [
+          { label: 'Keep talking to me.', next: 'sister_promise_more' },
+        ]
+      },
+      sister_promise_more: {
+        text: "Canopy: She stitched reeds so they wouldn\'t split. Taught me to look for the quiet signs—the nicks in bark, the missing moss. If I find those again… she has to be close.",
+        choices: [
+          { label: 'We\'ll find her together.', action: 'affinity_add', data: { target: 'active', amount: 0.6, flag: 'canopy_aff_sister_promise', questFlag: 'canopy_sister_promise_done' }, next: 'sister_promise_close' },
+          { label: 'We owe her calm steps.', action: 'affinity_add', data: { target: 'active', amount: 0.4, flag: 'canopy_aff_sister_calm', questFlag: 'canopy_sister_promise_done' }, next: 'sister_promise_close' },
+        ]
+      },
+      sister_promise_close: {
+        text: "Canopy: Thank you, My Lord. Breathing feels easier when you say it out loud. I\'ll hold to that promise.",
+        choices: [ { label: 'Stay close.', next: 'root' } ]
+      },
       quest_intro: {
         text: 'Canopy: My Lord, there are three hostiles nearby. If we deal with them, it will be safer for everyone.',
         choices: [
@@ -470,7 +487,7 @@ export const companionDialogs = {
         choices: [
           { label: 'What magic do you know?', next: 'magic' },
           { label: 'How\'s the journey?', next: 'mood' },
-          { label: 'Castle and key', next: 'castle_hint' },
+          { label: 'Castle and key', requires: { missingFlag: 'hola_castle_focus_done' }, next: 'castle_focus_intro' },
           // Bond entries
           { label: 'Small steps (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
           { label: 'Speak up (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
@@ -518,9 +535,32 @@ export const companionDialogs = {
         text: "Hola: My Lord... before I met you, I was always running. But when I'm with you, I feel like I can stand my ground against anything. You make me brave.",
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
-      castle_hint: {
-        text: "Hola: The castle gate needs a brass key. Gorg—the red brute—walks outside the wall. If I can stay calm, I can point us there. If I get nervous, say my name and I'll try to focus again.",
-        choices: [ { label: 'Back', next: 'root' } ]
+      castle_focus_intro: {
+        text: "Hola: The castle gate—Gorg keeps the brass key. When I think about going back there my hands shake, but if you walk with me I can remember the path.",
+        choices: [
+          { label: 'Let\'s map it out.', action: 'start_quest', data: { id: 'hola_castle_focus' }, next: 'castle_focus_map' },
+          { label: 'Breathe first.', action: 'start_quest', data: { id: 'hola_castle_focus' }, next: 'castle_focus_breathe' },
+          { label: 'Not right now.', action: 'companion_back' },
+        ]
+      },
+      castle_focus_map: {
+        text: "Hola: Outside the wall there\'s a split oak. If we circle left, we can see the patrols before they see us. Gorg leans on the parapet when he\'s bored.",
+        choices: [ { label: 'Keep going.', next: 'castle_focus_plan' } ]
+      },
+      castle_focus_breathe: {
+        text: "Hola: Okay. In… and out. Again. Thank you. When you say my name like that I can hear over the thunder in my ears.",
+        choices: [ { label: 'Now show me the route.', next: 'castle_focus_plan' } ]
+      },
+      castle_focus_plan: {
+        text: "Hola: We sneak under the broken lantern, take the narrow stairs, and wait until he yawns. That\'s when he drops the key to roll his shoulders.",
+        choices: [
+          { label: 'We\'ll take it together.', action: 'affinity_add', data: { target: 'active', amount: 0.5, flag: 'hola_aff_castle_plan', questFlag: 'hola_castle_focus_done' }, next: 'castle_focus_close' },
+          { label: 'You\'ll call the timing.', action: 'affinity_add', data: { target: 'active', amount: 0.7, flag: 'hola_aff_castle_timing', questFlag: 'hola_castle_focus_done' }, next: 'castle_focus_close' },
+        ]
+      },
+      castle_focus_close: {
+        text: "Hola: I can do this. With you beside me, I won\'t freeze. Thank you, My Lord. I\'ll keep the route clear in my head.",
+        choices: [ { label: 'We move when you\'re ready.', next: 'root' } ]
       },
       quests: {
         text: 'Hola: My Lord, I can practice… if you stay close.',
