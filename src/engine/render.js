@@ -28,6 +28,31 @@ function canDrawImage(img) {
   return false;
 }
 
+function ensureEntitySprite(ent, fallbackSheet) {
+  if (!ent) return null;
+  const spriteId = ent.spriteId || null;
+  const looksGenerated = typeof spriteId === 'string' && spriteId.startsWith('generated:');
+  if (spriteId && !looksGenerated) {
+    if (ent._sprite && ent._sprite.image) return ent._sprite;
+    if (!ent._spriteLoading) {
+      ent._spriteLoading = true;
+      getSprite(spriteId)
+        .then((s) => { ent._sprite = s; ent._spriteLoading = false; })
+        .catch(() => { ent._spriteLoading = false; });
+    }
+    if (!ent._sprite && canDrawImage(fallbackSheet)) {
+      ent._sprite = { image: fallbackSheet, meta: null };
+    }
+    return ent._sprite && ent._sprite.image ? ent._sprite : null;
+  }
+  const sheet = canDrawImage(ent.sheet) ? ent.sheet : (canDrawImage(fallbackSheet) ? fallbackSheet : null);
+  if (!sheet) return ent._sprite && ent._sprite.image ? ent._sprite : null;
+  if (!ent._sprite || ent._sprite.image !== sheet) {
+    ent._sprite = { image: sheet, meta: null };
+  }
+  return ent._sprite;
+}
+
 function drawBossOutline(img, sx, sy, sw, sh, dx, dy, dw, dh, color = '#ffd166') {
   if (!canDrawImage(img)) return;
   // Cap size to prevent excessive memory usage
@@ -300,13 +325,13 @@ export function render(terrainBitmap, obstacles) {
     drawables.push({
       x: n.x, y: n.y, w: n.w, h: n.h,
       dir: n.dir, frame: n.animFrame, sheet: n.sheet || npcSheet,
-      spriteId: n.spriteId || null, spriteRef: n, spriteScale: n.spriteScale || 1,
+      spriteRef: n, spriteScale: n.spriteScale || 1,
     });
   }
   for (const c of companions) drawables.push({
     x: c.x, y: c.y, w: c.w, h: c.h,
     dir: c.dir, frame: c.animFrame, sheet: c.sheet || npcSheet,
-    spriteId: c.spriteId || null, spriteRef: c, spriteScale: c.spriteScale || 1,
+    spriteRef: c, spriteScale: c.spriteScale || 1,
   });
   for (const e of enemies) if (e.hp > 0) {
     // Hide enemies fully if their center tile is unseen by FoW
@@ -315,14 +340,14 @@ export function render(terrainBitmap, obstacles) {
     drawables.push({
     x: e.x, y: e.y, w: e.w, h: e.h,
     dir: e.dir, frame: e.animFrame, sheet: e.sheet || enemySheet, spriteScale: e.spriteScale || 1,
-    spriteId: e.spriteId || null, spriteRef: e,
+    spriteRef: e,
   });
   }
   drawables.push({
     x: player.x, y: player.y, w: player.w, h: player.h,
     dir: player.dir, frame: player.animFrame, sheet: playerSheet, isPlayer: true,
     // Allow player to use custom external sprites via spriteId
-    spriteId: player.spriteId || null, spriteRef: player, spriteScale: player.spriteScale || 1,
+    spriteRef: player, spriteScale: player.spriteScale || 1,
   });
   drawables.sort((a, b) => (a.y + a.h) - (b.y + b.h));
 
@@ -469,127 +494,74 @@ export function render(terrainBitmap, obstacles) {
       continue;
     }
     const scale = d.spriteScale || 1;
-    let drew = false;
-    // Custom sprite path via spriteId (supports 32x32 and meta frames)
-    if (d.spriteId && d.spriteRef) {
-      const ent = d.spriteRef;
-      if (ent._sprite && ent._sprite.image) {
-        const img = ent._sprite.image;
-        const meta = ent._sprite.meta || null;
-        // Determine frame rect
-        let fw = 32, fh = 32, sx = 0, sy = 0;
-        if (meta && Array.isArray(meta.frames?.[d.dir]) && meta.frames[d.dir].length) {
-          const frames = meta.frames[d.dir];
-          let idx = 0;
-          // If we have 3+ frames, assume [idle, walk1, walk2, ...]. Use idle when not moving,
-          // and alternate walk frames when moving. Otherwise, fall back to animFrame modulo length.
-          if (frames.length >= 3) {
-            if (ent && ent.moving) idx = 1 + ((ent.animFrame || 0) % 2);
-            else idx = 0;
-          } else {
-            idx = Math.max(0, (ent && typeof ent.animFrame === 'number' ? ent.animFrame : 0) % frames.length);
-          }
-          const fr = frames[idx];
-          sx = fr.x|0; sy = fr.y|0; fw = fr.w||32; fh = fr.h||32;
-        } else if (meta && meta.indices && Array.isArray(meta.indices[d.dir]) && meta.indices[d.dir].length) {
-          const frames = meta.indices[d.dir];
-          let idx = 0;
-          if (frames.length >= 3) {
-            if (ent && ent.moving) idx = 1 + ((ent.animFrame || 0) % 2);
-            else idx = 0;
-          } else {
-            idx = Math.max(0, (ent && typeof ent.animFrame === 'number' ? ent.animFrame : 0) % frames.length);
-          }
-          const index1 = Math.max(1, Number(frames[idx]) || 1);
-          const fw2 = (meta.w || fw || SPRITE_SIZE);
-          const fh2 = (meta.h || fh || SPRITE_SIZE);
-          const cols = Math.max(1, Number(meta.cols || meta.columns || Math.floor((img && img.width) ? (img.width / fw2) : 1)));
-          const i0 = index1 - 1;
-          const cx = i0 % cols; const cy = Math.floor(i0 / cols);
-          sx = cx * fw2; sy = cy * fh2; fw = fw2; fh = fh2;
-        } else {
-          // Assume grid: 2 columns × 4 directions
-          fw = (meta && meta.w) ? meta.w : SPRITE_SIZE;
-          fh = (meta && meta.h) ? meta.h : SPRITE_SIZE;
-          const row = DIRECTIONS.indexOf(d.dir);
-          const col = d.frame % 2;
-          sx = col * fw; sy = row * fh;
-        }
-        const destW = fw * scale;
-        const destH = fh * scale;
-        // Anchor: default bottom-center; meta.anchor in [0..1] if provided
-        let ax = 0.5, ay = 1.0;
-        if (meta && meta.anchor) { ax = Number(meta.anchor.x) || ax; ay = Number(meta.anchor.y) || ay; }
-        let dx = Math.round(d.x + d.w/2 - ax * destW - camera.x);
-        let dy = Math.round(d.y + d.h - ay * destH - camera.y);
-        // If this sprite only has a single frame per direction (or none defined),
-        // simulate a tiny walk bob when moving by nudging the draw Y by 1px.
-        try {
-          if (ent && ent.moving) {
-            // Toggle a subtle 1px bob while moving (works for single- or multi-frame sheets)
-            const bob = (ent.animFrame % 2 === 1) ? -1 : 0;
-            dy += bob;
-          }
-        } catch {}
-        // Boss telegraph wiggle: tiny jitter while telegraphing melee/ranged
-        try {
-          if (ent && String(ent.kind||'').toLowerCase() === 'boss' && ((ent._meleeTele && ent._meleeTele > 0) || (ent._shootTele && ent._shootTele > 0))) {
-            const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
-            dx += Math.sin(t * 22) * 1.0;
-            dy += Math.cos(t * 20) * 0.6;
-          }
-        } catch {}
-        // Boss outline (gold) around sprite
-        if (ent && String(ent.kind).toLowerCase() === 'boss') {
-          drawBossOutline(img, sx, sy, fw, fh, dx, dy, destW, destH, '#ffd166');
-        }
-        if (d.isPlayer && player.invulnTimer > 0) {
-          const flicker = Math.floor(performance.now() / 100) % 2 === 0;
-          if (!flicker) ctx.drawImage(img, sx, sy, fw, fh, dx, dy, destW, destH);
-        } else {
-          ctx.drawImage(img, sx, sy, fw, fh, dx, dy, destW, destH);
-        }
-        drew = true;
+    const ent = d.spriteRef;
+    const spriteRec = ensureEntitySprite(ent, d.sheet);
+    if (!spriteRec || !spriteRec.image) continue;
+    const img = spriteRec.image;
+    const meta = spriteRec.meta || null;
+    // Determine frame rect
+    let fw = 32, fh = 32, sx = 0, sy = 0;
+    if (meta && Array.isArray(meta.frames?.[d.dir]) && meta.frames[d.dir].length) {
+      const frames = meta.frames[d.dir];
+      let idx = 0;
+      if (frames.length >= 3) {
+        if (ent && ent.moving) idx = 1 + ((ent.animFrame || 0) % 2);
+        else idx = 0;
       } else {
-        if (!ent._spriteLoading) {
-          ent._spriteLoading = true;
-          getSprite(ent.spriteId).then(s => { ent._sprite = s; ent._spriteLoading = false; }).catch(() => { ent._spriteLoading = false; });
-        }
-        // For the player, do not draw legacy fallback — go all-in on custom sprite
-        // For others, allow fallback while loading.
-        drew = !!d.isPlayer;
+        idx = Math.max(0, (ent && typeof ent.animFrame === 'number' ? ent.animFrame : 0) % frames.length);
       }
-    }
-    if (!drew) {
-      // Legacy sheet path (16x16 grid)
+      const fr = frames[idx];
+      sx = fr.x|0; sy = fr.y|0; fw = fr.w||32; fh = fr.h||32;
+    } else if (meta && meta.indices && Array.isArray(meta.indices[d.dir]) && meta.indices[d.dir].length) {
+      const frames = meta.indices[d.dir];
+      let idx = 0;
+      if (frames.length >= 3) {
+        if (ent && ent.moving) idx = 1 + ((ent.animFrame || 0) % 2);
+        else idx = 0;
+      } else {
+        idx = Math.max(0, (ent && typeof ent.animFrame === 'number' ? ent.animFrame : 0) % frames.length);
+      }
+      const index1 = Math.max(1, Number(frames[idx]) || 1);
+      const fw2 = (meta.w || fw || SPRITE_SIZE);
+      const fh2 = (meta.h || fh || SPRITE_SIZE);
+      const cols = Math.max(1, Number(meta.cols || meta.columns || Math.floor((img && img.width) ? (img.width / fw2) : 1)));
+      const i0 = index1 - 1;
+      const cx = i0 % cols; const cy = Math.floor(i0 / cols);
+      sx = cx * fw2; sy = cy * fh2; fw = fw2; fh = fh2;
+    } else {
+      fw = (meta && meta.w) ? meta.w : SPRITE_SIZE;
+      fh = (meta && meta.h) ? meta.h : SPRITE_SIZE;
       const row = DIRECTIONS.indexOf(d.dir);
-      const sx = d.frame * SPRITE_SIZE;
-      const sy = row * SPRITE_SIZE;
-      const destW = SPRITE_SIZE * scale;
-      const destH = SPRITE_SIZE * scale;
-      let dx = Math.round(d.x - (destW - d.w) / 2 - camera.x);
-      let dy = Math.round(d.y - (destH - d.h) - camera.y);
-      // Choose a safe source image if the provided sheet is missing/invalid
-      const srcSheet = canDrawImage(d.sheet) ? d.sheet : (d.isPlayer ? playerSheet : enemySheet || npcSheet);
-      // Boss outline (gold) around sprite
-      if (d.spriteRef && String(d.spriteRef.kind).toLowerCase() === 'boss' && canDrawImage(srcSheet)) {
-        drawBossOutline(srcSheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH, '#ffd166');
+      const col = d.frame % 2;
+      sx = col * fw; sy = row * fh;
+    }
+    const destW = fw * scale;
+    const destH = fh * scale;
+    let ax = 0.5, ay = 1.0;
+    if (meta && meta.anchor) { ax = Number(meta.anchor.x) || ax; ay = Number(meta.anchor.y) || ay; }
+    let dx = Math.round(d.x + d.w/2 - ax * destW - camera.x);
+    let dy = Math.round(d.y + d.h - ay * destH - camera.y);
+    try {
+      if (ent && ent.moving) {
+        const bob = (ent.animFrame % 2 === 1) ? -1 : 0;
+        dy += bob;
       }
-      // Boss telegraph wiggle (legacy sheet path)
-      try {
-        const ent = d.spriteRef;
-        if (ent && String(ent.kind||'').toLowerCase() === 'boss' && ((ent._meleeTele && ent._meleeTele > 0) || (ent._shootTele && ent._shootTele > 0))) {
-          const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
-          dx += Math.sin(t * 22) * 1.0;
-          dy += Math.cos(t * 20) * 0.6;
-        }
-      } catch {}
-      if (d.isPlayer && player.invulnTimer > 0) {
-        const flicker = Math.floor(performance.now() / 100) % 2 === 0; // ~10 Hz
-        if (!flicker && canDrawImage(srcSheet)) ctx.drawImage(srcSheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
-      } else {
-        if (canDrawImage(srcSheet)) ctx.drawImage(srcSheet, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, destW, destH);
+    } catch {}
+    try {
+      if (ent && String(ent.kind||'').toLowerCase() === 'boss' && ((ent._meleeTele && ent._meleeTele > 0) || (ent._shootTele && ent._shootTele > 0))) {
+        const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
+        dx += Math.sin(t * 22) * 1.0;
+        dy += Math.cos(t * 20) * 0.6;
       }
+    } catch {}
+    if (ent && String(ent.kind).toLowerCase() === 'boss') {
+      drawBossOutline(img, sx, sy, fw, fh, dx, dy, destW, destH, '#ffd166');
+    }
+    if (d.isPlayer && player.invulnTimer > 0) {
+      const flicker = Math.floor(performance.now() / 100) % 2 === 0;
+      if (!flicker) ctx.drawImage(img, sx, sy, fw, fh, dx, dy, destW, destH);
+    } else {
+      ctx.drawImage(img, sx, sy, fw, fh, dx, dy, destW, destH);
     }
   }
 

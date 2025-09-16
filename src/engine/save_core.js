@@ -660,10 +660,18 @@ export function applyPendingRestore() {
   }
 }
 
+export function decideLoadRoute(data, runtimeRef) {
+  const target = (data && typeof data.currentLevel === 'number') ? data.currentLevel : 1;
+  const cur = (runtimeRef && typeof runtimeRef.currentLevel === 'number') ? runtimeRef.currentLevel : 1;
+  if (target !== cur) return { action: 'switch', target };
+  return { action: 'same', target };
+}
+
 export function loadDataPayload(data) {
   try {
-    const target = (data && typeof data.currentLevel === 'number') ? data.currentLevel : 1;
-    if (target !== (runtime.currentLevel || 1)) {
+    const decision = decideLoadRoute(data, runtime);
+    if (decision.action === 'switch') {
+      const target = decision.target;
       runtime._pendingRestore = data;
       runtime.pendingLevel = target;
       runtime._suspendRenderUntilRestore = true;
@@ -701,7 +709,7 @@ export function loadLevelGeometryOnly(level) {
 }
 
 // --- Normalization helpers ---
-function normalizeSave(s) {
+export function normalizeSave(s) {
   const out = JSON.parse(JSON.stringify(s || {}));
   const uniq = a => Array.from(new Set(Array.isArray(a) ? a : [])).sort();
   const clamp = (v,min,max) => Math.max(min, Math.min(v, max));

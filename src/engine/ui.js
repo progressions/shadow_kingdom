@@ -1019,10 +1019,6 @@ export function updateQuestHint() {
   try {
     const f = runtime.questFlags || {};
     const c = runtime.questCounters || {};
-    // Tutorial: Find a weapon after torch equip
-    if (f['tutorial_find_sword'] && !f['tutorial_find_sword_done']) {
-      msg = 'Tutorial — Find a weapon: Check a nearby chest';
-    }
     // Fetch/Deliver — Canopy: Return the Ribbon
     if (f['canopy_fetch_ribbon_started'] && !f['canopy_fetch_ribbon_cleared']) {
       const items = (player?.inventory?.items || []);

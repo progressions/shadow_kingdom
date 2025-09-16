@@ -9,206 +9,18 @@ import { render } from './engine/render.js';
 import { step } from './systems/step.js';
 import { setNpcDialog, startPrompt, startSaveMenu } from './engine/dialog.js';
 import { canopyDialog, yornaDialog, holaDialog } from './data/dialogs.js';
-import { introTexts } from './data/intro_texts.js';
 import { updatePartyUI, fadeTransition, updateQuestHint, exitChat, showLevelTitle, levelNameFor, initMinimap, updateMinimap, showPersistentBanner, hideBanner, updateOverlayDim } from './engine/ui.js';
 import { applyPendingRestore } from './engine/save_core.js';
+import { applyLevelPng } from './engine/level_png_helper.js';
 import { loadGame, getSaveMeta } from './engine/save.js';
 import { loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5, loadLevel6, LEVEL_LOADERS } from './engine/levels.js';
+import { mapConfigForLevel } from './data/level_legends.js';
 import { AI_TUNING } from './data/ai_tuning.js';
 // Dev helper: map exporter (safe no-op in production)
 import('./dev/map_export.js').catch(()=>{});
 import('./dev/map_debug.js').catch(()=>{});
 
-// Helper: build legend + URL for each PNG-authored level
-function mapConfigForLevel(lvl) {
-  if (lvl === 1) {
-    return {
-      url: 'assets/maps/level_01.png',
-      legend: {
-        theme: 'default',
-        colors: {
-          '49aa10': { type: 'grass' },
-          '8a8a00': { type: 'wood' },
-          '797979': { type: 'wall' },
-          'a2a2a2': { type: 'rock' },
-          '386d00': { type: 'tree' },
-          '4161fb': { type: 'water' },
-          'a2ffcb': { type: 'torch_node' },
-          '794100': { type: 'gate' },
-          'ebebeb': { type: 'player_spawn' },
-          '61d3e3': { type: 'canopy_spawn' },
-          'c3b2ff': { type: 'hola_spawn' },
-          'a271ff': { type: 'yorna_spawn' },
-          '71f341': { type: 'chest_dagger' },
-          'a2f3a2': { type: 'chest_bow' },
-          'ffbaeb': { type: 'barrel' },
-          '9a2079': { type: 'spawn_mook' },
-          'ff61b2': { type: 'spawn_featured_ranged' },
-          'db4161': { type: 'spawn_guardian' },
-          'b21030': { type: 'spawn_boss' },
-          'db41c3': { type: 'spawn_leashed_mook' },
-          'f361ff': { type: 'spawn_leashed_featured' },
-          'e3b2ff': { type: 'spawn_leashed_featured_ranged' },
-          'a08662': { type: 'spawner_mook' },
-          '796755': { type: 'spawner_featured' },
-        },
-      },
-    };
-  }
-  if (lvl === 2) {
-    return {
-      url: 'assets/maps/level_2.png',
-      legend: {
-        theme: 'desert',
-        gate: { id: 'nethra_gate', keyId: 'key_nethra' },
-        colors: {
-          'dba463': { type: 'grass' },
-          '6d758d': { type: 'wall' },
-          '060608': { type: 'rock' },
-          '1a7a3e': { type: 'cactus' },
-          'bb7547': { type: 'gate' },
-          'b4202a': { type: 'lava' },
-          'ffffff': { type: 'player_spawn' },
-          'df3e23': { type: 'spawn_boss' },
-          'b9bffb': { type: 'spawn_guardian' },
-          'ffd541': { type: 'spawn_mook' },
-          'fffc40': { type: 'spawn_featured' },
-          'd6f264': { type: 'spawn_leashed_mook' },
-          '9cdb43': { type: 'spawn_leashed_featured' },
-          '59c135': { type: 'spawn_leashed_featured_ranged' },
-          '14a02e': { type: 'oyin_spawn' },
-          '24523b': { type: 'twil_spawn' },
-          '92dcba': { type: 'barrel' },
-          'cdf7e2': { type: 'chest' },
-        },
-      },
-    };
-  }
-  if (lvl === 3) {
-    return {
-      url: 'assets/maps/level_3.png',
-      legend: {
-        theme: 'marsh',
-        gate: { id: 'marsh_gate', keyId: 'key_reed' },
-        tolerance: 14,
-        tolerantTypes: ['grass'],
-        actors: {
-          guardian: { kind: 'featured', opts: { name: 'Blurb', vnId: 'enemy:blurb', portrait: 'assets/portraits/level04/Blurb/Blurb.mp4', vnOnSight: { text: introTexts.blurb }, guaranteedDropId: 'key_reed', guardian: true, hp: 64, dmg: 8, hitCooldown: 0.55 } },
-          boss: { name: 'Luula', vnId: 'enemy:luula', portrait: 'assets/portraits/level03/Luula/Luula.mp4', portraitPowered: 'assets/portraits/level03/Luula/Luula powered.mp4', portraitDefeated: 'assets/portraits/level03/Luula/Luula defeated.mp4', vnOnSight: { text: introTexts.luula }, onDefeatNextLevel: 4, hp: 65, dmg: 11, speed: 14, hitCooldown: 0.65, ap: 2 },
-        },
-        colors: {
-          'dba463': { type: 'grass' },
-          '6d758d': { type: 'wall' },
-          '060608': { type: 'rock' },
-          '71413b': { type: 'wood' },
-          'bb7547': { type: 'gate' },
-          '249fde': { type: 'water' },
-          '328464': { type: 'reed' },
-          '23674e': { type: 'tree' },
-          '1a7a3e': { type: 'cactus' },
-          'b4202a': { type: 'lava' },
-          'ffffff': { type: 'player_spawn' },
-          '20d6c7': { type: 'ell_spawn' },
-          'b9bffb': { type: 'spawn_guardian' },
-          'df3e23': { type: 'spawn_boss' },
-          'ffd541': { type: 'spawn_mook' },
-          'fffc40': { type: 'spawn_featured' },
-          'd6f264': { type: 'spawn_leashed_mook' },
-          '9cdb43': { type: 'spawn_leashed_featured' },
-          '59c135': { type: 'spawn_leashed_featured_ranged' },
-          '14a02e': { type: 'tin_spawn' },
-          '24523b': { type: 'nellis_spawn' },
-          'a08662': { type: 'spawner_mook' },
-          '796755': { type: 'spawner_featured' },
-          '92dcba': { type: 'barrel' },
-          'cdf7e2': { type: 'chest' },
-          'fef3c0': { type: 'torch_node' },
-        },
-      },
-    };
-  }
-  if (lvl === 4) {
-    return {
-      url: 'assets/maps/level_4.png',
-      legend: {
-        theme: 'city',
-        gate: { id: 'city_gate', keyId: 'key_sigil' },
-        tolerance: 14,
-        tolerantTypes: ['grass'],
-        actors: {
-          guardian: { kind: 'featured', opts: { name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_sigil', guardian: true, hp: 76, dmg: 9, hitCooldown: 0.5 } },
-          boss: { name: 'Vanificia', vnId: 'enemy:vanificia', portrait: 'assets/portraits/level04/Vanificia/Vanificia.mp4', portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4', portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4', vnOnSight: { text: introTexts.vanificia }, onDefeatNextLevel: 5, hp: 80, dmg: 13, speed: 16, hitCooldown: 0.6, ap: 3 },
-        },
-        colors: {
-          'dba463': { type: 'grass' },
-          '6d758d': { type: 'wall' },
-          '060608': { type: 'rock' },
-          'bb7547': { type: 'gate' },
-          '71413b': { type: 'wood' },
-          '23674e': { type: 'tree' },
-          '1a7a3e': { type: 'cactus' },
-          '249fde': { type: 'water' },
-          '328464': { type: 'reed' },
-          'b4202a': { type: 'lava' },
-          'ffffff': { type: 'player_spawn' },
-          'fef3c0': { type: 'torch_node' },
-          'b9bffb': { type: 'spawn_guardian' },
-          'df3e23': { type: 'spawn_boss' },
-          'ffd541': { type: 'spawn_mook' },
-          'fffc40': { type: 'spawn_featured' },
-          'd6f264': { type: 'spawn_leashed_mook' },
-          '9cdb43': { type: 'spawn_leashed_featured' },
-          '59c135': { type: 'spawn_leashed_featured_ranged' },
-          '14a02e': { type: 'urn_spawn' },
-          '24523b': { type: 'varabella_spawn' },
-          'a08662': { type: 'spawner_mook' },
-          '796755': { type: 'spawner_featured' },
-          '92dcba': { type: 'barrel' },
-          'cdf7e2': { type: 'chest' },
-        },
-      },
-    };
-  }
-  if (lvl === 5) {
-    return {
-      url: 'assets/maps/level_5.png',
-      legend: {
-        theme: 'temple',
-        gate: { id: 'temple_gate', keyId: 'key_temple' },
-        actors: {
-          guardian: { kind: 'featured', opts: { name: 'Fana', vnId: 'enemy:fana', portrait: 'assets/portraits/level05/Fana/Fana villain.mp4', portraitDefeated: 'assets/portraits/level05/Fana/Fana.mp4', vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: I must... protect the temple...' }, guaranteedDropId: 'key_temple', guardian: true, hp: 92, dmg: 11, hitCooldown: 0.45 } },
-          boss: { name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32, portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4', portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4', portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4', portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4', vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' }, onDefeatNextLevel: 6, hp: 100, dmg: 15, speed: 18, hitCooldown: 0.55, ap: 5 },
-        },
-        colors: {
-          '122020': { type: 'stone_floor' },
-          '6d758d': { type: 'wall' },
-          'f4d29c': { type: 'wood_wall' },
-          'dae0ea': { type: 'marble' },
-          'b3b9d1': { type: 'gold_wall' },
-          'bb7547': { type: 'gate' },
-          'b4202a': { type: 'lava' },
-          '249fde': { type: 'water' },
-          'ffffff': { type: 'player_spawn' },
-          'b9bffb': { type: 'spawn_guardian' },
-          'df3e23': { type: 'spawn_boss' },
-          'ffd541': { type: 'spawn_mook' },
-          'fffc40': { type: 'spawn_featured' },
-          'd6f264': { type: 'spawn_leashed_mook' },
-          '9cdb43': { type: 'spawn_leashed_featured' },
-          '59c135': { type: 'spawn_leashed_featured_ranged' },
-          '14a02e': { type: 'cowsill_spawn' },
-          '328464': { type: 'reed' },
-          '92dcba': { type: 'barrel' },
-          'cdf7e2': { type: 'chest' },
-          'fef3c0': { type: 'torch_node' },
-          'a08662': { type: 'spawner_mook' },
-          '796755': { type: 'spawner_featured' },
-        },
-      },
-    };
-  }
-  return null;
-}
+// Level PNG legend/config now lives in src/data/level_legends.js
 
 // Initial level: do a minimal load and immediately apply the PNG map before any rendering
 let terrain = loadLevel1();
@@ -220,8 +32,8 @@ try { showLevelTitle(levelNameFor(1)); } catch {}
     runtime._suspendRenderUntilRestore = true;
     import('./engine/map_loader.js').then(async (M) => {
       try {
-        const t = await M.applyPngMap(cfg.url, cfg.legend);
-        if (t) { terrain = t; try { initMinimap(); } catch {} }
+        const t = await applyLevelPng(cfg, { applyPngMap: M.applyPngMap, initMinimap, camera, world, player, applyPendingRestore });
+        if (t) { terrain = t; }
       } finally {
         runtime._suspendRenderUntilRestore = false;
       }
@@ -368,14 +180,8 @@ function loop(now) {
       if (cfg) {
         import('./engine/map_loader.js').then(async (M) => {
           try {
-            const t = await M.applyPngMap(cfg.url, cfg.legend);
+            const t = await applyLevelPng(cfg, { applyPngMap: M.applyPngMap, initMinimap, camera, world, player, applyPendingRestore });
             if (t) terrain = t;
-            try { initMinimap(); } catch {}
-            // Snap camera to player after world is sized by the PNG
-            camera.x = Math.max(0, Math.min(world.w - camera.w, Math.round(player.x + player.w/2 - camera.w/2)));
-            camera.y = Math.max(0, Math.min(world.h - camera.h, Math.round(player.y + player.h/2 - camera.h/2)));
-            // Apply any pending save restore now that the map is applied
-            try { applyPendingRestore(); } catch {}
           } finally {
             runtime._suspendRenderUntilRestore = false;
           }

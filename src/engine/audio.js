@@ -1,5 +1,6 @@
 import { player, enemies, runtime } from './state.js';
 import ChiptuneFanfare from './fanfare.js';
+import { warmupMusicThemes, getExternalTheme } from '../data/music/theme_loader.js';
 
 let masterVolume = 0.7;
 let muted = false;
@@ -46,6 +47,15 @@ const files = {
     potion: 'assets/audio/sfx/ui-open.wav',
   },
 };
+
+warmupMusicThemes().catch((err) => {
+  if (!externalThemeErrorLogged) {
+    externalThemeErrorLogged = true;
+    console.warn('Failed to preload external music themes:', err);
+  }
+});
+
+let externalThemeErrorLogged = false;
 
 const cache = new Map();
 const MAX_AUDIO_CACHE_SIZE = 30; // Limit audio cache size
@@ -681,6 +691,17 @@ function heartOfTempleTheme(mode) {
 }
 
 function getThemeForMode(mode) {
+  try {
+    const location = runtime && runtime.musicLocation ? runtime.musicLocation : null;
+    const level = runtime && Number.isFinite(runtime.currentLevel) ? runtime.currentLevel : null;
+    const external = getExternalTheme({ mode, location, level });
+    if (external) return external;
+  } catch (err) {
+    if (!externalThemeErrorLogged) {
+      externalThemeErrorLogged = true;
+      console.warn('Failed to apply external music theme:', err);
+    }
+  }
   try {
     if (runtime && (runtime.musicLocation === 'temple_heart' || (runtime.currentLevel || 0) === 6)) {
       return heartOfTempleTheme(mode);

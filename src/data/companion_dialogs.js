@@ -70,7 +70,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       bond10: {
-        text: "Canopy: If you fall, I won't leave your side. Ever. That's my promise to you, My Lord. My heart... it breathes with yours. In... and out.",
+        text: "Canopy: If you fall, I won\'t leave your side. Ever. That\'s my promise to you, My Lord. My heart... it breathes with yours. In... and out.",
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       quests: {
@@ -165,7 +165,7 @@ export const companionDialogs = {
         choices: [ { label: 'We go together.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'canopy_sister3_reward' }, next: 'sister_l3_done' } ]
       },
       sister_l3_done: {
-        text: 'Canopy: My Lord, whatever waits under Urathar, I won\'t let it take her breath. Or yours.',
+        text: 'Canopy: My Lord, whatever is under Urathar\'s command, I won\'t let it harm her. Or you.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_sister3_done' }, next: 'root' } ]
       },
 
@@ -186,7 +186,7 @@ export const companionDialogs = {
         choices: [ { label: 'We did.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'canopy_streets4_reward' }, next: 'streets_l4_done' } ]
       },
       streets_l4_done: {
-        text: "Canopy: My Lord, I'll keep doing what I can to mend this broken place.",
+        text: "Canopy: My Lord, I'll keep doing what I can to help the people here.",
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'canopy_streets4_done' }, next: 'root' } ]
       },
 
@@ -249,6 +249,7 @@ export const companionDialogs = {
           { label: 'Everything alright?', next: 'mood' },
           { label: 'Kill Vast (L1)', requires: { flag: 'yorna_vast_started', not: true }, next: 'vast_intro' },
           { label: 'Turn in: Kill Vast', requires: { flag: 'yorna_vast_cleared', missingFlag: 'yorna_vast_done' }, next: 'vast_turnin' },
+          { label: 'Find the nervous girl', requires: { partyMissing: 'hola', missingFlag: 'yorna_find_hola_started' }, next: 'find_hola_intro' },
           // Bond entries
           { label: 'Open space', requires: { target: 'active', min: 6.0 }, next: 'bond6a' },
           { label: 'Strategy talk (Affinity 8+)', requires: { target: 'active', min: 8.0 }, next: 'bond8' },
@@ -281,6 +282,18 @@ export const companionDialogs = {
       vast_done: {
         text: 'Yorna: Onward, Chief.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_vast_done' }, next: 'root' } ]
+      },
+      // L1: Find Hola (auto-turn-in on recruiting Hola)
+      find_hola_intro: {
+        text: 'Yorna: I saw a nervous-looking girl in the woods trying to cast spells, but I had to fight some bandits and lost sight of her. I want to go with you to see if the girl is okay.',
+        choices: [
+          { label: "Let's find her.", action: 'start_quest', data: { id: 'yorna_find_hola' }, next: 'find_hola_started' },
+          { label: 'Later.', action: 'companion_back' },
+        ]
+      },
+      find_hola_started: {
+        text: 'Yorna: Good. Let\'s go. I want to make sure she\'s safe.',
+        choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       bond_menu: {
         text: "Yorna: If you want my respect, earn it. You're halfway there.",
@@ -321,7 +334,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       bond10: {
-        text: "Yorna: If you're with me, we can break through anything. If I ever hesitate... it's because I'm worried about you, not the enemy. So push me. I need it. Deal?",
+        text: "Yorna: If you're with me, no wall is too thick. If I ever hesitate... it's because I'm worried about you, not the enemy. So push me. I need it. Deal?",
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       quests: {
@@ -341,7 +354,7 @@ export const companionDialogs = {
         choices: [ { label: "Back", action: "companion_back" } ]
       },
       mood: {
-        text: 'Yorna: Chief, never better. If trouble wants a dance, I\'ll lead.',
+        text: 'Yorna: Chief, never better. If there\'s trouble, I\'ll handle it.',
         choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       quest_intro: {
@@ -410,7 +423,7 @@ export const companionDialogs = {
 
       // Cross-companion touches
       xc_twil: {
-        text: "Yorna: Twil finds the openings. I take them. If we're late, it's because we finished early.",
+        text: "Yorna: Twil finds the openings. I take them. We don't waste time.",
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       xc_canopy: {
@@ -422,7 +435,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       xc_oyin: {
-        text: 'Yorna: Chief, Oyin follows up on my attacks. I break their lines. She finishes off the stragglers.',
+        text: 'Yorna: Chief, Oyin follows up on my attacks. I break their formation. She finishes off the stragglers.',
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       // Tension hints from Yorna
@@ -597,21 +610,21 @@ export const companionDialogs = {
 
       // Cross-companion touches
       xc_canopy: {
-        text: "Hola: When Canopy counts breaths, I can match them. I don't trip over every word if someone else sets the pace.",
+        text: 'Hola: When Canopy counts her breaths, I can match them. It helps me speak more clearly if someone else sets the pace.',
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       xc_twil: {
-        text: "Hola: Twil says ten words are faster than twenty. I'm learning to pick the right ten.",
+        text: "Hola: Twil is so fast with her words. I'm trying to be more direct so I don't slow everyone down.",
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       xc_both: {
-        text: "Hola: Canopy keeps my breathing steady; Twil keeps my feet moving. Between them… I almost sound brave.",
+        text: 'Hola: Canopy helps me stay calm, and Twil helps me keep up. With them... I feel a little braver.',
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
 
       // L2: Break the Silence (defeat Silencers)
       silence_intro: {
-        text: "Hola: My Lord, those 'Silencers' make the air feel heavy and confusing. If we defeat three of them, I think I'll be able to focus better.",
+        text: "Hola: My Lord, when those 'Silencers' are near, it's hard to think. If we defeat three of them, I think I'll be able to focus better.",
         choices: [
           { label: "Let's break them.", action: 'start_quest', data: { id: 'hola_silence' }, next: 'silence_started' },
           { label: 'Later.', action: 'companion_back' },
@@ -643,7 +656,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       bog_turnin: {
-        text: 'Hola: My Lord, people can follow this air. Maybe my mentor will. Maybe I will.',
+        text: 'Hola: My Lord, it feels safer here now. Maybe my mentor could find his way. Maybe I can find mine.',
         choices: [ { label: 'Proud of you.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'hola_breath_bog_reward' }, next: 'bog_done' } ]
       },
       bog_done: {
@@ -701,7 +714,7 @@ export const companionDialogs = {
         choices: [ { label: 'Continue', next: 'mediate_yorna_b' } ]
       },
       mediate_yorna_b: {
-        text: 'Yorna: Chief, I call. You echo. We hit on three.',
+        text: "Yorna: Chief, I'll call out the target. You confirm. We both strike on the count of three.",
         choices: [ { label: 'Continue', next: 'mediate_yorna_c' } ]
       },
       mediate_yorna_c: {
@@ -713,7 +726,7 @@ export const companionDialogs = {
         choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'yorna', amount: 0.2, flag: 'yorna_oyin_truce_reward_yorna' }, next: 'mediate_yorna_done' } ]
       },
       mediate_yorna_done: {
-        text: 'Oyin: My Lord, I\'ll speak on three.',
+        text: 'Oyin: My Lord, I\'ll be ready to attack on the count of three.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'yorna_oyin_truce' }, next: 'bond_menu' } ]
       },
       // Tension hint with Yorna
@@ -723,7 +736,7 @@ export const companionDialogs = {
       },
       // Post-truce acknowledgement (Oyin ↔ Yorna)
       ack_yorna_o: {
-        text: 'Oyin: My Lord, call. Echo. Move. I can do that.',
+        text: 'Oyin: My Lord, I understand the plan. She calls the target, I confirm, and we attack together. I can do that.',
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       // Oyin offering movement quests (shares flags with Twil's movement chain)
@@ -744,7 +757,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'twil_trace_done' }, next: 'root' } ]
       },
       twil_wake_intro_oyin: {
-        text: 'Oyin: The water moves too fast. If we still three wakes, I can keep up.',
+        text: 'Oyin: The Skimmers in the water are too fast. If we defeat three of them, I can keep up with you.',
         choices: [ { label: 'Let\'s do it.', action: 'start_quest', data: { id: 'twil_wake' }, next: 'twil_wake_started_oyin' }, { label: 'Later.', action: 'companion_back' } ]
       },
       twil_wake_started_oyin: {
@@ -765,7 +778,7 @@ export const companionDialogs = {
     start: 'root',
     nodes: {
       root: {
-        text: 'Twil: Master, want to race trouble to the end of a footprint?',
+        text: 'Twil: Master, I can see the trouble ahead before it sees us. Want me to point the way?',
         choices: [
           // Bond entries
           { label: 'Footwork (Affinity 6+)', requires: { target: 'active', min: 6.0 }, next: 'bond6' },
@@ -827,11 +840,11 @@ export const companionDialogs = {
         ]
       },
       fuse_intro: {
-        text: 'Twil: Master, let\'s light three and race their smoke.',
+        text: 'Twil: Master, if we light these three fuses, we can move faster than the enemy can react.',
         choices: [ { label: 'Let\'s light it.', action: 'start_quest', data: { id: 'twil_fuse' }, next: 'fuse_started' }, { label: 'Later.', action: 'companion_back' } ]
       },
       fuse_started: {
-        text: 'Twil: Watch the wind. I\'ll point the gap and the spark.',
+        text: 'Twil: Watch the wind. I\'ll show you where to go and when to strike.',
         choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       fuse_turnin: {
@@ -844,7 +857,7 @@ export const companionDialogs = {
       },
       // L3: Carry the Ember (defeat Lantern Bearers) — Twil flavor
       ember_intro: {
-        text: 'Twil: Master, three lanterns. We carry fire across the marsh.',
+        text: "Twil: Master, there are three enemies called 'Lantern Bearers' in the marsh. Let's take them out.",
         choices: [ { label: 'Carry it.', action: 'start_quest', data: { id: 'twil_ember' }, next: 'ember_started' }, { label: 'Later.', action: 'companion_back' } ]
       },
       wake_started: {
@@ -886,7 +899,7 @@ export const companionDialogs = {
         choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       wake_turnin: {
-        text: 'Twil: Master, path\'s clean. Faster now.',
+        text: 'Twil: Master, the path is clear. We can move faster now.',
         choices: [ { label: 'Nice work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'twil_wake_reward' }, next: 'wake_done' } ]
       },
       wake_done: {
@@ -928,7 +941,7 @@ export const companionDialogs = {
         choices: [ { label: 'Thanks', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'tin_bond6_reward' }, next: 'bond_menu' } ]
       },
       bond8: {
-        text: 'Tin: My Lord, the wind shows how the water moves. Understand both, and you won\'t get stuck.',
+        text: 'Tin: My Lord, if you watch the wind and the water, you can see the fastest path. You won\'t get stuck if you look.',
         choices: [ { label: 'Back', next: 'bond_menu' } ]
       },
       bond10: {
@@ -941,7 +954,7 @@ export const companionDialogs = {
         choices: [ { label: 'Mark them.', action: 'start_quest', data: { id: 'tin_shallows' }, next: 'shallows_started' }, { label: 'Later.', action: 'companion_back' } ]
       },
       shallows_started: {
-        text: 'Tin: My Lord, I\'ll call footing. You clear what breaks the surface.',
+        text: 'Tin: My Lord, I\'ll show you where it\'s safe to step. You take care of the enemies that appear.',
         choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       shallows_turnin: {
@@ -955,11 +968,11 @@ export const companionDialogs = {
 
       // Level 4: Flag the Gaps — defeat three Gap Runners
       gaps_l4_intro: {
-        text: 'Tin: My Lord, alley lines break where runners cut across. If we stop three, people can pass without looking back.',
+        text: 'Tin: My Lord, there are runners cutting through the alleys, making them dangerous. If we stop three of them, people can pass through safely.',
         choices: [ { label: 'Flag them.', action: 'start_quest', data: { id: 'tin_gaps4' }, next: 'gaps_l4_started' }, { label: 'Later.', action: 'companion_back' } ]
       },
       gaps_l4_started: {
-        text: 'Tin: My Lord, I\'ll call the gap; you close it.',
+        text: 'Tin: My Lord, I\'ll show you where they are; you take them down.',
         choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       gaps_l4_turnin: {
@@ -1014,15 +1027,15 @@ export const companionDialogs = {
       },
       // L3: Raise the Beacon (defeat Lantern Bearers)
       beacon_intro: {
-        text: 'Nellis: Sire, three lanterns stay dark. If we raise them, people will find each other.',
+        text: "Nellis: Sire, there are three enemies known as 'Lantern Bearers' blocking the paths. If we defeat them, people will be able to find each other again.",
         choices: [ { label: 'Light them.', action: 'start_quest', data: { id: 'nellis_beacon' }, next: 'beacon_started' }, { label: 'Later.', action: 'companion_back' } ]
       },
       beacon_started: {
-        text: 'Nellis: Sire, I\'ll set the posts. You clear the keepers.',
+        text: 'Nellis: Sire, I\'ll show you where they are. You defeat them.',
         choices: [ { label: 'Back', action: 'companion_back' } ]
       },
       beacon_turnin: {
-        text: 'Nellis: Sire, the marsh will see itself again.',
+        text: 'Nellis: Sire, the paths are clear now. The marsh is safer to travel through.',
         choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.2, flag: 'nellis_beacon_reward' }, next: 'beacon_done' } ]
       },
       beacon_done: {
@@ -1032,7 +1045,7 @@ export const companionDialogs = {
 
       // Level 4: Light the Crossroads — defeat three Signal Thieves
       crossroads_l4_intro: {
-        text: 'Nellis: Sire, the city forgot where to meet. If we take three signal thieves off the roads, people will find each other again.',
+        text: "Nellis: Sire, there are 'Signal Thieves' making the roads unsafe. If we defeat three of them, people will be able to find each other at the crossroads again.",
         choices: [ { label: 'Light them.', action: 'start_quest', data: { id: 'nellis_crossroads4' }, next: 'crossroads_l4_started' }, { label: 'Later.', action: 'companion_back' } ]
       },
       crossroads_l4_started: {
@@ -1044,7 +1057,7 @@ export const companionDialogs = {
         choices: [ { label: 'Good work.', action: 'affinity_add', data: { target: 'active', amount: 1.0, flag: 'nellis_crossroads4_reward' }, next: 'crossroads_l4_done' } ]
       },
       crossroads_l4_done: {
-        text: 'Nellis: Sire, keep moving; I\'ll keep the lights.',
+        text: 'Nellis: Sire, you keep leading the way. I\'ll make sure our path stays safe.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'nellis_crossroads4_done' }, next: 'root' } ]
       },
     },
@@ -1060,7 +1073,7 @@ export const companionDialogs = {
         ]
       },
       on_vara: {
-        text: 'Don\'t let Vara\'s sharp edges fool you. She\'s the reason we\'ve both made it this far, Mister. She\'s my sister, in all the ways that count.',
+        text: "Don't let Vara's sharp edges fool you. She's the reason we've both made it this far, Mister. She's my sister, in all the ways that count.",
         choices: [ { label: 'Back', next: 'root' } ]
       },
     },
@@ -1143,19 +1156,19 @@ export const companionDialogs = {
         choices: [ { label: 'Continue', next: 'bond6b' } ]
       },
       bond6b: {
-        text: "Cowsill: My Lord, every enemy has a rhythm. Once we find it and break it, they can't recover. That's when we strike hardest.",
+        text: "Cowsill: My Lord, every enemy has a pattern. Once we learn it and interrupt it, they can't recover. That's when we strike hardest.",
         choices: [ { label: 'Continue', next: 'bond6c' } ]
       },
       bond6c: {
-        text: "Cowsill: My Lord, practice with me sometime? I promise you'll see the difference. Every hit will feel like thunder!",
+        text: "Cowsill: My Lord, practice with me sometime? I promise you'll see the difference. Our combined attacks will be devastating.",
         choices: [ { label: 'I\'d like that', action: 'affinity_add', data: { target: 'active', amount: 0.2, flag: 'cowsill_bond6c_reward' }, next: 'root' } ]
       },
       bond8: {
-        text: "Cowsill: My Lord, when we're perfectly synchronized, it's like dancing—except our dance defeats darkness. Ready to perfect our steps?",
+        text: "Cowsill: My Lord, when we're perfectly synchronized, our movements flow together. It's how we win. Ready to practice?",
         choices: [ { label: 'Back', next: 'root' } ]
       },
       bond10: {
-        text: "Cowsill: My Lord, you and me? We're not just fighters. We're a force of nature. Nothing can stand against our combined strength!",
+        text: "Cowsill: My Lord, you and me? We're more than just two fighters. When we work together, nothing can stand against our combined strength!",
         choices: [ { label: 'Back', next: 'root' } ]
       },
       quest_intro: {
@@ -1210,7 +1223,7 @@ export const companionDialogs = {
         ]
       },
       snake_den_intro: {
-        text: 'Snek: Three pestsss gnaw close by. We ssslip in and sssnap.',
+        text: 'Snek: Three pestsss are nearby. We sssneak in and kill them.',
         choices: [
           { label: 'Coil and go.', action: 'start_quest', data: { id: 'snake_den' }, next: 'snake_den_started' },
           { label: 'Another time.', next: 'root' },
@@ -1221,11 +1234,11 @@ export const companionDialogs = {
         choices: [ { label: 'Back', next: 'root' } ]
       },
       snake_den_turnin: {
-        text: 'Snek: Den cleaned. Your bite feelsss sharper.',
+        text: 'Snek: The den isss clean. You fight well.',
         choices: [ { label: 'Good hunt. (Affinity +0.8)', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'snake_den_reward' }, next: 'snake_den_done' } ]
       },
       snake_den_done: {
-        text: 'Snek: I stay nearer now.',
+        text: 'Snek: I will sstay closer to you now.',
         choices: [ { label: 'Back', action: 'set_flag', data: { key: 'snake_den_done' }, next: 'root' } ]
       }
     }

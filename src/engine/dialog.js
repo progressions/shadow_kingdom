@@ -290,18 +290,25 @@ export function renderCurrentNode() {
   // Sort companion dialog choices so priority quest entries appear first.
   // Priority order: Turn-In quests first, then New quests, then everything else.
   // "New" = directly starts a quest or leads to a node that offers start_quest.
-  // "Turn-In" = resolved via target node flags or legacy label heuristic.
+  // "Turn-In" = resolved via explicit quest flags/metadata.
   try {
     const looksNew = (ch) => !!questIdForStartChoice(ch);
-    const looksTurnIn = (ch) => !!questIdForTurnInChoice(ch) || (function(){ try { const lbl = String(ch && ch.label || '').trim().toLowerCase(); return lbl.startsWith('turn in') || lbl.startsWith('turn-in'); } catch { return false; } })();
+    const looksTurnIn = (ch) => !!questIdForTurnInChoice(ch);
+    const looksBack = (ch) => {
+      const action = String(ch?.action || '').toLowerCase();
+      if (action === 'companion_back' || action === 'end') return true;
+      const lbl = String(ch?.label || '').trim().toLowerCase();
+      return lbl === 'back' || lbl === 'cancel' || lbl === 'never mind';
+    };
     // Stable-ish: partition rather than full sort to preserve original order within groups
-    const turnins = []; const news = []; const rest = [];
+    const turnins = []; const news = []; const rest = []; const backs = [];
     for (const ch of effectiveChoices) {
       if (looksTurnIn(ch)) turnins.push(ch);
       else if (looksNew(ch)) news.push(ch);
+      else if (looksBack(ch)) backs.push(ch);
       else rest.push(ch);
     }
-    effectiveChoices = turnins.concat(news, rest);
+    effectiveChoices = turnins.concat(news, rest, backs);
   } catch {}
   try { runtime.activeDialog._resolved = { nodeId, choices: effectiveChoices }; } catch {}
   setOverlayDialog(effectiveText, effectiveChoices);
@@ -392,6 +399,12 @@ export function selectChoice(index) {
           }
         }
         if (!runtime.questFlags) runtime.questFlags = {};
+        if (nm.includes('hola')) {
+          if (runtime.questFlags['yorna_find_hola_started'] && !runtime.questFlags['yorna_find_hola_cleared']) {
+            runtime.questFlags['yorna_find_hola_cleared'] = true;
+            import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('yorna_find_hola')).catch(()=>{});
+          }
+        }
         if (nm.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
           runtime.questFlags['tutorial_save_canopy_done'] = true;
           runtime.questFlags['tutorial_save_canopy'] = false;
@@ -595,6 +608,12 @@ export function selectChoice(index) {
         if (runtime.questFlags['hola_find_yorna_started'] && !runtime.questFlags['hola_find_yorna_cleared']) {
           runtime.questFlags['hola_find_yorna_cleared'] = true;
           import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('hola_find_yorna')).catch(()=>{});
+        }
+      }
+      if (nm2.includes('hola')) {
+        if (runtime.questFlags['yorna_find_hola_started'] && !runtime.questFlags['yorna_find_hola_cleared']) {
+          runtime.questFlags['yorna_find_hola_cleared'] = true;
+          import('./quests.js').then(q => q.autoTurnInIfCleared && q.autoTurnInIfCleared('yorna_find_hola')).catch(()=>{});
         }
       }
       if (nm2.includes('canopy') && runtime.questFlags['tutorial_save_canopy']) {
@@ -1332,6 +1351,16 @@ function handleStartQuest(data) {
         }
       } catch {}
       try { showBanner('Quest started: Find Yorna — Talk to her'); } catch {}
+    } else if (id === 'yorna_find_hola') {
+      // Level 1 Yorna quest: point to Hola's location; quest clears on recruiting Hola
+      try {
+        // Find Hola NPC and attach a quest marker
+        for (const n of npcs) {
+          const nm = String(n?.name || '').toLowerCase();
+          if (nm.includes('hola')) { n.questId = 'yorna_find_hola'; break; }
+        }
+      } catch {}
+      try { showBanner('Quest started: Find the nervous girl — Talk to her'); } catch {}
     } else if (id === 'varabella_find_urn') {
       // Level 4 Varabella quest: point to Urn's location; clears on talking to Urn (or recruiting her)
       try {

@@ -11,6 +11,7 @@ export const QUEST_REWARDS = {
   yorna_knot:              { companion: 'yorna',    amount: 0.8, rewardFlag: 'yorna_knot_reward',         doneFlag: 'yorna_knot_done' },
   yorna_ring:              { companion: 'yorna',    amount: 1.0, rewardFlag: 'yorna_ring_reward',         doneFlag: 'yorna_ring_done' },
   yorna_causeway:          { companion: 'yorna',    amount: 1.2, rewardFlag: 'yorna_causeway_reward',     doneFlag: 'yorna_causeway_done' },
+  yorna_find_hola:         { companion: 'yorna',    amount: 0.7, rewardFlag: 'yorna_find_hola_reward',    doneFlag: 'yorna_find_hola_done' },
 
   hola_practice:           { companion: 'hola',     amount: 0.7, rewardFlag: 'hola_practice_reward',      doneFlag: 'hola_practice_done' },
   hola_silence:            { companion: 'hola',     amount: 1.0, rewardFlag: 'hola_silence_reward',       doneFlag: 'hola_silence_done' },

@@ -9,6 +9,132 @@ import { startDialog, startPrompt } from '../engine/dialog.js';
 import { BREAKABLE_LOOT, CHEST_LOOT, CHEST_LOOT_L2, CHEST_LOOT_L3, rollFromTable, itemById } from '../data/loot.js';
 import { spawnProjectile } from '../engine/state.js';
 
+function removeChestObstacle(chest) {
+  const idx = obstacles.indexOf(chest);
+  if (idx !== -1) obstacles.splice(idx, 1);
+  try { markObstacleIndexDirty(); } catch {}
+}
+
+function cacheChestOpened(chest) {
+  try { if (chest.id) runtime.openedChests[chest.id] = true; } catch {}
+}
+
+function applyChestTutorials(chest) {
+  try {
+    if (!runtime.questFlags) runtime.questFlags = {};
+    if (chest.id === 'chest_l1_weapon') {
+      runtime.questFlags['tutorial_find_sword_done'] = true;
+      hideBanner();
+      const alreadyHasCanopy = companions.some(c => (c.name || '').toLowerCase().includes('canopy'));
+      if (!alreadyHasCanopy) {
+        runtime.questFlags['tutorial_save_canopy'] = true;
+        setTimeout(() => {
+          try {
+            if (runtime.questFlags['tutorial_save_canopy'] && !runtime.questFlags['tutorial_save_canopy_done']) {
+              showPersistentBanner('You need a healer! Save Canopy from the bandits!');
+            }
+          } catch {}
+        }, 600);
+      } else {
+        runtime.questFlags['tutorial_save_canopy_done'] = true;
+      }
+    }
+  } catch {}
+}
+
+async function spawnChestLootPickup(chest, item) {
+  try {
+    const mod = await import('../engine/state.js');
+    mod.spawnPickup(chest.x + chest.w/2 - 5, chest.y + chest.h/2 - 5, item);
+  } catch {}
+}
+
+function resolveChestLoot(chest) {
+  let item = null;
+  try { if (chest.fixedItemId) item = itemById(chest.fixedItemId); } catch {}
+  if (!item) {
+    const tier = chest.lootTier || 'common';
+    const lvl = runtime.currentLevel || 1;
+    const tableSrc = (lvl === 2) ? CHEST_LOOT_L2 : (lvl >= 3 ? CHEST_LOOT_L3 : CHEST_LOOT);
+    item = rollFromTable(tableSrc[tier] || []);
+  }
+  return item;
+}
+
+function handleChestInteraction(chest, { playOpenSfx = false } = {}) {
+  if (!chest) return { handled: false };
+  if (chest.locked) {
+    const keyId = chest.keyId || chest.id;
+    const items = player?.inventory?.items || [];
+    const itm = items.find(it => it && (it.keyId === keyId));
+    if (!itm) {
+      showBanner('Locked — you need a key');
+      return { handled: true, opened: false, locked: true };
+    }
+    chest.locked = false;
+  }
+
+  if (!chest.opened) {
+    const item = resolveChestLoot(chest);
+    if (item) {
+      spawnChestLootPickup(chest, item);
+      chest.opened = true;
+      cacheChestOpened(chest);
+      showBanner('Chest opened');
+      if (playOpenSfx) {
+        try { playSfx('uiOpen'); } catch {}
+      }
+      applyChestTutorials(chest);
+      removeChestObstacle(chest);
+      return { handled: true, opened: true };
+    }
+    cacheChestOpened(chest);
+    showBanner('Empty chest');
+    removeChestObstacle(chest);
+    return { handled: true, opened: false };
+  }
+
+  removeChestObstacle(chest);
+  showBanner('Empty chest');
+  return { handled: true, opened: false };
+}
+
+function computeMeleeRange() {
+  return Math.max(0, 12 + (runtime?.combatBuffs?.range || 0) - (runtime?.enemyDebuffs?.rangePenalty || 0));
+}
+
+function buildMeleeHitbox() {
+  const range = computeMeleeRange();
+  const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
+  if (player.dir === 'left') { hb.x -= range; hb.w += range; }
+  if (player.dir === 'right') { hb.w += range; }
+  if (player.dir === 'up') { hb.y -= range; hb.h += range; }
+  if (player.dir === 'down') { hb.h += range; }
+  return hb;
+}
+
+function hasMeleeLineOfSight(enemy) {
+  const ex = enemy.x + enemy.w/2;
+  const ey = enemy.y + enemy.h/2;
+  const samples = [
+    [player.x + player.w/2, player.y + player.h/2],
+    [player.x, player.y],
+    [player.x + player.w, player.y],
+    [player.x, player.y + player.h],
+    [player.x + player.w, player.y + player.h],
+  ];
+  for (const [sx, sy] of samples) {
+    let rayBlocked = false;
+    for (const o of obstacles) {
+      if (!o || !o.blocksAttacks) continue;
+      if (o.type === 'gate' && o.locked === false) continue;
+      if (segmentIntersectsRect(sx, sy, ex, ey, o)) { rayBlocked = true; break; }
+    }
+    if (!rayBlocked) return true;
+  }
+  return false;
+}
+
 export function startAttack() {
   const now = performance.now() / 1000;
   if (player.attacking) return;
@@ -42,36 +168,11 @@ export function startAttack() {
 
 export function willAttackHitEnemy() {
   // Predict the immediate attack hitbox and check for any enemy within it
-  const range = Math.max(0, 12 + (runtime?.combatBuffs?.range || 0) - (runtime?.enemyDebuffs?.rangePenalty || 0));
-  const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
-  if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
-  if (player.dir === 'right') { hb.w += range; }
-  if (player.dir === 'up')    { hb.y -= range; hb.h += range; }
-  if (player.dir === 'down')  { hb.h += range; }
+  const hb = buildMeleeHitbox();
   for (const e of enemies) {
     if (e.hp <= 0) continue;
-    if (rectsIntersect(hb, e)) {
-      const ex = e.x + e.w/2, ey = e.y + e.h/2;
-      const samples = [
-        [player.x + player.w/2, player.y + player.h/2],
-        [player.x, player.y],
-        [player.x + player.w, player.y],
-        [player.x, player.y + player.h],
-        [player.x + player.w, player.y + player.h],
-      ];
-      let losClear = false;
-      for (const [sx, sy] of samples) {
-        let rayBlocked = false;
-        for (const o of obstacles) {
-          if (o && o.blocksAttacks) {
-            if (o.type === 'gate' && o.locked === false) continue;
-            if (segmentIntersectsRect(sx, sy, ex, ey, o)) { rayBlocked = true; break; }
-          }
-        }
-        if (!rayBlocked) { losClear = true; break; }
-      }
-      if (losClear) return true;
-    }
+    if (!rectsIntersect(hb, e)) continue;
+    if (hasMeleeLineOfSight(e)) return true;
   }
   return false;
 }
@@ -81,12 +182,7 @@ export function handleAttacks(dt) {
   player.attackTimer += dt;
   if (!player._didHit && player.attackTimer >= player.attackDuration * 0.5) {
     player._didHit = true;
-    const range = Math.max(0, 12 + (runtime?.combatBuffs?.range || 0) - (runtime?.enemyDebuffs?.rangePenalty || 0));
-    const hb = { x: player.x, y: player.y, w: player.w, h: player.h };
-    if (player.dir === 'left')  { hb.x -= range; hb.w += range; }
-    if (player.dir === 'right') { hb.w += range; }
-    if (player.dir === 'up')    { hb.y -= range; hb.h += range; }
-    if (player.dir === 'down')  { hb.h += range; }
+    const hb = buildMeleeHitbox();
     // Attempt to unlock any gate hit by the attack
     tryUnlockGate(hb);
     // Open chests with melee (not projectiles): if melee hitbox overlaps a chest, open it
@@ -96,67 +192,8 @@ export function handleAttacks(dt) {
         if (!o || o.type !== 'chest') continue;
         const or = { x: o.x, y: o.y, w: o.w, h: o.h };
         if (!rectsIntersect(hb, or)) continue;
-        // Handle lock (require key if locked)
-        if (o.locked) {
-          const keyId = o.keyId || o.id;
-          const items = player?.inventory?.items || [];
-          const itm = items.find(it => it && (it.keyId === keyId));
-          if (!itm) { showBanner('Locked — you need a key'); break; }
-          o.locked = false;
-        }
-        if (!o.opened) {
-          let item = null;
-          try { if (o.fixedItemId) item = itemById(o.fixedItemId); } catch {}
-          if (!item) {
-            const tier = o.lootTier || 'common';
-            const lvl = runtime.currentLevel || 1;
-            const tableSrc = (lvl === 2) ? CHEST_LOOT_L2 : (lvl >= 3 ? CHEST_LOOT_L3 : CHEST_LOOT);
-            item = rollFromTable(tableSrc[tier] || []);
-          }
-          if (item) {
-            import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
-            o.opened = true;
-            try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
-            showBanner('Chest opened');
-            try { playSfx('uiOpen'); } catch {}
-            const idx = obstacles.indexOf(o);
-            if (idx !== -1) obstacles.splice(idx, 1);
-            try { markObstacleIndexDirty(); } catch {}
-            // Tutorial flags similar to interact path
-            try {
-              if (!runtime.questFlags) runtime.questFlags = {};
-              if (o.id === 'chest_l1_weapon') {
-                runtime.questFlags['tutorial_find_sword_done'] = true;
-                hideBanner();
-                const alreadyHasCanopy = companions.some(c => (c.name || '').toLowerCase().includes('canopy'));
-                if (!alreadyHasCanopy) {
-                  runtime.questFlags['tutorial_save_canopy'] = true;
-                  setTimeout(() => {
-                    try {
-                      if (runtime.questFlags['tutorial_save_canopy'] && !runtime.questFlags['tutorial_save_canopy_done']) {
-                        showPersistentBanner('You need a healer! Save Canopy from the bandits!');
-                      }
-                    } catch {}
-                  }, 600);
-                } else {
-                  runtime.questFlags['tutorial_save_canopy_done'] = true;
-                }
-              }
-            } catch {}
-          } else {
-            const idx = obstacles.indexOf(o);
-            if (idx !== -1) obstacles.splice(idx, 1);
-            try { markObstacleIndexDirty(); } catch {}
-            try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
-            showBanner('Empty chest');
-          }
-        } else {
-          const idx = obstacles.indexOf(o);
-          if (idx !== -1) obstacles.splice(idx, 1);
-          try { markObstacleIndexDirty(); } catch {}
-          showBanner('Empty chest');
-        }
-        break; // open at most one chest per swing
+        const res = handleChestInteraction(o, { playOpenSfx: true });
+        if (res.handled) break;
       }
     } catch {}
     // Damage breakables (barrels/crates)
@@ -186,29 +223,12 @@ export function handleAttacks(dt) {
     const hasTwil = companions.some(c => (c.name || '').toLowerCase().includes('twil'));
     for (const e of enemies) {
       if (e.hp <= 0) continue;
-      if (rectsIntersect(hb, e)) {
-        const ex = e.x + e.w/2, ey = e.y + e.h/2;
-        const samples = [
-          [player.x + player.w/2, player.y + player.h/2],
-          [player.x, player.y],
-          [player.x + player.w, player.y],
-          [player.x, player.y + player.h],
-          [player.x + player.w, player.y + player.h],
-        ];
-        let losClear = false;
-        for (const [sx, sy] of samples) {
-          let rayBlocked = false;
-          for (const o of obstacles) {
-            if (o && o.blocksAttacks) {
-              if (o.type === 'gate' && o.locked === false) continue;
-              if (segmentIntersectsRect(sx, sy, ex, ey, o)) { rayBlocked = true; break; }
-            }
-          }
-          if (!rayBlocked) { losClear = true; break; }
-        }
-        if (!losClear) continue;
-        const mods = getEquipStats(player);
-        const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
+      if (!rectsIntersect(hb, e)) continue;
+      if (!hasMeleeLineOfSight(e)) continue;
+      const ex = e.x + e.w/2;
+      const ey = e.y + e.h/2;
+      const mods = getEquipStats(player);
+      const add = (runtime?.combatBuffs?.atk || 0) + (mods.atk || 0) + (runtime?.tempAtkBonus || 0);
         const dmg = Math.max(1, (player.damage || 1) + add);
         let finalDmg = dmg;
         // Oyin (swapped): mark weakness (+1 dmg) when close
@@ -409,7 +429,16 @@ export function handleAttacks(dt) {
           }
         } catch {}
       }
-    }
+    // Generic trigger: mark recent melee hit if any enemy is within the hitbox
+    try {
+      for (const e of enemies) {
+        if (!e || e.hp <= 0) continue;
+        if (rectsIntersect(hb, e)) {
+          runtime._recentMeleeHitTimer = Math.max(runtime._recentMeleeHitTimer || 0, 0.05);
+          break;
+        }
+      }
+    } catch {}
   }
   if (player.attackTimer >= player.attackDuration) {
     player.attacking = false;
@@ -591,83 +620,9 @@ export function tryInteract() {
   for (const o of obstacles) {
     if (!o || o.type !== 'chest') continue;
     const or = { x: o.x, y: o.y, w: o.w, h: o.h };
-    if (rectsIntersect(hb, or)) {
-      // If locked, require key (keyId or id)
-      if (o.locked) {
-        const keyId = o.keyId || o.id;
-        const items = player?.inventory?.items || [];
-        const itm = items.find(it => it && (it.keyId === keyId));
-        if (!itm) { showBanner('Locked — you need a key'); return true; }
-        o.locked = false;
-      }
-      if (!o.opened) {
-        // Spawn chest loot (fixed item preferred; otherwise roll from tier/table)
-        let item = null;
-        try { if (o.fixedItemId) item = itemById(o.fixedItemId); } catch {}
-        if (!item) {
-          const tier = o.lootTier || 'common';
-          const lvl = runtime.currentLevel || 1;
-          const tableSrc = (lvl === 2) ? CHEST_LOOT_L2 : (lvl >= 3 ? CHEST_LOOT_L3 : CHEST_LOOT);
-          item = rollFromTable(tableSrc[tier] || []);
-        }
-        if (item) {
-          import('../engine/state.js').then(s => s.spawnPickup(o.x + o.w/2 - 5, o.y + o.h/2 - 5, item));
-          o.opened = true;
-          try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
-          showBanner('Chest opened');
-          // Remove chest immediately after opening
-          const idx = obstacles.indexOf(o);
-          if (idx !== -1) obstacles.splice(idx, 1);
-          try { markObstacleIndexDirty(); } catch {}
-          // Tutorial: mark sword chest objective done
-          try {
-            if (!runtime.questFlags) runtime.questFlags = {};
-            if (o.id === 'chest_l1_weapon') {
-              runtime.questFlags['tutorial_find_sword_done'] = true;
-              // Clear prior tutorial banner (torch hint)
-              hideBanner();
-              // Start healer tutorial: prompt to save Canopy
-              const alreadyHasCanopy = companions.some(c => (c.name || '').toLowerCase().includes('canopy'));
-              if (!alreadyHasCanopy) {
-                runtime.questFlags['tutorial_save_canopy'] = true;
-                // Delay slightly so 'Chest opened' / 'Picked up' banners don't overwrite it
-                setTimeout(() => {
-                  try {
-                    if (runtime.questFlags['tutorial_save_canopy'] && !runtime.questFlags['tutorial_save_canopy_done']) {
-                      showPersistentBanner('You need a healer! Save Canopy from the bandits!');
-                    }
-                  } catch {}
-                }, 600);
-              } else {
-                // If already recruited, immediately mark as done
-                runtime.questFlags['tutorial_save_canopy_done'] = true;
-              }
-            }
-          } catch {}
-        } else {
-          // No loot: remove the chest from the world immediately
-          const idx = obstacles.indexOf(o);
-          if (idx !== -1) obstacles.splice(idx, 1);
-          try { markObstacleIndexDirty(); } catch {}
-          try { if (o.id) runtime.openedChests[o.id] = true; } catch {}
-          showBanner('Empty chest');
-        }
-      } else {
-        // Already opened (should have been removed), ensure removal
-        const idx = obstacles.indexOf(o);
-        if (idx !== -1) obstacles.splice(idx, 1);
-        try { markObstacleIndexDirty(); } catch {}
-        showBanner('Empty chest');
-      }
-      return true;
-    }
+    if (!rectsIntersect(hb, or)) continue;
+    const res = handleChestInteraction(o);
+    if (res.handled) return true;
   }
   return false;
 }
-    // Generic trigger: mark recent melee hit if any enemy is within the hitbox
-    try {
-      for (const e of enemies) {
-        if (!e || e.hp <= 0) continue;
-        if (rectsIntersect(hb, e)) { runtime._recentMeleeHitTimer = Math.max(runtime._recentMeleeHitTimer || 0, 0.05); break; }
-      }
-    } catch {}

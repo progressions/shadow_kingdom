@@ -2,7 +2,7 @@ export const villagerDialog = {
   start: 'root',
   nodes: {
     root: {
-      text: 'Hello, traveler. Lovely day in the Shadow Kingdom!',
+      text: 'Hello, traveler. Be careful on the roads.',
       choices: [
         { label: 'Who are you?', next: 'about' },
         { label: 'Any tips for me?', next: 'tips' },
@@ -10,7 +10,7 @@ export const villagerDialog = {
       ],
     },
     about: {
-      text: 'I am a villager. I watch the roads and trade stories.',
+      text: 'I am a villager. I watch the roads and share what I see.',
       choices: [
         { label: 'Any tips for me?', next: 'tips' },
         { label: 'Goodbye.', action: 'end' },
@@ -43,7 +43,7 @@ export const canopyDialog = {
       ],
     },
     post_l5_canopy: {
-      text: "Canopy: The Hall breathes again. Ell smiles in her sleep. Thank you. Urathar is still out there, but Aurelion isn't his anymore.",
+      text: "Canopy: It's safe here now. Ell smiles in her sleep. Thank you. Urathar is still out there, but Aurelion isn't his anymore.",
       choices: [ { label: 'We keep moving.', action: 'set_flag', data: { key: 'post_l5_canopy' }, next: 'intro' } ],
     },
     about: {
@@ -112,7 +112,7 @@ export const yornaDialog = {
       ],
     },
     post_l5_yorna: {
-      text: "Yorna: Good cut. Clean. Temple's ours again. But Urathar plans like a siege—he'll test every seam. We'll be ready.",
+      text: "Yorna: Good cut. Clean. The temple is ours again. But Urathar is methodical—he'll look for any weakness. We'll be ready.",
       choices: [ { label: 'Stay sharp.', action: 'set_flag', data: { key: 'post_l5_yorna' }, next: 'intro' } ],
     },
     skills: {
@@ -126,7 +126,7 @@ export const yornaDialog = {
       ],
     },
     after_aff: {
-      text: 'Yorna: Chief, that\'s the way—clear space and we\'ll bulldoze through.',
+      text: 'Yorna: Chief, that\'s the way. Clear a path and we\'ll push right through them.',
       choices: [
         { label: 'Join me.', requires: { missingFlag: 'level2_reached' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
         { label: 'Join me.', requires: { hasFlag: 'level2_reached', partyMissing: 'canopy' }, action: 'join_party', hint: 'Frontliner · Openings · Extended Reach' },
@@ -223,7 +223,7 @@ export const oyinDialog = {
       ],
     },
     post_l5_oyin: {
-      text: "Oyin: It feels lighter. Like someone opened a window. Urathar's not done—but neither are we.",
+      text: "Oyin: It feels safer now. I can breathe easier. Urathar isn't finished—but neither are we.",
       choices: [ { label: 'On we go.', action: 'set_flag', data: { key: 'post_l5_oyin' }, next: 'intro' } ],
     },
     about: {
@@ -289,7 +289,7 @@ export const tinDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Tin: My Lord, Tin—eyes on water and wind. I flag safe paths and hype our rhythm; your hands will move quicker when I call the beat. Want me on the path?",
+      text: "Tin: My Lord, I'm Tin! I watch the water and the wind to find the fastest way. I can also help you attack faster. Want me to come along?",
       choices: [
         { label: 'Aurelion is free (L5)', requires: { hasFlag: 'temple_cleansed', missingFlag: 'post_l5_tin' }, next: 'post_l5_tin' },
         { label: 'Yes, join me.', action: 'join_party', hint: 'Tempo · Attack Speed · Safe Footing' },
@@ -371,7 +371,7 @@ export const urnDialog = {
       choices: [ { label: 'Join me.', action: 'join_party', hint: 'Support · Small Heals · Cheer' }, { label: 'Tell me what you can do.', next: 'about' }, { label: 'Later.', action: 'end' } ],
     },
     post_l5_urn: {
-      text: "Urn: The stone feels warm again. People can breathe here. Urathar's not done breaking, but we can be louder than he is.",
+      text: "Urn: It feels safe here again. People can relax. Urathar is still trying to break our spirits, but our hope is stronger.",
       choices: [ { label: 'We will.', action: 'set_flag', data: { key: 'post_l5_urn' }, next: 'intro' } ],
     },
     about: {
@@ -474,7 +474,7 @@ export const roseDialog = {
   start: 'intro',
   nodes: {
     intro: {
-      text: "Rose: Champion of the city, you have my sovereign gratitude. Aurelion breathes again—its pulse restored, its halls unshackled. Yet rejoice with prudence: Urathar's redoubt remains occluded, and his detachments still desolate the outer demesnes.",
+      text: "Rose: Champion of the city, you have my deepest gratitude. Aurelion is safe again—its heart beats, its halls are free. But be warned: Urathar's fortress is still hidden, and his forces still trouble the outer lands.",
       choices: [
         { label: 'Your Majesty, how fares the Heart?', next: 'heart' },
         { label: 'Any word on Urathar\'s lair?', next: 'lair' },
@@ -482,7 +482,7 @@ export const roseDialog = {
       ],
     },
     heart: {
-      text: "Rose: The Heart resounds—soft, but true. Sanctifiers cleanse the soot; refugees bivouac in the nave. Your deeds made this possible. I shall not forget it.",
+      text: "Rose: The Heart of the city is alive again—faintly, but truly. Priests cleanse the soot from the walls, and refugees are taking shelter in the main hall. Your actions made this possible. I will not forget it.",
       choices: [ { label: 'And the people?', next: 'people' }, { label: 'Thank you, Your Majesty.', action: 'end' } ],
     },
     people: {
@@ -490,7 +490,7 @@ export const roseDialog = {
       choices: [ { label: 'We\'ll keep them safe.', action: 'end' } ],
     },
     lair: {
-      text: "Rose: Our scouts report roving cadres: ash-cloaks at the threshing villages, tithers on the trade roads. But the locus—the very burrow from which Urathar plots—remains undisclosed. Find it, and we shall close his book.",
+      text: "Rose: Our scouts report roving bands of his soldiers: 'ash-cloaks' in the farming villages and 'tithers' on the trade roads. But the location of his fortress—the heart of his operation—remains unknown. Find it, and we will end his war.",
       choices: [ { label: 'We\'ll find it.', action: 'end' } ],
     },
   },
@@ -511,7 +511,7 @@ export const varabellaDialog = {
       ],
     },
     post_l5_vara: {
-      text: "Varabella: Look at you—breaking chains in a temple. I’m happy for the kid. Don’t get soft; Urathar writes the next ambush while we smile.",
+      text: "Varabella: Look at you—freeing people in a temple. I’m happy for the kid. Don’t get soft; Urathar is planning his next attack while we\'re celebrating.",
       choices: [ { label: 'Eyes up.', action: 'set_flag', data: { key: 'post_l5_vara' }, next: 'intro' } ],
     },
     about: {
@@ -565,7 +565,7 @@ export const varabellaDialog = {
       choices: [ { label: 'Back', action: 'set_flag', data: { key: 'varabella_find_urn_done' }, next: 'quests' } ],
     },
     varabella_crossfire_intro: {
-      text: 'Varabella: Boss man, captains set crossfire in the alleys. Break three posts and the lanes breathe.',
+      text: 'Varabella: Boss man, their captains have set up crossfire positions in the alleys. Take out their three posts, and the paths will be clear.',
       choices: [
         { label: 'Start: Cut the Crossfire', action: 'start_quest', data: { id: 'varabella_crossfire' }, next: 'varabella_crossfire_started' },
         { label: 'Back', next: 'quests' },
@@ -647,7 +647,7 @@ export const snakeDialog = {
       choices: [ { label: 'Join me.', action: 'join_party', hint: 'Slow Aura · Small Bite' }, { label: 'Later.', action: 'end' } ],
     },
     snake_den_intro: {
-      text: "Snek: Three pests, close by. We ssslip in, sssnap fast, and they sssilence.",
+      text: 'Snek: Three pestsss are nearby. We sssneak in and kill them.',
       choices: [
         { label: 'Coil and go.', action: 'start_quest', data: { id: 'snake_den' }, next: 'snake_den_started' },
         { label: 'Another time.', next: 'intro' },
@@ -658,14 +658,13 @@ export const snakeDialog = {
       choices: [ { label: 'Back', next: 'intro' } ],
     },
     snake_den_turnin: {
-      text: "Snek: Yesss. Clean earth. Your bite is better already.",
+      text: 'Snek: The den isss clean. You fight well.',
       choices: [
         { label: 'Good hunt. (Affinity +0.8)', action: 'affinity_add', data: { target: 'active', amount: 0.8, flag: 'snake_den_reward' }, next: 'snake_den_done' },
       ],
     },
     snake_den_done: {
-      text: "Snek: I curl closer to your heelss."
-      ,
+      text: 'Snek: I will sstay closer to you now.',
       choices: [ { label: 'Back', action: 'set_flag', data: { key: 'snake_den_done' }, next: 'intro' } ],
     },
   },
