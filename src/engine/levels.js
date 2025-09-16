@@ -25,7 +25,8 @@ export function loadLevel1() {
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
   // Terrain and procedural obstacles
   const terrain = buildTerrainBitmap(world);
-  // PNG maps provide all geometry/props; do not add procedural obstacles here
+  // If a PNG map is present, it will override geometry/props asynchronously.
+  // Keep procedural fallback so gameplay works when PNG load fails (e.g., file://, CORS, or cache).
   // Level 1 defaults: start dim and equip a torch
   (function initDarkStart() {
     try {
@@ -36,7 +37,7 @@ export function loadLevel1() {
       // Do not auto-equip; torches begin unlit in the inventory
     } catch {}
   })();
-  // PNG map (assets/maps/level_01.png) will populate the level; return base terrain only
+  // PNG map (assets/maps/level_01.png) will populate the level; no procedural fallback
   return terrain;
 
   // Place some chests and breakables similar to start
@@ -494,10 +495,11 @@ export function loadLevel2() {
   }
   // Build terrain + obstacles (desert theme)
   const terrain = buildTerrainBitmap(world, 'desert');
-  // PNG maps provide all geometry/props; no procedural obstacles
+  // If a PNG map is present, it will override geometry/props asynchronously.
+  // Keep procedural fallback so gameplay works when PNG load fails (e.g., file://, CORS, or cache).
   // Level 2: full daylight — set bright ambient lighting
   try { import('./lighting.js').then(m => m.setAmbientLevel(8)).catch(()=>{}); } catch {}
-  // PNG map (assets/maps/level_2.png) will populate the level; return base terrain only
+  // PNG map (assets/maps/level_2.png) will populate the level; no procedural fallback
   return terrain;
   // New spawns for level 2
   // Space enemies farther from the player spawn so the immediate vicinity is calmer
@@ -704,8 +706,7 @@ export function loadLevel3() {
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
   // Build marsh terrain and obstacles
   const terrain = buildTerrainBitmap(world, 'marsh');
-  // PNG maps provide all geometry/props; no procedural obstacles
-  // PNG map (assets/maps/level_3.png) will populate the level; return base terrain only
+  // PNG map (assets/maps/level_3.png) will populate the level; no procedural fallback
   return terrain;
 
   // Spawns
@@ -840,7 +841,7 @@ export function loadLevel4() {
 
   // Build ruined city terrain
   const terrain = buildTerrainBitmap(world, 'city');
-  // PNG map (assets/maps/level_4.png) will populate the level; return base terrain only
+  // PNG map (assets/maps/level_4.png) will populate the level; no procedural fallback
   return terrain;
 
   // Scatter a few enemy mooks around (off-camera)
@@ -984,7 +985,7 @@ export function loadLevel5() {
   for (let i = 0; i < companions.length; i++) { const c = companions[i]; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
 
   const terrain = buildTerrainBitmap(world, 'city');
-  // PNG map (assets/maps/level_5.png) will populate the level; return base terrain only
+  // PNG map (assets/maps/level_5.png) will populate the level; no procedural fallback
   return terrain;
   
   // Add all temple walls from the map layout

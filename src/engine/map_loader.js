@@ -13,6 +13,41 @@ function rgbToHex(r, g, b) {
   return `${h(r)}${h(g)}${h(b)}`.toLowerCase();
 }
 
+function parseHexColor(hex) {
+  const s = String(hex || '').replace(/^#/, '').toLowerCase();
+  if (s.length !== 6) return null;
+  const r = parseInt(s.slice(0,2), 16);
+  const g = parseInt(s.slice(2,4), 16);
+  const b = parseInt(s.slice(4,6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return null;
+  return [r, g, b];
+}
+
+function buildLegendColorList(legend) {
+  const colors = (legend && legend.colors) ? legend.colors : {};
+  const arr = [];
+  for (const [hex, def] of Object.entries(colors)) {
+    const rgb = parseHexColor(hex);
+    if (!rgb) continue;
+    arr.push({ r: rgb[0], g: rgb[1], b: rgb[2], def });
+  }
+  return arr;
+}
+
+function nearestLegendDef(r, g, b, list, tol = 10) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  let best = null; let bestD2 = Infinity;
+  for (let i = 0; i < list.length; i++) {
+    const c = list[i];
+    const dr = c.r - r; const dg = c.g - g; const db = c.b - b;
+    const d2 = dr*dr + dg*dg + db*db;
+    if (d2 < bestD2) { bestD2 = d2; best = c; }
+    if (bestD2 === 0) break;
+  }
+  const maxD2 = tol * tol;
+  return (bestD2 <= maxD2) ? (best && best.def) : null;
+}
+
 // Merge horizontal runs of the same type into single obstacle rows
 function addMergedRowRuns(y, typesRow, mergeableTypes, rowsOut) {
   const w = world.tileW;
@@ -140,7 +175,14 @@ export async function applyPngMap(url, legend) {
       i.crossOrigin = 'anonymous';
       i.onload = () => resolve(i);
       i.onerror = (e) => reject(e);
-      i.src = url;
+      try {
+        let v = null;
+        try { if (typeof window !== 'undefined' && window.ASSET_VERSION) v = String(window.ASSET_VERSION); } catch {}
+        const srcUrl = v ? `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(v)}` : url;
+        i.src = srcUrl;
+      } catch {
+        i.src = url;
+      }
     });
     const width = img.naturalWidth || img.width;
     const height = img.naturalHeight || img.height;
@@ -159,6 +201,11 @@ export async function applyPngMap(url, legend) {
     const data = g.getImageData(0, 0, width, height).data;
     // Map pixels -> type grid (structural) and optionally collect enemy spawns from the map.
     const map = legend && legend.colors ? legend.colors : {};
+    const colorList = buildLegendColorList(legend);
+    const tol = (legend && typeof legend.tolerance === 'number') ? Math.max(0, legend.tolerance|0) : 12;
+    // Default tolerant fallback only to 'grass' so unknown pixels become passable background
+    const fallbackTypes = new Set(Array.isArray(legend?.tolerantTypes) ? legend.tolerantTypes : ['grass']);
+    const colorFallbackList = colorList.filter(c => c && c.def && fallbackTypes.has(c.def.type));
     const grid = new Array(width * height);
     const enemySpawns = []; // { kind: 'mook'|'featured_ranged'|'guardian'|'boss'|'leashed_mook'|'leashed_featured'|'leashed_featured_ranged', x, y }
     const spawnerMooks = [];     // { x, y }
@@ -174,7 +221,11 @@ export async function applyPngMap(url, legend) {
         const idx = (y * width + x) * 4;
         const r = data[idx], gg = data[idx + 1], b = data[idx + 2];
         const hex = rgbToHex(r, gg, b);
-        const def = map[hex] || null;
+        let def = map[hex] || null;
+        if (!def) {
+          // Tolerant match (restricted to safe, non-blocking background types)
+          def = nearestLegendDef(r, gg, b, colorFallbackList, tol);
+        }
         const type = def ? def.type : null;
         // Populate obstacle grid for structural tiles only
         let tForGrid = null;
@@ -249,13 +300,34 @@ export async function applyPngMap(url, legend) {
     // Clear any previous authored light nodes to avoid duplication when applying maps repeatedly
     try { clearLightNodes(); } catch {}
 
-    // Player spawn override (tile origin)
-    if (playerSpawn) {
-      player.x = Math.floor(playerSpawn.x * TILE);
-      player.y = Math.floor(playerSpawn.y * TILE);
-      // Re-fan companions around player
+    // Player spawn override (tile origin) with safety: ensure a passable tile
+    (function placePlayerSafely(){
+      const w = world.tileW, h = world.tileH;
+      const idx = (x,y) => y*w + x;
+      const isPassable = (t) => (t == null) || (t === 'wood') || (t === 'stone_floor');
+      let sx = (playerSpawn ? playerSpawn.x : Math.floor(w/2))|0;
+      let sy = (playerSpawn ? playerSpawn.y : Math.floor(h/2))|0;
+      sx = Math.max(0, Math.min(w-1, sx));
+      sy = Math.max(0, Math.min(h-1, sy));
+      if (!isPassable(grid[idx(sx, sy)])) {
+        let found = null;
+        const maxR = 50;
+        for (let r = 1; r <= maxR && !found; r++) {
+          for (let dy = -r; dy <= r && !found; dy++) {
+            for (let dx = -r; dx <= r && !found; dx++) {
+              if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+              const tx = sx + dx, ty = sy + dy;
+              if (tx < 0 || ty < 0 || tx >= w || ty >= h) continue;
+              if (isPassable(grid[idx(tx, ty)])) { found = { x: tx, y: ty }; }
+            }
+          }
+        }
+        if (found) { sx = found.x; sy = found.y; }
+      }
+      player.x = Math.floor(sx * TILE);
+      player.y = Math.floor(sy * TILE);
       for (let i = 0; i < companions.length; i++) { const c = companions[i]; if (!c) continue; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
-    }
+    })();
 
     // Add invisible proximity spawners defined in the map
     try {
