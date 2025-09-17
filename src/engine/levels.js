@@ -1,7 +1,7 @@
 import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime, spawners } from './state.js';
 import { buildTerrainBitmap } from './terrain.js';
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_FEATURES } from '../data/level5_temple_layout.js';
-import { makeSpriteSheet, sheetForName } from './sprites.js';
+import { sheetForName, spritePathForKey } from './sprites.js';
 import { setMusicLocation } from './audio.js';
 import { spawnNpc, addItemToInventory } from './state.js';
 import { TILE } from './constants.js';
@@ -218,9 +218,16 @@ export function loadLevel6() {
   const centerX = rx + rw/2 - 6;
   const centerY = ry + Math.round(rh/2) - 8;
   const sisterX = centerX + TILE; const sisterY = centerY;
-  const sisterPalette = { hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0', feminineShape: true };
-  const sisterSheet = makeSpriteSheet(sisterPalette);
-  const sister = spawnNpc(sisterX, sisterY, 'down', { name: 'Ell', dialogId: 'villager', sheet: sisterSheet, sheetPalette: sisterPalette, portrait: 'assets/portraits/level06/Ell/Ell.mp4', affinity: 6 });
+  const ellSheet = sheetForName('ell');
+  const ellSprite = spritePathForKey('ell');
+  const sister = spawnNpc(sisterX, sisterY, 'down', {
+    name: 'Ell',
+    dialogId: 'villager',
+    sheet: ellSheet,
+    spriteId: ellSprite || undefined,
+    portrait: 'assets/portraits/level06/Ell/Ell.mp4',
+    affinity: 6,
+  });
   import('../data/dialogs.js').then(mod => {
     // Placeholder: simple gratitude line; can be replaced with a bespoke tree later
     if (mod && mod.villagerDialog) setNpcDialog(sister, mod.villagerDialog);
@@ -240,7 +247,10 @@ export function loadLevel6() {
   // Place all companion NPCs around the hall as non-recruit hub characters
   const placeNpc = (name, x, y, dir, opts = {}) => {
     const sheet = sheetForName(name);
-    return spawnNpc(x, y, dir || 'down', Object.assign({ name, sheet, portrait: opts.portrait || null }, opts));
+    const spriteId = opts.spriteId || spritePathForKey(String(name || '').toLowerCase()) || null;
+    const base = { name, sheet, portrait: opts.portrait || null };
+    if (spriteId && !opts.spriteId) base.spriteId = spriteId;
+    return spawnNpc(x, y, dir || 'down', Object.assign(base, opts));
   };
   const inParty = (name) => companions.some(c => (c.name || '').toLowerCase().includes(String(name||'').toLowerCase()));
   // Recompute quest indicators when entering the hub to refresh tags

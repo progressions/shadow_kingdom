@@ -1,53 +1,120 @@
 import { SPRITE_SIZE, DIRECTIONS, FRAMES_PER_DIR } from './constants.js';
 
-const canopyCompanionDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAAQCAYAAADpunr5AAAAzElEQVR4nO2TsQ2DMBREPQhFJBrqDOE5MgbjUFMzBHU2SMUE6SIFXFiyZSeW/3d8wfZJ1/HE554Q4s/yvPfvby2dhwc9AJqHBz2Afu4x283Fw2OO5fuIGL4JICSlAA7fBBx9bavVqgQMcoLYMg/Ww6tbKAI4AuECuKEK9AmIGTCVwNMLoOYXAqr8A6hpAsDRB1/l4rQJyJBUAqi8jzMb4osR0A2j0zMI4PLwqJHUof3l5jRGAFWg771mQ3z1Arg8VwCXLyKfBOR4d6yAHeWFKQo6nMCXAAAAAElFTkSuQmCC';
-let canopyCompanionSheet = null;
+const canopyCompanionSpriteSrc = 'assets/sprites/canopy_companion.png';
+const holaCompanionSpriteSrc = 'assets/sprites/hola_companion.png';
+const yornaCompanionSpriteSrc = 'assets/sprites/yorna_companion.png';
+const oyinCompanionSpriteSrc = 'assets/sprites/oyin_companion.png';
+const twilCompanionSpriteSrc = 'assets/sprites/twil_companion.png';
+const tinCompanionSpriteSrc = 'assets/sprites/tin_companion.png';
+const nellisCompanionSpriteSrc = 'assets/sprites/nellis_companion.png';
+const urnCompanionSpriteSrc = 'assets/sprites/urn_companion.png';
+const varabellaCompanionSpriteSrc = 'assets/sprites/varabella_companion.png';
+const fanaCompanionSpriteSrc = 'assets/sprites/fana_companion.png';
+const fanaVillainSpriteSrc = 'assets/sprites/fana_villain.png';
+const ellNpcSpriteSrc = 'assets/sprites/ell.png';
+const roseNpcSpriteSrc = 'assets/sprites/rose.png';
+const vastBossSpriteSrc = 'assets/sprites/vast.png';
+const vastBossPoweredSpriteSrc = 'assets/sprites/vast_powered.png';
+const nethraBossPoweredSpriteSrc = 'assets/sprites/nethra_powered.png';
 
-function getCanopyCompanionSheet() {
-  if (canopyCompanionSheet) return canopyCompanionSheet;
-  const w = SPRITE_SIZE * FRAMES_PER_DIR;
-  const h = SPRITE_SIZE * DIRECTIONS.length;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
+function createStripSheetLoader(spriteSrc) {
+  let sheet = null;
 
-  function drawFrames(img) {
-    ctx.clearRect(0, 0, w, h);
-    const copy = (sx, sy, dx, dy) => {
-      ctx.drawImage(img, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+  return function getStripSheet() {
+    if (sheet) return sheet;
+    const w = SPRITE_SIZE * FRAMES_PER_DIR;
+    const h = SPRITE_SIZE * DIRECTIONS.length;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    function drawFrames(img) {
+      ctx.clearRect(0, 0, w, h);
+      const copy = (sx, sy, dx, dy) => {
+        ctx.drawImage(img, sx, sy, SPRITE_SIZE, SPRITE_SIZE, dx, dy, SPRITE_SIZE, SPRITE_SIZE);
+      };
+      // Frame order on source strip: 0-1 right/down, 2-3 left, 4-5 up
+      // Dest layout expects direction rows: down, left, right, up (two frames each)
+      copy(0, 0, 0, 0);
+      copy(16, 0, SPRITE_SIZE, 0);
+      copy(32, 0, 0, SPRITE_SIZE);
+      copy(48, 0, SPRITE_SIZE, SPRITE_SIZE);
+      copy(0, 0, 0, SPRITE_SIZE * 2);
+      copy(16, 0, SPRITE_SIZE, SPRITE_SIZE * 2);
+      copy(64, 0, 0, SPRITE_SIZE * 3);
+      copy(80, 0, SPRITE_SIZE, SPRITE_SIZE * 3);
+    }
+
+    const img = new Image();
+    img.decoding = 'async';
+
+    const paint = () => {
+      try { drawFrames(img); } catch (err) {
+        console.error(`Failed drawing companion sprite for ${spriteSrc}`, err);
+      }
     };
-    // Frame order on source strip: 0-1 right/down, 2-3 left, 4-5 up
-    // Dest layout expects directions rows: down, left, right, up
-    // Down uses right-facing frames
-    copy(0, 0, 0, 0);        // down frame 0 (right idle)
-    copy(16, 0, SPRITE_SIZE, 0); // down frame 1 (right bob)
-    // Left row
-    copy(32, 0, 0, SPRITE_SIZE);
-    copy(48, 0, SPRITE_SIZE, SPRITE_SIZE);
-    // Right row – reuse right/down frames
-    copy(0, 0, 0, SPRITE_SIZE * 2);
-    copy(16, 0, SPRITE_SIZE, SPRITE_SIZE * 2);
-    // Up row
-    copy(64, 0, 0, SPRITE_SIZE * 3);
-    copy(80, 0, SPRITE_SIZE, SPRITE_SIZE * 3);
-  }
 
-  const img = new Image();
-  img.decoding = 'async';
-  img.onload = () => {
-    try { drawFrames(img); } catch (err) { console.error('Failed drawing canopy sprite', err); }
+    img.onload = paint;
+    img.onerror = (err) => {
+      console.error(`Failed to load companion sprite ${spriteSrc}`, err);
+    };
+
+    let v = null;
+    try { if (typeof window !== 'undefined' && window.ASSET_VERSION) v = String(window.ASSET_VERSION); } catch {}
+    const primarySrc = v ? `${spriteSrc}?v=${encodeURIComponent(v)}` : spriteSrc;
+
+    try { img.src = primarySrc; }
+    catch (err) {
+      console.error(`Failed setting companion sprite source ${spriteSrc}`, err);
+    }
+
+    if (img.complete && img.naturalWidth) paint();
+
+    sheet = canvas;
+    return sheet;
   };
-  img.onerror = (err) => { console.error('Error loading canopy sprite data', err); };
-  img.src = canopyCompanionDataUrl;
-  if (img.complete && img.naturalWidth) {
-    img.onload?.(new Event('load'));
-  }
-
-  canopyCompanionSheet = canvas;
-  return canopyCompanionSheet;
 }
+
+const getCanopyCompanionSheet = createStripSheetLoader(canopyCompanionSpriteSrc);
+const getHolaCompanionSheet = createStripSheetLoader(holaCompanionSpriteSrc);
+const getYornaCompanionSheet = createStripSheetLoader(yornaCompanionSpriteSrc);
+const getOyinCompanionSheet = createStripSheetLoader(oyinCompanionSpriteSrc);
+const getTwilCompanionSheet = createStripSheetLoader(twilCompanionSpriteSrc);
+const getTinCompanionSheet = createStripSheetLoader(tinCompanionSpriteSrc);
+const getNellisCompanionSheet = createStripSheetLoader(nellisCompanionSpriteSrc);
+const getUrnCompanionSheet = createStripSheetLoader(urnCompanionSpriteSrc);
+const getVarabellaCompanionSheet = createStripSheetLoader(varabellaCompanionSpriteSrc);
+const getFanaCompanionSheet = createStripSheetLoader(fanaCompanionSpriteSrc);
+const getFanaVillainSheet = createStripSheetLoader(fanaVillainSpriteSrc);
+const getEllNpcSheet = createStripSheetLoader(ellNpcSpriteSrc);
+const getRoseNpcSheet = createStripSheetLoader(roseNpcSpriteSrc);
+const getVastBossSheet = createStripSheetLoader(vastBossSpriteSrc);
+const getVastBossPoweredSheet = createStripSheetLoader(vastBossPoweredSpriteSrc);
+const getNethraBossPoweredSheet = createStripSheetLoader(nethraBossPoweredSpriteSrc);
+
+const spritePathMap = {
+  canopy: canopyCompanionSpriteSrc,
+  hola: holaCompanionSpriteSrc,
+  yorna: yornaCompanionSpriteSrc,
+  oyin: oyinCompanionSpriteSrc,
+  twil: twilCompanionSpriteSrc,
+  tin: tinCompanionSpriteSrc,
+  nellis: nellisCompanionSpriteSrc,
+  fana: fanaCompanionSpriteSrc,
+  fana_villain: fanaVillainSpriteSrc,
+  ell: ellNpcSpriteSrc,
+  rose: roseNpcSpriteSrc,
+  vast: vastBossSpriteSrc,
+  vast_powered: vastBossPoweredSpriteSrc,
+  nethra: 'assets/sprites/nethra.png',
+  nethra_powered: nethraBossPoweredSpriteSrc,
+  urn: urnCompanionSpriteSrc,
+  varabella: varabellaCompanionSpriteSrc,
+  cowsill: 'assets/sprites/cowsill.png',
+  gorg: 'assets/sprites/gorg.png',
+};
 
 export function makeSpriteSheet(paletteOverrides = {}) {
   const cols = FRAMES_PER_DIR;
@@ -290,21 +357,37 @@ export function sheetForName(name) {
   if (key.includes('snek') || key.includes('snake') || key.includes('smek')) return makeSnakeSpriteSheet('#3aa35a', '#0a0a0a');
   // Level 1 canonical palettes - with feminine shape
   if (key.includes('canopy')) return getCanopyCompanionSheet();
-  if (key.includes('yorna'))  return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true });
-  if (key.includes('hola'))   return makeSpriteSheet({ hair: '#1b1b1b', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0', feminineShape: true });
+  if (key.includes('yorna'))  return getYornaCompanionSheet();
+  if (key.includes('hola'))   return getHolaCompanionSheet();
   // Level 2 companions
-  if (key.includes('oyin'))   return makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#2ea65a', shirt: '#b7f0c9', feminineShape: true });
-  if (key.includes('twil'))   return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true });
+  if (key.includes('oyin'))   return getOyinCompanionSheet();
+  if (key.includes('twil'))   return getTwilCompanionSheet();
   // Level 3 companions
-  if (key.includes('tin'))    return makeSpriteSheet({ hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#4fa3ff', shirt: '#bfdcff', feminineShape: true });
-  if (key.includes('nellis')) return makeSpriteSheet({ hair: '#a15aff', longHair: true, dress: true, dressColor: '#f5f5f5', shirt: '#e0e0e0', feminineShape: true });
+  if (key.includes('tin'))    return getTinCompanionSheet();
+  if (key.includes('nellis')) return getNellisCompanionSheet();
   // Level 4 companions
-  if (key.includes('urn'))    return makeSpriteSheet({ hair: '#4fa36b', longHair: true, dress: true, dressColor: '#3a7f4f', shirt: '#9bd6b0', feminineShape: true });
-  if (key.includes('varabella')) return makeSpriteSheet({ hair: '#d14a24', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#4a4a4a', feminineShape: true });
+  if (key.includes('urn'))    return getUrnCompanionSheet();
+  if (key.includes('varabella')) return getVarabellaCompanionSheet();
   // Level 5/6 — notable NPCs
-  if (key.includes('ell'))    return makeSpriteSheet({ hair: '#e8d18b', longHair: true, dress: true, dressColor: '#ffffff', shirt: '#f0f0f0', feminineShape: true });
-  if (key.includes('fana'))   return makeSpriteSheet({ hair: '#6fb7ff', longHair: true, dress: true, dressColor: '#e6d5ff', shirt: '#c7b0ff', feminineShape: true });
+  if (key.includes('ell'))    return getEllNpcSheet();
+  if (key.includes('fana')) {
+    if (key.includes('villain') || key.includes('enemy')) return getFanaVillainSheet();
+    return getFanaCompanionSheet();
+  }
   if (key.includes('cowsill')) return makeSpriteSheet({ hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#2a2a2a', feminineShape: true });
-  if (key.includes('rose'))   return makeSpriteSheet({ hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#ffd166', shirt: '#b38b00', feminineShape: true });
+  if (key.includes('rose'))   return getRoseNpcSheet();
+  if (key.includes('vast'))   {
+    if (key.includes('powered')) return getVastBossPoweredSheet();
+    return getVastBossSheet();
+  }
+  if (key.includes('nethra') && key.includes('powered')) return getNethraBossPoweredSheet();
   return npcSheet;
+}
+
+export function spritePathForKey(key) {
+  try {
+    if (!key) return null;
+    const k = String(key).trim().toLowerCase();
+    return spritePathMap[k] || null;
+  } catch { return null; }
 }

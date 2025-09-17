@@ -2,7 +2,7 @@ import { TILE } from './constants.js';
 import { world, player, enemies, npcs, companions, obstacles, corpses, stains, floaters, sparkles, spawners, runtime, spawnEnemy, spawnNpc, addSpawner } from './state.js';
 import { addLightNode, clearLightNodes, MAX_LIGHT_LEVEL } from './lighting.js';
 import { buildTerrainBitmap } from './terrain.js';
-import { sheetForName } from './sprites.js';
+import { sheetForName, spritePathForKey } from './sprites.js';
 import { rebuildObstacleIndex } from './spatial_index.js';
 import { setNpcDialog } from './dialog.js';
 import { introTexts } from '../data/intro_texts.js';
@@ -360,7 +360,13 @@ export async function applyPngMap(url, legend) {
           const lvl = runtime.currentLevel || 1;
           const tpl = legend?.actors?.guardian || null;
           if (tpl) {
-            spawnEnemy(ex, ey, tpl.kind || 'featured', { ...tpl.opts, guardian: true });
+            const kind = tpl.kind || 'featured';
+            const opts = { ...(tpl.opts || {}), guardian: true };
+            if (typeof opts.sheet === 'string' && !opts.spriteId) {
+              const sid = spritePathForKey(String(opts.sheet).toLowerCase());
+              if (sid) opts.spriteId = sid;
+            }
+            spawnEnemy(ex, ey, kind, opts);
           } else if (lvl === 2) {
             spawnEnemy(ex, ey, 'featured', {
               name: 'Aarg', vnId: 'enemy:aarg', guaranteedDropId: 'key_nethra', guardian: true,
@@ -373,6 +379,8 @@ export async function applyPngMap(url, legend) {
             // Level 1 default: Gorg
             spawnEnemy(ex, ey, 'featured', {
               name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', guardian: true,
+              sheet: 'gorg',
+              spriteId: spritePathForKey('gorg') || 'assets/sprites/gorg.png',
               hp: 40, dmg: 6, hitCooldown: 0.65, aggroRadius: 160,
               ranged: true, shootRange: 200, shootCooldown: 1.6, projectileSpeed: 220, projectileDamage: 4, aimError: 0.04,
               vnOnSight: { text: introTexts.gorg },
@@ -384,10 +392,17 @@ export async function applyPngMap(url, legend) {
           const lvl = runtime.currentLevel || 1;
           const tpl = legend?.actors?.boss || null;
           if (tpl) {
-            spawnEnemy(ex, ey, 'boss', { ...tpl });
+            const opts = { ...tpl };
+            if (typeof opts.sheet === 'string' && !opts.spriteId) {
+              const sid = spritePathForKey(String(opts.sheet).toLowerCase());
+              if (sid) opts.spriteId = sid;
+            }
+            spawnEnemy(ex, ey, 'boss', opts);
           } else if (lvl === 2) {
             spawnEnemy(ex, ey, 'boss', {
               name: 'Nethra', vnId: 'enemy:nethra',
+              sheet: 'nethra',
+              spriteId: spritePathForKey('nethra') || 'assets/sprites/nethra.png',
               portrait: 'assets/portraits/level02/Nethra/Nethra.mp4',
               portraitPowered: 'assets/portraits/level02/Nethra/Nethra powered.mp4',
               portraitDefeated: 'assets/portraits/level02/Nethra/Nethra defeated.mp4',
@@ -400,6 +415,8 @@ export async function applyPngMap(url, legend) {
             // Level 1 default: Vast
             spawnEnemy(ex, ey, 'boss', {
               name: 'Vast', vnId: 'enemy:vast',
+              sheet: 'vast',
+              spriteId: spritePathForKey('vast') || 'assets/sprites/vast.png',
               portrait: 'assets/portraits/level01/Vast/Vast video.mp4',
               portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4',
               portraitDefeated: 'assets/portraits/level01/Vast/Vast defeated.mp4',
@@ -455,11 +472,14 @@ export async function applyPngMap(url, legend) {
         const cfg = NPCS[key];
         if (!cfg) continue;
         if (inParty(cfg.name)) continue; // do not spawn an NPC duplicate if companion is in party
+        const sheetKey = cfg.sheet || cfg.name;
+        const spriteId = cfg.spriteId || spritePathForKey(String(sheetKey || '').toLowerCase()) || null;
         const n = spawnNpc(px, py, cfg.dir || 'down', {
           name: cfg.name,
           portrait: cfg.portrait || null,
           dialogId: cfg.dialogId || key,
-          sheet: sheetForName(cfg.sheet || cfg.name),
+          sheet: sheetForName(sheetKey || cfg.name),
+          spriteId: spriteId || undefined,
         });
         if (key === 'ell') {
           // Simple one-line dialog while boss is alive

@@ -1,7 +1,7 @@
 import { TILE } from './constants.js';
 import { enemyMookSheet, enemyFeaturedSheet, enemyBossSheet, enemyMookPalette, enemyFeaturedPalette, enemyBossPalette } from './sprites.js';
 import { enemyPalettes } from '../data/enemy_palettes.js';
-import { makeSpriteSheet } from './sprites.js';
+import { makeSpriteSheet, sheetForName } from './sprites.js';
 
 // World and camera
 export const world = {
@@ -288,6 +288,13 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
   const baseHitCooldown = (typeof opts.hitCooldown === 'number') ? Math.max(0.1, opts.hitCooldown) : 0.8;
   const bossCdMul = (T === 'boss') ? Math.max(0.6, 1 - 0.03 * lvl) : 1;
   const finalHitCooldown = Math.max(0.1, baseHitCooldown * bossCdMul);
+  let sheetOverride = opts.sheet || null;
+  let sheetKey = null;
+  if (typeof sheetOverride === 'string') {
+    sheetKey = sheetOverride;
+    try { sheetOverride = sheetForName(sheetOverride); } catch {}
+  }
+
   const ent = {
     spriteId: opts.spriteId || null,
     id: opts.id || (`de_${Date.now().toString(36)}_${Math.floor(Math.random()*1e6).toString(36)}`),
@@ -309,7 +316,8 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     knockbackY: 0,
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
-    sheet: opts.sheet || cfg.sheet,
+    sheet: sheetOverride || cfg.sheet,
+    _sheetKey: sheetKey,
     sheetPalette: opts.sheetPalette || (T === 'boss' ? enemyBossPalette : (T === 'featured' ? enemyFeaturedPalette : enemyMookPalette)),
     // Optional portrait for VN overlay on enemies
     portraitSrc: opts.portrait || null,

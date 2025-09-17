@@ -19,6 +19,7 @@ import { exitChat } from '../engine/ui.js';
 import { saveGame } from '../engine/save.js';
 import { showBanner, updateBuffBadges, showMusicTheme, showTargetInfo } from '../engine/ui.js';
 import { ENEMY_LOOT, ENEMY_LOOT_L2, ENEMY_LOOT_L3, rollFromTable, itemById, BREAKABLE_LOOT } from '../data/loot.js';
+import { sheetForName, spritePathForKey } from '../engine/sprites.js';
 import { AI_TUNING } from '../data/ai_tuning.js';
 
 function moveWithCollision(ent, dx, dy, solids = []) {
@@ -1896,6 +1897,24 @@ export function step(dt) {
           // Remove true damage component for Vast's second phase
           e.trueDamage = 0;
         }
+        // Swap to powered sprite sheet if available
+        try {
+          const baseKey = typeof e._sheetKey === 'string' && e._sheetKey.length ? e._sheetKey : (e.name ? String(e.name).toLowerCase().replace(/\s+/g, '_') : null);
+          if (baseKey) {
+            const poweredKey = baseKey.includes('powered') ? baseKey : `${baseKey}_powered`;
+            const newSpriteId = spritePathForKey(poweredKey);
+            if (newSpriteId) {
+              e.spriteId = newSpriteId;
+              e._sprite = null;
+            }
+            const poweredSheet = sheetForName(poweredKey);
+            if (poweredSheet) {
+              e.sheet = poweredSheet;
+              e._sheetKey = poweredKey;
+              e._sprite = null;
+            }
+          }
+        } catch {}
         e.hitCooldown = Math.max(0.5, (e.hitCooldown || 0.8) * 0.7);
         e.speed = Math.max(8, (e.speed || 12) * 1.1);
         try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Empowered!', { color: '#ffd166', life: 0.8 }); } catch {}
@@ -1923,6 +1942,23 @@ export function step(dt) {
         e.trueDamage = Math.max(3, (e.trueDamage || 0), 3);
         e.hitCooldown = Math.max(0.35, (e.hitCooldown || 0.8) * 0.7);
         e.speed = Math.max(9, (e.speed || 12) * 1.15);
+        try {
+          const baseKey = typeof e._sheetKey === 'string' && e._sheetKey.length ? e._sheetKey.replace(/_powered$/, '') : (e.name ? String(e.name).toLowerCase().replace(/\s+/g, '_') : null);
+          if (baseKey) {
+            const overKey = baseKey.includes('overpowered') ? baseKey : `${baseKey}_overpowered`;
+            const overSprite = spritePathForKey(overKey);
+            if (overSprite) {
+              e.spriteId = overSprite;
+              e._sprite = null;
+            }
+            const overSheet = sheetForName(overKey);
+            if (overSheet) {
+              e.sheet = overSheet;
+              e._sheetKey = overKey;
+              e._sprite = null;
+            }
+          }
+        } catch {}
         try { spawnFloatText(e.x + e.w/2, e.y - 10, 'Final Form!', { color: '#ff7a7a', life: 0.9 }); } catch {}
         e.hitTimer = 0; e.knockbackX = 0; e.knockbackY = 0;
         continue;
@@ -2271,8 +2307,10 @@ export function step(dt) {
     const desired = 14;
     let dx = (leader.x - c.x), dy = (leader.y - c.y);
     const dist = Math.hypot(dx, dy) || 1;
+    const wasMoving = !!c._wasMoving;
     c.moving = dist > desired + 0.5;
     if (c.moving) {
+      if (!wasMoving) { c.animTime = 0; }
       const move = Math.min(c.speed * dt, Math.max(0, dist - desired));
       dx/=dist; dy/=dist; 
       // Companions pass-through; only static obstacles block them
@@ -2290,7 +2328,16 @@ export function step(dt) {
         tryWarpNear(leader, c);
         c._stuckTime = 0;
       }
-    } else { c.animTime = 0; c.animFrame = 0; }
+    } else {
+      if (wasMoving) { c.animTime = 0; }
+      c.animTime += dt;
+      const idleStep = 0.65;
+      if (c.animTime > idleStep) {
+        c.animTime = 0;
+        c.animFrame = (c.animFrame + 1) % FRAMES_PER_DIR;
+      }
+    }
+    c._wasMoving = c.moving;
     c.x = Math.max(0, Math.min(world.w - c.w, c.x));
     c.y = Math.max(0, Math.min(world.h - c.h, c.y));
   }

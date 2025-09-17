@@ -542,7 +542,25 @@ export function render(terrainBitmap, obstacles) {
     let dx = Math.round(d.x + d.w/2 - ax * destW - camera.x);
     let dy = Math.round(d.y + d.h - ay * destH - camera.y);
     try {
-      if (ent && ent.moving) {
+      const isCompanion = companions && typeof companions.includes === 'function' ? companions.includes(ent) : false;
+      if (isCompanion && ent) {
+        if (typeof ent._bobPhase !== 'number') ent._bobPhase = Math.random() * Math.PI * 2;
+        const t = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : (performance.now() / 1000);
+        let hz = ent.moving ? 0.85 : 0;
+        let amp = ent.moving ? 0.8 : 0;
+        try {
+          if (typeof window !== 'undefined') {
+            if (ent.moving && typeof window.COMPANION_BOB_HZ === 'number') hz = window.COMPANION_BOB_HZ;
+            if (ent.moving && typeof window.COMPANION_BOB_AMP === 'number') amp = window.COMPANION_BOB_AMP;
+          }
+        } catch {}
+        const target = amp ? Math.sin((t * Math.PI * 2 * hz) + ent._bobPhase) * amp : 0;
+        const prev = (typeof ent._bobValue === 'number') ? ent._bobValue : 0;
+        const lerp = ent.moving ? 0.35 : 0.5;
+        const next = prev + (target - prev) * lerp;
+        ent._bobValue = next;
+        dy += Math.round(next);
+      } else if (ent && ent.moving) {
         const bob = (ent.animFrame % 2 === 1) ? -1 : 0;
         dy += bob;
       }

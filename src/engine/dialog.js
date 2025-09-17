@@ -93,10 +93,27 @@ export function startCompanionAction(comp) {
   ]);
 }
 
+function keyForCompanion(comp) {
+  try {
+    const raw = String(comp?.name || '').trim().toLowerCase();
+    if (!raw) return null;
+    if (companionDialogs[raw]) return raw;
+    const keys = Object.keys(companionDialogs);
+    const exact = keys.find(k => raw === k);
+    if (exact) return exact;
+    const partial = keys.find(k => raw.includes(k));
+    if (partial) return partial;
+    return null;
+  } catch { return null; }
+}
+
 export function openCompanionTalk(comp) {
   if (!comp) return;
-  const key = ((comp?.name) || '').toLowerCase();
-  const tree = companionDialogs[key];
+  const key = keyForCompanion(comp);
+  if (key) {
+    try { comp._dialogKey = key; } catch {}
+  }
+  const tree = key ? companionDialogs[key] : null;
   if (tree) {
     runtime.activeNpc = comp;
     runtime.activeDialog = { tree, nodeId: tree.start || 'root' };
