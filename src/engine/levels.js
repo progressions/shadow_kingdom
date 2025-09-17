@@ -1,7 +1,7 @@
 import { world, player, enemies, companions, npcs, obstacles, corpses, stains, floaters, sparkles, runtime, spawners } from './state.js';
 import { buildTerrainBitmap } from './terrain.js';
 import { LEVEL5_TEMPLE_SIZE, LEVEL5_TEMPLE_FEATURES } from '../data/level5_temple_layout.js';
-import { sheetForName, spritePathForKey } from './sprites.js';
+import { sheetForName, spritePathForKey, spriteShouldUseSpriteId } from './sprites.js';
 import { setMusicLocation } from './audio.js';
 import { spawnNpc, addItemToInventory } from './state.js';
 import { TILE } from './constants.js';
@@ -219,7 +219,7 @@ export function loadLevel6() {
   const centerY = ry + Math.round(rh/2) - 8;
   const sisterX = centerX + TILE; const sisterY = centerY;
   const ellSheet = sheetForName('ell');
-  const ellSprite = spritePathForKey('ell');
+  const ellSprite = spriteShouldUseSpriteId('ell') ? spritePathForKey('ell') : null;
   const sister = spawnNpc(sisterX, sisterY, 'down', {
     name: 'Ell',
     dialogId: 'villager',
@@ -247,9 +247,11 @@ export function loadLevel6() {
   // Place all companion NPCs around the hall as non-recruit hub characters
   const placeNpc = (name, x, y, dir, opts = {}) => {
     const sheet = sheetForName(name);
-    const spriteId = opts.spriteId || spritePathForKey(String(name || '').toLowerCase()) || null;
+    const keyLower = String(name || '').toLowerCase();
+    const allowSprite = spriteShouldUseSpriteId(keyLower);
+    const spriteId = opts.spriteId || (allowSprite ? spritePathForKey(keyLower) : null) || null;
     const base = { name, sheet, portrait: opts.portrait || null };
-    if (spriteId && !opts.spriteId) base.spriteId = spriteId;
+    if (spriteId) base.spriteId = spriteId;
     return spawnNpc(x, y, dir || 'down', Object.assign(base, opts));
   };
   const inParty = (name) => companions.some(c => (c.name || '').toLowerCase().includes(String(name||'').toLowerCase()));

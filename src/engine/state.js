@@ -294,6 +294,18 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     sheetKey = sheetOverride;
     try { sheetOverride = sheetForName(sheetOverride); } catch {}
   }
+  const sheetWasString = typeof opts.sheet === 'string';
+  const sheetExplicitNull = opts.sheet === null;
+  let finalSheet;
+  if (sheetOverride !== undefined && sheetOverride !== null) {
+    finalSheet = sheetOverride;
+  } else if (sheetOverride === null && sheetWasString) {
+    finalSheet = null;
+  } else if (sheetExplicitNull) {
+    finalSheet = null;
+  } else {
+    finalSheet = cfg.sheet;
+  }
 
   const ent = {
     spriteId: opts.spriteId || null,
@@ -316,7 +328,7 @@ export function spawnEnemy(x, y, type = 'mook', opts = {}) {
     knockbackY: 0,
     avoidSign: Math.random() < 0.5 ? 1 : -1,
     stuckTime: 0,
-    sheet: sheetOverride || cfg.sheet,
+    sheet: finalSheet,
     _sheetKey: sheetKey,
     sheetPalette: opts.sheetPalette || (T === 'boss' ? enemyBossPalette : (T === 'featured' ? enemyFeaturedPalette : enemyMookPalette)),
     // Optional portrait for VN overlay on enemies

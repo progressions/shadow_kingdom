@@ -20,6 +20,8 @@ const nethraBossPoweredSpriteSrc = 'assets/sprites/nethra_powered.png';
 const vorthakBossSpriteSrc = 'assets/sprites/vorthak.png';
 const vorthakBossPoweredSpriteSrc = 'assets/sprites/vorthak_powered.png';
 const vorthakBossOverSpriteSrc = 'assets/sprites/vorthak_overpowered.png';
+const gorgEnemySpriteSrc = 'assets/sprites/gorg.png';
+const aargEnemySpriteSrc = 'assets/sprites/aarg.png';
 
 function createStripSheetLoader(spriteSrc) {
   let sheet = null;
@@ -98,34 +100,33 @@ const getVastBossSheet = createStripSheetLoader(vastBossSpriteSrc);
 const getVastBossPoweredSheet = createStripSheetLoader(vastBossPoweredSpriteSrc);
 const getNethraBossSheet = createStripSheetLoader(nethraBossSpriteSrc);
 const getNethraBossPoweredSheet = createStripSheetLoader(nethraBossPoweredSpriteSrc);
-const getVorthakBossSheet = createStripSheetLoader(vorthakBossSpriteSrc);
-const getVorthakBossPoweredSheet = createStripSheetLoader(vorthakBossPoweredSpriteSrc);
-const getVorthakBossOverSheet = createStripSheetLoader(vorthakBossOverSpriteSrc);
+const getGorgEnemySheet = createStripSheetLoader(gorgEnemySpriteSrc);
+const getAargEnemySheet = createStripSheetLoader(aargEnemySpriteSrc);
 
-const spritePathMap = {
-  canopy: canopyCompanionSpriteSrc,
-  hola: holaCompanionSpriteSrc,
-  yorna: yornaCompanionSpriteSrc,
-  oyin: oyinCompanionSpriteSrc,
-  twil: twilCompanionSpriteSrc,
-  tin: tinCompanionSpriteSrc,
-  nellis: nellisCompanionSpriteSrc,
-  fana: fanaCompanionSpriteSrc,
-  fana_villain: fanaVillainSpriteSrc,
-  ell: ellNpcSpriteSrc,
-  rose: roseNpcSpriteSrc,
-  vast: vastBossSpriteSrc,
-  vast_powered: vastBossPoweredSpriteSrc,
-  nethra: nethraBossSpriteSrc,
-  nethra_powered: nethraBossPoweredSpriteSrc,
-  vorthak: vorthakBossSpriteSrc,
-  vorthak_powered: vorthakBossPoweredSpriteSrc,
-  vorthak_overpowered: vorthakBossOverSpriteSrc,
-  urn: urnCompanionSpriteSrc,
-  varabella: varabellaCompanionSpriteSrc,
-  cowsill: 'assets/sprites/cowsill.png',
-  gorg: 'assets/sprites/gorg.png',
-  aarg: 'assets/sprites/aarg.png',
+const spriteSources = {
+  canopy: { path: canopyCompanionSpriteSrc, useSpriteId: false },
+  hola: { path: holaCompanionSpriteSrc, useSpriteId: false },
+  yorna: { path: yornaCompanionSpriteSrc, useSpriteId: false },
+  oyin: { path: oyinCompanionSpriteSrc, useSpriteId: false },
+  twil: { path: twilCompanionSpriteSrc, useSpriteId: false },
+  tin: { path: tinCompanionSpriteSrc, useSpriteId: false },
+  nellis: { path: nellisCompanionSpriteSrc, useSpriteId: false },
+  urn: { path: urnCompanionSpriteSrc, useSpriteId: false },
+  varabella: { path: varabellaCompanionSpriteSrc, useSpriteId: false },
+  fana: { path: fanaCompanionSpriteSrc, useSpriteId: false },
+  fana_villain: { path: fanaVillainSpriteSrc, useSpriteId: false },
+  ell: { path: ellNpcSpriteSrc, useSpriteId: false },
+  rose: { path: roseNpcSpriteSrc, useSpriteId: false },
+  vast: { path: vastBossSpriteSrc, useSpriteId: false },
+  vast_powered: { path: vastBossPoweredSpriteSrc, useSpriteId: false },
+  nethra: { path: nethraBossSpriteSrc, useSpriteId: false },
+  nethra_powered: { path: nethraBossPoweredSpriteSrc, useSpriteId: false },
+  vorthak: { path: vorthakBossSpriteSrc, useSpriteId: true },
+  vorthak_powered: { path: vorthakBossPoweredSpriteSrc, useSpriteId: true },
+  vorthak_overpowered: { path: vorthakBossOverSpriteSrc, useSpriteId: true },
+  gorg: { path: gorgEnemySpriteSrc, useSpriteId: false },
+  aarg: { path: aargEnemySpriteSrc, useSpriteId: false },
+  cowsill: { path: 'assets/sprites/cowsill.png', useSpriteId: false },
 };
 
 export function makeSpriteSheet(paletteOverrides = {}) {
@@ -397,17 +398,30 @@ export function sheetForName(name) {
     return getNethraBossSheet();
   }
   if (key.includes('vorthak')) {
-    if (key.includes('overpowered')) return getVorthakBossOverSheet();
-    if (key.includes('powered')) return getVorthakBossPoweredSheet();
-    return getVorthakBossSheet();
+    // Vorthak relies on JSON-driven spriteId (36x36); no fallback sheet
+    return null;
   }
+  if (key.includes('gorg')) return getGorgEnemySheet();
+  if (key.includes('aarg')) return getAargEnemySheet();
   return npcSheet;
+}
+
+function spriteConfigForKey(key) {
+  if (!key) return null;
+  const k = String(key).trim().toLowerCase();
+  return spriteSources[k] || null;
 }
 
 export function spritePathForKey(key) {
   try {
-    if (!key) return null;
-    const k = String(key).trim().toLowerCase();
-    return spritePathMap[k] || null;
+    const cfg = spriteConfigForKey(key);
+    return cfg ? cfg.path : null;
   } catch { return null; }
+}
+
+export function spriteShouldUseSpriteId(key) {
+  try {
+    const cfg = spriteConfigForKey(key);
+    return !!(cfg && cfg.useSpriteId);
+  } catch { return false; }
 }
