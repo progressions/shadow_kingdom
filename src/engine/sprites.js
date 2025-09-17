@@ -11,17 +11,56 @@ const urnCompanionSpriteSrc = 'assets/sprites/urn_companion.png';
 const varabellaCompanionSpriteSrc = 'assets/sprites/varabella_companion.png';
 const fanaCompanionSpriteSrc = 'assets/sprites/fana_companion.png';
 const fanaVillainSpriteSrc = 'assets/sprites/fana_villain.png';
+const fanaVillainSpriteId = 'assets/sprites/fana_villain';
 const ellNpcSpriteSrc = 'assets/sprites/ell.png';
 const roseNpcSpriteSrc = 'assets/sprites/rose.png';
 const vastBossSpriteSrc = 'assets/sprites/vast.png';
+const vastBossSpriteId = 'assets/sprites/vast';
 const vastBossPoweredSpriteSrc = 'assets/sprites/vast_powered.png';
+const vastBossPoweredSpriteId = 'assets/sprites/vast_powered';
 const nethraBossSpriteSrc = 'assets/sprites/nethra.png';
+const nethraBossSpriteId = 'assets/sprites/nethra';
 const nethraBossPoweredSpriteSrc = 'assets/sprites/nethra_powered.png';
+const nethraBossPoweredSpriteId = 'assets/sprites/nethra_powered';
 const vorthakBossSpriteSrc = 'assets/sprites/vorthak.png';
 const vorthakBossPoweredSpriteSrc = 'assets/sprites/vorthak_powered.png';
 const vorthakBossOverSpriteSrc = 'assets/sprites/vorthak_overpowered.png';
+const luulaBossSpriteSrc = 'assets/sprites/luula.png';
+const luulaBossSpriteId = 'assets/sprites/luula';
+const luulaBossPoweredSpriteSrc = 'assets/sprites/luula_powered.png';
+const luulaBossPoweredSpriteId = 'assets/sprites/luula_powered';
+const vanificiaBossSpriteSrc = 'assets/sprites/vanificia.png';
+const vanificiaBossSpriteId = 'assets/sprites/vanificia';
+const vanificiaBossPoweredSpriteSrc = 'assets/sprites/vanificia_powered.png';
+const vanificiaBossPoweredSpriteId = 'assets/sprites/vanificia_powered';
 const gorgEnemySpriteSrc = 'assets/sprites/gorg.png';
+const gorgEnemySpriteId = 'assets/sprites/gorg';
 const aargEnemySpriteSrc = 'assets/sprites/aarg.png';
+const aargEnemySpriteId = 'assets/sprites/aarg';
+const blurbEnemySpriteSrc = 'assets/sprites/blurb.png';
+const blurbEnemySpriteId = 'assets/sprites/blurb';
+const wightEnemySpriteSrc = 'assets/sprites/wight.png';
+const wightEnemySpriteId = 'assets/sprites/wight';
+const mookGreenwoodBanditSpriteSrc = 'assets/sprites/mook_greenwood_bandit.png';
+const mookGreenwoodBanditSpriteId = 'assets/sprites/mook_greenwood_bandit';
+const featuredBanditArcherSpriteSrc = 'assets/sprites/featured_bandit_archer.png';
+const featuredBanditArcherSpriteId = 'assets/sprites/featured_bandit_archer';
+const featuredDesertMarksmanSpriteSrc = 'assets/sprites/featured_desert_marksman.png';
+const featuredDesertMarksmanSpriteId = 'assets/sprites/featured_desert_marksman';
+const featuredMarshSilencerSpriteSrc = 'assets/sprites/featured_marsh_silencer.png';
+const featuredMarshSilencerSpriteId = 'assets/sprites/featured_marsh_silencer';
+const featuredCityCrossfireSpriteSrc = 'assets/sprites/featured_city_crossfire.png';
+const featuredCityCrossfireSpriteId = 'assets/sprites/featured_city_crossfire';
+const featuredTempleLanternSpriteSrc = 'assets/sprites/featured_temple_lantern.png';
+const featuredTempleLanternSpriteId = 'assets/sprites/featured_temple_lantern';
+const mookMarshWhispererSpriteSrc = 'assets/sprites/mook_marsh_whisperer.png';
+const mookMarshWhispererSpriteId = 'assets/sprites/mook_marsh_whisperer';
+const featuredCityBruteSpriteSrc = 'assets/sprites/featured_city_brute.png';
+const featuredCityBruteSpriteId = 'assets/sprites/featured_city_brute';
+const mookTempleGuardSpriteSrc = 'assets/sprites/mook_temple_guard.png';
+const mookTempleGuardSpriteId = 'assets/sprites/mook_temple_guard';
+const mookUratharScoutSpriteSrc = 'assets/sprites/mook_urathar_scout.png';
+const mookUratharScoutSpriteId = 'assets/sprites/mook_urathar_scout';
 
 function createStripSheetLoader(spriteSrc) {
   let sheet = null;
@@ -100,8 +139,24 @@ const getVastBossSheet = createStripSheetLoader(vastBossSpriteSrc);
 const getVastBossPoweredSheet = createStripSheetLoader(vastBossPoweredSpriteSrc);
 const getNethraBossSheet = createStripSheetLoader(nethraBossSpriteSrc);
 const getNethraBossPoweredSheet = createStripSheetLoader(nethraBossPoweredSpriteSrc);
+const getLuulaBossSheet = createStripSheetLoader(luulaBossSpriteSrc);
+const getLuulaBossPoweredSheet = createStripSheetLoader(luulaBossPoweredSpriteSrc);
+const getVanificiaBossSheet = createStripSheetLoader(vanificiaBossSpriteSrc);
+const getVanificiaBossPoweredSheet = createStripSheetLoader(vanificiaBossPoweredSpriteSrc);
 const getGorgEnemySheet = createStripSheetLoader(gorgEnemySpriteSrc);
 const getAargEnemySheet = createStripSheetLoader(aargEnemySpriteSrc);
+const getBlurbEnemySheet = createStripSheetLoader(blurbEnemySpriteSrc);
+const getWightEnemySheet = createStripSheetLoader(wightEnemySpriteSrc);
+const getMookGreenwoodBanditSheet = createStripSheetLoader(mookGreenwoodBanditSpriteSrc);
+const getFeaturedBanditArcherSheet = createStripSheetLoader(featuredBanditArcherSpriteSrc);
+const getMookUratharScoutSheet = createStripSheetLoader(mookUratharScoutSpriteSrc);
+const getFeaturedDesertMarksmanSheet = createStripSheetLoader(featuredDesertMarksmanSpriteSrc);
+const getFeaturedMarshSilencerSheet = createStripSheetLoader(featuredMarshSilencerSpriteSrc);
+const getFeaturedCityCrossfireSheet = createStripSheetLoader(featuredCityCrossfireSpriteSrc);
+const getFeaturedTempleLanternSheet = createStripSheetLoader(featuredTempleLanternSpriteSrc);
+const getMookMarshWhispererSheet = createStripSheetLoader(mookMarshWhispererSpriteSrc);
+const getFeaturedCityBruteSheet = createStripSheetLoader(featuredCityBruteSpriteSrc);
+const getMookTempleGuardSheet = createStripSheetLoader(mookTempleGuardSpriteSrc);
 
 const spriteSources = {
   canopy: { path: canopyCompanionSpriteSrc, useSpriteId: false },
@@ -114,18 +169,33 @@ const spriteSources = {
   urn: { path: urnCompanionSpriteSrc, useSpriteId: false },
   varabella: { path: varabellaCompanionSpriteSrc, useSpriteId: false },
   fana: { path: fanaCompanionSpriteSrc, useSpriteId: false },
-  fana_villain: { path: fanaVillainSpriteSrc, useSpriteId: false },
+  fana_villain: { path: fanaVillainSpriteId, useSpriteId: true },
   ell: { path: ellNpcSpriteSrc, useSpriteId: false },
   rose: { path: roseNpcSpriteSrc, useSpriteId: false },
-  vast: { path: vastBossSpriteSrc, useSpriteId: false },
-  vast_powered: { path: vastBossPoweredSpriteSrc, useSpriteId: false },
-  nethra: { path: nethraBossSpriteSrc, useSpriteId: false },
-  nethra_powered: { path: nethraBossPoweredSpriteSrc, useSpriteId: false },
+  vast: { path: vastBossSpriteId, useSpriteId: true },
+  vast_powered: { path: vastBossPoweredSpriteId, useSpriteId: true },
+  nethra: { path: nethraBossSpriteId, useSpriteId: true },
+  nethra_powered: { path: nethraBossPoweredSpriteId, useSpriteId: true },
+  luula: { path: luulaBossSpriteId, useSpriteId: true },
+  luula_powered: { path: luulaBossPoweredSpriteId, useSpriteId: true },
+  vanificia: { path: vanificiaBossSpriteId, useSpriteId: true },
   vorthak: { path: vorthakBossSpriteSrc, useSpriteId: true },
   vorthak_powered: { path: vorthakBossPoweredSpriteSrc, useSpriteId: true },
   vorthak_overpowered: { path: vorthakBossOverSpriteSrc, useSpriteId: true },
-  gorg: { path: gorgEnemySpriteSrc, useSpriteId: false },
-  aarg: { path: aargEnemySpriteSrc, useSpriteId: false },
+  gorg: { path: gorgEnemySpriteId, useSpriteId: true },
+  aarg: { path: aargEnemySpriteId, useSpriteId: true },
+  blurb: { path: blurbEnemySpriteId, useSpriteId: true },
+  wight: { path: wightEnemySpriteId, useSpriteId: true },
+  mook_greenwood_bandit: { path: mookGreenwoodBanditSpriteId, useSpriteId: false },
+  mook_urathar_scout: { path: mookUratharScoutSpriteId, useSpriteId: false },
+  mook_marsh_whisperer: { path: mookMarshWhispererSpriteId, useSpriteId: false },
+  mook_temple_guard: { path: mookTempleGuardSpriteId, useSpriteId: false },
+  featured_bandit_archer: { path: featuredBanditArcherSpriteId, useSpriteId: false },
+  featured_desert_marksman: { path: featuredDesertMarksmanSpriteId, useSpriteId: false },
+  featured_marsh_silencer: { path: featuredMarshSilencerSpriteId, useSpriteId: false },
+  featured_city_crossfire: { path: featuredCityCrossfireSpriteId, useSpriteId: false },
+  featured_temple_lantern: { path: featuredTempleLanternSpriteId, useSpriteId: false },
+  featured_city_brute: { path: featuredCityBruteSpriteId, useSpriteId: false },
   cowsill: { path: 'assets/sprites/cowsill.png', useSpriteId: false },
 };
 
@@ -399,12 +469,32 @@ export function sheetForName(name) {
     if (key.includes('powered')) return getNethraBossPoweredSheet();
     return getNethraBossSheet();
   }
+  if (key.includes('luula')) {
+    if (key.includes('powered')) return getLuulaBossPoweredSheet();
+    return getLuulaBossSheet();
+  }
+  if (key.includes('vanificia')) {
+    if (key.includes('powered')) return getVanificiaBossPoweredSheet();
+    return getVanificiaBossSheet();
+  }
   if (key.includes('vorthak')) {
     // Vorthak relies on JSON-driven spriteId (36x36); no fallback sheet
     return null;
   }
-  if (key.includes('gorg')) return spriteShouldUseSpriteId('gorg') ? null : getGorgEnemySheet();
+  if (key.includes('gorg')) return getGorgEnemySheet();
   if (key.includes('aarg')) return getAargEnemySheet();
+  if (key.includes('blurb')) return getBlurbEnemySheet();
+  if (key.includes('wight')) return getWightEnemySheet();
+  if (key.includes('mook') && key.includes('greenwood')) return getMookGreenwoodBanditSheet();
+  if (key.includes('mook') && key.includes('urathar') && key.includes('scout')) return getMookUratharScoutSheet();
+  if (key.includes('mook') && key.includes('marsh') && key.includes('whisperer')) return getMookMarshWhispererSheet();
+  if (key.includes('mook') && key.includes('temple') && key.includes('guard')) return getMookTempleGuardSheet();
+  if (key.includes('bandit') && key.includes('archer')) return getFeaturedBanditArcherSheet();
+  if (key.includes('desert') && key.includes('marksman')) return getFeaturedDesertMarksmanSheet();
+  if (key.includes('marsh') && key.includes('silencer')) return getFeaturedMarshSilencerSheet();
+  if (key.includes('city') && key.includes('crossfire')) return getFeaturedCityCrossfireSheet();
+  if (key.includes('temple') && key.includes('lantern')) return getFeaturedTempleLanternSheet();
+  if (key.includes('city') && key.includes('brute')) return getFeaturedCityBruteSheet();
   return npcSheet;
 }
 

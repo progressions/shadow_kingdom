@@ -269,27 +269,117 @@ export async function applyPngMap(url, legend) {
       const lvl = runtime.currentLevel || 1;
       const mkEnemy = (kind) => {
         if (lvl === 1) {
-          return (kind === 'mook')
-            ? { kind: 'mook', name: 'Greenwood Bandit' }
-            : { kind: 'featured', name: 'Woodland Brute', hp: 8, dmg: 4 };
-        } else if (lvl === 2) {
-          return (kind === 'mook')
-            ? { kind: 'mook', name: 'Urathar Scout', hp: 5, dmg: 4 }
-            : { kind: 'featured', name: 'Desert Marauder', hp: 12, dmg: 6 };
-        } else if (lvl === 3) {
-          return (kind === 'mook')
-            ? { kind: 'mook', name: 'Marsh Whisperer', hp: 7, dmg: 5 }
-            : { kind: 'featured', name: 'Marsh Stalker', hp: 14, dmg: 6 };
-        } else if (lvl === 4) {
-          return (kind === 'mook')
-            ? { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 }
-            : { kind: 'featured', name: 'City Brute', hp: 18, dmg: 7 };
-        } else if (lvl === 5) {
-          return (kind === 'mook')
-            ? { kind: 'mook', name: 'Temple Guard', hp: 12, dmg: 7 }
-            : { kind: 'featured', name: 'Temple Sentinel', hp: 22, dmg: 9 };
+          if (kind === 'mook') return { kind: 'mook', name: 'Greenwood Bandit', sheetKey: 'mook_greenwood_bandit' };
+          if (kind === 'featured_ranged') {
+            return {
+              kind: 'featured',
+              name: 'Bandit Archer',
+              hp: 12,
+              dmg: 6,
+              ranged: true,
+              shootRange: 160,
+              shootCooldown: 1.0,
+              projectileSpeed: 200,
+              projectileDamage: 3,
+              aimError: 0.03,
+              sheetKey: 'featured_bandit_archer',
+            };
+          }
+          return { kind: 'featured', name: 'Woodland Brute', hp: 8, dmg: 4 };
         }
-        return (kind === 'mook') ? { kind: 'mook', name: 'Bandit' } : { kind: 'featured', name: 'Featured Foe' };
+        if (lvl === 2) {
+          if (kind === 'mook') return { kind: 'mook', name: 'Urathar Scout', hp: 5, dmg: 4, sheetKey: 'mook_urathar_scout' };
+          if (kind === 'featured_ranged') {
+            return {
+              kind: 'featured',
+              name: 'Desert Marksman',
+              hp: 14,
+              dmg: 6,
+              ranged: true,
+              shootRange: 180,
+              shootCooldown: 1.1,
+              projectileSpeed: 220,
+              projectileDamage: 4,
+              aimError: 0.03,
+              sheetKey: 'featured_desert_marksman',
+            };
+          }
+          return { kind: 'featured', name: 'Desert Marauder', hp: 12, dmg: 6 };
+        }
+        if (lvl === 3) {
+          if (kind === 'mook') return { kind: 'mook', name: 'Marsh Whisperer', hp: 7, dmg: 5, sheetKey: 'mook_marsh_whisperer' };
+          if (kind === 'featured_ranged') {
+            return {
+              kind: 'featured',
+              name: 'Marsh Silencer',
+              hp: 16,
+              dmg: 6,
+              ranged: true,
+              shootRange: 190,
+              shootCooldown: 1.15,
+              projectileSpeed: 210,
+              projectileDamage: 4,
+              aimError: 0.035,
+              sheetKey: 'featured_marsh_silencer',
+            };
+          }
+          return { kind: 'featured', name: 'Marsh Stalker', hp: 14, dmg: 6 };
+        }
+        if (lvl === 4) {
+          if (kind === 'mook') return { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 };
+          if (kind === 'featured_ranged') {
+            return {
+              kind: 'featured',
+              name: 'City Crossfire',
+              hp: 18,
+              dmg: 7,
+              ranged: true,
+              shootRange: 200,
+              shootCooldown: 1.1,
+              projectileSpeed: 230,
+              projectileDamage: 4,
+              aimError: 0.03,
+              sheetKey: 'featured_city_crossfire',
+            };
+          }
+          return { kind: 'featured', name: 'City Brute', hp: 18, dmg: 7, sheetKey: 'featured_city_brute' };
+        }
+        if (lvl === 5) {
+          if (kind === 'mook') return { kind: 'mook', name: 'Temple Guard', hp: 12, dmg: 7, sheetKey: 'mook_temple_guard' };
+          if (kind === 'featured_ranged') {
+            return {
+              kind: 'featured',
+              name: 'Temple Lantern',
+              hp: 22,
+              dmg: 8,
+              ranged: true,
+              shootRange: 210,
+              shootCooldown: 1.2,
+              projectileSpeed: 240,
+              projectileDamage: 5,
+              aimError: 0.03,
+              sheetKey: 'featured_temple_lantern',
+            };
+          }
+          return { kind: 'featured', name: 'Temple Sentinel', hp: 22, dmg: 9 };
+        }
+        if (kind === 'mook') return { kind: 'mook', name: 'Bandit' };
+        if (kind === 'featured_ranged') {
+          return {
+            kind: 'featured',
+            name: 'Bandit Archer',
+            hp: 12,
+            dmg: 6,
+            ranged: true,
+            shootRange: 160,
+            shootCooldown: 1.0,
+            projectileSpeed: 200,
+            projectileDamage: 3,
+            aimError: 0.03,
+            sheetKey: 'featured_bandit_archer',
+          };
+        }
+        return { kind: 'featured', name: 'Featured Foe' };
       };
       const addMapSpawner = (idBase, tx, ty, kind) => {
         const base = {
@@ -347,14 +437,33 @@ export async function applyPngMap(url, legend) {
     // If the map defines any enemy spawns, replace the current enemies with the map-defined set
     if (enemySpawns.length > 0) {
       enemies.length = 0;
+      const applyTemplate = (tpl, overrides = {}) => {
+        const out = { ...tpl, ...overrides };
+        const sheetKey = out.sheetKey || out.spriteKey;
+        if (sheetKey) {
+          const lower = sheetKey.toLowerCase();
+          if (spriteShouldUseSpriteId(lower)) {
+            out.spriteId = out.spriteId || spritePathForKey(lower) || undefined;
+          } else if (!out.sheet) {
+            out.sheet = sheetKey;
+          }
+        }
+        delete out.sheetKey;
+        delete out.spriteKey;
+        return out;
+      };
+
       for (const s of enemySpawns) {
         const ex = s.x * TILE, ey = s.y * TILE;
         if (s.kind === 'mook') {
-          spawnEnemy(ex, ey, 'mook', { name: 'Greenwood Bandit' });
+          const tpl = mkEnemy('mook');
+          spawnEnemy(ex, ey, tpl.kind || 'mook', applyTemplate(tpl));
         } else if (s.kind === 'featured_ranged') {
-          spawnEnemy(ex, ey, 'featured', { name: 'Bandit Lieutenant', hp: 12, dmg: 6, ranged: true, shootRange: 160, shootCooldown: 1.0, projectileSpeed: 200, projectileDamage: 3, aimError: 0.03 });
+          const tpl = mkEnemy('featured_ranged');
+          spawnEnemy(ex, ey, tpl.kind || 'featured', applyTemplate(tpl));
         } else if (s.kind === 'featured') {
-          spawnEnemy(ex, ey, 'featured', { name: 'Desert Marauder', hp: 12, dmg: 6 });
+          const tpl = mkEnemy('featured');
+          spawnEnemy(ex, ey, tpl.kind || 'featured', applyTemplate(tpl));
         } else if (s.kind === 'guardian') {
           // Guardian spawn template: prefer legend.actors.guardian, else branch by level
           const lvl = runtime.currentLevel || 1;
@@ -362,25 +471,30 @@ export async function applyPngMap(url, legend) {
           if (tpl) {
             const kind = tpl.kind || 'featured';
             const opts = { ...(tpl.opts || {}), guardian: true };
-            if (typeof opts.sheet === 'string' && !opts.spriteId) {
+            if (typeof opts.sheet === 'string') {
               const keyLower = String(opts.sheet).toLowerCase();
               if (spriteShouldUseSpriteId(keyLower)) {
                 const sid = spritePathForKey(keyLower);
-                if (sid) opts.spriteId = sid;
+                if (sid && !opts.spriteId) opts.spriteId = sid;
               }
             }
             spawnEnemy(ex, ey, kind, opts);
           } else if (lvl === 2) {
+            const aargUseSprite = spriteShouldUseSpriteId('aarg');
+            const aargSprite = aargUseSprite ? spritePathForKey('aarg') : null;
             spawnEnemy(ex, ey, 'featured', {
               name: 'Aarg', vnId: 'enemy:aarg', guaranteedDropId: 'key_nethra', guardian: true,
               hp: 52, dmg: 7, hitCooldown: 0.6, aggroRadius: 180,
               ranged: true, shootRange: 220, shootCooldown: 1.4, projectileSpeed: 240, projectileDamage: 5, aimError: 0.035,
               vnOnSight: { text: introTexts.aarg },
               portrait: 'assets/portraits/level02/Aarg/Aarg.mp4',
+              sheet: 'aarg',
+              spriteId: aargSprite,
             });
           } else {
             // Level 1 default: Gorg
-            const gorgSprite = spriteShouldUseSpriteId('gorg') ? spritePathForKey('gorg') : null;
+            const gorgUseSprite = spriteShouldUseSpriteId('gorg');
+            const gorgSprite = gorgUseSprite ? spritePathForKey('gorg') : null;
             spawnEnemy(ex, ey, 'featured', {
               name: 'Gorg', vnId: 'enemy:gorg', guaranteedDropId: 'key_bronze', guardian: true,
               sheet: 'gorg',
@@ -397,16 +511,17 @@ export async function applyPngMap(url, legend) {
           const tpl = legend?.actors?.boss || null;
           if (tpl) {
             const opts = { ...tpl };
-            if (typeof opts.sheet === 'string' && !opts.spriteId) {
+            if (typeof opts.sheet === 'string') {
               const keyLower = String(opts.sheet).toLowerCase();
               if (spriteShouldUseSpriteId(keyLower)) {
                 const sid = spritePathForKey(keyLower);
-                if (sid) opts.spriteId = sid;
+                if (sid && !opts.spriteId) opts.spriteId = sid;
               }
             }
             spawnEnemy(ex, ey, 'boss', opts);
           } else if (lvl === 2) {
-            const nethraSprite = spriteShouldUseSpriteId('nethra') ? spritePathForKey('nethra') : null;
+            const nethraUseSprite = spriteShouldUseSpriteId('nethra');
+            const nethraSprite = nethraUseSprite ? spritePathForKey('nethra') : null;
             spawnEnemy(ex, ey, 'boss', {
               name: 'Nethra', vnId: 'enemy:nethra',
               sheet: 'nethra',
@@ -421,10 +536,11 @@ export async function applyPngMap(url, legend) {
             });
           } else {
             // Level 1 default: Vast
-            const vastSprite = spriteShouldUseSpriteId('vast') ? spritePathForKey('vast') : null;
+            const vastUseSprite = spriteShouldUseSpriteId('vast');
+            const vastSprite = vastUseSprite ? spritePathForKey('vast') : null;
             spawnEnemy(ex, ey, 'boss', {
               name: 'Vast', vnId: 'enemy:vast',
-              sheet: 'vast',
+              sheet: vastUseSprite ? null : 'vast',
               spriteId: vastSprite,
               portrait: 'assets/portraits/level01/Vast/Vast video.mp4',
               portraitPowered: 'assets/portraits/level01/Vast/Vast powered.mp4',
@@ -438,10 +554,8 @@ export async function applyPngMap(url, legend) {
         } else if (s.kind === 'leashed_featured') {
           spawnEnemy(ex, ey, 'featured', { name: 'Featured Foe', leashed: true, aggroRadius: 180 });
         } else if (s.kind === 'leashed_featured_ranged') {
-          spawnEnemy(ex, ey, 'featured', {
-            name: 'Bandit Lieutenant', leashed: true, aggroRadius: 180,
-            hp: 12, dmg: 6, ranged: true, shootRange: 160, shootCooldown: 1.0, projectileSpeed: 200, projectileDamage: 3, aimError: 0.03,
-          });
+          const tpl = mkEnemy('featured_ranged');
+          spawnEnemy(ex, ey, tpl.kind || 'featured', applyTemplate(tpl, { leashed: true, aggroRadius: 180 }));
         }
       }
     }
@@ -456,7 +570,7 @@ export async function applyPngMap(url, legend) {
         hola:      { name: 'Hola',      dir: 'left',  portrait: 'assets/portraits/level01/Hola/Hola video.mp4',      dialogId: 'hola',      sheet: 'Hola' },
         oyin:      { name: 'Oyin',      dir: 'right', portrait: 'assets/portraits/level02/Oyin/Oyin.mp4',            dialogId: 'oyin',      sheet: 'Oyin' },
         twil:      { name: 'Twil',      dir: 'left',  portrait: 'assets/portraits/level02/Twil/Twil.mp4',            dialogId: 'twil',      sheet: 'Twil' },
-        urn:       { name: 'Urn',       dir: 'up',    portrait: 'assets/portraits/level04/Urn/Urn.mp4',              dialogId: 'urn',       sheet: 'Urn' },
+        urn:       { name: 'Urn',       dir: 'down',  portrait: 'assets/portraits/level04/Urn/Urn.mp4',              dialogId: 'urn',       sheet: 'Urn' },
         varabella: { name: 'Varabella', dir: 'down',  portrait: 'assets/portraits/level04/Varabella/Varabella.mp4',  dialogId: 'varabella', sheet: 'Varabella' },
         tin:       { name: 'Tin',       dir: 'right', portrait: 'assets/portraits/level03/Tin/Tin.mp4',              dialogId: 'tin',       sheet: 'Tin' },
         nellis:    { name: 'Nellis',    dir: 'left',  portrait: 'assets/portraits/level03/Nellis/Nellis.mp4',        dialogId: 'nellis',    sheet: 'Nellis' },

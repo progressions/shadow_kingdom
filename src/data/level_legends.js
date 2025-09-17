@@ -101,8 +101,8 @@ export const LEVEL_LEGENDS = {
       tolerance: 14,
       tolerantTypes: ['grass'],
       actors: {
-        guardian: { kind: 'featured', opts: { name: 'Blurb', vnId: 'enemy:blurb', portrait: 'assets/portraits/level04/Blurb/Blurb.mp4', vnOnSight: { text: introTexts.blurb }, guaranteedDropId: 'key_reed', guardian: true, hp: 64, dmg: 8, hitCooldown: 0.55 } },
-        boss: { name: 'Luula', vnId: 'enemy:luula', portrait: 'assets/portraits/level03/Luula/Luula.mp4', portraitPowered: 'assets/portraits/level03/Luula/Luula powered.mp4', portraitDefeated: 'assets/portraits/level03/Luula/Luula defeated.mp4', vnOnSight: { text: introTexts.luula }, onDefeatNextLevel: 4, hp: 65, dmg: 11, speed: 14, hitCooldown: 0.65, ap: 2 },
+        guardian: { kind: 'featured', opts: { name: 'Blurb', vnId: 'enemy:blurb', sheet: 'blurb', portrait: 'assets/portraits/level04/Blurb/Blurb.mp4', vnOnSight: { text: introTexts.blurb }, guaranteedDropId: 'key_reed', guardian: true, hp: 64, dmg: 8, hitCooldown: 0.55 } },
+        boss: { name: 'Luula', vnId: 'enemy:luula', sheet: 'luula', portrait: 'assets/portraits/level03/Luula/Luula.mp4', portraitPowered: 'assets/portraits/level03/Luula/Luula powered.mp4', portraitDefeated: 'assets/portraits/level03/Luula/Luula defeated.mp4', vnOnSight: { text: introTexts.luula }, onDefeatNextLevel: 4, hp: 65, dmg: 11, speed: 14, hitCooldown: 0.65, ap: 2 },
       },
       colors: {
         [COMMON_COLORS.GRASS_TAN]: { type: 'grass' },
@@ -142,8 +142,8 @@ export const LEVEL_LEGENDS = {
       tolerance: 14,
       tolerantTypes: ['grass'],
       actors: {
-        guardian: { kind: 'featured', opts: { name: 'Wight', vnId: 'enemy:wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_sigil', guardian: true, hp: 76, dmg: 11, hitCooldown: 0.55, speed: 9, w: 14, h: 18 } },
-        boss: { name: 'Vanificia', vnId: 'enemy:vanificia', portrait: 'assets/portraits/level04/Vanificia/Vanificia.mp4', portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4', portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4', vnOnSight: { text: introTexts.vanificia }, onDefeatNextLevel: 5, hp: 80, dmg: 13, speed: 16, hitCooldown: 0.6, ap: 3 },
+        guardian: { kind: 'featured', opts: { name: 'Wight', vnId: 'enemy:wight', sheet: 'wight', portrait: 'assets/portraits/level03/Wight/Wight.mp4', vnOnSight: { text: introTexts.wight }, guaranteedDropId: 'key_sigil', guardian: true, hp: 76, dmg: 11, hitCooldown: 0.55, speed: 9, w: 14, h: 18 } },
+        boss: { name: 'Vanificia', vnId: 'enemy:vanificia', sheet: 'vanificia', portrait: 'assets/portraits/level04/Vanificia/Vanificia.mp4', portraitPowered: 'assets/portraits/level04/Vanificia/Vanificia powered.mp4', portraitDefeated: 'assets/portraits/level04/Vanificia/Vanificia defeated.mp4', vnOnSight: { text: introTexts.vanificia }, onDefeatNextLevel: 5, hp: 80, dmg: 13, speed: 16, hitCooldown: 0.6, ap: 3 },
       },
       colors: {
         [COMMON_COLORS.GRASS_TAN]: { type: 'grass' },
