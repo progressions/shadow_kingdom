@@ -117,14 +117,14 @@ const spriteSources = {
   fana_villain: { path: fanaVillainSpriteSrc, useSpriteId: false },
   ell: { path: ellNpcSpriteSrc, useSpriteId: false },
   rose: { path: roseNpcSpriteSrc, useSpriteId: false },
-  vast: { path: vastBossSpriteSrc, useSpriteId: false },
-  vast_powered: { path: vastBossPoweredSpriteSrc, useSpriteId: false },
+  vast: { path: vastBossSpriteSrc, useSpriteId: true },
+  vast_powered: { path: vastBossPoweredSpriteSrc, useSpriteId: true },
   nethra: { path: nethraBossSpriteSrc, useSpriteId: false },
   nethra_powered: { path: nethraBossPoweredSpriteSrc, useSpriteId: false },
   vorthak: { path: vorthakBossSpriteSrc, useSpriteId: true },
   vorthak_powered: { path: vorthakBossPoweredSpriteSrc, useSpriteId: true },
   vorthak_overpowered: { path: vorthakBossOverSpriteSrc, useSpriteId: true },
-  gorg: { path: gorgEnemySpriteSrc, useSpriteId: false },
+  gorg: { path: gorgEnemySpriteSrc, useSpriteId: true },
   aarg: { path: aargEnemySpriteSrc, useSpriteId: false },
   cowsill: { path: 'assets/sprites/cowsill.png', useSpriteId: false },
 };
@@ -390,8 +390,10 @@ export function sheetForName(name) {
   if (key.includes('cowsill')) return makeSpriteSheet({ hair: '#ffeb3b', longHair: true, dress: true, dressColor: '#1a1a1a', shirt: '#2a2a2a', feminineShape: true });
   if (key.includes('rose'))   return getRoseNpcSheet();
   if (key.includes('vast'))   {
-    if (key.includes('powered')) return getVastBossPoweredSheet();
-    return getVastBossSheet();
+    if (key.includes('powered')) {
+      return spriteShouldUseSpriteId('vast_powered') ? null : getVastBossPoweredSheet();
+    }
+    return spriteShouldUseSpriteId('vast') ? null : getVastBossSheet();
   }
   if (key.includes('nethra')) {
     if (key.includes('powered')) return getNethraBossPoweredSheet();
@@ -401,7 +403,7 @@ export function sheetForName(name) {
     // Vorthak relies on JSON-driven spriteId (36x36); no fallback sheet
     return null;
   }
-  if (key.includes('gorg')) return getGorgEnemySheet();
+  if (key.includes('gorg')) return spriteShouldUseSpriteId('gorg') ? null : getGorgEnemySheet();
   if (key.includes('aarg')) return getAargEnemySheet();
   return npcSheet;
 }
