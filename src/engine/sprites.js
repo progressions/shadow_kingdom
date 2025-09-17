@@ -15,7 +15,11 @@ const ellNpcSpriteSrc = 'assets/sprites/ell.png';
 const roseNpcSpriteSrc = 'assets/sprites/rose.png';
 const vastBossSpriteSrc = 'assets/sprites/vast.png';
 const vastBossPoweredSpriteSrc = 'assets/sprites/vast_powered.png';
+const nethraBossSpriteSrc = 'assets/sprites/nethra.png';
 const nethraBossPoweredSpriteSrc = 'assets/sprites/nethra_powered.png';
+const vorthakBossSpriteSrc = 'assets/sprites/vorthak.png';
+const vorthakBossPoweredSpriteSrc = 'assets/sprites/vorthak_powered.png';
+const vorthakBossOverSpriteSrc = 'assets/sprites/vorthak_overpowered.png';
 
 function createStripSheetLoader(spriteSrc) {
   let sheet = null;
@@ -92,7 +96,11 @@ const getEllNpcSheet = createStripSheetLoader(ellNpcSpriteSrc);
 const getRoseNpcSheet = createStripSheetLoader(roseNpcSpriteSrc);
 const getVastBossSheet = createStripSheetLoader(vastBossSpriteSrc);
 const getVastBossPoweredSheet = createStripSheetLoader(vastBossPoweredSpriteSrc);
+const getNethraBossSheet = createStripSheetLoader(nethraBossSpriteSrc);
 const getNethraBossPoweredSheet = createStripSheetLoader(nethraBossPoweredSpriteSrc);
+const getVorthakBossSheet = createStripSheetLoader(vorthakBossSpriteSrc);
+const getVorthakBossPoweredSheet = createStripSheetLoader(vorthakBossPoweredSpriteSrc);
+const getVorthakBossOverSheet = createStripSheetLoader(vorthakBossOverSpriteSrc);
 
 const spritePathMap = {
   canopy: canopyCompanionSpriteSrc,
@@ -108,12 +116,16 @@ const spritePathMap = {
   rose: roseNpcSpriteSrc,
   vast: vastBossSpriteSrc,
   vast_powered: vastBossPoweredSpriteSrc,
-  nethra: 'assets/sprites/nethra.png',
+  nethra: nethraBossSpriteSrc,
   nethra_powered: nethraBossPoweredSpriteSrc,
+  vorthak: vorthakBossSpriteSrc,
+  vorthak_powered: vorthakBossPoweredSpriteSrc,
+  vorthak_overpowered: vorthakBossOverSpriteSrc,
   urn: urnCompanionSpriteSrc,
   varabella: varabellaCompanionSpriteSrc,
   cowsill: 'assets/sprites/cowsill.png',
   gorg: 'assets/sprites/gorg.png',
+  aarg: 'assets/sprites/aarg.png',
 };
 
 export function makeSpriteSheet(paletteOverrides = {}) {
@@ -380,7 +392,15 @@ export function sheetForName(name) {
     if (key.includes('powered')) return getVastBossPoweredSheet();
     return getVastBossSheet();
   }
-  if (key.includes('nethra') && key.includes('powered')) return getNethraBossPoweredSheet();
+  if (key.includes('nethra')) {
+    if (key.includes('powered')) return getNethraBossPoweredSheet();
+    return getNethraBossSheet();
+  }
+  if (key.includes('vorthak')) {
+    if (key.includes('overpowered')) return getVorthakBossOverSheet();
+    if (key.includes('powered')) return getVorthakBossPoweredSheet();
+    return getVorthakBossSheet();
+  }
   return npcSheet;
 }
 

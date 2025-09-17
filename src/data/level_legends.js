@@ -181,7 +181,7 @@ export const LEVEL_LEGENDS = {
       gate: { id: 'temple_gate', keyId: 'key_temple' },
       actors: {
         guardian: { kind: 'featured', opts: { name: 'Fana', sheet: 'fana_villain', vnId: 'enemy:fana', portrait: 'assets/portraits/level05/Fana/Fana villain.mp4', portraitDefeated: 'assets/portraits/level05/Fana/Fana.mp4', vnOnSight: { text: (introTexts && introTexts.fana_enslaved) || 'Fana: I must... protect the temple...' }, guaranteedDropId: 'key_temple', guardian: true, hp: 92, dmg: 11, hitCooldown: 0.45 } },
-        boss: { name: 'Vorthak', vnId: 'enemy:vorthak', spriteScale: 2, w: 24, h: 32, portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4', portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4', portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4', portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4', vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' }, onDefeatNextLevel: 6, hp: 100, dmg: 15, speed: 18, hitCooldown: 0.55, ap: 5 },
+        boss: { name: 'Vorthak', vnId: 'enemy:vorthak', sheet: 'vorthak', w: 36, h: 36, portrait: 'assets/portraits/level05/Vorthak/Vorthak.mp4', portraitPowered: 'assets/portraits/level05/Vorthak/Vorthak powered.mp4', portraitOverpowered: 'assets/portraits/level05/Vorthak/Vorthak overpowered.mp4', portraitDefeated: 'assets/portraits/level05/Vorthak/Vorthak defeated.mp4', vnOnSight: { text: (introTexts && introTexts.vorthak) || 'Vorthak: The heart is mine. Turn back or burn.' }, onDefeatNextLevel: 6, hp: 100, dmg: 15, speed: 18, hitCooldown: 0.55, ap: 5 },
       },
       colors: {
         [COMMON_COLORS.STONE_FLOOR]: { type: 'stone_floor' },
