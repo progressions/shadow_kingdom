@@ -264,10 +264,8 @@ export async function applyPngMap(url, legend) {
       for (let i = 0; i < companions.length; i++) { const c = companions[i]; if (!c) continue; c.x = player.x + 12 * (i + 1); c.y = player.y + 8 * (i + 1); }
     }
 
-    // Add invisible proximity spawners defined in the map
-    try {
-      const lvl = runtime.currentLevel || 1;
-      const mkEnemy = (kind) => {
+    const lvl = runtime.currentLevel || 1;
+    const mkEnemy = (kind) => {
         if (lvl === 1) {
           if (kind === 'mook') return { kind: 'mook', name: 'Greenwood Bandit', sheetKey: 'mook_greenwood_bandit' };
           if (kind === 'featured_ranged') {
@@ -304,7 +302,7 @@ export async function applyPngMap(url, legend) {
               sheetKey: 'featured_desert_marksman',
             };
           }
-          return { kind: 'featured', name: 'Desert Marauder', hp: 12, dmg: 6 };
+          return { kind: 'featured', name: 'Desert Marauder', hp: 12, dmg: 6, sheetKey: 'featured_desert_marauder' };
         }
         if (lvl === 3) {
           if (kind === 'mook') return { kind: 'mook', name: 'Marsh Whisperer', hp: 7, dmg: 5, sheetKey: 'mook_marsh_whisperer' };
@@ -323,7 +321,7 @@ export async function applyPngMap(url, legend) {
               sheetKey: 'featured_marsh_silencer',
             };
           }
-          return { kind: 'featured', name: 'Marsh Stalker', hp: 14, dmg: 6 };
+          return { kind: 'featured', name: 'Marsh Stalker', hp: 14, dmg: 6, sheetKey: 'featured_marsh_stalker' };
         }
         if (lvl === 4) {
           if (kind === 'mook') return { kind: 'mook', name: 'Urathar Soldier', hp: 9, dmg: 6 };
@@ -361,7 +359,7 @@ export async function applyPngMap(url, legend) {
               sheetKey: 'featured_temple_lantern',
             };
           }
-          return { kind: 'featured', name: 'Temple Sentinel', hp: 22, dmg: 9 };
+          return { kind: 'featured', name: 'Temple Sentinel', hp: 22, dmg: 9, sheetKey: 'featured_temple_sentinel' };
         }
         if (kind === 'mook') return { kind: 'mook', name: 'Bandit' };
         if (kind === 'featured_ranged') {
@@ -381,6 +379,9 @@ export async function applyPngMap(url, legend) {
         }
         return { kind: 'featured', name: 'Featured Foe' };
       };
+
+    // Add invisible proximity spawners defined in the map
+    try {
       const addMapSpawner = (idBase, tx, ty, kind) => {
         const base = {
           id: `${idBase}_${tx}_${ty}`,
@@ -439,7 +440,7 @@ export async function applyPngMap(url, legend) {
       enemies.length = 0;
       const applyTemplate = (tpl, overrides = {}) => {
         const out = { ...tpl, ...overrides };
-        const sheetKey = out.sheetKey || out.spriteKey;
+        const sheetKey = out.sheetKey || out.spriteKey || null;
         if (sheetKey) {
           const lower = sheetKey.toLowerCase();
           if (spriteShouldUseSpriteId(lower)) {

@@ -47,16 +47,22 @@ const featuredBanditArcherSpriteSrc = 'assets/sprites/featured_bandit_archer.png
 const featuredBanditArcherSpriteId = 'assets/sprites/featured_bandit_archer';
 const featuredDesertMarksmanSpriteSrc = 'assets/sprites/featured_desert_marksman.png';
 const featuredDesertMarksmanSpriteId = 'assets/sprites/featured_desert_marksman';
+const featuredDesertMarauderSpriteSrc = 'assets/sprites/featured_desert_marauder.png';
+const featuredDesertMarauderSpriteId = 'assets/sprites/featured_desert_marauder';
 const featuredMarshSilencerSpriteSrc = 'assets/sprites/featured_marsh_silencer.png';
 const featuredMarshSilencerSpriteId = 'assets/sprites/featured_marsh_silencer';
+const featuredMarshStalkerSpriteSrc = 'assets/sprites/featured_marsh_stalker.png';
+const featuredMarshStalkerSpriteId = 'assets/sprites/featured_marsh_stalker';
 const featuredCityCrossfireSpriteSrc = 'assets/sprites/featured_city_crossfire.png';
 const featuredCityCrossfireSpriteId = 'assets/sprites/featured_city_crossfire';
-const featuredTempleLanternSpriteSrc = 'assets/sprites/featured_temple_lantern.png';
-const featuredTempleLanternSpriteId = 'assets/sprites/featured_temple_lantern';
-const mookMarshWhispererSpriteSrc = 'assets/sprites/mook_marsh_whisperer.png';
-const mookMarshWhispererSpriteId = 'assets/sprites/mook_marsh_whisperer';
 const featuredCityBruteSpriteSrc = 'assets/sprites/featured_city_brute.png';
 const featuredCityBruteSpriteId = 'assets/sprites/featured_city_brute';
+const featuredTempleLanternSpriteSrc = 'assets/sprites/featured_temple_lantern.png';
+const featuredTempleLanternSpriteId = 'assets/sprites/featured_temple_lantern';
+const featuredTempleSentinelSpriteSrc = 'assets/sprites/featured_temple_sentinel.png';
+const featuredTempleSentinelSpriteId = 'assets/sprites/featured_temple_sentinel';
+const mookMarshWhispererSpriteSrc = 'assets/sprites/mook_marsh_whisperer.png';
+const mookMarshWhispererSpriteId = 'assets/sprites/mook_marsh_whisperer';
 const mookTempleGuardSpriteSrc = 'assets/sprites/mook_temple_guard.png';
 const mookTempleGuardSpriteId = 'assets/sprites/mook_temple_guard';
 const mookUratharScoutSpriteSrc = 'assets/sprites/mook_urathar_scout.png';
@@ -151,12 +157,15 @@ const getMookGreenwoodBanditSheet = createStripSheetLoader(mookGreenwoodBanditSp
 const getFeaturedBanditArcherSheet = createStripSheetLoader(featuredBanditArcherSpriteSrc);
 const getMookUratharScoutSheet = createStripSheetLoader(mookUratharScoutSpriteSrc);
 const getFeaturedDesertMarksmanSheet = createStripSheetLoader(featuredDesertMarksmanSpriteSrc);
+const getFeaturedDesertMarauderSheet = createStripSheetLoader(featuredDesertMarauderSpriteSrc);
 const getFeaturedMarshSilencerSheet = createStripSheetLoader(featuredMarshSilencerSpriteSrc);
+const getFeaturedMarshStalkerSheet = createStripSheetLoader(featuredMarshStalkerSpriteSrc);
 const getFeaturedCityCrossfireSheet = createStripSheetLoader(featuredCityCrossfireSpriteSrc);
 const getFeaturedTempleLanternSheet = createStripSheetLoader(featuredTempleLanternSpriteSrc);
 const getMookMarshWhispererSheet = createStripSheetLoader(mookMarshWhispererSpriteSrc);
 const getFeaturedCityBruteSheet = createStripSheetLoader(featuredCityBruteSpriteSrc);
 const getMookTempleGuardSheet = createStripSheetLoader(mookTempleGuardSpriteSrc);
+const getFeaturedTempleSentinelSheet = createStripSheetLoader(featuredTempleSentinelSpriteSrc);
 
 const spriteSources = {
   canopy: { path: canopyCompanionSpriteSrc, useSpriteId: false },
@@ -192,9 +201,12 @@ const spriteSources = {
   mook_temple_guard: { path: mookTempleGuardSpriteId, useSpriteId: false },
   featured_bandit_archer: { path: featuredBanditArcherSpriteId, useSpriteId: false },
   featured_desert_marksman: { path: featuredDesertMarksmanSpriteId, useSpriteId: false },
+  featured_desert_marauder: { path: featuredDesertMarauderSpriteId, useSpriteId: false },
   featured_marsh_silencer: { path: featuredMarshSilencerSpriteId, useSpriteId: false },
+  featured_marsh_stalker: { path: featuredMarshStalkerSpriteId, useSpriteId: false },
   featured_city_crossfire: { path: featuredCityCrossfireSpriteId, useSpriteId: false },
   featured_temple_lantern: { path: featuredTempleLanternSpriteId, useSpriteId: false },
+  featured_temple_sentinel: { path: featuredTempleSentinelSpriteId, useSpriteId: false },
   featured_city_brute: { path: featuredCityBruteSpriteId, useSpriteId: false },
   cowsill: { path: 'assets/sprites/cowsill.png', useSpriteId: false },
 };
@@ -491,9 +503,12 @@ export function sheetForName(name) {
   if (key.includes('mook') && key.includes('temple') && key.includes('guard')) return getMookTempleGuardSheet();
   if (key.includes('bandit') && key.includes('archer')) return getFeaturedBanditArcherSheet();
   if (key.includes('desert') && key.includes('marksman')) return getFeaturedDesertMarksmanSheet();
+  if (key.includes('desert') && key.includes('marauder')) return getFeaturedDesertMarauderSheet();
   if (key.includes('marsh') && key.includes('silencer')) return getFeaturedMarshSilencerSheet();
+  if (key.includes('marsh') && key.includes('stalker')) return getFeaturedMarshStalkerSheet();
   if (key.includes('city') && key.includes('crossfire')) return getFeaturedCityCrossfireSheet();
   if (key.includes('temple') && key.includes('lantern')) return getFeaturedTempleLanternSheet();
+  if (key.includes('temple') && key.includes('sentinel')) return getFeaturedTempleSentinelSheet();
   if (key.includes('city') && key.includes('brute')) return getFeaturedCityBruteSheet();
   return npcSheet;
 }
