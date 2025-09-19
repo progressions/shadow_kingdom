@@ -14,7 +14,12 @@ export const companionEffectsByKey = {
       l10: { key: 'veil', name: 'Guardian Veil', cooldownSec: 40, durationSec: 1.5, desc: 'Near-invuln (block one hit)' },
     },
     triggers2: [
-      { id: 'canopy_shield', when: 'player_low_hp', cooldownSec: 12, durationSec: 6, hpThresh: 0.4, effects: [ { type: 'shield', durationSec: 6 }, { type: 'text', text: 'Shield!', color: '#8ab4ff' }, { type: 'sfx', key: 'shield' } ] },
+      { id: 'canopy_shield', when: 'player_low_hp', cooldownSec: 12, durationSec: 6, hpThresh: 0.4, effects: [
+        { type: 'shield', durationSec: 6 },
+        { type: 'visual', effect: 'guardian_veil_glow', anchor: 'player', durationSec: 6, replaceId: 'guardian_veil_glow' },
+        { type: 'text', text: 'Shield!', color: '#8ab4ff' },
+        { type: 'sfx', key: 'shield' },
+      ] },
       { id: 'canopy_aegis', when: 'recent_hit_taken', minAffinity: 8, cooldownSec: 18, durationSec: 3, effects: [ { type: 'temp_buffs', buffs: { touchDR: 2 }, durationSec: 3 }, { type: 'heal_player', amount: 1 }, { type: 'text', text: 'Aegis!', color: '#8ab4ff' }, { type: 'sfx', key: 'shield' } ] },
       { id: 'canopy_dash_mend', when: 'on_dash_start', minAffinity: 5, cooldownSec: 6, effects: [ { type: 'heal_player', amount: 1 }, { type: 'text', text: '+1', color: '#62e563' } ] },
       { id: 'canopy_veil', when: 'density_enemies', minAffinity: 10, radius: 80, minCount: 3, cooldownSec: 40, durationSec: 1.5, effects: [ { type: 'shield', durationSec: 1.5 }, { type: 'text', text: 'Guardian Veil!', color: '#8ab4ff' }, { type: 'sfx', key: 'shield' } ] },
@@ -31,8 +36,16 @@ export const companionEffectsByKey = {
       l10: { key: 'execute', name: 'Execution Window', cooldownSec: 35, durationSec: 2, desc: 'AP+true vs low HP targets' },
     },
     triggers2: [
-      { id: 'yorna_expose', when: 'dash_or_crit', minAffinity: 8, cooldownSec: 14, durationSec: 4, radius: 60, effects: [ { type: 'area_enemy_temp_dr', amount: -2, durationSec: 4 }, { type: 'text', text: 'Expose!', color: '#ffd166' } ] },
-      { id: 'yorna_execute', when: 'dash_or_crit', minAffinity: 10, cooldownSec: 35, durationSec: 2, effects: [ { type: 'temp_stats', ap: 2, true: 1, durationSec: 2 }, { type: 'text', text: 'Execute!', color: '#ffd166' } ] },
+      { id: 'yorna_expose', when: 'dash_or_crit', minAffinity: 8, cooldownSec: 14, durationSec: 4, radius: 60, effects: [
+        { type: 'area_enemy_temp_dr', amount: -2, durationSec: 4 },
+        { type: 'visual', effect: 'shadow_guard', anchor: 'companion', durationSec: 4, replaceId: 'shadow_guard' },
+        { type: 'text', text: 'Expose!', color: '#ffd166' },
+      ] },
+      { id: 'yorna_execute', when: 'dash_or_crit', minAffinity: 10, cooldownSec: 35, durationSec: 2, effects: [
+        { type: 'temp_stats', ap: 2, true: 1, durationSec: 2 },
+        { type: 'visual', effect: 'void_banner', anchor: 'companion', durationSec: 2, replaceId: 'void_banner' },
+        { type: 'visual', effect: 'critical_text', anchor: 'player', overrides: { text: 'Execute!', color: '#ffd166' } },
+      ] },
     ],
   },
   hola: {

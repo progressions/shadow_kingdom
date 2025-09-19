@@ -53,6 +53,7 @@ export const obstacles = [];
 export const corpses = [];
 export const stains = [];
 export const sparkles = [];
+export const visualEffects = [];
 export const itemsOnGround = [];
 // Transient projectiles (not persisted)
 export const projectiles = [];

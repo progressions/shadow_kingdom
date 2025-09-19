@@ -1,4 +1,5 @@
 import { player, enemies, companions, npcs, obstacles, world, camera, runtime, corpses, spawnCorpse, stains, spawnStain, floaters, spawnFloatText, sparkles, spawnSparkle, itemsOnGround, spawnPickup, spawners, findSpawnerById, spawnEnemy, addItemToInventory, autoEquipIfBetter, normalizeInventory } from '../engine/state.js';
+import { spawnVisualEffect, updateVisualEffects } from '../engine/visual_effects.js';
 import { rebuildLighting } from '../engine/lighting.js';
 import { rebuildFlowField, sampleFlowDirAt } from '../engine/pathfinding.js';
 import { companionEffectsByKey, COMPANION_BUFF_CAPS } from '../data/companion_effects.js';
@@ -2285,6 +2286,9 @@ export function step(dt) {
     s.t += dt;
     if (s.t >= s.life) stains.splice(i, 1);
   }
+  // Update visual effects (auras, glows, sprites)
+  updateVisualEffects(dt);
+
   // Update floating text timers
   for (let i = floaters.length - 1; i >= 0; i--) {
     const f = floaters[i];
@@ -3239,6 +3243,25 @@ function processGenericCompanionTriggers(dt) {
             }
             case 'reset_dash_cooldown': {
               runtime._dashCooldown = 0; break;
+            }
+            case 'visual': {
+              spawnVisualEffect({
+                effect: eff.effect || eff.preset || eff.key,
+                anchor: eff.anchor || eff.attach || null,
+                companion: c,
+                anchorRef: c,
+                durationSec: (typeof eff.durationSec === 'number') ? eff.durationSec : (typeof t.durationSec === 'number' ? t.durationSec : undefined),
+                overrides: eff.overrides || null,
+                replaceId: eff.replaceId || t.replaceId || null,
+                worldX: (typeof eff.worldX === 'number') ? eff.worldX : undefined,
+                worldY: (typeof eff.worldY === 'number') ? eff.worldY : undefined,
+                position: eff.position || null,
+                offset: eff.offset || null,
+                color: eff.color || null,
+                layer: eff.layer || null,
+                text: eff.text || null,
+              });
+              break;
             }
             case 'text': {
               try { spawnFloatText(player.x + player.w/2, player.y - 12, eff.text || '', { color: eff.color || '#ffd166', life: 0.8 }); } catch {}

@@ -1,5 +1,5 @@
 import { ctx } from './ui.js';
-import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, itemsOnGround, xpToNext, spawners, projectiles, obstacles } from './state.js';
+import { camera, world, player, enemies, companions, npcs, runtime, corpses, stains, floaters, sparkles, visualEffects, itemsOnGround, xpToNext, spawners, projectiles, obstacles } from './state.js';
 import { DIRECTIONS, SPRITE_SIZE, TILE } from './constants.js';
 import { MAX_LIGHT_LEVEL } from './lighting.js';
 import { drawGrid, drawObstacles } from './terrain.js';
@@ -300,6 +300,9 @@ export function render(terrainBitmap, obstacles) {
       drawItemIcon(sx, sy, it.item);
     }
   }
+
+  // Ground-layer visual effects (auras, decals)
+  drawVisualEffects('ground');
 
   // Build a y-sorted list of drawables
   // Helper: check fog-of-war visibility for a pixel position
@@ -1022,6 +1025,9 @@ export function render(terrainBitmap, obstacles) {
     }
   } catch {}
 
+  // Overlay visual effects (glows, hovering sprites)
+  drawVisualEffects('overlay');
+
   // NPC markers
   drawNpcMarkers();
 
@@ -1106,6 +1112,85 @@ function markerColorFor(npc) {
 }
 
 // no pre-intro highlight needed
+
+function drawVisualEffects(layer) {
+  if (!visualEffects || visualEffects.length === 0) return;
+  const now = (runtime && typeof runtime._timeSec === 'number') ? runtime._timeSec : 0;
+  for (const v of visualEffects) {
+    if (!v || (v.layer || 'overlay') !== layer) continue;
+    const life = typeof v.lifeRatio === 'number' ? v.lifeRatio : 1;
+    const baseAlpha = (typeof v.alpha === 'number') ? v.alpha : 1;
+    const alpha = Math.max(0, Math.min(1, baseAlpha * life));
+    if (alpha <= 0) continue;
+    switch (v.kind) {
+      case 'aura':
+        drawAuraEffect(v, alpha);
+        break;
+      case 'glow':
+        drawGlowEffect(v, alpha, now);
+        break;
+      case 'sprite':
+        drawSpriteEffect(v, alpha);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+function drawAuraEffect(effect, alpha) {
+  const radius = Math.max(4, effect.radius || 32);
+  const inner = effect.colorInner || effect.color || 'rgba(138,180,255,0.5)';
+  const outer = effect.colorOuter || 'rgba(138,180,255,0)';
+  const x = Math.round(effect.x - camera.x);
+  const y = Math.round(effect.y - camera.y);
+  ctx.save();
+  const grad = ctx.createRadialGradient(x, y, radius * 0.25, x, y, radius);
+  grad.addColorStop(0, inner);
+  grad.addColorStop(1, outer);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawGlowEffect(effect, alpha, now) {
+  const radius = Math.max(6, effect.radius || 24);
+  const pulse = effect.pulseSpeed ? (1 + 0.12 * Math.sin(effect.phase || (now * effect.pulseSpeed))) : 1;
+  const color = effect.color || '#ffd166';
+  const x = Math.round(effect.x - camera.x);
+  const y = Math.round(effect.y - camera.y);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = effect.blur || Math.max(8, radius * 0.6);
+  ctx.shadowColor = color;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, radius * pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawSpriteEffect(effect, alpha) {
+  const spriteObj = effect.sprite;
+  const img = spriteObj && spriteObj.image;
+  if (!img || !canDrawImage(img)) return;
+  const frame = effect.frame || {};
+  const sx = frame.x || 0;
+  const sy = frame.y || 0;
+  const sw = frame.w || img.width;
+  const sh = frame.h || img.height;
+  const scale = effect.scale || 1;
+  const bob = effect.bobAmplitude ? Math.sin(effect.bobPhase || 0) * effect.bobAmplitude : 0;
+  const dx = Math.round(effect.x - camera.x - (sw * scale) / 2);
+  const dy = Math.round(effect.y - camera.y - (sh * scale) / 2 + bob);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, sw * scale, sh * scale);
+  ctx.restore();
+}
 
 function drawArenaMarker(obstacles) {
   try {
