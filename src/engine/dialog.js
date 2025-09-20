@@ -774,6 +774,16 @@ export function selectChoice(index) {
     openCompanionTalk(comp);
     return;
   }
+  if (choice.action === 'companion_menu') {
+    const comp = choice.data || runtime.activeNpc;
+    endDialog();
+    if (comp) {
+      startCompanionAction(comp);
+    } else {
+      startCompanionSelector();
+    }
+    return;
+  }
   if (choice.action === 'companion_back') {
     startCompanionSelector();
     return;
