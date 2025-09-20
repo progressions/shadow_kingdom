@@ -770,19 +770,12 @@ export function selectChoice(index) {
     return;
   }
   if (choice.action === 'companion_talk') {
-    const comp = choice.data || runtime.activeNpc;
+    const comp = resolveCompanionRef(choice.data);
     openCompanionTalk(comp);
     return;
   }
   if (choice.action === 'companion_menu') {
-    let comp = choice.data || runtime.activeNpc;
-    if (comp && typeof comp === 'object' && comp !== runtime.activeNpc) {
-      const tag = comp?.target || comp?.nameKey || comp?.id;
-      if (tag) comp = companions.find(c => normalizeName(c?.name) === normalizeName(tag));
-    } else if (typeof comp === 'string') {
-      comp = companions.find(c => normalizeName(c?.name) === normalizeName(comp));
-    }
-    if (!comp) comp = runtime.activeNpc;
+    const comp = resolveCompanionRef(choice.data);
     endDialog();
     if (comp) startCompanionAction(comp);
     else startCompanionSelector();
@@ -949,6 +942,31 @@ export function selectChoice(index) {
   if (choice.action === 'inv_salvage_one') { salvageItem(choice.data.actorTag, choice.data.itemId, 1); openQuickEquipList(choice.data.actorTag); return; }
   if (choice.action === 'inv_salvage_all') { salvageItem(choice.data.actorTag, choice.data.itemId, Infinity); openQuickEquipList(choice.data.actorTag); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
+}
+
+function resolveCompanionRef(data) {
+  if (!data) return runtime.activeNpc;
+  if (data === runtime.activeNpc) return runtime.activeNpc;
+  if (typeof data === 'object') {
+    if (data.target === 'active') return runtime.activeNpc;
+    const keys = ['name', 'nameKey', 'id', 'target'];
+    for (const key of keys) {
+      if (!data[key]) continue;
+      const comp = findCompanionByKey(data[key]);
+      if (comp) return comp;
+    }
+  }
+  if (typeof data === 'string') {
+    const comp = findCompanionByKey(data);
+    if (comp) return comp;
+  }
+  return runtime.activeNpc;
+}
+
+function findCompanionByKey(val) {
+  const name = normalizeName(val);
+  if (!name) return null;
+  return companions.find(c => normalizeName(c?.name) === name);
 }
 
 function normalizeName(str) {
