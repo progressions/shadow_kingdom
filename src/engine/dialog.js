@@ -335,7 +335,9 @@ export function renderCurrentNode() {
     const looksTurnIn = (ch) => !!questIdForTurnInChoice(ch);
     const looksBack = (ch) => {
       const action = String(ch?.action || '').toLowerCase();
-      return action === 'companion_back' || action === 'end';
+      if (action === 'companion_back' || action === 'end') return true;
+      if (action === 'companion_talk' && ch?.data && ch.data.target === 'active') return true;
+      return false;
     };
     const turnins = []; const news = []; const rest = []; const backs = [];
     for (const ch of effectiveChoices) {
