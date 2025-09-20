@@ -580,12 +580,12 @@ export const companionDialogs = {
         text: 'Hola: My Lord, I saw a red-headed fighter in the woods to the northwest. She moved like she knew what she was doing. Maybe she could help us.',
         choices: [
           { label: "Let's find her.", action: 'start_quest', data: { id: 'hola_find_yorna' }, next: 'find_yorna_started' },
-          { label: 'Later.', action: 'companion_back' },
+          { label: 'Later.', next: 'root' },
         ]
       },
       find_yorna_started: {
         text: 'Hola: My Lord… northwest—red hair. I\'ll stay close.',
-        choices: [ { label: 'Back', action: 'companion_back' } ]
+        choices: [ { label: 'Back', next: 'root' } ]
       },
       magic: {
         text: 'Hola: I can... I can make a light. To light your way! And I can... push the air... to keep enemies away from you. I\'ll make sure I get it right for you, My Lord!',
@@ -599,12 +599,12 @@ export const companionDialogs = {
         text: 'Hola: My Lord, if I… if I try, I can push them back. Maybe twice?',
         choices: [
           { label: 'Let\'s practice.', action: 'start_quest', data: { id: 'hola_practice' }, next: 'quest_started' },
-          { label: 'Later.', action: 'companion_back' },
+          { label: 'Later.', next: 'root' },
         ]
       },
       quest_started: {
         text: "Hola: My Lord, I'll try to keep my magic focused. Please stay close.",
-        choices: [ { label: 'Back', action: 'companion_back' } ]
+        choices: [ { label: 'Back', next: 'root' } ]
       },
       quest_turnin: {
         text: 'Hola: My Lord, I… did it. Thank you for waiting for me.',
