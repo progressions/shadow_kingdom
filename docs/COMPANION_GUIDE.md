@@ -9,6 +9,7 @@ Companions are the heart of the adventure in Shadow Kingdom. They are recruitabl
 - **Scale:** A 1-10 numeric scale representing a companion's affection and trust for the player.
 - **Growth:** Affinity is gained by completing companion-specific quests, choosing supportive dialogue options, and giving gifts.
 - **Effects:** Higher affinity increases the power of a companion's abilities and unlocks new dialogue, romantic quests, and story branches.
+- **Dynamic Adjustments:** Affinity can also be dynamically capped or modified based on in-game conditions, reflecting complex character relationships and story events. For detailed mechanics, see `AFFINITY_SYSTEM_DESIGN.md`.
 
 ### Companion Relationships
 Companions have their own rivalries and affections, which create a dynamic social ecosystem within the party.

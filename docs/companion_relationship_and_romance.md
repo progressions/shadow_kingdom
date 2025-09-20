@@ -53,3 +53,7 @@ To discourage neglecting companions, a low affinity score has direct consequence
 - **Mechanic:** If a companion's affinity for the player drops below a certain threshold (e.g., < 3.0), their discontent manifests as a minor negative debuff aura for the party.
 - **Example 1:** A low-affinity **Yorna's** "Impatience" aura might slightly increase the player's ability cooldowns.
 - **Example 2:** A low-affinity **Hola's** "Nervous Energy" might slightly increase the chance for enemies to resist her own magical slowing effects.
+
+### D. Dynamic Affinity Adjustments
+
+Beyond direct gains and losses, companion affinity can be dynamically influenced by in-game conditions. This includes both setting a maximum cap on affinity and applying temporary modifiers (positive or negative) to a companion's current affinity value. These adjustments reflect complex character relationships, story events, and player choices. For a detailed breakdown of the mechanics and configuration, refer to `AFFINITY_SYSTEM_DESIGN.md`.
