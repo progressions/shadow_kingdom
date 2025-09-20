@@ -285,12 +285,12 @@ export const companionDialogs = {
         text: "Yorna: First job: kill Vast in the castle to the southeast. The gate's locked; Gorg has the brass key outside the northeast wall.",
         choices: [
           { label: 'Let\'s go kill her.', action: 'start_quest', data: { id: 'yorna_vast' }, next: 'vast_started' },
-          { label: 'Later.', action: 'companion_back' },
+          { label: 'Later.', next: 'root' },
         ]
       },
       vast_started: {
         text: "Yorna: Stay with me, Chief. We get the key from Gorg, open the gate, and then we kill Vast.",
-        choices: [ { label: 'Back', action: 'companion_back' } ]
+        choices: [ { label: 'Back', next: 'root' } ]
       },
       vast_turnin: {
         text: 'Yorna: Vast is dead. Good. One less problem for the valley. What\'s next, Chief?',
