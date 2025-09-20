@@ -563,9 +563,9 @@ export const runtime = {
   vnFocusIndex: 0,
   vnChoiceCount: 0,
   interactLock: 0, // seconds remaining where interaction is disabled
-  autosaveEnabled: false,
+  autosaveEnabled: true,
   autosaveTimer: 0,
-  autosaveIntervalSec: 60,
+  autosaveIntervalSec: 30,
   // Overlay lock prevents closing VN overlay via Esc/mouse (used for Game Over)
   lockOverlay: false,
   // Debug/testing: prevents player damage when true

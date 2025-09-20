@@ -86,6 +86,7 @@ Notes:
 
 ## Autosave
 
+- Autosave is enabled by default and runs roughly every 30 seconds.
 - Autosave writes to `shadow_kingdom_autosave` and never overwrites manual slots.
 
 ## Debug

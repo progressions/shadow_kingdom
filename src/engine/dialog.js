@@ -175,7 +175,7 @@ async function buildAndShowSaveMenu() {
     { label: `${format(1, 'Slot')}`, action: 'open_slot', data: 1 },
     { label: `${format(2, 'Slot')}`, action: 'open_slot', data: 2 },
     { label: `${format(3, 'Slot')}`, action: 'open_slot', data: 3 },
-    { label: `Autosave: ${runtime.autosaveEnabled ? 'On' : 'Off'} (60s)`, action: 'toggle_autosave' },
+    { label: `Autosave: ${runtime.autosaveEnabled ? 'On' : 'Off'} (30s)`, action: 'toggle_autosave' },
     { label: 'Close', action: 'end' },
   ];
   // Rebuild the active dialog node so keyboard selection maps to these choices
