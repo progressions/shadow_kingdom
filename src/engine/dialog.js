@@ -339,14 +339,24 @@ export function renderCurrentNode() {
       if (action === 'companion_talk' && ch?.data && ch.data.target === 'active') return true;
       return false;
     };
-    const turnins = []; const news = []; const rest = []; const backs = [];
-    for (const ch of effectiveChoices) {
-      if (looksTurnIn(ch)) turnins.push(ch);
-      else if (looksNew(ch)) news.push(ch);
-      else if (looksBack(ch)) backs.push(ch);
-      else rest.push(ch);
-    }
-    effectiveChoices = turnins.concat(news, rest, backs);
+    const weightFor = (ch) => {
+      if (looksTurnIn(ch)) return 0;
+      if (looksNew(ch)) return 1;
+      if (looksBack(ch)) return 3;
+      return 2;
+    };
+    const decorated = effectiveChoices.map((ch, idx) => ({
+      choice: ch,
+      weight: weightFor(ch),
+      order: (typeof ch?.order === 'number') ? ch.order : idx,
+      idx,
+    }));
+    decorated.sort((a, b) => {
+      if (a.weight !== b.weight) return a.weight - b.weight;
+      if (a.order !== b.order) return a.order - b.order;
+      return a.idx - b.idx;
+    });
+    effectiveChoices = decorated.map(d => d.choice);
   } catch {}
   try { runtime.activeDialog._resolved = { nodeId, choices: effectiveChoices.slice() }; } catch {}
   setOverlayDialog(effectiveText, effectiveChoices);
