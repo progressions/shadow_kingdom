@@ -775,13 +775,17 @@ export function selectChoice(index) {
     return;
   }
   if (choice.action === 'companion_menu') {
-    const comp = choice.data || runtime.activeNpc;
-    endDialog();
-    if (comp) {
-      startCompanionAction(comp);
-    } else {
-      startCompanionSelector();
+    let comp = choice.data || runtime.activeNpc;
+    if (comp && typeof comp === 'object' && comp !== runtime.activeNpc) {
+      const tag = comp?.target || comp?.nameKey || comp?.id;
+      if (tag) comp = companions.find(c => normalizeName(c?.name) === normalizeName(tag));
+    } else if (typeof comp === 'string') {
+      comp = companions.find(c => normalizeName(c?.name) === normalizeName(comp));
     }
+    if (!comp) comp = runtime.activeNpc;
+    endDialog();
+    if (comp) startCompanionAction(comp);
+    else startCompanionSelector();
     return;
   }
   if (choice.action === 'companion_back') {
@@ -945,6 +949,10 @@ export function selectChoice(index) {
   if (choice.action === 'inv_salvage_one') { salvageItem(choice.data.actorTag, choice.data.itemId, 1); openQuickEquipList(choice.data.actorTag); return; }
   if (choice.action === 'inv_salvage_all') { salvageItem(choice.data.actorTag, choice.data.itemId, Infinity); openQuickEquipList(choice.data.actorTag); return; }
   if (choice.next) { runtime.activeDialog.nodeId = choice.next; renderCurrentNode(); return; }
+}
+
+function normalizeName(str) {
+  return String(str || '').trim().toLowerCase();
 }
 
 // ---- Affinity helpers ----

@@ -585,7 +585,7 @@ export const companionDialogs = {
       },
       find_yorna_started: {
         text: 'Hola: My Lord… northwest—red hair. I\'ll stay close.',
-        choices: [ { label: 'Back', action: 'companion_menu' } ]
+        choices: [ { label: 'Back', action: 'companion_menu', data: { target: 'active' } } ]
       },
       magic: {
         text: 'Hola: I can... I can make a light. To light your way! And I can... push the air... to keep enemies away from you. I\'ll make sure I get it right for you, My Lord!',
