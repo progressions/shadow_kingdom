@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useApp, useStdout } from 'ink';
 import type { Room } from '@prisma/client';
 import type { GameSession } from '../services/gameStateManager';
-import { GamePane } from './GamePane';
 import { InputBar } from './InputBar';
 import { StatusPane } from './StatusPane';
 import { GameEngine } from '../services/gameEngine';
-import { GameStateManager } from '../services/gameStateManager';
+import { GameStateManager, RoomInfo } from '../services/gameStateManager';
 import { CommandRouter } from '../services/commandRouter';
 import { RoomNavigationEngine } from '../services/roomNavigationEngine';
 import { PrismaService } from '../services/prismaService';
@@ -44,6 +43,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
 
   // UI state
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentRoomInfo, setCurrentRoomInfo] = useState<RoomInfo | null>(null);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [statusInfo, setStatusInfo] = useState<{
     status?: string;
@@ -127,6 +127,74 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       console.log('[DEBUG-APP] servicesRef.current:', servicesRef.current);
     }
   };
+
+  // Room display components
+  const BlankLine = () => <Box><Text> </Text></Box>;
+  
+  const RoomTitle: React.FC<{ name: string }> = ({ name }) => (
+    <Box flexDirection="column">
+      <Text>{name}</Text>
+      <Text>{'='.repeat(name.length)}</Text>
+    </Box>
+  );
+
+  const RoomDescription: React.FC<{ description: string }> = ({ description }) => (
+    <Box><Text>{description}</Text></Box>
+  );
+
+  const ExtendedDescription: React.FC<{ description: string }> = ({ description }) => (
+    <Box><Text>{description}</Text></Box>
+  );
+
+  const RoomItems: React.FC<{ items: any[] }> = ({ items }) => {
+    if (items.length === 0) return null;
+    
+    const text = items.length === 1
+      ? `HEY MAN You can see an ${items[0].name} here.`
+      : `YO DUDE You can see: ${items.map(i => i.name).join(', ')}.`;
+    
+    return <Box><Text>{text}</Text></Box>;
+  };
+
+  const RoomCharacters: React.FC<{ characters: any[] }> = ({ characters }) => {
+    if (characters.length === 0) return null;
+    
+    return (
+      <Box flexDirection="column">
+        {characters.map((char, idx) => (
+          <Text key={idx}>{char.name} is here. {char.description}</Text>
+        ))}
+      </Box>
+    );
+  };
+
+  const RoomExits: React.FC<{ exits: Array<{ direction: string; description: string }> }> = ({ exits }) => {
+    if (exits.length === 0) {
+      return <Box><Text>There are no obvious exits.</Text></Box>;
+    }
+    
+    const text = `Exits: ${exits.map(e => `${e.direction} (${e.description})`).join(', ')}`;
+    return <Box><Text>{text}</Text></Box>;
+  };
+
+  const RoomDisplay: React.FC<{ roomInfo: RoomInfo | null }> = ({ roomInfo }) => {
+    if (!roomInfo) return null;
+    
+    return (
+      <>
+        <BlankLine />
+        <RoomTitle name={roomInfo.name} />
+        <RoomDescription description={roomInfo.description} />
+        {roomInfo.extendedDescription && (
+          <ExtendedDescription description={roomInfo.extendedDescription} />
+        )}
+        <RoomItems items={roomInfo.items} />
+        <RoomCharacters characters={roomInfo.characters} />
+        <RoomExits exits={roomInfo.exits} />
+      </>
+    );
+  };
+
 
   // Handle terminal resize
   useEffect(() => {
@@ -244,6 +312,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       // Display the initial room description
       if (currentRoom) {
         const roomInfo = await gameStateManager.getCurrentRoomInfo();
+<<<<<<< Updated upstream
         // Split room info into separate messages for proper coloring
         if (roomInfo.includes('===')) {
           const lines = roomInfo.split('\n');
@@ -283,6 +352,10 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
           }
         } else {
           addMessage(roomInfo, 'ROOM');
+=======
+        if (roomInfo) {
+          setCurrentRoomInfo(roomInfo);
+>>>>>>> Stashed changes
         }
       }
 
@@ -325,6 +398,12 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         currentRoom,
         gameSession: session,
       }));
+
+      // Update room info for display
+      if (currentRoom) {
+        const roomInfo = await gameStateManager.getCurrentRoomInfo();
+        setCurrentRoomInfo(roomInfo);
+      }
 
       // Update navigation hints
       let hints: string[] = [];
@@ -425,8 +504,19 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
         const result = await commandRouter.executeCommand(command);
 
         if (result.success) {
-          // Split room descriptions into separate messages for proper coloring
-          if (result.response.includes('===')) {
+          // Check if this is a room change or look command - if so, don't display the text response
+          // since we'll show the room using the RoomDisplay component
+          if (result.metadata?.roomChanged || command.toLowerCase().trim() === 'look') {
+            // Update the room display
+            const { gameStateManager } = servicesRef.current;
+            if (gameStateManager) {
+              const roomInfo = await gameStateManager.getCurrentRoomInfo();
+              if (roomInfo) {
+                setCurrentRoomInfo(roomInfo);
+              }
+            }
+            // Don't add any text message for look command or room changes
+          } else if (result.response.includes('===')) {
             // This looks like a room description, split it carefully
             const lines = result.response.split('\n');
             let currentMessage = '';
@@ -683,15 +773,32 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     );
   }
 
+  // Simple message display component
+  const MessageDisplay = () => {
+    const displayMessages = gameAreaHeight && gameAreaHeight > 0 && messages.length > gameAreaHeight 
+      ? messages.slice(-gameAreaHeight)
+      : messages;
+
+    return (
+      <Box flexDirection="column">
+        {/* Show room display if we have room info */}
+        {currentRoomInfo && <RoomDisplay roomInfo={currentRoomInfo} />}
+        
+        {/* Show messages */}
+        {displayMessages.map((message) => (
+          <Box key={message.id}>
+            <Text>{message.content}</Text>
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
   // Show main game interface (only for interactive mode)
   if (programmaticCommand) {
     return (
       <Box flexDirection="column" height="100%" width="100%">
-        <GamePane
-          messages={messages}
-          maxLines={gameAreaHeight}
-          colorThemeService={servicesRef.current.colorThemeService || undefined}
-        />
+        <MessageDisplay />
       </Box>
     );
   }
@@ -700,11 +807,7 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
     <Box flexDirection="column" height="100%" width="100%">
       {/* Game Pane - fills remaining space */}
       <Box flexGrow={1} width="100%" flexDirection="column" flexShrink={1}>
-        <GamePane
-          messages={messages}
-          maxLines={gameAreaHeight}
-          colorThemeService={servicesRef.current.colorThemeService || undefined}
-        />
+        <MessageDisplay />
       </Box>
 
       {/* Bottom section - Input Bar and Status Pane */}

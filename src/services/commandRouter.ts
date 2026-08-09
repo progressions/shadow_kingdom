@@ -1391,45 +1391,44 @@ export class CommandRouter {
    */
   async formatRoomDescription(room: Room): Promise<string> {
     try {
-      // Use the enhanced room display from GameStateManager
+      // Get structured room info
       const roomInfo = await this.gameStateManager.getCurrentRoomInfo();
-
-      // If we got a valid room info, return it
-      if (
-        roomInfo &&
-        !roomInfo.startsWith('Error') &&
-        !roomInfo.startsWith('No active game session')
-      ) {
-        return roomInfo;
+      if (!roomInfo) {
+        return `${room.name}\n${'='.repeat(room.name.length)}\n\n${room.description}`;
       }
 
-      // Fallback to basic formatting if getCurrentRoomInfo fails
-      const connections = await this.prismaService.client.connection.findMany({
-        where: { fromRoomId: room.id },
+      // Build formatted string from structured data
+      let display = `\n${roomInfo.name}\n`;
+      display += '='.repeat(roomInfo.name.length) + '\n\n';
+      display += `${roomInfo.description}\n\n`;
+      
+      if (roomInfo.extendedDescription) {
+        display += `${roomInfo.extendedDescription}\n\n`;
+      }
+
+      // Items
+      if (roomInfo.items.length > 0) {
+        const itemNames = roomInfo.items.map(i => i.name).join(', ');
+        display += `You can see: ${itemNames}.\n\n`;
+      }
+
+      // Characters
+      roomInfo.characters.forEach(char => {
+        display += `${char.name} is here. ${char.description}\n`;
       });
-
-      // Handle case where connections might be undefined
-      const validConnections = connections || [];
-
-      // Only show exits that have valid destinations
-      const exits = validConnections
-        .filter(conn => conn.toRoomId !== null)
-        .map(conn => conn.direction)
-        .sort();
-
-      let description = `**${room.name}**\n\n${room.description}`;
-
-      if (room.extendedDescription) {
-        description += `\n\n${room.extendedDescription}`;
+      if (roomInfo.characters.length > 0) {
+        display += '\n';
       }
 
-      if (exits.length > 0) {
-        description += `\n\n→ Available exits: ${exits.join(', ')}`;
+      // Exits
+      if (roomInfo.exits.length > 0) {
+        const exitText = roomInfo.exits.map(e => `${e.direction} (${e.description})`).join(', ');
+        display += `Exits: ${exitText}\n\n`;
       } else {
-        description += '\n\nThere are no obvious exits.';
+        display += 'There are no obvious exits.\n\n';
       }
 
-      return description;
+      return display;
     } catch (error) {
       console.error('Error formatting room description:', error);
       return `**${room.name}**\n\n${room.description}\n\n(Unable to determine available exits)`;

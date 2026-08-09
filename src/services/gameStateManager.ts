@@ -1,5 +1,14 @@
 import { PrismaService } from './prismaService';
-import { Game, Room } from '@prisma/client';
+import { Game, Room, Item, Character } from '@prisma/client';
+
+export interface RoomInfo {
+  name: string;
+  description: string;
+  extendedDescription?: string;
+  items: Item[];
+  characters: Character[];
+  exits: Array<{ direction: string; description: string }>;
+}
 
 export interface GameSession {
   gameId: number;
@@ -116,30 +125,17 @@ export class GameStateManager {
 
   /**
    * Get formatted information about the current room including exits and contents
+   * Returns structured data instead of a formatted string
    */
-  async getCurrentRoomInfo(): Promise<string> {
+  async getCurrentRoomInfo(): Promise<RoomInfo | null> {
     try {
       if (!this.currentSession) {
-        return 'No active game session. Please start or load a game.';
+        return null;
       }
 
       const room = this.currentSession.currentRoom;
       if (!room) {
-        return 'No current room. Please start or load a game.';
-      }
-
-      let display = '';
-
-      // Room name
-      display += `\n${room.name}\n`;
-      display += '='.repeat(room.name?.length || 0) + '\n\n';
-
-      // Room description
-      display += `${room.description}\n\n`;
-
-      // Extended description if room has one
-      if (room.extendedDescription) {
-        display += `${room.extendedDescription}\n\n`;
+        return null;
       }
 
       // Get room connections for exits
@@ -163,57 +159,26 @@ export class GameStateManager {
         where: { roomId: room.id },
       });
 
-      // Add items description if any
-      if (items.length > 0) {
-        if (items.length === 1) {
-          const article = this.getArticle(items[0].name);
-          display += `You can see ${article} ${items[0].name} here.\n\n`;
-        } else {
-          display += 'You can see: ';
-          display += items.map(item => `${this.getArticle(item.name)} ${item.name}`).join(', ');
-          display += '.\n\n';
-        }
-      }
+      // Build exits array
+      const exits = connections.map(conn => ({
+        direction: conn.direction,
+        description: conn.description || `to ${conn.toRoom?.name || 'somewhere'}`
+      }));
 
-      // Add characters if any
-      if (characters.length > 0) {
-        display += '\n';
-        for (const character of characters) {
-          display += `${character.name} is here. ${character.description}\n`;
-        }
-      }
-
-      // Add exits
-      if (connections.length > 0) {
-        display += 'Exits: ';
-        const exitDescriptions = connections.map(conn => {
-          const exitDesc = conn.description || `to ${conn.toRoom?.name || 'somewhere'}`;
-          return `${conn.direction} (${exitDesc})`;
-        });
-        display += exitDescriptions.join(', ');
-        display += '\n\n';
-      } else {
-        display += 'There are no obvious exits.\n\n';
-      }
-
-      return display;
+      return {
+        name: room.name,
+        description: room.description,
+        extendedDescription: room.extendedDescription || undefined,
+        items,
+        characters,
+        exits
+      };
     } catch (error) {
       console.error('Error getting room info:', error);
-      return `Error getting room information: ${error instanceof Error ? error.message : String(error)}`;
+      return null;
     }
   }
 
-  /**
-   * Get the appropriate article for a noun
-   */
-  private getArticle(noun: string): string {
-    if (!noun) return 'a';
-
-    // Words that should use "an"
-    const vowels = ['a', 'e', 'i', 'o', 'u'];
-    const firstLetter = noun.charAt(0).toLowerCase();
-    return vowels.includes(firstLetter) ? 'an' : 'a';
-  }
 
   /**
    * Set the current room and update the game state with automatic persistence
