@@ -312,50 +312,8 @@ export const GameApplication: React.FC<GameApplicationProps> = ({
       // Display the initial room description
       if (currentRoom) {
         const roomInfo = await gameStateManager.getCurrentRoomInfo();
-<<<<<<< Updated upstream
-        // Split room info into separate messages for proper coloring
-        if (roomInfo.includes('===')) {
-          const lines = roomInfo.split('\n');
-          let currentMessage = '';
-
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-
-            // Check if this is a room title (next line has ===)
-            if (i + 1 < lines.length && lines[i + 1].match(/^=+$/)) {
-              // Send any accumulated message first
-              if (currentMessage.trim()) {
-                addMessage(currentMessage.trim(), 'ROOM');
-                currentMessage = '';
-              }
-              // Send room title with its underline as one message
-              addMessage(`${line}\n${lines[i + 1]}`, 'ROOM');
-              i++; // Skip the underline line
-            } else if (line.startsWith('Exits:') || line.startsWith('You can see:')) {
-              // Send accumulated message
-              if (currentMessage.trim()) {
-                addMessage(currentMessage.trim(), 'ROOM');
-                currentMessage = '';
-              }
-              // Send this line separately
-              addMessage(line, 'ROOM');
-            } else {
-              // Accumulate regular lines
-              if (currentMessage) currentMessage += '\n';
-              currentMessage += line;
-            }
-          }
-
-          // Send any remaining message (room description) with a blank line before it
-          if (currentMessage.trim()) {
-            addMessage('\n' + currentMessage.trim(), 'ROOM');
-          }
-        } else {
-          addMessage(roomInfo, 'ROOM');
-=======
         if (roomInfo) {
           setCurrentRoomInfo(roomInfo);
->>>>>>> Stashed changes
         }
       }
 
